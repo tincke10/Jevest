@@ -139,6 +139,26 @@ Principio del pivote: **Jev responde preguntas de reconocimiento, nunca de razon
 
 Regla de corte: **H1 es bloqueante para la fase 1b**. H0' no bloquea: si falla, la etapa 2 se reduce a metadatos de ruta y el LLM recibe todos los hunks.
 
+### 4.3 Resultado de la fase 0b (2026-09-19): H0' PARCIAL
+
+Tres corridas sobre el dataset v2 con `raw-diff`. La primera, con lotes de 10 hunks por request, dio `change_kind` 0.48 con Jev respondiendo lo mismo para todos los hunks del lote: **anclaje por lote**, causa raíz documentada en `docs/analysis/h0-prime-error-analysis.md` y convertida en NFR-14. Las dos siguientes, con un hunk por request (la segunda es un replay con las etiquetas AST corregidas, costo cero):
+
+| Pregunta | Lote 10 | Lote 1, etiquetas v1 | Lote 1, etiquetas v2 | Umbral | Veredicto |
+|---|---|---|---|---|---|
+| `change_kind` (accuracy) | 0.480 | 0.720 | **0.800** (conf. mediana 0.965) | 0.90 | Cerca; la clase `modify-behavior` (F1 0.69) concentra el error |
+| `touches_error_handling` (F1) | 0.310 | 0.774 | **0.889** (ECE 0.087) | 0.85 | **PASS** |
+| `touches_async` (F1) | 0.431 | 0.914 | **0.846** (ECE 0.110) | 0.85 | Al límite; solo 11 positivos |
+| `touches_io` (F1) | 0.377 | 0.815 | 0.714 (ECE 0.169) | 0.85 | Insuficiente; solo 6 positivos, un error mueve 0.2 |
+| `touches_public_api` (F1) | 0.314 | 0.581 | 0.645 (recall 1.0, precisión 0.48) | 0.85 | Brecha de definición: el `export` suele quedar fuera del hunk y Jev lee "toca API pública" como "modifica el cuerpo de algo exportado" |
+
+Lectura: con un ítem por request, Jev **sí** perfila superficie con confianza alta y calibración razonable. Lo que queda por debajo del umbral es, en parte, soporte estadístico pobre (5–11 positivos sobre 100) y, en parte, definición.
+
+Decisión provisional para FR-3 (a confirmar en fase 1b):
+- Jev responde `change_kind`, `touches_error_handling` y `touches_async`.
+- `touches_public_api` se deriva **en código** por AST sobre el archivo completo, donde el `export` es visible. No se le pregunta a Jev.
+- `touches_io` queda fuera hasta tener ≥ 30 positivos etiquetados.
+- Pendiente: dataset de ≥ 300 hunks para que los nouls raros tengan soporte, y verificación manual de `modify-behavior` vs `add-behavior`.
+
 ---
 
 ## 5. Fases y alcance

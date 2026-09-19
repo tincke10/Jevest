@@ -1,0 +1,281 @@
+{
+  "requestId": "req_01a0b92a817d7ce59aa5142d201a5cf6",
+  "model": "jev-1.13.0",
+  "latencyMs": 296,
+  "usage": {
+    "inputTokens": 9271,
+    "outputTokens": 1934
+  },
+  "answers": {
+    "trpc-f8f0c0e-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.88,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-f8f0c0e-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-f8f0c0e-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "trpc-f8f0c0e-1__touches_async": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "trpc-f8f0c0e-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-60c89fc-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.87,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-60c89fc-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-60c89fc-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "trpc-60c89fc-1__touches_async": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "trpc-60c89fc-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-d3c4051-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.87,
+      "probabilities": {
+        "add-behavior": 0.9,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.07,
+        "delete": 0.01
+      }
+    },
+    "trpc-d3c4051-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-d3c4051-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "trpc-d3c4051-1__touches_async": {
+      "type": "noul",
+      "noul": 0.66
+    },
+    "trpc-d3c4051-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-fb9fe87-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.88,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-fb9fe87-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-fb9fe87-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.16
+    },
+    "trpc-fb9fe87-1__touches_async": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "trpc-fb9fe87-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-492bacf-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.88,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-492bacf-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "trpc-492bacf-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "trpc-492bacf-1__touches_async": {
+      "type": "noul",
+      "noul": 0.68
+    },
+    "trpc-492bacf-1__touches_io": {
+      "type": "noul",
+      "noul": 0.89
+    },
+    "trpc-bdf2c65-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.89,
+      "probabilities": {
+        "add-behavior": 0.92,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.05,
+        "delete": 0.01
+      }
+    },
+    "trpc-bdf2c65-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-bdf2c65-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "trpc-bdf2c65-1__touches_async": {
+      "type": "noul",
+      "noul": 0.66
+    },
+    "trpc-bdf2c65-1__touches_io": {
+      "type": "noul",
+      "noul": 0.85
+    },
+    "trpc-62c6ab0-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.88,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-62c6ab0-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-62c6ab0-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.15
+    },
+    "trpc-62c6ab0-1__touches_async": {
+      "type": "noul",
+      "noul": 0.67
+    },
+    "trpc-62c6ab0-1__touches_io": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "trpc-7661fc0-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.88,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-7661fc0-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-7661fc0-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.13
+    },
+    "trpc-7661fc0-1__touches_async": {
+      "type": "noul",
+      "noul": 0.68
+    },
+    "trpc-7661fc0-1__touches_io": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-662d64b-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.87,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-662d64b-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "trpc-662d64b-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "trpc-662d64b-1__touches_async": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "trpc-662d64b-1__touches_io": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "trpc-2bf122d-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.87,
+      "probabilities": {
+        "add-behavior": 0.91,
+        "modify-behavior": 0.02,
+        "rename-or-format": 0.06,
+        "delete": 0.01
+      }
+    },
+    "trpc-2bf122d-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "trpc-2bf122d-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.14
+    },
+    "trpc-2bf122d-1__touches_async": {
+      "type": "noul",
+      "noul": 0.63
+    },
+    "trpc-2bf122d-1__touches_io": {
+      "type": "noul",
+      "noul": 0.85
+    }
+  }
+}

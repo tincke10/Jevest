@@ -1,0 +1,281 @@
+{
+  "requestId": "req_01a0b92a7c7177edb5de2abdde1b1bc3",
+  "model": "jev-1.13.0",
+  "latencyMs": 266,
+  "usage": {
+    "inputTokens": 8816,
+    "outputTokens": 1934
+  },
+  "answers": {
+    "vitest-6a99eac-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.74,
+      "probabilities": {
+        "modify-behavior": 0.18,
+        "add-behavior": 0.81,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "vitest-6a99eac-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "vitest-6a99eac-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "vitest-6a99eac-1__touches_async": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "vitest-6a99eac-1__touches_io": {
+      "type": "noul",
+      "noul": 0.89
+    },
+    "vitest-d87c96e-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.74,
+      "probabilities": {
+        "modify-behavior": 0.19,
+        "add-behavior": 0.8,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "vitest-d87c96e-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "vitest-d87c96e-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "vitest-d87c96e-1__touches_async": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "vitest-d87c96e-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-edd138e-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.69,
+      "probabilities": {
+        "modify-behavior": 0.22,
+        "add-behavior": 0.77,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-edd138e-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-edd138e-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-edd138e-1__touches_async": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-edd138e-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-f147de5-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.7,
+      "probabilities": {
+        "modify-behavior": 0.21,
+        "add-behavior": 0.78,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-f147de5-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-f147de5-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "hono-f147de5-1__touches_async": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-f147de5-1__touches_io": {
+      "type": "noul",
+      "noul": 0.89
+    },
+    "hono-90e1b94-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.71,
+      "probabilities": {
+        "modify-behavior": 0.2,
+        "add-behavior": 0.79,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-90e1b94-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-90e1b94-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-90e1b94-1__touches_async": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-90e1b94-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-e2740d5-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.68,
+      "probabilities": {
+        "modify-behavior": 0.23,
+        "add-behavior": 0.76,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-e2740d5-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-e2740d5-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-e2740d5-1__touches_async": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-e2740d5-1__touches_io": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-a10592f-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.71,
+      "probabilities": {
+        "modify-behavior": 0.21,
+        "add-behavior": 0.78,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-a10592f-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-a10592f-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-a10592f-1__touches_async": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "hono-a10592f-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-48e360f-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.72,
+      "probabilities": {
+        "modify-behavior": 0.2,
+        "add-behavior": 0.79,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-48e360f-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-48e360f-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-48e360f-1__touches_async": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-48e360f-1__touches_io": {
+      "type": "noul",
+      "noul": 0.89
+    },
+    "hono-63bbcf5-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.69,
+      "probabilities": {
+        "modify-behavior": 0.22,
+        "add-behavior": 0.77,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-63bbcf5-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-63bbcf5-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.1
+    },
+    "hono-63bbcf5-1__touches_async": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-63bbcf5-1__touches_io": {
+      "type": "noul",
+      "noul": 0.88
+    },
+    "hono-f6aa913-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.71,
+      "probabilities": {
+        "modify-behavior": 0.21,
+        "add-behavior": 0.78,
+        "delete": 0,
+        "rename-or-format": 0.01
+      }
+    },
+    "hono-f6aa913-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.86
+    },
+    "hono-f6aa913-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.09
+    },
+    "hono-f6aa913-1__touches_async": {
+      "type": "noul",
+      "noul": 0.87
+    },
+    "hono-f6aa913-1__touches_io": {
+      "type": "noul",
+      "noul": 0.87
+    }
+  }
+}

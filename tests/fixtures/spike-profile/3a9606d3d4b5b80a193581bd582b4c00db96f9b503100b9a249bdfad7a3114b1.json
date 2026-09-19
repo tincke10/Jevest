@@ -1,0 +1,281 @@
+{
+  "requestId": "req_01a0b92a7b5c708b80030f857ccee97d",
+  "model": "jev-1.13.0",
+  "latencyMs": 275,
+  "usage": {
+    "inputTokens": 8639,
+    "outputTokens": 1929
+  },
+  "answers": {
+    "vitest-d4fe198-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.59,
+      "probabilities": {
+        "add-behavior": 0.69,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.28,
+        "delete": 0.01
+      }
+    },
+    "vitest-d4fe198-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-d4fe198-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "vitest-d4fe198-1__touches_async": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "vitest-d4fe198-1__touches_io": {
+      "type": "noul",
+      "noul": 0.49
+    },
+    "vitest-e08c45c-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.63,
+      "probabilities": {
+        "add-behavior": 0.72,
+        "rename-or-format": 0.03,
+        "modify-behavior": 0.24,
+        "delete": 0.01
+      }
+    },
+    "vitest-e08c45c-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.82
+    },
+    "vitest-e08c45c-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.68
+    },
+    "vitest-e08c45c-1__touches_async": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "vitest-e08c45c-1__touches_io": {
+      "type": "noul",
+      "noul": 0.5
+    },
+    "vitest-b628cb6-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.58,
+      "probabilities": {
+        "add-behavior": 0.69,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.28,
+        "delete": 0.01
+      }
+    },
+    "vitest-b628cb6-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "vitest-b628cb6-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "vitest-b628cb6-1__touches_async": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-b628cb6-1__touches_io": {
+      "type": "noul",
+      "noul": 0.46
+    },
+    "vitest-a6d5ea2-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.59,
+      "probabilities": {
+        "add-behavior": 0.69,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.28,
+        "delete": 0.01
+      }
+    },
+    "vitest-a6d5ea2-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-a6d5ea2-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "vitest-a6d5ea2-1__touches_async": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-a6d5ea2-1__touches_io": {
+      "type": "noul",
+      "noul": 0.51
+    },
+    "vitest-5f6a5e8-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.58,
+      "probabilities": {
+        "add-behavior": 0.6799999999999999,
+        "rename-or-format": 0.03,
+        "modify-behavior": 0.28,
+        "delete": 0.01
+      }
+    },
+    "vitest-5f6a5e8-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.82
+    },
+    "vitest-5f6a5e8-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.69
+    },
+    "vitest-5f6a5e8-1__touches_async": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-5f6a5e8-1__touches_io": {
+      "type": "noul",
+      "noul": 0.5
+    },
+    "vitest-58e7130-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.58,
+      "probabilities": {
+        "add-behavior": 0.69,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.28,
+        "delete": 0.01
+      }
+    },
+    "vitest-58e7130-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.82
+    },
+    "vitest-58e7130-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "vitest-58e7130-1__touches_async": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-58e7130-1__touches_io": {
+      "type": "noul",
+      "noul": 0.43
+    },
+    "vitest-1d365db-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.6,
+      "probabilities": {
+        "add-behavior": 0.69,
+        "rename-or-format": 0.03,
+        "modify-behavior": 0.27,
+        "delete": 0.01
+      }
+    },
+    "vitest-1d365db-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "vitest-1d365db-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.63
+    },
+    "vitest-1d365db-1__touches_async": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "vitest-1d365db-1__touches_io": {
+      "type": "noul",
+      "noul": 0.5
+    },
+    "vitest-fad263f-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.6,
+      "probabilities": {
+        "add-behavior": 0.7,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.27,
+        "delete": 0.01
+      }
+    },
+    "vitest-fad263f-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-fad263f-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.65
+    },
+    "vitest-fad263f-1__touches_async": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-fad263f-1__touches_io": {
+      "type": "noul",
+      "noul": 0.49
+    },
+    "vitest-bac009d-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.58,
+      "probabilities": {
+        "add-behavior": 0.6799999999999999,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.29,
+        "delete": 0.01
+      }
+    },
+    "vitest-bac009d-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.83
+    },
+    "vitest-bac009d-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.62
+    },
+    "vitest-bac009d-1__touches_async": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-bac009d-1__touches_io": {
+      "type": "noul",
+      "noul": 0.5
+    },
+    "vitest-4363cdb-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.62,
+      "probabilities": {
+        "add-behavior": 0.71,
+        "rename-or-format": 0.02,
+        "modify-behavior": 0.26,
+        "delete": 0.01
+      }
+    },
+    "vitest-4363cdb-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.82
+    },
+    "vitest-4363cdb-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.64
+    },
+    "vitest-4363cdb-1__touches_async": {
+      "type": "noul",
+      "noul": 0.81
+    },
+    "vitest-4363cdb-1__touches_io": {
+      "type": "noul",
+      "noul": 0.47
+    }
+  }
+}

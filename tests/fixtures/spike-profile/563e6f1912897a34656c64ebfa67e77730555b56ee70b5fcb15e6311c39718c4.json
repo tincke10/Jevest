@@ -1,0 +1,281 @@
+{
+  "requestId": "req_01a0b92a76d271859fb1cfab2e76c166",
+  "model": "jev-1.13.0",
+  "latencyMs": 892,
+  "usage": {
+    "inputTokens": 9614,
+    "outputTokens": 1914
+  },
+  "answers": {
+    "zod-9446b5c-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.78,
+      "probabilities": {
+        "rename-or-format": 0.01,
+        "add-behavior": 0.84,
+        "modify-behavior": 0.15,
+        "delete": 0
+      }
+    },
+    "zod-9446b5c-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.35
+    },
+    "zod-9446b5c-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.93
+    },
+    "zod-9446b5c-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-9446b5c-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-b12aa52-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.83,
+      "probabilities": {
+        "rename-or-format": 0,
+        "add-behavior": 0.87,
+        "modify-behavior": 0.13,
+        "delete": 0
+      }
+    },
+    "zod-b12aa52-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.34
+    },
+    "zod-b12aa52-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-b12aa52-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-b12aa52-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-574d480-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.81,
+      "probabilities": {
+        "rename-or-format": 0.01,
+        "add-behavior": 0.85,
+        "modify-behavior": 0.14,
+        "delete": 0
+      }
+    },
+    "zod-574d480-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.39
+    },
+    "zod-574d480-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-574d480-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-574d480-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-36f1796-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.82,
+      "probabilities": {
+        "rename-or-format": 0,
+        "add-behavior": 0.87,
+        "modify-behavior": 0.13,
+        "delete": 0
+      }
+    },
+    "zod-36f1796-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.39
+    },
+    "zod-36f1796-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "zod-36f1796-1__touches_async": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-36f1796-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-dcbcf05-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.81,
+      "probabilities": {
+        "rename-or-format": 0,
+        "add-behavior": 0.87,
+        "modify-behavior": 0.13,
+        "delete": 0
+      }
+    },
+    "zod-dcbcf05-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.4
+    },
+    "zod-dcbcf05-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-dcbcf05-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-dcbcf05-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-7a00236-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.83,
+      "probabilities": {
+        "rename-or-format": 0.01,
+        "add-behavior": 0.87,
+        "modify-behavior": 0.12,
+        "delete": 0
+      }
+    },
+    "zod-7a00236-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.38
+    },
+    "zod-7a00236-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-7a00236-1__touches_async": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-7a00236-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-cafbee4-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.8,
+      "probabilities": {
+        "rename-or-format": 0,
+        "add-behavior": 0.85,
+        "modify-behavior": 0.15,
+        "delete": 0
+      }
+    },
+    "zod-cafbee4-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.41
+    },
+    "zod-cafbee4-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "zod-cafbee4-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-cafbee4-1__touches_io": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "zod-eca9687-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.81,
+      "probabilities": {
+        "delete": 0,
+        "rename-or-format": 0,
+        "add-behavior": 0.87,
+        "modify-behavior": 0.13
+      }
+    },
+    "zod-eca9687-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.42
+    },
+    "zod-eca9687-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.91
+    },
+    "zod-eca9687-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-eca9687-1__touches_io": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "zod-f83ab51-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.79,
+      "probabilities": {
+        "rename-or-format": 0,
+        "add-behavior": 0.85,
+        "modify-behavior": 0.15,
+        "delete": 0
+      }
+    },
+    "zod-f83ab51-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.37
+    },
+    "zod-f83ab51-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-f83ab51-1__touches_async": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "zod-f83ab51-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-eab51ff-1__change_kind": {
+      "type": "choice",
+      "choice": "add-behavior",
+      "confidence": 0.84,
+      "probabilities": {
+        "modify-behavior": 0.12,
+        "delete": 0,
+        "rename-or-format": 0.01,
+        "add-behavior": 0.87
+      }
+    },
+    "zod-eab51ff-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.42
+    },
+    "zod-eab51ff-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.92
+    },
+    "zod-eab51ff-1__touches_async": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "zod-eab51ff-1__touches_io": {
+      "type": "noul",
+      "noul": 0.04
+    }
+  }
+}

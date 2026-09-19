@@ -231,26 +231,51 @@ that distinction.
 
 ## 6. Run summary
 
-**Not run: no credentials.** Neither `ANTHROPIC_API_KEY` nor `OPENAI_API_KEY`
-is set in this environment, and no `ant` CLI / `ant auth login` profile is
-present to resolve Anthropic credentials another way. Per this task's
-instructions, no live generation was attempted — every module above (both
-adapters, `generate-findings.ts`, `summary.ts`, `estimate-cost.ts`, the CLI's
-argument parsing and dataset/stratified-sample wiring) is built and unit
-tested against fakes/injected clients, and the CLI was smoke-tested against
-the real `datasets/hunks.jsonl` up to the point where it needs a real
-provider client (confirmed: dataset loads, `--limit` stratified sampling
-runs, then it fails cleanly with a clear "requires credentials" message
-instead of a stack trace).
+**Anthropic and OpenAI: not run.** Neither `ANTHROPIC_API_KEY` nor
+`OPENAI_API_KEY` is set in this environment, and no `ant` CLI / `ant auth
+login` profile is present to resolve Anthropic credentials another way. Both
+adapters are built and unit tested against fakes/injected clients only; the
+CLI was smoke-tested against the real `datasets/hunks.jsonl` up to the point
+where it needs a real provider client (dataset loads, `--limit` stratified
+sampling runs, then it fails cleanly with a "requires credentials" message).
+Per the task brief, `--provider openai` must not be run live regardless (no
+confirmed pricing either, per §5).
 
-`datasets/findings.jsonl` does not exist yet. Once credentials are available,
-the intended sequence (per the task brief) is:
+**claude-cli: run for real, 2026-09-19.** `pnpm findings --provider
+claude-cli --estimate` first (~$2.99 nominal projected for 100 hunks, well
+under the $15 nominal budget), then `pnpm findings --provider claude-cli
+--record --budget-usd 15` over the full dataset:
 
-```bash
-pnpm findings --provider anthropic --estimate     # must print well under $5 for 100 hunks
-pnpm findings --provider anthropic --record        # writes datasets/findings.jsonl,
-                                                     # records raw responses under tests/fixtures/findings/
-```
+| Metric | Value |
+|---|---|
+| Hunks attempted | 100 / 100 (no failures, not stopped early) |
+| Wall time | 453.9 s (concurrency 2) |
+| Total run cost | $2.2803 nominal (Claude Max subscription quota, not cash) |
+| Total findings | 14 |
+| Real / noise | 9 real, 5 noise |
+| By severity | nit 0, minor 11, major 3, critical 0 |
+| Findings per hunk | mean 0.14; max 2 on any single hunk; 88/100 hunks had zero findings |
+| % of findings on a benign hunk | 35.7% (5 of 14) |
+| Latency ms p50/p95/p99 | 8994 / 24386 / 24386 |
+| Cache hit share | 47.4% |
 
-Do **not** run `--provider openai` live (out of scope per the task brief;
-also has no confirmed pricing, per §5).
+`datasets/findings.jsonl` (14 lines) and `tests/fixtures/findings/` (100
+files, one per hunk) were both validated after the run: every line parses
+cleanly with `parseFindingRecordLine`, every record's `reviewer.provider` is
+`"claude-cli"` and `billing` is `"subscription"`, and every fixture file was
+scanned for a `sessionId` key, any UUID-shaped string, `ANTHROPIC_API_KEY`,
+an API-key prefix, and absolute user paths — zero matches. The 100 fixture
+files' total cost ($2.28) exceeds `summarizeFindings`'s `totalCostUsd`
+($0.4947 in this run) exactly as documented above: the summary only sums
+cost for the 12 hunks that produced ≥1 finding, not all 100 attempted —
+`generateFindings`'s own result (`totalCostUsd: 2.2803`) is the authoritative
+run total.
+
+**Read with caution, not as an H1/H6/H3 verdict**: 14 findings (12 hunks with
+≥1 finding) is far short of the "≥200 findings" SPEC §4.2 calls for before
+computing ECE (H3), and 9 real / 5 noise is too small a sample to estimate
+H1's recall or noise-discard rate meaningfully. This run demonstrates the
+claude-cli reviewer pipeline end-to-end (schema-validated structured output,
+line-overlap labeling, cost/billing accounting) at low nominal cost; it is
+not the dataset SPEC §5 step 5 needs for a hypothesis verdict. Anthropic and
+OpenAI runs (or a larger claude-cli run) are still needed for that.

@@ -17,5 +17,12 @@
     "noEmit": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "tests", "scripts/spike"]
+  "include": [
+    "src",
+    "tests",
+    "scripts/spike",
+    "scripts/profile",
+    "scripts/filter",
+    "scripts/findings"
+  ]
 }

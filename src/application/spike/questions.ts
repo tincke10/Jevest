@@ -1,65 +1,29 @@
-import type { JsonObject } from "../../domain/json.js";
 /**
- * The per-hunk question set for the phase 0 spike (SPEC FR-3.2), and the
- * fan-out builder that packs many hunks into one Jev request per batch
- * (FR-1.4, FR-3.4). Criteria are written in English with explicit
- * boundaries and no double negations (NFR-6, NFR-8).
+ * Generic fan-out mechanics for the spike (FR-1.4, FR-3.4): packs many
+ * hunks into one Jev request per batch, keyed by hunk id and question
+ * name. The set of questions asked per hunk is pluggable (see
+ * `question-sets/`), so the same fan-out code serves both the defect
+ * question set (phase 0, H0) and the surface-profile question set
+ * (phase 0b, H0').
  */
-import type { NoulQuestion, Question, ScoreQuestion } from "../../domain/question.js";
+import type { JsonObject } from "../../domain/json.js";
+import type { Question } from "../../domain/question.js";
 import type { HunkRecord } from "./hunk-record.js";
 import type { HunkSerializer } from "./serializers.js";
 
-/**
- * Score levels for `defect_likelihood`, indexed 0..3. Kept as a named
- * constant because the report's score normalization (score / (levels-1))
- * depends on this exact count.
- */
-export const DEFECT_LIKELIHOOD_LEVELS = ["none", "unlikely", "likely", "certain"] as const;
-
-export function defectLikelihoodQuestion(): ScoreQuestion {
-  return {
-    type: "score",
-    instructions:
-      "Read the code hunk shown in `before`. Does it contain a defect: a bug that causes incorrect behavior, a crash, a security flaw, or a violation of the function's evident contract? Judge only the code shown in this hunk.",
-    criteria: [
-      "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
-      "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
-      "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
-      "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected.",
-    ],
-  };
+/** One named question within a pluggable question set. */
+export interface QuestionSpec {
+  readonly name: string;
+  readonly build: () => Question;
 }
 
-export function touchesPublicApiQuestion(): NoulQuestion {
-  return {
-    type: "noul",
-    instructions:
-      "Does this hunk change a function, method, class, or type that other files are meant to import and call? Judge only by what the hunk shows: exported symbols, signatures, or their documented behavior.",
-    criteria: {
-      true: "The hunk changes the signature, exported shape, or documented behavior of something other files import.",
-      false:
-        "The hunk only changes internal logic, local variables, private helpers, or test or comment code that nothing outside the file depends on.",
-    },
-  };
+/** A named, ordered set of questions asked per hunk. */
+export interface QuestionSet {
+  readonly name: string;
+  readonly questions: readonly QuestionSpec[];
 }
 
-export function touchesSecurityQuestion(): NoulQuestion {
-  return {
-    type: "noul",
-    instructions:
-      "Does this hunk touch authentication, authorization, cryptography, secrets, session handling, or sanitization of untrusted input? Judge only by what the hunk shows.",
-    criteria: {
-      true: "The hunk changes code that checks identity or permissions, encrypts, decrypts, or hashes data, handles credentials or tokens, or sanitizes untrusted input.",
-      false:
-        "The hunk changes unrelated logic, formatting, or business rules with no connection to any of those concerns.",
-    },
-  };
-}
-
-const QUESTION_NAMES = ["defect_likelihood", "touches_public_api", "touches_security"] as const;
-export type FanOutQuestionName = (typeof QUESTION_NAMES)[number];
-
-export function fanOutKey(hunkId: string, questionName: FanOutQuestionName): string {
+export function fanOutKey(hunkId: string, questionName: string): string {
   return `${hunkId}__${questionName}`;
 }
 
@@ -73,10 +37,14 @@ export class FanOutKeyError extends Error {
 /**
  * Inverse of {@link fanOutKey}. Matches by known question-name suffix
  * (not by first "__"), so it round-trips even if a hunk id itself
- * contains "__".
+ * contains "__". The caller passes the question names it expects (from
+ * the same {@link QuestionSet} used to build the key).
  */
-export function parseFanOutKey(key: string): { hunkId: string; questionName: FanOutQuestionName } {
-  for (const name of QUESTION_NAMES) {
+export function parseFanOutKey(
+  key: string,
+  questionNames: readonly string[],
+): { hunkId: string; questionName: string } {
+  for (const name of questionNames) {
     const suffix = `__${name}`;
     if (key.endsWith(suffix)) {
       return { hunkId: key.slice(0, key.length - suffix.length), questionName: name };
@@ -94,12 +62,13 @@ export interface FanOutBatch {
 /**
  * Packs hunks into batches of at most `batchSize`, one Jev request per
  * batch (FR-1.4, FR-3.4): state is keyed by hunk id, questions are keyed
- * `${hunkId}__${questionName}`.
+ * `${hunkId}__${questionName}` for every question in `questionSet`.
  */
 export function buildFanOut(
   hunks: readonly HunkRecord[],
   serializer: HunkSerializer,
   batchSize: number,
+  questionSet: QuestionSet,
 ): FanOutBatch[] {
   if (batchSize < 1) {
     throw new RangeError(`batchSize must be >= 1, got ${batchSize}`);
@@ -113,9 +82,9 @@ export function buildFanOut(
 
     for (const hunk of chunk) {
       state[hunk.id] = serializer.serialize(hunk);
-      questions[fanOutKey(hunk.id, "defect_likelihood")] = defectLikelihoodQuestion();
-      questions[fanOutKey(hunk.id, "touches_public_api")] = touchesPublicApiQuestion();
-      questions[fanOutKey(hunk.id, "touches_security")] = touchesSecurityQuestion();
+      for (const question of questionSet.questions) {
+        questions[fanOutKey(hunk.id, question.name)] = question.build();
+      }
     }
 
     batches.push({ state, questions, hunkIds: chunk.map((hunk) => hunk.id) });

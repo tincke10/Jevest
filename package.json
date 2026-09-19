@@ -12,11 +12,18 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
-    "spike": "tsx scripts/spike/run.ts"
+    "spike": "tsx scripts/spike/run.ts",
+    "spike:profile": "tsx scripts/spike/run-profile.ts",
+    "profile:label": "tsx scripts/profile/label.ts",
+    "filter": "tsx scripts/filter/run.ts",
+    "findings": "tsx scripts/findings/generate.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.127.0",
     "@typesafe-ai/sdk": "^0.6.0",
-    "yaml": "^2.9.1"
+    "openai": "^7.19.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

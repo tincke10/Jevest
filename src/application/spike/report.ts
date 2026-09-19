@@ -5,15 +5,20 @@
  * cross-serializer agreement, and the H0 verdict — plus a Markdown render.
  */
 import {
+  type ConfidenceSummary,
   type H0Criteria,
   type H0VerdictResult,
   type ThresholdMetrics,
   expectedCalibrationError,
   h0Verdict,
+  percentile,
+  summarizeConfidence,
   thresholdSweep,
 } from "../../domain/metrics.js";
+
+export type { ConfidenceSummary };
 import type { HunkRecordLabel } from "./hunk-record.js";
-import { DEFECT_LIKELIHOOD_LEVELS } from "./questions.js";
+import { DEFECT_LIKELIHOOD_LEVELS } from "./question-sets/defect.js";
 import type { HunkFailure, HunkResult } from "./spike-runner.js";
 
 /** Sweep points at 5% steps from 0.05 to 0.95, inclusive. */
@@ -46,13 +51,6 @@ export interface SerializerHunkResult {
   readonly touchesSecurityLabel: boolean | null;
   readonly requestId: string | null;
   readonly error: string | null;
-}
-
-export interface ConfidenceSummary {
-  readonly p10: number;
-  readonly p50: number;
-  readonly p90: number;
-  readonly mean: number;
 }
 
 export interface SerializerReport {
@@ -125,27 +123,6 @@ export interface BuildSpikeReportOptions {
 function normalizeScore(score: number): number {
   const maxIndex = DEFECT_LIKELIHOOD_LEVELS.length - 1;
   return score / maxIndex;
-}
-
-function percentile(values: readonly number[], p: number): number {
-  if (values.length === 0) {
-    return 0;
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  const idx = (p / 100) * (sorted.length - 1);
-  const lowerIndex = Math.floor(idx);
-  const upperIndex = Math.ceil(idx);
-  const lower = sorted.at(lowerIndex);
-  const upper = sorted.at(upperIndex);
-  if (lower === undefined || upper === undefined) {
-    // Unreachable: lowerIndex/upperIndex are always within [0, sorted.length - 1].
-    throw new Error("percentile: index out of range");
-  }
-  if (lowerIndex === upperIndex) {
-    return lower;
-  }
-  const weight = idx - lowerIndex;
-  return lower * (1 - weight) + upper * weight;
 }
 
 interface LabeledResult {
@@ -227,16 +204,9 @@ function buildSerializerReport(
   const inputTokens = uniqueRequests.reduce((sum, r) => sum + r.inputTokens, 0);
   const outputTokens = uniqueRequests.reduce((sum, r) => sum + r.outputTokens, 0);
 
-  const confidences = items.map(({ result }) => result.defectConfidence);
-  const confidence: ConfidenceSummary | null =
-    confidences.length > 0
-      ? {
-          p10: percentile(confidences, 10),
-          p50: percentile(confidences, 50),
-          p90: percentile(confidences, 90),
-          mean: confidences.reduce((sum, c) => sum + c, 0) / confidences.length,
-        }
-      : null;
+  const confidence: ConfidenceSummary | null = summarizeConfidence(
+    items.map(({ result }) => result.defectConfidence),
+  );
 
   const hunks: SerializerHunkResult[] = [];
   for (const { result, label } of items) {

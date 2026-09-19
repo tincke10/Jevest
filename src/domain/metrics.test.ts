@@ -4,8 +4,10 @@ import {
   expectedCalibrationError,
   f1,
   h0Verdict,
+  percentile,
   precision,
   recall,
+  summarizeConfidence,
   thresholdSweep,
 } from "./metrics.js";
 
@@ -140,5 +142,54 @@ describe("expectedCalibrationError", () => {
       { prob: 1.1, actual: true },
     ];
     expect(() => expectedCalibrationError(items, 10)).not.toThrow();
+  });
+});
+
+describe("percentile", () => {
+  it("returns the single value for a one-element array at any percentile", () => {
+    expect(percentile([42], 0)).toBe(42);
+    expect(percentile([42], 50)).toBe(42);
+    expect(percentile([42], 100)).toBe(42);
+  });
+
+  it("returns 0 for an empty array", () => {
+    expect(percentile([], 50)).toBe(0);
+  });
+
+  it("returns the exact element when the percentile lands on an index", () => {
+    // sorted [100,200,300]: p50 -> idx=(50/100)*2=1 -> sorted[1]=200
+    expect(percentile([300, 100, 200], 50)).toBe(200);
+  });
+
+  it("linearly interpolates between the two nearest ranks", () => {
+    // sorted [10,20]: p50 -> idx=(50/100)*1=0.5 -> 10*0.5+20*0.5=15
+    expect(percentile([10, 20], 50)).toBeCloseTo(15, 10);
+  });
+
+  it("does not mutate the input array", () => {
+    const values = [3, 1, 2];
+    percentile(values, 50);
+    expect(values).toEqual([3, 1, 2]);
+  });
+});
+
+describe("summarizeConfidence", () => {
+  it("returns null for an empty array", () => {
+    expect(summarizeConfidence([])).toBeNull();
+  });
+
+  it("computes p10/p50/p90/mean over the given values", () => {
+    const values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    const summary = summarizeConfidence(values);
+    expect(summary).not.toBeNull();
+    expect(summary!.p10).toBeCloseTo(0.19, 10);
+    expect(summary!.p50).toBeCloseTo(0.55, 10);
+    expect(summary!.p90).toBeCloseTo(0.91, 10);
+    expect(summary!.mean).toBeCloseTo(0.55, 10);
+  });
+
+  it("returns the single value for all percentiles and the mean with one element", () => {
+    const summary = summarizeConfidence([0.42]);
+    expect(summary).toEqual({ p10: 0.42, p50: 0.42, p90: 0.42, mean: 0.42 });
   });
 });

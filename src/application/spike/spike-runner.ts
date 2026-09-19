@@ -8,6 +8,7 @@
 import type { Decision, NoulDecision, ScoreDecision, Usage } from "../../domain/decision.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { HunkRecord } from "./hunk-record.js";
+import { defectQuestionSet } from "./question-sets/defect.js";
 import { buildFanOut, fanOutKey } from "./questions.js";
 import { getSerializer } from "./serializers.js";
 
@@ -81,7 +82,7 @@ function requireAnswer(answers: Record<string, Decision>, key: string): Decision
 
 export async function runSpike(options: RunSpikeOptions): Promise<SpikeRunResult> {
   const serializer = getSerializer(options.serializerName);
-  const batches = buildFanOut(options.hunks, serializer, options.batchSize);
+  const batches = buildFanOut(options.hunks, serializer, options.batchSize, defectQuestionSet);
   const now = options.now ?? Date.now;
   const wallStart = now();
 

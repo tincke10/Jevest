@@ -145,3 +145,53 @@ export function expectedCalibrationError(
   }
   return ece;
 }
+
+/**
+ * Linear-interpolation percentile (0..100) over a set of values. Does not
+ * mutate the input. Used for latency and confidence summaries wherever a
+ * report needs p50/p95/p99-style figures.
+ */
+export function percentile(values: readonly number[], p: number): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = (p / 100) * (sorted.length - 1);
+  const lowerIndex = Math.floor(idx);
+  const upperIndex = Math.ceil(idx);
+  const lower = sorted.at(lowerIndex);
+  const upper = sorted.at(upperIndex);
+  if (lower === undefined || upper === undefined) {
+    // Unreachable: lowerIndex/upperIndex are always within [0, sorted.length - 1].
+    throw new Error("percentile: index out of range");
+  }
+  if (lowerIndex === upperIndex) {
+    return lower;
+  }
+  const weight = idx - lowerIndex;
+  return lower * (1 - weight) + upper * weight;
+}
+
+export interface ConfidenceSummary {
+  readonly p10: number;
+  readonly p50: number;
+  readonly p90: number;
+  readonly mean: number;
+}
+
+/**
+ * p10/p50/p90/mean over a set of confidence values. `null` for an empty
+ * set (nothing to summarize) rather than a zeroed-out summary, so callers
+ * can distinguish "no data" from "data centered at 0".
+ */
+export function summarizeConfidence(values: readonly number[]): ConfidenceSummary | null {
+  if (values.length === 0) {
+    return null;
+  }
+  return {
+    p10: percentile(values, 10),
+    p50: percentile(values, 50),
+    p90: percentile(values, 90),
+    mean: values.reduce((sum, v) => sum + v, 0) / values.length,
+  };
+}

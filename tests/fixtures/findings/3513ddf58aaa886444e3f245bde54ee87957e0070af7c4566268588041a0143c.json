@@ -1,0 +1,12 @@
+{
+  "findings": [],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 241,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1290
+  },
+  "latencyMs": 3413,
+  "nominalCostUsd": 0.019443
+}

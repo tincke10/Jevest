@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 64,
+      "lineEnd": 64,
+      "claim": "The new lookahead treats a bare U+20E3 (combining enclosing keycap) as an emoji anchor, so strings with no emoji base such as \"⃣\" or \"‍⃣\" still validate as emoji.",
+      "rationale": "U+20E3 is a combining mark and is itself in \\p{Emoji_Component}. It only forms an emoji after a keycap base ([0-9#*], optionally followed by FE0F). Listing it as a standalone anchor lets through exactly the base-less component-only strings the change says it rejects. Fix: anchor on the sequence [0-9#*]️?⃣ instead of ⃣ alone.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1255,
+    "cacheReadInputTokens": 2763,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13422,
+  "nominalCostUsd": 0.032766500000000004
+}

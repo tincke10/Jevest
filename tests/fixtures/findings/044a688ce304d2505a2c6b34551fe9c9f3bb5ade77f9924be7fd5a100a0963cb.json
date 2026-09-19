@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 235,
+      "lineEnd": 235,
+      "claim": "The cleanup now removes only the new `onAbort` listener and no longer removes the `abort` listener. If an earlier `signal.addEventListener('abort', abort)` call still exists, that listener is never removed.",
+      "rationale": "Before this change, cleanup called `removeEventListener('abort', abort)`, which suggests an `abort` listener was added earlier in the function, above this hunk. This change swaps the removal to `onAbort` without visibly removing that earlier registration. If it's still there, every request/subscription leaves an `abort` listener on the caller's AbortSignal. That leaks the closure (and the request state it holds) for as long as the signal lives, and `abort()` can run again after the request has already finished.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 847,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1136
+  },
+  "latencyMs": 8938,
+  "nominalCostUsd": 0.033053
+}

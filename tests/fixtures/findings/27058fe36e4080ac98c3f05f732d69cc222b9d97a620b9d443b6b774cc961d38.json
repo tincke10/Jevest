@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 101,
+      "lineEnd": 108,
+      "claim": "Removing the `nodeParams !== emptyParams || params non-empty` guard can now set param keys to `undefined` when no parameters were captured.",
+      "rationale": "Before, `handlerSet.params` stayed an empty object when neither `nodeParams` nor `params` held any values. Now the loop always runs over `possibleKeys`. When both sources are empty, `nodeParams[key] ?? params?.[key]` is `undefined`, so every possible key is added with an `undefined` value. `Object.keys`, `in` checks and spreads of the result will now list these keys when they didn't before, so what the request params show can change. It also adds work on the hot path the guard was meant to skip.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1079,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1635
+  },
+  "latencyMs": 11043,
+  "nominalCostUsd": 0.04384300000000001
+}

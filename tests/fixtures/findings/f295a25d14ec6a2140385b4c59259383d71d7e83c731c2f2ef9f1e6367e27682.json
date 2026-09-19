@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "The property type check is backwards: `core.$ZodType<unknown, T[k]>` requires the schema's input to fit inside T[k], not that the schema accepts T[k]. Wider schemas that do accept the property's type get rejected, and narrower ones that don't are allowed.",
+      "rationale": "The schema's `_zod.input` is compared covariantly, so the value must satisfy Input ⊆ T[k]. For a `string` property, `z.unknown()` or `z.union([z.string(), z.number()])` fails the constraint even though it accepts every string, while `z.literal(\"a\")` passes even though it rejects most strings. That is the opposite of the stated intent, 'a schema that can't accept the property's type is an error'. The check needs T[k] to be assignable to the schema's input.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "Dropping the `core.$ZodShape` constraint means shape values are no longer checked to be schemas when T is the default `unknown`, or for keys not on T, including method keys removed by the Function filter.",
+      "rationale": "`keyof unknown` is `never`, so the constraint reduces to `{}` and any value is allowed, such as `{ a: 123 }`. Extra keys and method keys like `toString` are also unconstrained, because excess keys are allowed when checking a type parameter against its constraint. Before the change, `$ZodShape` made every value a schema. Now `$InferObjectInput<Shape>` can be computed from non-schema values and produce wrong types.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2523,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1419
+  },
+  "latencyMs": 24386,
+  "nominalCostUsd": 0.07778299999999999
+}

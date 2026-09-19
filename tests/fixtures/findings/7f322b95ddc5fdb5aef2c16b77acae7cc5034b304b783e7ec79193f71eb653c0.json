@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 4,
+      "lineEnd": 6,
+      "claim": "The new `getMessage` helper turns a `message` that is present but null or undefined into the literal strings \"null\" or \"undefined\". For example, `{ message: undefined }` gives the error the message \"undefined\" instead of an empty one.",
+      "rationale": "`'message' in cause` only checks that the key exists, not what its value is. `String(cause.message)` then turns undefined or null into a string, so these causes get a misleading error message. Checking `cause.message != null`, or passing strings through and skipping other values, would avoid this.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 651,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1139
+  },
+  "latencyMs": 7109,
+  "nominalCostUsd": 0.028183000000000003
+}

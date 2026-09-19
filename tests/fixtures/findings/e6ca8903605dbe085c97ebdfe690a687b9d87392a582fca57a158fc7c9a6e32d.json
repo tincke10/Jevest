@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "The `?? errors.$ZodError` fallback for the error class is gone. `failure()` now calls `new Err(...)` directly, so a caller that passes an undefined `_Err` gets a TypeError instead of the default `$ZodError`.",
+      "rationale": "The old code explicitly handled a nullish `_Err` with `new (_Err ?? errors.$ZodError)(...)`, which suggests some call paths or users relied on it. The new `failure(_Err, ...)` has no fallback. Worse, the constructor now runs lazily inside the getter, so the TypeError fires wherever `.error` is first read rather than inside `safeParse`.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "Issue finalization moves from parse time to the first read of `.error`. It now reads `core.config()` at a later time, and any exception from a custom error map or `finalizeIssue` is thrown from a property read instead of from `safeParse`.",
+      "rationale": "`util.finalizeIssue(iss, ctx, core.config())` used to run when `safeParse` was called. It now runs inside the getter, so a global config change made in between (for example `z.config({ localeError })` or `customError`) produces different messages than the config that was active during parsing. Also, if a user-supplied error map throws, the throw now comes from an unexpected place (reading `result.error`, `JSON.stringify(result)`, or spreading `{...result}`), and because nothing is cached on failure it throws again on every read. The raw `issues` array and `ctx` also stay alive until then.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1171,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1823
+  },
+  "latencyMs": 11941,
+  "nominalCostUsd": 0.048022999999999996
+}

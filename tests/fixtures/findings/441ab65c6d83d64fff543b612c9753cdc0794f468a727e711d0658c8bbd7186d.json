@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 36,
+      "lineEnd": 38,
+      "claim": "Any direct call whose last path segment is 'valueOf', 'toString' or 'toJSON' now returns a debug string instead of calling the callback. As a result, procedures with those names can't be invoked through proxies that call the procedure directly, such as a server-side caller (`caller.toJSON(input)` / `caller.user.toString(input)`).",
+      "rationale": "createRecursiveProxy is shared, including by createCaller, where the procedure path itself is the function being called. The new early return catches those legitimate calls and returns a string like 'tRPC.proxy(user)' instead of the procedure's result Promise. This fails silently at runtime while TypeScript still types the result as the procedure output. The comment's claim that naming freedom is preserved only holds for chained access like `.query()`.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1163,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1372
+  },
+  "latencyMs": 11286,
+  "nominalCostUsd": 0.043313000000000004
+}

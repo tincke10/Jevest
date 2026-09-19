@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 48,
+      "lineEnd": 57,
+      "claim": "The filter drops q=0 entries before matching, so a type the client explicitly rejects can still be returned when a wildcard also matches it. Example: `Accept: application/json;q=0, */*;q=0.1` with supports ['application/json'] returns 'application/json'.",
+      "rationale": "RFC 9110 §12.5.1 says a specific range with q=0 makes that type unacceptable, even if a less specific range such as `*/*` or `type/*` matches it. Removing the q=0 entries up front throws away that exclusion. The loop then matches the supported type through the wildcard entry. The comment says such entries must never match, but the code doesn't guarantee it. The code should drop any supported type that a q=0 entry matches at equal or higher specificity before trying the other entries.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 744,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1379
+  },
+  "latencyMs": 7729,
+  "nominalCostUsd": 0.032908
+}

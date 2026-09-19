@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 11,
+      "lineEnd": 12,
+      "claim": "`getRelativeDistDir` returns a path without the leading slash when `root` is `/`. For every other root it keeps the leading slash.",
+      "rationale": "For a normal root like `/proj`, `rootPrefix` is `/proj/` and `normalizedDistDir.slice(normalizedRoot.length)` gives `/node_modules/vitest/dist`, with the leading slash. When `root` is `/`, `normalizedRoot` is `/` (length 1), so `slice(1)` removes the leading slash and gives `usr/lib/node_modules/vitest/dist`. Callers that join this to the root or match it against root-relative ids like `/node_modules/...` will get the wrong result when the project root is the filesystem root. The slice should use `rootPrefix.length - 1`, or handle the `/` case separately.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 840,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1287
+  },
+  "latencyMs": 8994,
+  "nominalCostUsd": 0.034388
+}

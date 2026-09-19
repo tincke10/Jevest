@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 80,
+      "lineEnd": 80,
+      "claim": "`validate` is typed as the predicate `data is core.input<this>`. That narrows the value when it returns false, not only when it returns true, so values that still match the input type are wrongly excluded.",
+      "rationale": "A TypeScript type predicate narrows both branches. In the false branch, TypeScript removes `core.input<this>` from the type of `data`. But a schema can reject a value that still has the input type, because of refinements, checks and transforms such as `.min()`, `.email()` or `.refine()`. Example: with `z.string().min(5)`, if `x: string` and `!schema.validate(x)`, `x` becomes `never` even though it is still a string (for example \"abc\"). That leaves unsound types in the else branch. A one-sided assertion, or returning a plain boolean, would avoid it. Also, the predicate claims `core.input` even though the value was checked by running the full parse, which fits `core.output` semantics.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 728,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1379
+  },
+  "latencyMs": 8589,
+  "nominalCostUsd": 0.032508
+}

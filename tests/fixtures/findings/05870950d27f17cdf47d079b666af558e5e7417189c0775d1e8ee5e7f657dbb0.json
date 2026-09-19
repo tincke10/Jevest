@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 419,
+      "lineEnd": 421,
+      "claim": "Subscription callback now unconditionally bumps a version counter, forcing a re-render on every store notification even when the snapshot is unchanged.",
+      "rationale": "Previously the callback did setState(getSnapshot()), which lets the state setter bail out when the value is unchanged; React's useSyncExternalStore likewise compares Object.is(prev, getSnapshot()) before re-rendering. The new `update = () => setVersion(v => v + 1)` always changes state, so any store emit (including ones for unrelated slices, which is common with selectors) re-renders every subscriber. The callback should compare latestSnapshot.current[0] against latestSnapshot.current[1]() and only call setVersion when they differ, as the mount/resubscribe path already does.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1591,
+    "cacheReadInputTokens": 1016,
+    "cacheCreationInputTokens": 1659
+  },
+  "latencyMs": 15566,
+  "nominalCostUsd": 0.056883
+}

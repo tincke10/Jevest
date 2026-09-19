@@ -1,0 +1,33 @@
+name: Jevest self-review
+
+# Dogfooding: this repo reviews its own PRs with the Action it publishes.
+#
+# SECURITY: deliberately `pull_request`, never `pull_request_target`. A
+# pull_request_target run gets secrets even for a fork's PR, while running
+# code checked out from that same untrusted fork — see docs/ACTION.md
+# "Security notes". `pull_request` from a fork gets no secrets at all, so a
+# fork PR here simply runs without the API keys (the job below fails
+# closed instead of ever seeing a secret it shouldn't).
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Jevest on itself
+        uses: ./
+        with:
+          config-path: config/jevest.example.yml
+          typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on: never

@@ -10,8 +10,16 @@
 export type FindingSeverity = "nit" | "minor" | "major" | "critical";
 const FINDING_SEVERITIES: readonly FindingSeverity[] = ["nit", "minor", "major", "critical"];
 
+/** Widened to include claude-cli (SPEC §13): a third ReviewerPort adapter that shells out to `claude -p`. */
+export type FindingReviewerProvider = "anthropic" | "openai" | "claude-cli";
+const FINDING_REVIEWER_PROVIDERS: readonly FindingReviewerProvider[] = [
+  "anthropic",
+  "openai",
+  "claude-cli",
+];
+
 export interface FindingReviewer {
-  readonly provider: string;
+  readonly provider: FindingReviewerProvider;
   readonly model: string;
 }
 
@@ -109,6 +117,21 @@ function expectSeverity(value: unknown, field: string, lineNumber: number): Find
   return text as FindingSeverity;
 }
 
+function expectReviewerProvider(
+  value: unknown,
+  field: string,
+  lineNumber: number,
+): FindingReviewerProvider {
+  const text = expectString(value, field, lineNumber);
+  if (!FINDING_REVIEWER_PROVIDERS.includes(text as FindingReviewerProvider)) {
+    throw new FindingRecordParseError(
+      lineNumber,
+      `field "${field}" must be one of ${FINDING_REVIEWER_PROVIDERS.join(", ")}, got "${text}"`,
+    );
+  }
+  return text as FindingReviewerProvider;
+}
+
 export function parseFindingRecordLine(line: string, lineNumber: number): FindingRecord {
   let raw: unknown;
   try {
@@ -127,7 +150,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
     hunkId: expectString(obj.hunk_id, "hunk_id", lineNumber),
     datasetVersion: expectNumber(obj.dataset_version, "dataset_version", lineNumber),
     reviewer: {
-      provider: expectString(reviewer.provider, "reviewer.provider", lineNumber),
+      provider: expectReviewerProvider(reviewer.provider, "reviewer.provider", lineNumber),
       model: expectString(reviewer.model, "reviewer.model", lineNumber),
     },
     file: expectString(obj.file, "file", lineNumber),

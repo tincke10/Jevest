@@ -23,6 +23,22 @@ export const reviewOutputSchema = z.object({
 
 export type ReviewOutputSchema = z.infer<typeof reviewOutputSchema>;
 
+/**
+ * Plain JSON Schema form of {@link reviewOutputSchema}, for callers that
+ * can't take a Zod object directly (the `claude -p --json-schema` flag
+ * wants a JSON Schema string). `zod` v4 ships `z.toJSONSchema`; its output
+ * includes a top-level `$schema` key that the CLI's validator rejects
+ * ("not a valid JSON Schema: no schema with key or ref ..."), confirmed by
+ * a real `claude -p` call — so it's stripped here, once, for every caller.
+ */
+function toPlainJsonSchema(): Record<string, unknown> {
+  const schema = z.toJSONSchema(reviewOutputSchema) as Record<string, unknown>;
+  const { $schema: _drop, ...rest } = schema;
+  return rest;
+}
+
+export const REVIEW_OUTPUT_JSON_SCHEMA: Record<string, unknown> = toPlainJsonSchema();
+
 /** Maps the model's parsed structured output onto the port's camelCase shape. */
 export function toReviewFindingCandidates(parsed: ReviewOutputSchema): ReviewFindingCandidate[] {
   return parsed.findings.map((finding) => ({

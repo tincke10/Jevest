@@ -1,0 +1,66 @@
+# Jevest pipeline config (SPEC §5 Fase 2). Copy to `.jevest.yml` at your
+# repo root and adjust. See docs/SPEC.md for the six-stage pipeline this
+# drives, and config/policies.yaml for the confidence-band rationale.
+
+# The LLM that writes the actual review (FR-4). Jev never writes text.
+reviewer:
+  provider: anthropic # or: openai
+  model: claude-sonnet-5
+
+# Confidence bands per pipeline stage and risk level (NFR-13). Same shape
+# as config/policies.yaml: auto_min/confirm_min per stage per risk level.
+# confidence >= auto_min    -> act automatically
+# confidence >= confirm_min -> ask for human confirmation
+# confidence <  confirm_min -> escalate to a human
+thresholds:
+  triage:
+    none: { auto_min: 0.85, confirm_min: 0.55 }
+    low: { auto_min: 0.90, confirm_min: 0.60 }
+    medium: { auto_min: 0.95, confirm_min: 0.70 }
+    high: { auto_min: 0.98, confirm_min: 0.80 }
+    critical: { auto_min: 0.99, confirm_min: 0.90 }
+  hunk_profile:
+    none: { auto_min: 0.80, confirm_min: 0.50 }
+    low: { auto_min: 0.85, confirm_min: 0.55 }
+    medium: { auto_min: 0.90, confirm_min: 0.65 }
+    high: { auto_min: 0.95, confirm_min: 0.75 }
+    critical: { auto_min: 0.97, confirm_min: 0.85 }
+  finding_filter:
+    none: { auto_min: 0.85, confirm_min: 0.55 }
+    low: { auto_min: 0.90, confirm_min: 0.60 }
+    medium: { auto_min: 0.93, confirm_min: 0.68 }
+    high: { auto_min: 0.96, confirm_min: 0.78 }
+    critical: { auto_min: 0.99, confirm_min: 0.90 }
+  merge_gate:
+    none: { auto_min: 0.90, confirm_min: 0.65 }
+    low: { auto_min: 0.95, confirm_min: 0.70 }
+    medium: { auto_min: 0.97, confirm_min: 0.80 }
+    high: { auto_min: 0.99, confirm_min: 0.90 }
+    critical: { auto_min: 0.999, confirm_min: 0.95 }
+
+# Size classification thresholds (NFR-5: counts are resolved in code, never
+# asked to Jev as numbers). changedLines = additions + deletions.
+# Defaults shown below apply when this key is omitted entirely.
+sizeThresholds:
+  smallMaxChangedLines: 50
+  mediumMaxChangedLines: 300
+
+# Max USD spend per PR run (NFR-10). The LLM reviewer is the real cost;
+# Jev is $0.042/MTok input, negligible in comparison.
+budgetUsd: 5
+
+# Hard cap on hunks profiled/reviewed per PR (FR-3.4 says one Jev request
+# per hunk, so this also bounds request count).
+maxHunks: 50
+
+# change_kind values that skip the LLM reviewer when Jev's confidence is
+# in the "auto" band (FR-3.3). Provisional per SPEC §4.3: only
+# rename-or-format is safe to skip until H0' has more support.
+skipChangeKinds:
+  - rename-or-format
+
+# NFR-2: if Jev doesn't respond (timeout/5xx after retries), always fail
+# closed — triage assumes high risk, the filter publishes nothing inline,
+# merge gate goes red. Never set this to false outside a controlled
+# experiment.
+failClosed: true

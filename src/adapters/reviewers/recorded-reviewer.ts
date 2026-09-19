@@ -73,8 +73,12 @@ export function createRecordedReviewer(options: RecordedReviewerOptions): Review
         throw new Error('RecordedReviewer in "record" mode requires an `underlying` reviewer');
       }
       const output = await underlying.review(input);
+      // sessionId identifies a specific claude-cli session; a fixture is
+      // shared/committed, so it must never carry one (the caller still gets
+      // it in the returned `output`, just not what lands on disk).
+      const { sessionId: _drop, ...persisted } = output;
       await mkdir(dirname(fixturePath), { recursive: true });
-      await writeFile(fixturePath, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+      await writeFile(fixturePath, `${JSON.stringify(persisted, null, 2)}\n`, "utf8");
       return output;
     },
   };

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFakeReviewer } from "../../adapters/reviewers/fake-reviewer.js";
+import { ReviewerRateLimitError } from "../../adapters/reviewers/reviewer-errors.js";
+import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { HunkRecord } from "../spike/hunk-record.js";
 import { generateFindings } from "./generate-findings.js";
 import { CLAUDE_OPUS_5_PRICING } from "./pricing.js";
@@ -215,6 +217,75 @@ describe("generateFindings", () => {
     expect(result.totalCostUsd).toBeCloseTo(5, 6);
   });
 
+  it("uses nominalCostUsd as costUsd and marks billing: subscription when the reviewer reports it (claude-cli)", async () => {
+    const h = hunk({ id: "h9" });
+    const reviewer = createFakeReviewer({
+      h9: {
+        findings: [
+          {
+            lineStart: 11,
+            lineEnd: 11,
+            claim: "bug",
+            rationale: "why",
+            suggestedSeverity: "major",
+          },
+        ],
+        model: "claude-opus-5",
+        usage: {
+          inputTokens: 1_000_000, // would be $5 by token pricing
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+        latencyMs: 50,
+        nominalCostUsd: 0.013,
+      },
+    });
+
+    const result = await generateFindings({
+      hunks: [h],
+      reviewer,
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+    });
+
+    expect(result.records[0]!.costUsd).toBeCloseTo(0.013, 6);
+    expect(result.records[0]!.billing).toBe("subscription");
+    expect(result.totalCostUsd).toBeCloseTo(0.013, 6);
+  });
+
+  it("leaves billing undefined and costs by token pricing when the reviewer reports no nominalCostUsd", async () => {
+    const h = hunk({ id: "h10" });
+    const reviewer = createFakeReviewer({
+      h10: {
+        findings: [
+          {
+            lineStart: 11,
+            lineEnd: 11,
+            claim: "bug",
+            rationale: "why",
+            suggestedSeverity: "major",
+          },
+        ],
+        model: "claude-opus-5",
+        usage: USAGE, // 1M input tokens = $5 by token pricing
+        latencyMs: 50,
+      },
+    });
+
+    const result = await generateFindings({
+      hunks: [h],
+      reviewer,
+      provider: "anthropic",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+    });
+
+    expect(result.records[0]!.costUsd).toBeCloseTo(5, 6);
+    expect(result.records[0]!.billing).toBeUndefined();
+  });
+
   it("records a failure and continues past a hunk whose reviewer call throws", async () => {
     const h1 = hunk({ id: "h7" });
     const h2 = hunk({ id: "h8" });
@@ -235,5 +306,109 @@ describe("generateFindings", () => {
     expect(result.hunksAttempted).toBe(2);
     expect(result.records).toEqual([]);
     expect(result.totalCostUsd).toBeCloseTo(5, 6);
+  });
+
+  it("processes hunks concurrently up to the configured concurrency", async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const reviewer: ReviewerPort = {
+      async review(input: ReviewInput): Promise<ReviewOutput> {
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        inFlight -= 1;
+        return {
+          findings: [],
+          model: "claude-opus-5",
+          usage: {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+          },
+          latencyMs: 10,
+        };
+      },
+    };
+    const hunks = [hunk({ id: "c1" }), hunk({ id: "c2" }), hunk({ id: "c3" }), hunk({ id: "c4" })];
+
+    await generateFindings({
+      hunks,
+      reviewer,
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+      concurrency: 3,
+    });
+
+    expect(maxInFlight).toBeGreaterThan(1);
+    expect(maxInFlight).toBeLessThanOrEqual(3);
+  });
+
+  it("retries a rate-limited hunk up to maxAttempts, succeeding once the reviewer recovers", async () => {
+    const h = hunk({ id: "r1" });
+    let calls = 0;
+    const reviewer: ReviewerPort = {
+      async review(): Promise<ReviewOutput> {
+        calls += 1;
+        if (calls < 3) {
+          throw new ReviewerRateLimitError("claude-cli", undefined);
+        }
+        return {
+          findings: [],
+          model: "claude-opus-5",
+          usage: {
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+          },
+          latencyMs: 1,
+        };
+      },
+    };
+    const sleep = vi.fn(async () => {});
+
+    const result = await generateFindings({
+      hunks: [h],
+      reviewer,
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+      retry: { maxAttempts: 3, backoffMs: 60_000, sleep },
+    });
+
+    expect(calls).toBe(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledWith(60_000);
+    expect(result.failures).toEqual([]);
+    expect(result.stoppedEarly).toBe(false);
+  });
+
+  it("stops the entire run after exhausting retries on a persistent rate limit, never attempting later hunks", async () => {
+    const h1 = hunk({ id: "r2" });
+    const h2 = hunk({ id: "r3" });
+    const reviewer: ReviewerPort = {
+      async review(): Promise<ReviewOutput> {
+        throw new ReviewerRateLimitError("claude-cli", undefined);
+      },
+    };
+    const sleep = vi.fn(async () => {});
+
+    const result = await generateFindings({
+      hunks: [h1, h2],
+      reviewer,
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+      concurrency: 1,
+      retry: { maxAttempts: 3, backoffMs: 60_000, sleep },
+    });
+
+    expect(result.hunksAttempted).toBe(1);
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.stopReason).toMatch(/rate.?limit/i);
+    expect(result.failures).toHaveLength(1);
+    expect(result.failures[0]!.hunkId).toBe("r2");
   });
 });

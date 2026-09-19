@@ -6,16 +6,23 @@
  * and appends the result to `datasets/findings.jsonl`.
  *
  * Usage:
- *   pnpm findings --provider anthropic|openai [--limit N] [--budget-usd N]
- *                 [--estimate] [--out path] [--record] [--seed N]
+ *   pnpm findings --provider anthropic|openai|claude-cli [--limit N]
+ *                 [--budget-usd N] [--estimate] [--out path] [--record]
+ *                 [--seed N] [--concurrency N]
  *
- * `--estimate` never calls the reviewer model: it uses
- * `client.messages.countTokens` on a small sample (Anthropic only, since
- * OpenAI's SDK has no equivalent free token-counting endpoint) and prints a
- * conservative cost projection, then exits 0 without spending anything.
+ * `--estimate` never spends real per-token API money: for `anthropic`, it
+ * uses `client.messages.countTokens` on a small sample (a free endpoint —
+ * OpenAI has no equivalent, so `--estimate` isn't supported for it); for
+ * `claude-cli`, there's no free token-counting endpoint at all, so it makes
+ * 3 REAL calls (nominal subscription cost only, not cash) on a stratified
+ * sample and extrapolates.
  *
  * `--limit N` takes a seeded, label-stratified sample (SPEC §13 "Corridas
  * con --limit nunca son evidencia") — same rule as scripts/spike/run.ts.
+ *
+ * `--concurrency N` (default 2, claude-cli only in practice — the Anthropic
+ * and OpenAI adapters aren't run with more than 1 in this task) reviews
+ * hunks in parallel via generateFindings's worker pool.
  */
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -23,8 +30,10 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { createAnthropicReviewer } from "../../src/adapters/reviewers/anthropic-reviewer.js";
+import { createClaudeCliReviewer } from "../../src/adapters/reviewers/claude-cli-reviewer.js";
 import { createOpenAiReviewer } from "../../src/adapters/reviewers/openai-reviewer.js";
 import { createRecordedReviewer } from "../../src/adapters/reviewers/recorded-reviewer.js";
+import { estimateClaudeCliCostUsd } from "../../src/application/findings/estimate-claude-cli-cost.js";
 import { estimateReviewCostUsd } from "../../src/application/findings/estimate-cost.js";
 import { generateFindings } from "../../src/application/findings/generate-findings.js";
 import {
@@ -49,14 +58,19 @@ const DEFAULT_OUT_PATH = join(REPO_ROOT, "datasets/findings.jsonl");
 
 const DEFAULT_BUDGET_USD = 5;
 const DEFAULT_SAMPLE_SEED = 42;
+const DEFAULT_CONCURRENCY = 2;
 const ESTIMATE_SAMPLE_SIZE = 3;
 // No per-hunk output measurement is possible without calling the model;
 // findings are short structured output, so this is a deliberately modest
 // flat assumption, stated explicitly in the printed estimate.
 const ASSUMED_OUTPUT_TOKENS_PER_HUNK = 150;
+// claude-cli backoff/retry on rate-limit / usage-limit signals (SPEC task
+// brief): sleep 60s, retry up to 3 times (4 attempts total), then stop.
+const RATE_LIMIT_MAX_ATTEMPTS = 4;
+const RATE_LIMIT_BACKOFF_MS = 60_000;
 
-type Provider = "anthropic" | "openai";
-const PROVIDERS: readonly Provider[] = ["anthropic", "openai"];
+type Provider = "anthropic" | "openai" | "claude-cli";
+const PROVIDERS: readonly Provider[] = ["anthropic", "openai", "claude-cli"];
 
 export interface CliOptions {
   readonly provider: Provider;
@@ -67,6 +81,7 @@ export interface CliOptions {
   readonly out: string | null;
   readonly record: boolean;
   readonly seed: number;
+  readonly concurrency: number;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -85,6 +100,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let out: string | null = null;
   let record = false;
   let seed = DEFAULT_SAMPLE_SEED;
+  let concurrency = DEFAULT_CONCURRENCY;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -133,20 +149,36 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         seed = value;
         break;
       }
+      case "--concurrency": {
+        const raw = requireValue(argv, ++i, "--concurrency");
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 1) {
+          throw new Error(`--concurrency must be an integer >= 1, got "${raw}"`);
+        }
+        concurrency = value;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
   }
 
   if (!provider) {
-    throw new Error('--provider is required (one of "anthropic", "openai")');
+    throw new Error('--provider is required (one of "anthropic", "openai", "claude-cli")');
   }
 
-  return { provider, limit, budgetUsd, estimate, out, record, seed };
+  return { provider, limit, budgetUsd, estimate, out, record, seed, concurrency };
 }
 
 function pricingFor(provider: Provider): ModelPricing {
   if (provider === "anthropic") {
+    return CLAUDE_OPUS_5_PRICING;
+  }
+  if (provider === "claude-cli") {
+    // Never actually used for cost math: the claude-cli reviewer always
+    // reports usage.nominalCostUsd, and generateFindings prefers that over
+    // token-pricing (see generate-findings.ts). Kept as CLAUDE_OPUS_5_PRICING
+    // — the same underlying model — purely as a sane fallback, never $0.
     return CLAUDE_OPUS_5_PRICING;
   }
   // OpenAI's gpt-5.6-luna pricing isn't confirmed anywhere in this task's
@@ -168,11 +200,16 @@ function buildReviewer(provider: Provider, record: boolean): ReviewerPort {
       );
     }
     underlying = createAnthropicReviewer({ client: new Anthropic() });
-  } else {
+  } else if (provider === "openai") {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('provider "openai" requires OPENAI_API_KEY to be set');
     }
     underlying = createOpenAiReviewer({ client: new OpenAI() });
+  } else {
+    // claude-cli: no API key check — it deliberately spawns `claude -p`
+    // with ANTHROPIC_API_KEY stripped, drawing on the Claude Max
+    // subscription's OAuth session instead (SPEC §13 2026-09-19 decision).
+    underlying = createClaudeCliReviewer({});
   }
 
   if (!record) {
@@ -181,11 +218,9 @@ function buildReviewer(provider: Provider, record: boolean): ReviewerPort {
   return createRecordedReviewer({ fixturesDir: FIXTURES_DIR, mode: "record", underlying });
 }
 
-async function runEstimate(hunks: readonly HunkRecord[]): Promise<number> {
+async function runAnthropicEstimate(hunks: readonly HunkRecord[]): Promise<number> {
   if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      "--estimate requires ANTHROPIC_API_KEY (it only supports the anthropic provider)",
-    );
+    throw new Error('--estimate for provider "anthropic" requires ANTHROPIC_API_KEY');
   }
   const client = new Anthropic();
   const estimate = await estimateReviewCostUsd({
@@ -206,6 +241,32 @@ async function runEstimate(hunks: readonly HunkRecord[]): Promise<number> {
   console.log(
     `[findings] estimate: ~$${estimate.estimatedTotalUsd.toFixed(4)} for ${estimate.targetHunks} hunks ` +
       `(conservative upper bound: ignores prompt-caching discount; assumes ${ASSUMED_OUTPUT_TOKENS_PER_HUNK} output tokens/hunk)`,
+  );
+  return 0;
+}
+
+async function runClaudeCliEstimate(hunks: readonly HunkRecord[], seed: number): Promise<number> {
+  const sample = stratifiedSample(hunks, { limit: ESTIMATE_SAMPLE_SIZE, seed });
+  console.warn(
+    `[findings] estimate: making ${sample.length} REAL claude-cli call(s) (nominal subscription cost, not cash)...`,
+  );
+  const reviewer = createClaudeCliReviewer({});
+  const estimate = await estimateClaudeCliCostUsd({
+    reviewer,
+    hunks: sample,
+    sampleSize: sample.length,
+    targetHunks: hunks.length,
+    seed,
+  });
+
+  console.log(
+    `[findings] estimate: sampled ${estimate.sampleSize} hunk(s), ${hunks.length} hunks in the full dataset`,
+  );
+  console.log(
+    `[findings] estimate: avg nominal cost $${estimate.avgNominalCostUsd.toFixed(4)}/hunk, avg wall time ${estimate.avgWallMs.toFixed(0)}ms/hunk`,
+  );
+  console.log(
+    `[findings] estimate: ~$${estimate.estimatedTotalUsd.toFixed(2)} nominal for ${estimate.targetHunks} hunks, ~${(estimate.estimatedWallMsSerial / 1000 / 60).toFixed(1)} min serial (a concurrent run will be faster; nominal cost is subscription quota, not cash)`,
   );
   return 0;
 }
@@ -240,7 +301,15 @@ async function main(): Promise<number> {
   const allHunks = parseHunkRecordsJsonl(raw);
 
   if (options.estimate) {
-    return runEstimate(allHunks);
+    if (options.provider === "anthropic") {
+      return runAnthropicEstimate(allHunks);
+    }
+    if (options.provider === "claude-cli") {
+      return runClaudeCliEstimate(allHunks, options.seed);
+    }
+    throw new Error(
+      '--estimate is not supported for provider "openai" (no free token-counting endpoint)',
+    );
   }
 
   let hunks = allHunks;
@@ -255,16 +324,24 @@ async function main(): Promise<number> {
   const pricing = pricingFor(options.provider);
 
   console.log(
-    `[findings] reviewing ${hunks.length} hunk(s) with provider=${options.provider}, budget=$${options.budgetUsd}...`,
+    `[findings] reviewing ${hunks.length} hunk(s) with provider=${options.provider}, ` +
+      `budget=$${options.budgetUsd} (nominal for claude-cli), concurrency=${options.concurrency}...`,
   );
 
+  const wallStart = Date.now();
   const result = await generateFindings({
     hunks,
     reviewer,
     provider: options.provider,
     pricing,
     budgetUsd: options.budgetUsd,
+    concurrency: options.concurrency,
+    // Rate-limit / usage-limit backoff applies to any provider that can
+    // throw ReviewerRateLimitError; only claude-cli is expected to hit it
+    // in practice (the task brief's explicit requirement).
+    retry: { maxAttempts: RATE_LIMIT_MAX_ATTEMPTS, backoffMs: RATE_LIMIT_BACKOFF_MS },
   });
+  const wallMs = Date.now() - wallStart;
 
   if (result.failures.length > 0) {
     console.warn(`[findings] ${result.failures.length} hunk(s) failed:`);
@@ -273,9 +350,8 @@ async function main(): Promise<number> {
     }
   }
   if (result.hunksSkippedByBudget > 0) {
-    console.warn(
-      `[findings] budget exhausted: ${result.hunksSkippedByBudget} hunk(s) never attempted`,
-    );
+    const reason = result.stoppedEarly ? ` (${result.stopReason})` : " (budget exhausted)";
+    console.warn(`[findings] ${result.hunksSkippedByBudget} hunk(s) never attempted${reason}`);
   }
 
   const outPath = options.out ?? DEFAULT_OUT_PATH;
@@ -291,11 +367,19 @@ async function main(): Promise<number> {
     defectByHunkId,
   });
 
+  const billingLabel = options.provider === "claude-cli" ? "nominal (subscription)" : "real (API)";
+
   console.log("");
   console.log(`[findings] hunks attempted: ${result.hunksAttempted}`);
-  console.log(`[findings] total run cost: $${result.totalCostUsd.toFixed(4)}`);
+  console.log(`[findings] wall time: ${(wallMs / 1000).toFixed(1)}s`);
+  console.log(`[findings] total run cost: $${result.totalCostUsd.toFixed(4)} (${billingLabel})`);
   console.log(
-    `[findings] findings: ${summary.totalFindings} (real ${summary.realCount}, noise ${summary.noiseCount})`,
+    `[findings] findings: ${summary.totalFindings} (real ${summary.realCount}, noise ${summary.noiseCount}), ` +
+      `${summary.findingsPerHunk.toFixed(2)} findings/hunk`,
+  );
+  console.log(
+    `[findings] by severity: nit ${summary.countsBySeverity.nit}, minor ${summary.countsBySeverity.minor}, ` +
+      `major ${summary.countsBySeverity.major}, critical ${summary.countsBySeverity.critical}`,
   );
   console.log(
     `[findings] % findings on benign hunks: ${summary.percentFindingsOnBenignHunks.toFixed(1)}%`,
@@ -303,6 +387,10 @@ async function main(): Promise<number> {
   console.log(
     `[findings] latency ms p50/p95/p99: ${summary.latencyMs.p50}/${summary.latencyMs.p95}/${summary.latencyMs.p99}`,
   );
+  console.log(`[findings] cache hit share: ${(summary.cacheHitShare * 100).toFixed(1)}%`);
+  if (result.stoppedEarly) {
+    console.warn(`[findings] STOPPED EARLY: ${result.stopReason}`);
+  }
 
   return 0;
 }

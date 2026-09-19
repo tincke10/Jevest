@@ -18,7 +18,7 @@ One JSON object per line:
   "id": "zod-9446b5c-1::anthropic::0",   // `${hunk_id}::${provider}::${n}`, n = 0-indexed within that hunk+provider
   "hunk_id": "zod-9446b5c-1",             // foreign key into datasets/hunks.jsonl
   "dataset_version": 2,
-  "reviewer": { "provider": "anthropic", "model": "claude-opus-5" },
+  "reviewer": { "provider": "anthropic" | "openai" | "claude-cli", "model": "claude-opus-5" },
   "file": "packages/zod/src/v4/core/compile.ts",
   "line_start": 1270,                     // absolute BEFORE-side line numbers,
   "line_end": 1271,                       // computed by the reviewer from hunk_header
@@ -39,7 +39,10 @@ One JSON object per line:
     "cache_creation_input_tokens": 0
   },
   "cost_usd": 0.008,
-  "latency_ms": 2140
+  "latency_ms": 2140,
+  "billing": "api" | "subscription"        // optional; omitted means "api" (real spend).
+                                            // "subscription" (claude-cli only): cost_usd is
+                                            // the CLI's own nominal list-price figure, not cash.
 }
 ```
 
@@ -122,8 +125,8 @@ verdict computed from this heuristic alone.
 
 ## 4. Reviewers
 
-Both providers are configurable behind `src/domain/ports/reviewer-port.ts`
-(SPEC §13 "Ambos proveedores"):
+Three providers are configurable behind `src/domain/ports/reviewer-port.ts`
+(SPEC §13 "Ambos proveedores", widened 2026-09-19 to a third):
 
 - **Anthropic** (`src/adapters/reviewers/anthropic-reviewer.ts`): model
   `claude-opus-5`, structured output via `client.messages.parse()` +
@@ -135,10 +138,56 @@ Both providers are configurable behind `src/domain/ports/reviewer-port.ts`
   `gpt-5.6-luna` (confirmed present in the installed `openai` SDK's
   `ChatModel` type union — not a guess), structured output via
   `client.chat.completions.parse()` + `zodResponseFormat`.
+- **claude-cli** (`src/adapters/reviewers/claude-cli-reviewer.ts`): shells out
+  to non-interactive Claude Code (`claude -p`) instead of calling the
+  Anthropic API directly, so review calls draw on a Claude Max subscription
+  instead of Anthropic Console API credits — added 2026-09-19 when the
+  project had a subscription but no Console credits. Anthropic's help center
+  states `claude -p` in your own projects bills against the subscription;
+  `ANTHROPIC_API_KEY` must be **absent** from the child process's env or it
+  shadows the subscription OAuth and the call is billed as API usage
+  instead. See §5 for the exact flags and why, and §6 for the run.
 
-Both share one prompt (`src/adapters/reviewers/review-prompt.ts`): concrete
-defects only (logic, boundary, async, error handling, type misuse), absolute
-BEFORE-side line ranges, empty findings list is a valid and expected answer.
+Both API-based providers share one prompt
+(`src/adapters/reviewers/review-prompt.ts`): concrete defects only (logic,
+boundary, async, error handling, type misuse), absolute BEFORE-side line
+ranges, empty findings list is a valid and expected answer. claude-cli reuses
+the exact same prompt and structured-output schema (via `client.messages.parse`'s
+Zod schema converted to plain JSON Schema with `z.toJSONSchema`, see
+`src/adapters/reviewers/review-output-schema.ts`'s `REVIEW_OUTPUT_JSON_SCHEMA`)
+so the three providers are comparable.
+
+## 4.1 claude-cli prompt-size minimization (measured 2026-09-19)
+
+`claude -p` loads Claude Code's own default system prompt, tool schemas, and
+(unless disabled) this repo's `CLAUDE.md` on every call — none of which the
+reviewer prompt needs, and all of which cost tokens. Three real calls were
+made on one hunk (`zod-9446b5c-1`) to measure the cheapest working flag
+combination, `cache_creation_input_tokens + cache_read_input_tokens + input_tokens`
+being the total tokens billed for that call:
+
+| Combination | Total tokens | Nominal cost | Notes |
+|---|---:|---:|---|
+| `--disallowedTools "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,Agent"` (baseline, + `--safe-mode`) | 11,009 | $0.1227 | tool schemas still shipped, just blocked from use |
+| baseline + `--exclude-dynamic-system-prompt-sections` | 11,009 | $0.0209 (cache hit) | **no token reduction** — confirmed the CLI's own help text: "ignored with `--system-prompt`" (this adapter always sets one). The lower cost here is a same-run prompt-cache hit on the identical baseline prompt, not the flag doing anything |
+| `--safe-mode` + `--tools ""` (**chosen default**) | 2,560 | $0.0357 (cache write) | `--tools ""` disables tool support outright instead of shipping-then-blocking tool schemas — **4.3x fewer tokens** than `--disallowedTools` |
+
+**`--safe-mode` is not optional — it's a correctness fix, not just a cost
+one.** A call made *without* it, with a neutral prompt and a fully custom
+`--system-prompt`, still answered in this repo's own `CLAUDE.md` persona
+("Hey dude... Last session left H0' partially passing...", unprompted,
+referencing actual project state) — `CLAUDE.md` auto-discovery loads
+regardless of `--system-prompt`. That call cost 29,742 cache-creation tokens
+($0.30 nominal) for a trivial prompt; the same call with `--safe-mode` cost
+1,150 tokens ($0.013) and answered cleanly with no persona bleed — a ~25x
+token reduction and the actual reason `--safe-mode` is mandatory here, not
+merely cheaper. `--safe-mode` was checked to still leave OAuth/subscription
+auth intact (unlike `--bare`, which forces API-key-only auth and would
+defeat the whole point of this adapter).
+
+**Chosen defaults, hardcoded in `claude-cli-reviewer.ts`:** `--safe-mode`
+and `--tools ""`. `--exclude-dynamic-system-prompt-sections` is omitted
+(confirmed no-op with a custom `--system-prompt`).
 
 ## 5. Cost accounting
 
@@ -157,7 +206,7 @@ reports `cost_usd: 0` for an OpenAI run and prints a loud warning. This is
 consistent with the task brief: live OpenAI generation was explicitly out of
 scope for this run (see §6).
 
-`scripts/findings/generate.ts --estimate` (Anthropic only) uses
+`scripts/findings/generate.ts --estimate` for `anthropic` uses
 `client.messages.countTokens` on a 3-hunk sample and extrapolates — see
 `src/application/findings/estimate-cost.ts`. It's a **conservative upper
 bound**: it prices every hunk's tokens at the full (non-cached) input rate,
@@ -165,6 +214,20 @@ ignoring the discount the real run gets from prompt-caching the repeated
 system prompt, and assumes a flat 150 output tokens/hunk (output size isn't
 knowable without actually calling the model). The real run should therefore
 cost at or under the printed estimate, never over it.
+
+**claude-cli is billed differently: nominal, not real, and per-call, not
+per-token-table.** There's no free token-counting endpoint for `claude -p`,
+so `--estimate` for `claude-cli` (`src/application/findings/estimate-claude-cli-cost.ts`)
+makes 3 REAL calls (nominal subscription cost, not cash) on a stratified
+sample and extrapolates the average `total_cost_usd` the CLI itself reports.
+`generate-findings.ts` prefers a reviewer's own `nominalCostUsd` (set only by
+claude-cli) over the token-pricing table for `cost_usd`, and marks that
+record's `billing: "subscription"` (omitted — meaning `"api"`, real spend —
+for Anthropic/OpenAI). **`cost_usd` on a `billing: "subscription"` record is
+the CLI's own nominal list-price figure, not cash actually charged** — the
+call was paid for by Claude Max subscription quota. Don't sum these records'
+`cost_usd` into a real-dollars total across providers without accounting for
+that distinction.
 
 ## 6. Run summary
 

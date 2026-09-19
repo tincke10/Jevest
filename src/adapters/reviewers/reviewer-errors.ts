@@ -41,3 +41,40 @@ export class ReviewerParseError extends Error {
     this.name = "ReviewerParseError";
   }
 }
+
+/** The claude-cli process itself timed out and was killed (see claude-cli-reviewer.ts). */
+export class ClaudeCliTimeoutError extends Error {
+  constructor(timeoutMs: number, hunkId: string) {
+    super(`claude-cli reviewer timed out after ${timeoutMs}ms for hunk "${hunkId}"`);
+    this.name = "ClaudeCliTimeoutError";
+  }
+}
+
+/** The claude-cli child process exited non-zero before producing any JSON envelope. */
+export class ClaudeCliProcessError extends Error {
+  constructor(exitCode: number | null, outputExcerpt: string) {
+    super(`claude-cli process exited with code ${exitCode}: ${outputExcerpt}`);
+    this.name = "ClaudeCliProcessError";
+  }
+}
+
+/**
+ * The claude-cli process produced a JSON envelope, but it reports failure
+ * (invalid JSON, `is_error`, `subtype !== "success"`, missing/invalid
+ * `structured_output`) for a reason other than rate limiting or usage-limit
+ * quota (those throw {@link ReviewerRateLimitError} instead, so callers can
+ * retry uniformly across providers).
+ */
+export class ClaudeCliError extends Error {
+  constructor(
+    reason: string,
+    public readonly apiErrorStatus: unknown,
+    public readonly subtype: unknown,
+    outputExcerpt: string,
+  ) {
+    super(
+      `claude-cli reviewer error: ${reason} (subtype=${String(subtype)}, api_error_status=${String(apiErrorStatus)}): ${outputExcerpt}`,
+    );
+    this.name = "ClaudeCliError";
+  }
+}

@@ -6,8 +6,10 @@
  * `src/application/spike/hunk-record.ts`.
  */
 
-export type ReviewerProvider = "anthropic" | "openai";
+export type ReviewerProvider = "anthropic" | "openai" | "claude-cli";
 export type FindingSeverity = "nit" | "minor" | "major" | "critical";
+/** How the reviewer call was paid for. Omitted on the wire (and undefined here) means "api". */
+export type FindingBilling = "api" | "subscription";
 
 export interface FindingReviewer {
   readonly provider: ReviewerProvider;
@@ -45,6 +47,13 @@ export interface FindingRecord {
   readonly usage: FindingUsage;
   readonly costUsd: number;
   readonly latencyMs: number;
+  /**
+   * Present only for a non-default value ("subscription"): a claude-cli
+   * reviewer call spends Claude subscription quota, not API cash, so
+   * `costUsd` for it is a nominal list-price figure, not real spend.
+   * Absent means "api" (the default, real spend).
+   */
+  readonly billing?: FindingBilling;
 }
 
 export class FindingRecordParseError extends Error {
@@ -54,8 +63,9 @@ export class FindingRecordParseError extends Error {
   }
 }
 
-const REVIEWER_PROVIDERS = new Set<ReviewerProvider>(["anthropic", "openai"]);
+const REVIEWER_PROVIDERS = new Set<ReviewerProvider>(["anthropic", "openai", "claude-cli"]);
 const FINDING_SEVERITIES = new Set<FindingSeverity>(["nit", "minor", "major", "critical"]);
+const FINDING_BILLINGS = new Set<FindingBilling>(["api", "subscription"]);
 
 function describe(value: unknown): string {
   if (value === undefined) return "undefined (missing)";
@@ -139,6 +149,16 @@ function expectEnum<T extends string>(
   return str as T;
 }
 
+function expectOptionalEnum<T extends string>(
+  value: unknown,
+  allowed: ReadonlySet<T>,
+  field: string,
+  lineNumber: number,
+): T | undefined {
+  if (value === undefined) return undefined;
+  return expectEnum(value, allowed, field, lineNumber);
+}
+
 function expectLiteralString<T extends string>(
   value: unknown,
   literal: T,
@@ -168,6 +188,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
   const reviewer = expectObject(obj.reviewer, "reviewer", lineNumber);
   const label = expectObject(obj.label, "label", lineNumber);
   const usage = expectObject(obj.usage, "usage", lineNumber);
+  const billing = expectOptionalEnum(obj.billing, FINDING_BILLINGS, "billing", lineNumber);
 
   return {
     id: expectString(obj.id, "id", lineNumber),
@@ -211,6 +232,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
     },
     costUsd: expectNumber(obj.cost_usd, "cost_usd", lineNumber),
     latencyMs: expectNumber(obj.latency_ms, "latency_ms", lineNumber),
+    ...(billing !== undefined ? { billing } : {}),
   };
 }
 
@@ -225,7 +247,12 @@ export function parseFindingRecordsJsonl(content: string): FindingRecord[] {
   return records;
 }
 
-/** Serializes a FindingRecord back to the exact snake_case JSONL shape, no trailing newline. */
+/**
+ * Serializes a FindingRecord back to the exact snake_case JSONL shape, no
+ * trailing newline. `billing` is only emitted when non-default
+ * ("subscription"), so a record parsed without it round-trips byte-for-byte
+ * without acquiring one.
+ */
 export function stringifyFindingRecord(record: FindingRecord): string {
   return JSON.stringify({
     id: record.id,
@@ -253,5 +280,6 @@ export function stringifyFindingRecord(record: FindingRecord): string {
     },
     cost_usd: record.costUsd,
     latency_ms: record.latencyMs,
+    ...(record.billing !== undefined ? { billing: record.billing } : {}),
   });
 }

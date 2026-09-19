@@ -36,6 +36,22 @@ function validFindingJson(
 }
 
 describe("parseFindingRecordLine", () => {
+  it("accepts anthropic, openai, and claude-cli as reviewer.provider", () => {
+    for (const provider of ["anthropic", "openai", "claude-cli"]) {
+      const record = parseFindingRecordLine(
+        validFindingJson({ reviewer: { provider, model: "m" } }),
+        1,
+      );
+      expect(record.reviewer.provider).toBe(provider);
+    }
+  });
+
+  it("throws when reviewer.provider is not anthropic, openai, or claude-cli", () => {
+    expect(() =>
+      parseFindingRecordLine(validFindingJson({ reviewer: { provider: "cohere", model: "m" } }), 6),
+    ).toThrow(/reviewer\.provider/);
+  });
+
   it("parses a well-formed record, mapping snake_case fields to camelCase", () => {
     const record = parseFindingRecordLine(validFindingJson(), 1);
     expect(record).toEqual({

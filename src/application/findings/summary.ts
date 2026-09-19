@@ -30,6 +30,12 @@ export interface FindingsSummary {
   readonly totalCostUsd: number;
   /** Percentiles over unique per-hunk latency (see module doc). */
   readonly latencyMs: PercentileStats;
+  /**
+   * 0..1: cache_read_input_tokens / (input + cache_read + cache_creation),
+   * summed once per unique hunk (see module doc). Rises across a run as the
+   * shared system prompt's cache gets reused hunk over hunk.
+   */
+  readonly cacheHitShare: number;
 }
 
 export interface SummarizeFindingsOptions {
@@ -64,9 +70,13 @@ export function summarizeFindings(options: SummarizeFindingsOptions): FindingsSu
   let noiseCount = 0;
   let benignHunkFindings = 0;
 
-  // First-seen cost/latency per hunk id, to avoid double-counting a per-request
-  // value that's repeated across every finding row from the same hunk.
-  const perHunk = new Map<string, { costUsd: number; latencyMs: number }>();
+  // First-seen cost/latency/usage per hunk id, to avoid double-counting a
+  // per-request value that's repeated across every finding row from the
+  // same hunk.
+  const perHunk = new Map<
+    string,
+    { costUsd: number; latencyMs: number; usage: FindingRecord["usage"] }
+  >();
 
   for (const record of records) {
     countsBySeverity[record.suggestedSeverity] += 1;
@@ -79,12 +89,25 @@ export function summarizeFindings(options: SummarizeFindingsOptions): FindingsSu
       benignHunkFindings += 1;
     }
     if (!perHunk.has(record.hunkId)) {
-      perHunk.set(record.hunkId, { costUsd: record.costUsd, latencyMs: record.latencyMs });
+      perHunk.set(record.hunkId, {
+        costUsd: record.costUsd,
+        latencyMs: record.latencyMs,
+        usage: record.usage,
+      });
     }
   }
 
   const totalCostUsd = [...perHunk.values()].reduce((sum, h) => sum + h.costUsd, 0);
   const latencies = [...perHunk.values()].map((h) => h.latencyMs).sort((a, b) => a - b);
+
+  let cacheReadTotal = 0;
+  let allTokensTotal = 0;
+  for (const { usage } of perHunk.values()) {
+    cacheReadTotal += usage.cacheReadInputTokens;
+    allTokensTotal +=
+      usage.inputTokens + usage.cacheReadInputTokens + usage.cacheCreationInputTokens;
+  }
+  const cacheHitShare = allTokensTotal === 0 ? 0 : cacheReadTotal / allTokensTotal;
 
   const totalFindings = records.length;
 
@@ -103,5 +126,6 @@ export function summarizeFindings(options: SummarizeFindingsOptions): FindingsSu
       p95: percentile(latencies, 95),
       p99: percentile(latencies, 99),
     },
+    cacheHitShare,
   };
 }

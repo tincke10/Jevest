@@ -20,11 +20,16 @@ describe("parseArgs", () => {
       out: null,
       record: false,
       seed: 42,
+      concurrency: 2,
     });
   });
 
   it("parses --provider openai", () => {
     expect(parseArgs(["--provider", "openai"]).provider).toBe("openai");
+  });
+
+  it("parses --provider claude-cli", () => {
+    expect(parseArgs(["--provider", "claude-cli"]).provider).toBe("claude-cli");
   });
 
   it("parses --limit as a non-negative number", () => {
@@ -61,6 +66,17 @@ describe("parseArgs", () => {
 
   it("parses --seed", () => {
     expect(parseArgs(["--provider", "anthropic", "--seed", "7"]).seed).toBe(7);
+  });
+
+  it("parses --concurrency, default 2", () => {
+    expect(parseArgs(["--provider", "claude-cli"]).concurrency).toBe(2);
+    expect(parseArgs(["--provider", "claude-cli", "--concurrency", "5"]).concurrency).toBe(5);
+  });
+
+  it("rejects a --concurrency below 1", () => {
+    expect(() => parseArgs(["--provider", "claude-cli", "--concurrency", "0"])).toThrow(
+      /--concurrency/,
+    );
   });
 
   it("throws on an unknown flag", () => {

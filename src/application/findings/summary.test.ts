@@ -122,4 +122,55 @@ describe("summarizeFindings", () => {
     expect(summary.latencyMs.p50).toBeLessThanOrEqual(300);
     expect(summary.latencyMs.p99).toBe(400);
   });
+
+  it("computes cache hit share once per unique hunk (cache_read / (input + cache_read + cache_creation))", () => {
+    const cachedRecords: FindingRecord[] = [
+      record({
+        id: "hunkA::anthropic::0",
+        hunkId: "hunkA",
+        usage: {
+          inputTokens: 0,
+          outputTokens: 5,
+          cacheReadInputTokens: 900,
+          cacheCreationInputTokens: 0,
+        },
+      }),
+      record({
+        id: "hunkA::anthropic::1",
+        hunkId: "hunkA",
+        usage: {
+          inputTokens: 0,
+          outputTokens: 5,
+          cacheReadInputTokens: 900,
+          cacheCreationInputTokens: 0,
+        },
+      }),
+      record({
+        id: "hunkB::anthropic::0",
+        hunkId: "hunkB",
+        usage: {
+          inputTokens: 100,
+          outputTokens: 5,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+      }),
+    ];
+    const summary = summarizeFindings({
+      records: cachedRecords,
+      hunksReviewed: 2,
+      defectByHunkId: new Map([
+        ["hunkA", true],
+        ["hunkB", true],
+      ]),
+    });
+    // hunkA counted once: 900 cache-read of 900 total = 1.0; hunkB: 0 of 100 = 0.
+    // Weighted across the two unique hunks: 900 / (900 + 100) = 0.9.
+    expect(summary.cacheHitShare).toBeCloseTo(0.9, 6);
+  });
+
+  it("returns 0 cache hit share when there is no usage at all", () => {
+    const summary = summarizeFindings({ records: [], hunksReviewed: 0, defectByHunkId: new Map() });
+    expect(summary.cacheHitShare).toBe(0);
+  });
 });

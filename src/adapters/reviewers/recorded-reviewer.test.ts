@@ -59,6 +59,20 @@ describe("createRecordedReviewer", () => {
     expect(JSON.parse(raw)).toEqual(OUTPUT);
   });
 
+  it("record mode returns sessionId to the caller but never persists it to the fixture file (claude-cli privacy)", async () => {
+    const outputWithSession: ReviewOutput = { ...OUTPUT, sessionId: "session-abc-123" };
+    const underlying = createFakeReviewer({ h1: outputWithSession });
+    const reviewer = createRecordedReviewer({ fixturesDir: dir, mode: "record", underlying });
+
+    const output = await reviewer.review(INPUT);
+    expect(output).toEqual(outputWithSession);
+
+    const key = fixtureKeyForReview(INPUT);
+    const raw = await readFile(join(dir, `${key}.json`), "utf8");
+    expect(JSON.parse(raw)).not.toHaveProperty("sessionId");
+    expect(raw).not.toContain("session-abc-123");
+  });
+
   it("replay mode reads back a previously recorded fixture with no underlying reviewer", async () => {
     const recorder = createRecordedReviewer({
       fixturesDir: dir,

@@ -88,10 +88,34 @@ describe("parseFindingRecordLine", () => {
     );
   });
 
-  it("throws when reviewer.provider is not anthropic or openai", () => {
+  it("throws when reviewer.provider is not anthropic, openai, or claude-cli", () => {
     const json = JSON.parse(validRecordJson());
     json.reviewer.provider = "cohere";
     expect(() => parseFindingRecordLine(JSON.stringify(json), 6)).toThrow(/reviewer\.provider/);
+  });
+
+  it("accepts claude-cli as a reviewer provider", () => {
+    const record = parseFindingRecordLine(
+      validRecordJson({ reviewer: { provider: "claude-cli", model: "claude-opus-5" } }),
+      1,
+    );
+    expect(record.reviewer.provider).toBe("claude-cli");
+  });
+
+  it("leaves billing undefined when absent (defaults to api semantically)", () => {
+    const record = parseFindingRecordLine(validRecordJson(), 1);
+    expect(record.billing).toBeUndefined();
+  });
+
+  it("parses billing: subscription when present", () => {
+    const record = parseFindingRecordLine(validRecordJson({ billing: "subscription" }), 1);
+    expect(record.billing).toBe("subscription");
+  });
+
+  it("throws when billing is present but not api or subscription", () => {
+    expect(() => parseFindingRecordLine(validRecordJson({ billing: "invoice" }), 12)).toThrow(
+      /billing/,
+    );
   });
 
   it("throws when suggested_severity is not one of the four known levels", () => {
@@ -150,5 +174,17 @@ describe("stringifyFindingRecord", () => {
     const record = parseFindingRecordLine(validRecordJson(), 1);
     const line = stringifyFindingRecord(record);
     expect(line).not.toContain("\n");
+  });
+
+  it("omits billing from the output when absent (round-trip fidelity)", () => {
+    const record = parseFindingRecordLine(validRecordJson(), 1);
+    const line = stringifyFindingRecord(record);
+    expect(JSON.parse(line)).not.toHaveProperty("billing");
+  });
+
+  it("includes billing in the output when set to subscription", () => {
+    const record = parseFindingRecordLine(validRecordJson({ billing: "subscription" }), 1);
+    const line = stringifyFindingRecord(record);
+    expect(JSON.parse(line).billing).toBe("subscription");
   });
 });

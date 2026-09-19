@@ -16,10 +16,13 @@
     "spike:profile": "tsx scripts/spike/run-profile.ts",
     "profile:label": "tsx scripts/profile/label.ts",
     "filter": "tsx scripts/filter/run.ts",
-    "findings": "tsx scripts/findings/generate.ts"
+    "findings": "tsx scripts/findings/generate.ts",
+    "action": "tsx src/action/main.ts",
+    "review": "tsx scripts/review/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",
+    "@octokit/rest": "^21.1.1",
     "@typesafe-ai/sdk": "^0.6.0",
     "openai": "^7.19.0",
     "yaml": "^2.9.1",

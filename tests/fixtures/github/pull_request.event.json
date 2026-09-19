@@ -1,0 +1,22 @@
+{
+  "action": "synchronize",
+  "number": 42,
+  "pull_request": {
+    "number": 42,
+    "title": "Add rate-limit backoff to the GitHub adapter",
+    "body": "Wires the retry-after header into the sleep call.",
+    "user": { "login": "octocat" },
+    "labels": [{ "name": "enhancement" }],
+    "head": {
+      "sha": "abc123headsha0000000000000000000000000"
+    },
+    "base": {
+      "sha": "def456basesha0000000000000000000000000",
+      "ref": "main"
+    }
+  },
+  "repository": {
+    "name": "jevest",
+    "owner": { "login": "tincke10" }
+  }
+}

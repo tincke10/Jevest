@@ -47,6 +47,20 @@ export interface ReviewOutput {
   readonly usage: ReviewUsage;
   readonly latencyMs: number;
   readonly requestId?: string;
+  /**
+   * Set only by a reviewer billed outside per-token API pricing (e.g. the
+   * claude-cli adapter, billed against a Claude subscription): the
+   * provider's own nominal list-price cost for the call, to use as-is
+   * instead of computing cost from `usage` + a pricing table. Absent means
+   * "compute cost normally from usage."
+   */
+  readonly nominalCostUsd?: number;
+  /**
+   * Set only by adapters that run as a session-oriented CLI (claude-cli).
+   * For observability/debugging only — never persist this (a fixture or
+   * dataset record must not carry it; see recorded-reviewer.ts).
+   */
+  readonly sessionId?: string;
 }
 
 export interface ReviewerPort {

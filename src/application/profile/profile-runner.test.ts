@@ -133,4 +133,19 @@ describe("runProfileSpike", () => {
     });
     expect(run.totals.wallTimeMs).toBe(50);
   });
+
+  it("defaults batchSize to 1 (one hunk per request) when omitted", async () => {
+    const hunks = [makeHunk("h1"), makeHunk("h2"), makeHunk("h3")];
+    const script = {
+      ...scriptFor("h1", "delete", 0.1, 0.1, 0.1, 0.1),
+      ...scriptFor("h2", "delete", 0.1, 0.1, 0.1, 0.1),
+      ...scriptFor("h3", "delete", 0.1, 0.1, 0.1, 0.1),
+    };
+    const port = createFakeDecisionAdapter(script);
+
+    const run = await runProfileSpike({ port, hunks, serializerName: "raw-diff" });
+
+    expect(run.results).toHaveLength(3);
+    expect(run.totals.requests).toBe(3);
+  });
 });

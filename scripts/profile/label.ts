@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       hunkId: hunk.id,
       datasetVersion: hunk.datasetVersion,
       labels,
-      source: "ast-v1",
+      source: "ast-v2",
       needsManualReview: true,
     };
   });

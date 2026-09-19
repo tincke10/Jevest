@@ -52,11 +52,18 @@ export interface RunSpikeOptions {
   readonly port: DecisionPort;
   readonly hunks: readonly HunkRecord[];
   readonly serializerName: string;
-  readonly batchSize: number;
+  /**
+   * Hunks per Jev request. Default 1 — batch anchoring (SPEC NFR-14,
+   * docs/analysis/h0-prime-error-analysis.md) makes answers converge
+   * within a batch, so >1 is for cost experiments only, not evidence.
+   */
+  readonly batchSize?: number;
   readonly onProgress?: (info: { completedBatches: number; totalBatches: number }) => void;
   /** Injectable clock for deterministic wall-time tests. Default: `Date.now`. */
   readonly now?: () => number;
 }
+
+const DEFAULT_BATCH_SIZE = 1;
 
 function asScoreDecision(decision: Decision, key: string): ScoreDecision {
   if (decision.type !== "score") {
@@ -82,7 +89,8 @@ function requireAnswer(answers: Record<string, Decision>, key: string): Decision
 
 export async function runSpike(options: RunSpikeOptions): Promise<SpikeRunResult> {
   const serializer = getSerializer(options.serializerName);
-  const batches = buildFanOut(options.hunks, serializer, options.batchSize, defectQuestionSet);
+  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  const batches = buildFanOut(options.hunks, serializer, batchSize, defectQuestionSet);
   const now = options.now ?? Date.now;
   const wallStart = now();
 

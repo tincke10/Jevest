@@ -123,4 +123,19 @@ describe("runFilter", () => {
       /does-not-exist/,
     );
   });
+
+  it("defaults batchSize to 1 (one finding per request) when omitted", async () => {
+    const findings = [makeFinding("f1", "h1"), makeFinding("f2", "h1"), makeFinding("f3", "h2")];
+    const script = {
+      ...scriptFor("f1", 0.5, 1, 0.5, 0.5),
+      ...scriptFor("f2", 0.5, 1, 0.5, 0.5),
+      ...scriptFor("f3", 0.5, 1, 0.5, 0.5),
+    };
+    const port = createFakeDecisionAdapter(script);
+
+    const run = await runFilter({ port, findings, hunkDiffsById });
+
+    expect(run.results).toHaveLength(3);
+    expect(run.totals.requests).toBe(3);
+  });
 });

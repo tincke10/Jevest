@@ -50,10 +50,17 @@ export interface RunFilterOptions {
   readonly port: DecisionPort;
   readonly findings: readonly FindingRecord[];
   readonly hunkDiffsById: ReadonlyMap<string, string>;
-  readonly batchSize: number;
+  /**
+   * Findings per Jev request. Default 1 — batch anchoring (SPEC NFR-14,
+   * docs/analysis/h0-prime-error-analysis.md) makes answers converge
+   * within a batch, so >1 is for cost experiments only, not evidence.
+   */
+  readonly batchSize?: number;
   readonly onProgress?: (info: { completedBatches: number; totalBatches: number }) => void;
   readonly now?: () => number;
 }
+
+const DEFAULT_BATCH_SIZE = 1;
 
 function requireAnswer(answers: Record<string, Decision>, key: string): Decision {
   const decision = answers[key];
@@ -78,7 +85,8 @@ function asScoreDecision(decision: Decision, key: string): ScoreDecision {
 }
 
 export async function runFilter(options: RunFilterOptions): Promise<FilterRunResult> {
-  const batches = buildFindingFanOut(options.findings, options.hunkDiffsById, options.batchSize);
+  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  const batches = buildFindingFanOut(options.findings, options.hunkDiffsById, batchSize);
   const now = options.now ?? Date.now;
   const wallStart = now();
 

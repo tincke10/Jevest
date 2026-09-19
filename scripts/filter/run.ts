@@ -8,6 +8,11 @@
  * Usage:
  *   pnpm filter [--findings <path>] [--batch-size N] [--mode live|record|replay|dry-run]
  *
+ * `--batch-size` defaults to 1 (one finding per Jev request): batch
+ * anchoring makes answers converge within a batch (SPEC NFR-14,
+ * docs/analysis/h0-prime-error-analysis.md). Only raise it for cost
+ * experiments, never as evidence.
+ *
  * `datasets/findings.jsonl` does not exist yet as of this writing (the
  * reviewer pipeline produces it); point `--findings` at
  * `tests/fixtures/findings-synthetic.jsonl` for a smoke test in the
@@ -59,7 +64,7 @@ function requireValue(argv: readonly string[], index: number, flag: string): str
 
 export function parseArgs(argv: readonly string[]): CliOptions {
   let findingsPath = DEFAULT_FINDINGS_PATH;
-  let batchSize = 10;
+  let batchSize = 1;
   let mode: Mode | null = null;
 
   for (let i = 0; i < argv.length; i++) {
@@ -132,6 +137,12 @@ function buildPort(mode: Mode, findings: readonly FindingRecord[]): DecisionPort
 async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));
   const mode = await resolveMode(options.mode);
+
+  if (options.batchSize > 1) {
+    console.warn(
+      "[filter] WARNING: batch anchoring: answers within a batch converge; only use --batch-size > 1 for cost experiments.",
+    );
+  }
 
   const [findingsRaw, hunksRaw] = await Promise.all([
     readFile(options.findingsPath, "utf8"),

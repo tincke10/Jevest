@@ -52,10 +52,17 @@ export interface RunProfileSpikeOptions {
   readonly port: DecisionPort;
   readonly hunks: readonly HunkRecord[];
   readonly serializerName: string;
-  readonly batchSize: number;
+  /**
+   * Hunks per Jev request. Default 1 — batch anchoring (SPEC NFR-14,
+   * docs/analysis/h0-prime-error-analysis.md) makes answers converge
+   * within a batch, so >1 is for cost experiments only, not evidence.
+   */
+  readonly batchSize?: number;
   readonly onProgress?: (info: { completedBatches: number; totalBatches: number }) => void;
   readonly now?: () => number;
 }
+
+const DEFAULT_BATCH_SIZE = 1;
 
 function requireAnswer(answers: Record<string, Decision>, key: string): Decision {
   const decision = answers[key];
@@ -81,7 +88,8 @@ function asNoulDecision(decision: Decision, key: string): NoulDecision {
 
 export async function runProfileSpike(options: RunProfileSpikeOptions): Promise<ProfileRunResult> {
   const serializer = getSerializer(options.serializerName);
-  const batches = buildFanOut(options.hunks, serializer, options.batchSize, profileQuestionSet);
+  const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
+  const batches = buildFanOut(options.hunks, serializer, batchSize, profileQuestionSet);
   const now = options.now ?? Date.now;
   const wallStart = now();
 

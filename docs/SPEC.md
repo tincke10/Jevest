@@ -226,7 +226,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 - FR-1.1 `decide(state, questions)` async, con tipos inferidos por pregunta.
 - FR-1.2 Validación previa: `choice` 2..255 opciones, `score` ≥ 2 niveles, `noul` con `criteria` opcional.
 - FR-1.3 Toda respuesta trae `request_id`, `usage`, `model`, latencia medida en cliente y `probabilities` completas.
-- FR-1.4 Fan-out: construir UN request con N preguntas para N hunks o N findings, con claves deterministas (`hunk_3_defect`).
+- FR-1.4 Fan-out: construir UN request con N preguntas para UN solo hunk, finding o PR — nunca varios ítems en el mismo request (NFR-14). Claves deterministas por pregunta (`defect_likelihood`, `touches_public_api`, ...). Agrupar varios ítems en un request es válido solo como experimento de costo explícito, nunca como corrida de evidencia.
 
 ### FR-2 Triage (etapa 1)
 - FR-2.1 State: `{title, description, files_changed: [path], additions, deletions, labels, base_branch}`. Los números se pasan ya clasificados en código (`size: "small" | "medium" | "large"`), nunca crudos.
@@ -238,7 +238,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 - FR-3.1 Cada hunk se serializa como `raw-diff` (mejor precisión y menor costo en fase 0) salvo que H0' indique otro formato.
 - FR-3.2 Preguntas por hunk (H0'): `change_kind` (choice), `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io` (nouls). **Prohibido** preguntar por probabilidad de defecto: fase 0 demostró que Jev no puede responderlo y su confianza lo confirma.
 - FR-3.3 Solo se omiten del LLM los hunks con `change_kind = rename-or-format` y confianza alta. Todos los demás van al LLM **junto con su perfil**, que el revisor usa como contexto ("este hunk toca API pública y manejo de errores"). Los omitidos se listan en el resumen para auditoría.
-- FR-3.4 PRs con más de K hunks se trocean en varios requests de tamaño configurable (límite de contexto no publicado).
+- FR-3.4 El troceo es una request por hunk, nunca lotes de varios hunks por request (NFR-14): un PR de K hunks genera K requests de perfil, no `ceil(K/tamaño_de_lote)`.
 - FR-3.5 Si H0' falla, la etapa se reduce a metadatos derivados por código (rutas, tamaño, exports cambiados por AST) y no llama a Jev.
 
 ### FR-4 Revisión LLM (etapa 3)
@@ -292,6 +292,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 | NFR-11 | Dominio y etapas testeables sin red con adapters fake y grabados | TDD estricto |
 | NFR-12 | Runs idempotentes: re-ejecutar sobre el mismo commit no duplica comentarios ni labels | GitHub |
 | NFR-13 | Los umbrales de confianza viven en configuración versionada, por etapa y por nivel de riesgo, nunca hardcodeados | Docs Confidence |
+| NFR-14 | Una request de Jev contiene UN solo ítem (hunk, finding, PR). Múltiples preguntas por request sí, múltiples ítems por request no: el anclaje por lote hace converger las respuestas (evidencia: `docs/analysis/h0-prime-error-analysis.md` y reportes del 2026-09-19 con lote 1 vs 10) | Análisis de error H0' |
 
 ---
 

@@ -143,4 +143,22 @@ describe("runSpike", () => {
     expect(run.failures).toEqual([]);
     expect(run.totals.requests).toBe(0);
   });
+
+  it("defaults batchSize to 1 (one hunk per request) when omitted", async () => {
+    // Batch anchoring (docs/analysis/h0-prime-error-analysis.md): packing
+    // multiple hunks into one request makes Jev's per-hunk answers
+    // converge. Default must be one hunk per request.
+    const hunks = [makeHunk("h1"), makeHunk("h2"), makeHunk("h3")];
+    const script = {
+      ...scriptFor("h1", 1, 0.1, 0.1),
+      ...scriptFor("h2", 1, 0.1, 0.1),
+      ...scriptFor("h3", 1, 0.1, 0.1),
+    };
+    const port = createFakeDecisionAdapter(script);
+
+    const run = await runSpike({ port, hunks, serializerName: "raw-diff" });
+
+    expect(run.results).toHaveLength(3);
+    expect(run.totals.requests).toBe(3);
+  });
 });

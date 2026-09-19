@@ -9,6 +9,11 @@
  * Usage:
  *   pnpm spike [--serializer <name|all>] [--limit N] [--batch-size N] [--mode live|record|replay|dry-run]
  *
+ * `--batch-size` defaults to 1 (one hunk per Jev request): batch anchoring
+ * makes answers converge within a batch (SPEC NFR-14,
+ * docs/analysis/h0-prime-error-analysis.md). Only raise it for cost
+ * experiments, never as evidence.
+ *
  * Exit code: 0 on H0 PASS, 2 on H0 FAIL, 1 on a run error.
  */
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
@@ -63,7 +68,7 @@ function requireValue(argv: readonly string[], index: number, flag: string): str
 export function parseArgs(argv: readonly string[]): CliOptions {
   let serializer = "all";
   let limit: number | null = null;
-  let batchSize = 10;
+  let batchSize = 1;
   let mode: Mode | null = null;
   let seed = DEFAULT_SAMPLE_SEED;
 
@@ -152,6 +157,12 @@ function buildPort(mode: Mode, hunks: readonly HunkRecord[]): DecisionPort {
 async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));
   const mode = await resolveMode(options.mode);
+
+  if (options.batchSize > 1) {
+    console.warn(
+      "[spike] WARNING: batch anchoring: answers within a batch converge; only use --batch-size > 1 for cost experiments.",
+    );
+  }
 
   const raw = await readFile(DATASET_PATH, "utf8");
   let hunks = parseHunkRecordsJsonl(raw);

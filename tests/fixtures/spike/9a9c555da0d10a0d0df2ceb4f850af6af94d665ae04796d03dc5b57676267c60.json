@@ -1,0 +1,261 @@
+{
+  "requestId": "req_01a0b890385c75e687266312746cfc86",
+  "model": "jev-1.13.0",
+  "latencyMs": 278,
+  "usage": {
+    "inputTokens": 7397,
+    "outputTokens": 941
+  },
+  "answers": {
+    "hono-cd31bc1-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.12,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.42,
+        "1": 0.2,
+        "2": 0.23,
+        "3": 0.15
+      }
+    },
+    "hono-cd31bc1-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "hono-cd31bc1-1__touches_security": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-224d2f5-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.13,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.43,
+        "1": 0.18,
+        "2": 0.23,
+        "3": 0.16
+      }
+    },
+    "hono-224d2f5-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-224d2f5-1__touches_security": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-09cf01c-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.09,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.43,
+        "1": 0.19,
+        "2": 0.23,
+        "3": 0.15
+      }
+    },
+    "hono-09cf01c-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "hono-09cf01c-1__touches_security": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "hono-e36f57d-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.09,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.43,
+        "1": 0.19,
+        "2": 0.23,
+        "3": 0.15
+      }
+    },
+    "hono-e36f57d-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-e36f57d-1__touches_security": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "hono-80959d4-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.14,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.42,
+        "1": 0.18,
+        "2": 0.25,
+        "3": 0.15
+      }
+    },
+    "hono-80959d4-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-80959d4-1__touches_security": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "hono-e8c8c21-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.1,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.43,
+        "1": 0.2,
+        "2": 0.23,
+        "3": 0.14
+      }
+    },
+    "hono-e8c8c21-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-e8c8c21-1__touches_security": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "hono-4b44abe-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.12,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.42,
+        "1": 0.2,
+        "2": 0.23,
+        "3": 0.15
+      }
+    },
+    "hono-4b44abe-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-4b44abe-1__touches_security": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-5ad469a-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.1,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.42,
+        "1": 0.19,
+        "2": 0.24,
+        "3": 0.15
+      }
+    },
+    "hono-5ad469a-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-5ad469a-1__touches_security": {
+      "type": "noul",
+      "noul": 0.74
+    },
+    "hono-6ea514d-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.17,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.41,
+        "1": 0.18,
+        "2": 0.24,
+        "3": 0.17
+      }
+    },
+    "hono-6ea514d-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-6ea514d-1__touches_security": {
+      "type": "noul",
+      "noul": 0.77
+    },
+    "hono-a1e4ac7-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.1,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.44,
+        "1": 0.18,
+        "2": 0.23,
+        "3": 0.15
+      }
+    },
+    "hono-a1e4ac7-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.76
+    },
+    "hono-a1e4ac7-1__touches_security": {
+      "type": "noul",
+      "noul": 0.76
+    }
+  }
+}

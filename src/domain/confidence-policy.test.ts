@@ -60,7 +60,7 @@ describe("createConfidencePolicy", () => {
 
   it("throws when the stage is not configured", () => {
     const policy = createConfidencePolicy(config);
-    expect(() => policy.band("hunk_select", "low", 0.9)).toThrow(ConfidencePolicyConfigError);
+    expect(() => policy.band("hunk_profile", "low", 0.9)).toThrow(ConfidencePolicyConfigError);
   });
 
   it("throws when the risk level is not configured for a known stage", () => {

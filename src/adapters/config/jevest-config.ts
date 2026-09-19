@@ -1,16 +1,29 @@
 /**
  * Loads `.jevest.yml`, the per-repo pipeline config (SPEC §5 Fase 2:
  * "Configuración por archivo .jevest.yml... umbrales, tools, presupuesto").
- * Schema validated with zod. Thresholds reuse the exact
- * `ConfidencePolicyConfig` shape from `config/policies.yaml`
- * (stage -> risk -> {auto_min, confirm_min}), so `.jevest.yml` can carry
- * its own bands and feed `createConfidencePolicy` directly (NFR-13).
+ * Schema validated with zod. Thresholds are stage -> risk -> {auto_min,
+ * confirm_min}, feeding `createConfidencePolicy` directly (NFR-13).
+ *
+ * `.jevest.yml` is optional: when the given path does not exist (ENOENT),
+ * this falls back to `config/jevest.example.yml` itself as the built-in
+ * defaults — the example file IS the single source of truth for defaults,
+ * so there is no separate hardcoded default object to drift out of sync
+ * with it. Any other read error (bad permissions, path is a directory,
+ * etc.) still throws — only a missing file is a legitimate "use defaults"
+ * signal.
  */
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { SizeThresholds } from "../../domain/size.js";
+
+const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
+
+function isEnoent(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
 
 export class JevestConfigError extends Error {
   constructor(message: string) {
@@ -73,7 +86,15 @@ function toConfidencePolicyConfig(
 }
 
 export async function loadJevestConfig(filePath: string): Promise<JevestConfig> {
-  const raw = await readFile(filePath, "utf8");
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (!isEnoent(error)) {
+      throw error;
+    }
+    raw = await readFile(EXAMPLE_CONFIG_PATH, "utf8");
+  }
 
   let parsed: unknown;
   try {

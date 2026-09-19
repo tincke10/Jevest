@@ -2,7 +2,7 @@
  * Confidence bands (SPEC §1.1, NFR-13): resolves calibrated confidence into
  * one of three actions — automate, ask for confirmation, or escalate to a
  * human — using thresholds that live in configuration, never hardcoded here,
- * per stage (triage, hunk_select, finding_filter, merge_gate) and risk level.
+ * per stage (triage, hunk_profile, finding_filter, merge_gate) and risk level.
  */
 
 export type Band = "auto" | "confirm" | "escalate";

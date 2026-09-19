@@ -344,7 +344,7 @@ jevest/
 │   ├── adapters/
 │   ├── cli/
 │   └── action/
-├── config/policies.yaml         # bandas por etapa y riesgo
+├── config/jevest.example.yml    # config del pipeline, incluidas bandas por etapa y riesgo
 ├── action.yml                   # fase 2
 ├── tests/
 └── reports/

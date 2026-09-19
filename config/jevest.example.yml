@@ -1,14 +1,16 @@
 # Jevest pipeline config (SPEC §5 Fase 2). Copy to `.jevest.yml` at your
-# repo root and adjust. See docs/SPEC.md for the six-stage pipeline this
-# drives, and config/policies.yaml for the confidence-band rationale.
-
+# repo root and adjust — this file IS also the single source of built-in
+# defaults: loadJevestConfig() falls back to it when `.jevest.yml` is
+# missing (see src/adapters/config/jevest-config.ts). See docs/SPEC.md for
+# the six-stage pipeline this drives.
+#
 # The LLM that writes the actual review (FR-4). Jev never writes text.
 reviewer:
   provider: anthropic # or: openai
   model: claude-sonnet-5
 
-# Confidence bands per pipeline stage and risk level (NFR-13). Same shape
-# as config/policies.yaml: auto_min/confirm_min per stage per risk level.
+# Confidence bands per pipeline stage and risk level (NFR-13):
+# auto_min/confirm_min per stage per risk level.
 # confidence >= auto_min    -> act automatically
 # confidence >= confirm_min -> ask for human confirmation
 # confidence <  confirm_min -> escalate to a human

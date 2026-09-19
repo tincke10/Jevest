@@ -5,7 +5,7 @@
 
 export type Size = "small" | "medium" | "large";
 
-/** Thresholds live in configuration (config/policies.yaml), never hardcoded (NFR-13). */
+/** Thresholds live in configuration (.jevest.yml / config/jevest.example.yml), never hardcoded (NFR-13). */
 export interface SizeThresholds {
   /** Inclusive upper bound of changed lines (additions + deletions) for "small". */
   readonly smallMaxChangedLines: number;

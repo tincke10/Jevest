@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { JevestConfigError, loadJevestConfig } from "./jevest-config.js";
 
+const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
+
 let dir: string;
 
 beforeEach(async () => {
@@ -121,8 +123,19 @@ describe("loadJevestConfig", () => {
     await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
   });
 
-  it("throws a clear error when the file does not exist", async () => {
-    await expect(loadJevestConfig(join(dir, "missing.yml"))).rejects.toThrow();
+  it("falls back to the built-in defaults (config/jevest.example.yml) when the file does not exist, without throwing", async () => {
+    const fromMissing = await loadJevestConfig(join(dir, "missing.yml"));
+    const fromExample = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+    expect(fromMissing).toEqual(fromExample);
+    // Sanity-check a few concrete values so this test still fails loudly if
+    // the example file's shape ever drifts silently.
+    expect(fromMissing.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(fromMissing.budgetUsd).toBe(5);
+    expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });
+  });
+
+  it("still throws for a non-ENOENT read error (e.g. the path is a directory)", async () => {
+    await expect(loadJevestConfig(dir)).rejects.toThrow();
   });
 
   it("throws when the YAML does not parse to an object", async () => {

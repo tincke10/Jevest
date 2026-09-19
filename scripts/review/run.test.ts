@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { parseArgs } from "./run.js";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { parseArgs, resolveConfig } from "./run.js";
 
 describe("parseArgs (scripts/review/run.ts)", () => {
   it("throws when neither --diff nor --git is given", () => {
@@ -53,5 +56,35 @@ describe("parseArgs (scripts/review/run.ts)", () => {
 
   it("throws when a flag is missing its value", () => {
     expect(() => parseArgs(["--diff"])).toThrow(/--diff/);
+  });
+});
+
+describe("resolveConfig (scripts/review/run.ts)", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-review-run-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reports usedDefault=false when the config file exists", async () => {
+    const configPath = join(dir, ".jevest.yml");
+    await writeFile(
+      configPath,
+      "reviewer:\n  provider: anthropic\n  model: x\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
+      "utf8",
+    );
+    const { usedDefault, config } = await resolveConfig(configPath);
+    expect(usedDefault).toBe(false);
+    expect(config.reviewer.model).toBe("x");
+  });
+
+  it("reports usedDefault=true and returns the built-in defaults when the config file is missing", async () => {
+    const { usedDefault, config } = await resolveConfig(join(dir, "missing.yml"));
+    expect(usedDefault).toBe(true);
+    expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
   });
 });

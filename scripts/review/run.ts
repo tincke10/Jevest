@@ -17,6 +17,7 @@
  * `reviewer.provider`) per NFR-9. `--mode replay` reads recorded fixtures
  * from `tests/fixtures/review/` and throws a clear error on a miss.
  */
+import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
@@ -217,9 +218,31 @@ function buildReviewerPort(mode: Mode, config: JevestConfig): ReviewerPort {
   }
 }
 
+/**
+ * `.jevest.yml` is optional (loadJevestConfig itself falls back to
+ * config/jevest.example.yml's built-in defaults when the path is missing);
+ * this just also reports whether that fallback happened, so the CLI can
+ * tell the user rather than silently running on defaults.
+ */
+export async function resolveConfig(
+  configPath: string,
+): Promise<{ config: JevestConfig; usedDefault: boolean }> {
+  let usedDefault = false;
+  try {
+    await stat(configPath);
+  } catch {
+    usedDefault = true;
+  }
+  const config = await loadJevestConfig(configPath);
+  return { config, usedDefault };
+}
+
 async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));
-  const config = await loadJevestConfig(options.configPath);
+  const { config, usedDefault } = await resolveConfig(options.configPath);
+  if (usedDefault) {
+    console.log("[review] no .jevest.yml found, using defaults");
+  }
   const repoDir = process.cwd();
 
   const ref: PullRequestRef = {

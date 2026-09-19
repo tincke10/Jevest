@@ -1,7 +1,8 @@
 # Jevest — Revisión automatizada de PRs con Jev como capa de decisión
 
-> Estado: DRAFT v0.2 — 2026-09-18
-> Reemplaza a v0.1 (laboratorio genérico de harness). El foco ahora es un caso concreto con aporte a la comunidad.
+> Estado: DRAFT v0.3 — 2026-09-19
+> v0.3 incorpora el resultado de la fase 0 (H0 FALLIDA con datos limpios) y el pivote: Jev nunca juzga si un hunk tiene un defecto; decide sobre superficie del código, sobre texto y sobre metadatos. Ver §4 y §13.
+> v0.2 (2026-09-18) reemplazó a v0.1 (laboratorio genérico de harness) con un caso concreto con aporte a la comunidad.
 > Fuentes: [LangChain — Building a harness with Jev](https://www.langchain.com/blog/building-a-harness-with-jev) + docs oficiales de TypeSafe AI (ver §14).
 
 ---
@@ -77,10 +78,10 @@ PR abierto / actualizado
 └──────────────────┘
         │ riesgo bajo + confianza alta → SKIP review LLM (solo etiqueta)
         ▼
-┌──────────────────┐   1 request Jev, 1 pregunta × hunk (fan-out)
-│ 2. Hunk select   │──▶ por hunk: prob_defecto · toca_api_publica · toca_seguridad
-└──────────────────┘
-        │ solo hunks relevantes
+┌──────────────────┐   1 request Jev, M preguntas × hunk (fan-out)
+│ 2. Hunk profile  │──▶ por hunk: tipo_de_cambio · toca_api_publica · toca_zona_sensible
+└──────────────────┘   (superficie, nunca "¿tiene un bug?")
+        │ hunks de solo formato/renombre → omitidos; el resto va al LLM CON su perfil
         ▼
 ┌──────────────────┐   LLM (pluggable)
 │ 3. Review LLM    │──▶ findings estructurados [{file, line, claim, rationale}]
@@ -110,27 +111,55 @@ Cada etapa registra `request_id`, tokens, latencia y decisión para el benchmark
 
 El entregable es **evidencia más una GitHub Action instalable**. Sin evidencia, es una demo más.
 
+### 4.1 Resultado de la fase 0 (cerrada el 2026-09-19)
+
+**H0 original**: "Jev clasifica si un hunk tiene un defecto con recall ≥ 0.85 y F1 ≥ 0.75". **FALLIDA** en dos corridas contra `jev-latest`, la segunda sobre el dataset v2 (solo código fuente, sin confound de rutas). Evidencia en `reports/spike-2026-09-19T07-27-41-337Z.md` y fixtures grabados en `tests/fixtures/spike/`.
+
+| Formato | Precision | Recall | F1 | Confianza mediana |
+|---|---|---|---|---|
+| raw-diff | 0.837 | 0.720 | 0.774 | 0.000 |
+| before-after-json | 0.717 | 0.660 | 0.688 | 0.150 |
+| json-with-context | 0.760 | 0.760 | 0.760 | 0.130 |
+
+Lectura: hay señal débil (precisión 0.84 en diff crudo), pero el recall no alcanza y, sobre todo, **Jev reporta confianza casi nula**. Juzgar un defecto exige razonar sobre inputs e indirecciones: es una tarea de sistema 2, y la calibración de Jev lo dice con honestidad. La pregunta estaba mal hecha. Esto es un resultado negativo publicable (fase 3).
+
+### 4.2 Hipótesis vigentes (v0.3)
+
+Principio del pivote: **Jev responde preguntas de reconocimiento, nunca de razonamiento**. Sobre código: qué toca el hunk (superficie). Sobre texto: qué dice un finding, un título, una descripción. Sobre metadatos: tamaño, rutas, labels, CI.
+
 | ID | Hipótesis | Métrica | Criterio de éxito | Fase |
 |---|---|---|---|---|
-| **H0** | Jev clasifica diffs de código con precisión útil | Precision/Recall sobre 100 hunks etiquetados a mano (defecto sí/no, categoría) | Recall defecto ≥ 0.85, F1 ≥ 0.75. **Si falla, el proyecto pivota** | 0 |
-| H1 | El filtro de findings recorta ruido sin perder defectos reales | Recall de defectos reales antes vs. después del filtro; % findings descartados | Recall ≥ 0.95 del original; ≥ 40% de findings descartados | 1 |
-| H2 | Triage + hunk select reducen costo del LLM | Tokens LLM por PR con y sin Jev | −50% tokens con misma tasa de detección | 1 |
-| H3 | La confidence está calibrada sobre findings | Reliability diagram + ECE sobre ≥ 200 findings etiquetados | ECE < 0.1 | 1 |
-| H4 | Latencia total de Jev por PR es despreciable | Suma de latencias Jev p95 por PR | p95 < 2 s para PRs de ≤ 50 hunks | 1 |
-| H5 | El pipeline resiste PRs adversariales | Suite de PRs con instrucciones inyectadas en descripción, comentarios de código y commits | 0 auto-merges indebidos; 0 findings críticos suprimidos | 1 |
-| H6 | La verificación con Jev es más barata que con LLM | Costo de la etapa 4 con Jev vs. con LLM juez | ≥ 100x más barato con recall equivalente | 1 |
+| **H1** | El filtro de findings recorta ruido del LLM sin perder defectos reales | Sobre findings del LLM en los 100 hunks v2: un finding es *real* si el hunk es defecto y el finding señala las líneas que el fix tocó; el resto es *ruido*. Recall de reales tras el filtro; % de ruido descartado | Recall ≥ 0.95; ≥ 40% del ruido descartado. **Hipótesis central: si falla, Jev no aporta al review** | 1a |
+| H6 | El filtro con Jev es más barato que con un LLM juez | Costo y latencia de la etapa 4 con Jev vs. con LLM juez sobre el mismo set | ≥ 100x más barato, recall equivalente | 1a |
+| H3 | La confidence está calibrada sobre findings | ECE sobre ≥ 200 findings etiquetados | ECE < 0.1 | 1a |
+| **H0'** | Jev perfila un hunk por superficie con precisión útil | `change_kind` (choice: add-behavior / modify-behavior / delete / rename-or-format), `touches_public_api` (noul), `touches_error_handling` (noul), `touches_async` (noul), `touches_io` (noul). Ground truth derivada por AST y diff en código, verificada a mano en muestra | Accuracy ≥ 0.90 en `change_kind`; F1 ≥ 0.85 en cada noul; confianza mediana ≥ 0.5 | 0b |
+| H2 | Triage + perfil de hunks reducen costo del LLM | Tokens LLM por PR con y sin Jev | −30% tokens con misma tasa de detección (rebajado: ya no se omiten hunks por defecto) | 1b |
+| H4 | Latencia total de Jev por PR es despreciable | Suma de latencias Jev p95 por PR | p95 < 2 s para PRs de ≤ 50 hunks | 1b |
+| H5 | El pipeline resiste PRs adversariales | Suite de PRs con instrucciones inyectadas | 0 auto-merges indebidos; 0 findings críticos suprimidos | 1b |
+
+Regla de corte: **H1 es bloqueante para la fase 1b**. H0' no bloquea: si falla, la etapa 2 se reduce a metadatos de ruta y el LLM recibe todos los hunks.
 
 ---
 
 ## 5. Fases y alcance
 
-### Fase 0 — Spike bloqueante (1–2 días)
-- Script mínimo en TypeScript con `@typesafe-ai/sdk`.
-- Dataset semilla: 100 hunks de repos OSS reales, etiquetados a mano (defecto sí/no, categoría, toca seguridad).
-- Probar 3 formas de serializar el hunk en `state`: diff crudo, JSON `{file, language, before, after}`, JSON más contexto del archivo.
-- Salida: reporte con métricas de H0 por formato. **Sin H0 aprobada no se escribe nada de la fase 1.**
+### Fase 0 — Spike de defectos (CERRADA, H0 fallida)
+- Runner `pnpm spike` con tres serializadores, fan-out, reporte por hunk y fixtures grabados. Se conserva como herramienta y como evidencia.
+- Dataset v2: 100 hunks de código fuente (50 defecto / 50 benigno) de zod, vitest, hono y trpc.
 
-### Fase 1 — Pipeline local (CLI)
+### Fase 1a — Spike del filtro de findings (bloqueante para 1b)
+1. `ReviewerPort` con adapters Anthropic y OpenAI, salida estructurada `{file, line_start, line_end, claim, rationale, suggested_severity}`.
+2. Generar findings sobre los 100 hunks v2 con un revisor LLM. Etiquetado automático: *real* si el hunk es defecto y el rango de líneas del finding se solapa con las líneas que el fix cambió; *ruido* en cualquier otro caso. Verificación manual de una muestra de 40.
+3. Runner del filtro: por finding, en fan-out, `is_real_defect` (noul), `severity` (score), `is_style_only` (noul), `actionable` (noul). Estado por finding: hunk más claim más rationale, nada más.
+4. Baseline: mismo filtro con un LLM juez. Comparar recall, ruido descartado, ECE, costo y latencia.
+5. Salida: reporte H1/H6/H3. **Sin H1 aprobada no se escribe la fase 1b.**
+
+### Fase 0b — Spike de perfil de hunk (no bloqueante, en paralelo con 1a)
+- Etiquetador por AST y diff (ts-morph o el compilador de TypeScript) para `change_kind`, `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io` sobre los 100 hunks v2.
+- Reutilizar el runner del spike con el set de preguntas nuevo y ground truth multi-etiqueta.
+- Salida: reporte H0'.
+
+### Fase 1b — Pipeline local (CLI)
 - Las 6 etapas corriendo sobre un PR dado por URL o por diff local.
 - Ports hexagonales, adapters fake y grabado, LLM revisor pluggable.
 - Harness de evaluación con datasets y reportes.
@@ -205,11 +234,12 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 - FR-2.3 Regla de salto: `risk ≤ low` con `confidence ≥ umbral_alto` y `contains_injected_instructions < umbral_bajo` → no se invoca al LLM; se publica solo label y resumen de triage.
 - FR-2.4 `needs_human` alto siempre agrega label `needs-human-review`, independientemente del resto.
 
-### FR-3 Selección de hunks (etapa 2)
-- FR-3.1 Cada hunk se serializa con el formato ganador del spike (H0).
-- FR-3.2 Preguntas por hunk: `defect_likelihood` (score), `touches_public_api` (noul), `touches_security` (noul).
-- FR-3.3 Se envían al LLM los hunks con `defect_likelihood ≥ umbral` o cualquiera de los dos nouls alto. El resto se reporta como "omitido por triage" en el resumen, con su probabilidad, para auditoría.
+### FR-3 Perfil de hunks (etapa 2)
+- FR-3.1 Cada hunk se serializa como `raw-diff` (mejor precisión y menor costo en fase 0) salvo que H0' indique otro formato.
+- FR-3.2 Preguntas por hunk (H0'): `change_kind` (choice), `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io` (nouls). **Prohibido** preguntar por probabilidad de defecto: fase 0 demostró que Jev no puede responderlo y su confianza lo confirma.
+- FR-3.3 Solo se omiten del LLM los hunks con `change_kind = rename-or-format` y confianza alta. Todos los demás van al LLM **junto con su perfil**, que el revisor usa como contexto ("este hunk toca API pública y manejo de errores"). Los omitidos se listan en el resumen para auditoría.
 - FR-3.4 PRs con más de K hunks se trocean en varios requests de tamaño configurable (límite de contexto no publicado).
+- FR-3.5 Si H0' falla, la etapa se reduce a metadatos derivados por código (rutas, tamaño, exports cambiados por AST) y no llama a Jev.
 
 ### FR-4 Revisión LLM (etapa 3)
 - FR-4.1 `ReviewerPort.review(hunks, context) -> Finding[]` con salida estructurada: `{file, line, claim, rationale, suggested_severity}`.
@@ -305,7 +335,9 @@ jevest/
 
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
-| Jev no entiende código (H0 falla) | Proyecto inviable como está | Spike primero; pivot documentado: reducir el rol de Jev a triage y filtro de findings, que son texto |
+| ~~Jev no entiende código (H0 falla)~~ **Materializado el 2026-09-19** | Pivote ejecutado (v0.3) | Jev fuera del juicio de defectos; rol reducido a superficie, texto y metadatos |
+| El filtro de findings tampoco funciona (H1 falla) | Jev no aporta al review; el proyecto queda como benchmark negativo | Publicar el resultado negativo con datasets y fixtures (fase 3); evaluar Jev solo en triage y merge gate |
+| Ground truth de findings sesgada (solapamiento de líneas con el fix) | Findings reales fuera del rango del fix contados como ruido | Verificación manual de muestra; reportar tasa de desacuerdo humano vs. heurística |
 | Modelo en early access, sin SLA ni rate limits publicados | Runs inestables en CI | NFR-1, NFR-2, medir 429/529 como métrica |
 | Calibración peor de lo prometido | Bandas inútiles | Reliability diagram desde fase 1; umbrales conservadores y ajustables |
 | Inyección en el PR pasa el gate | Auto-merge indebido | NFR-7, FR-6.4 (nunca mergea), H5 en CI |
@@ -323,6 +355,15 @@ jevest/
 | Dataset del spike | Repos OSS en TypeScript, elegidos por el equipo, a partir de commits de fix con su estado previo | Ground truth semiautomática: hunk previo al fix = defecto; hunks de commits no-fix = benigno. Etiquetado manual de verificación |
 | LLM revisor y juez | Ambos proveedores (Anthropic y OpenAI), configurables por `.jevest.yml` | `ReviewerPort` con dos adapters desde fase 1 |
 | Presupuesto | Menos de USD 20 para spike y fase 1 | Corte automático en NFR-10; el gasto real es el LLM revisor, Jev es despreciable |
+
+### Decisiones del 2026-09-19
+
+| Tema | Decisión | Consecuencia |
+|---|---|---|
+| Dataset v1 con ruido | Regenerado como v2: solo código fuente, sin tests, docs ni config, benignos de los mismos directorios que los defectos | Precisión de raw-diff subió de 0.57 a 0.84; el confound de rutas desapareció |
+| H0 fallida con datos limpios | **Pivote aprobado por el usuario**: Jev no juzga defectos | §4.2, FR-3 reescrito, fases 1a y 0b nuevas |
+| Orden de trabajo | Fase 1a (filtro de findings) es la hipótesis central y bloqueante; 0b corre en paralelo y no bloquea | Presupuesto del LLM revisor se gasta en 1a |
+| Corridas con `--limit` | Nunca son evidencia: muestra estratificada con semilla y advertencia impresa | Solo smoke tests |
 
 ### Pendiente
 

@@ -1,0 +1,36 @@
+{
+  "requestId": "req_01a0b935bb887fbea3d91520a51d714f",
+  "model": "jev-1.13.0",
+  "latencyMs": 203,
+  "usage": {
+    "inputTokens": 1363,
+    "outputTokens": 95
+  },
+  "answers": {
+    "trpc-d1a9ec6-1__defect_likelihood": {
+      "type": "score",
+      "score": 0.19,
+      "confidence": 0.81,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.88,
+        "1": 0.07,
+        "2": 0.04,
+        "3": 0.01
+      }
+    },
+    "trpc-d1a9ec6-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.08
+    },
+    "trpc-d1a9ec6-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "requestId": "req_01a0b936633573d8886ad1fb2cdccb4e",
+  "model": "jev-1.13.0",
+  "latencyMs": 215,
+  "usage": {
+    "inputTokens": 1458,
+    "outputTokens": 193
+  },
+  "answers": {
+    "trpc-fb9fe87-1__change_kind": {
+      "type": "choice",
+      "choice": "modify-behavior",
+      "confidence": 0.26,
+      "probabilities": {
+        "add-behavior": 0.38,
+        "rename-or-format": 0.11,
+        "delete": 0.07,
+        "modify-behavior": 0.44
+      }
+    },
+    "trpc-fb9fe87-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.73
+    },
+    "trpc-fb9fe87-1__touches_error_handling": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "trpc-fb9fe87-1__touches_async": {
+      "type": "noul",
+      "noul": 0.04
+    },
+    "trpc-fb9fe87-1__touches_io": {
+      "type": "noul",
+      "noul": 0.35
+    }
+  }
+}

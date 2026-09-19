@@ -24,9 +24,14 @@ import {
   type HunkRecordLabel,
   parseHunkRecordsJsonl,
 } from "../../src/application/spike/hunk-record.js";
-import { buildSpikeReport, renderSpikeReportMarkdown } from "../../src/application/spike/report.js";
+import {
+  type SerializerRunResult,
+  buildSpikeReport,
+  renderSpikeReportMarkdown,
+} from "../../src/application/spike/report.js";
 import { listSerializerNames } from "../../src/application/spike/serializers.js";
-import { type HunkResult, runSpike } from "../../src/application/spike/spike-runner.js";
+import { runSpike } from "../../src/application/spike/spike-runner.js";
+import { stratifiedSample } from "../../src/application/spike/stratified-sample.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -34,6 +39,7 @@ const DATASET_PATH = join(REPO_ROOT, "datasets/hunks.jsonl");
 const FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/spike");
 const REPORTS_DIR = join(REPO_ROOT, "reports");
 const DRY_RUN_SEED = 42;
+const DEFAULT_SAMPLE_SEED = 42;
 
 type Mode = "live" | "record" | "replay" | "dry-run";
 const MODES: readonly Mode[] = ["live", "record", "replay", "dry-run"];
@@ -43,6 +49,7 @@ interface CliOptions {
   readonly limit: number | null;
   readonly batchSize: number;
   readonly mode: Mode | null;
+  readonly seed: number;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -58,6 +65,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let limit: number | null = null;
   let batchSize = 10;
   let mode: Mode | null = null;
+  let seed = DEFAULT_SAMPLE_SEED;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -87,12 +95,18 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         mode = value as Mode;
         break;
       }
+      case "--seed": {
+        const value = Number(requireValue(argv, ++i, "--seed"));
+        if (!Number.isFinite(value)) throw new Error(`--seed must be a number, got "${argv[i]}"`);
+        seed = value;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
   }
 
-  return { serializer, limit, batchSize, mode };
+  return { serializer, limit, batchSize, mode, seed };
 }
 
 async function resolveMode(requested: Mode | null): Promise<Mode> {
@@ -142,7 +156,12 @@ async function main(): Promise<number> {
   const raw = await readFile(DATASET_PATH, "utf8");
   let hunks = parseHunkRecordsJsonl(raw);
   if (options.limit !== null) {
-    hunks = hunks.slice(0, options.limit);
+    // Plain slice(0, N) would be trivially all-defect: the dataset is
+    // ordered defect-first. Stratify so a limited run stays balanced.
+    hunks = stratifiedSample(hunks, { limit: options.limit, seed: options.seed });
+    console.warn(
+      `[spike] WARNING: --limit ${options.limit} is a smoke test (seed=${options.seed}), not evidence for H0.`,
+    );
   }
 
   const serializerNames =
@@ -153,8 +172,9 @@ async function main(): Promise<number> {
   for (const hunk of hunks) {
     labelsByHunkId[hunk.id] = hunk.label;
   }
+  const datasetVersion = hunks[0]?.datasetVersion ?? 1;
 
-  const resultsBySerializer: Record<string, HunkResult[]> = {};
+  const resultsBySerializer: Record<string, SerializerRunResult> = {};
   for (const serializerName of serializerNames) {
     console.log(
       `[spike] running serializer "${serializerName}" (${hunks.length} hunks, mode=${mode})...`,
@@ -165,21 +185,22 @@ async function main(): Promise<number> {
       serializerName,
       batchSize: options.batchSize,
       onProgress: ({ completedBatches, totalBatches }) => {
-        process.stdout.write(
-          `\r[spike] ${serializerName}: batch ${completedBatches}/${totalBatches}`,
-        );
+        const line = `[spike] ${serializerName}: batch ${completedBatches}/${totalBatches}`;
+        process.stdout.write(process.stdout.isTTY ? `\r${line}` : `${line}\n`);
       },
     });
-    process.stdout.write("\n");
+    if (process.stdout.isTTY) {
+      process.stdout.write("\n");
+    }
     if (run.failures.length > 0) {
       console.warn(
         `[spike] ${run.failures.length} hunk(s) failed for serializer "${serializerName}"`,
       );
     }
-    resultsBySerializer[serializerName] = run.results;
+    resultsBySerializer[serializerName] = { results: run.results, failures: run.failures };
   }
 
-  const report = buildSpikeReport(resultsBySerializer, labelsByHunkId);
+  const report = buildSpikeReport(resultsBySerializer, labelsByHunkId, { datasetVersion });
   const markdown = renderSpikeReportMarkdown(report);
 
   await mkdir(REPORTS_DIR, { recursive: true });

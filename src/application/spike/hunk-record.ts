@@ -33,6 +33,8 @@ export interface HunkRecord {
   readonly label: HunkRecordLabel;
   readonly evidence: HunkRecordEvidence;
   readonly needsManualReview: boolean;
+  /** Dataset schema/content version. Optional in the source file; defaults to 1 when absent. */
+  readonly datasetVersion: number;
 }
 
 export class HunkRecordParseError extends Error {
@@ -80,6 +82,22 @@ function expectBoolean(value: unknown, field: string, lineNumber: number): boole
 function expectNullableBoolean(value: unknown, field: string, lineNumber: number): boolean | null {
   if (value === null) return null;
   return expectBoolean(value, field, lineNumber);
+}
+
+function expectOptionalNumber(
+  value: unknown,
+  field: string,
+  lineNumber: number,
+  defaultValue: number,
+): number {
+  if (value === undefined) return defaultValue;
+  if (typeof value !== "number") {
+    throw new HunkRecordParseError(
+      lineNumber,
+      `field "${field}" must be a number, got ${describe(value)}`,
+    );
+  }
+  return value;
 }
 
 function describe(value: unknown): string {
@@ -134,6 +152,7 @@ export function parseHunkRecordLine(line: string, lineNumber: number): HunkRecor
       prUrl: expectNullableString(evidence.pr_url, "evidence.pr_url", lineNumber),
     },
     needsManualReview: expectBoolean(obj.needs_manual_review, "needs_manual_review", lineNumber),
+    datasetVersion: expectOptionalNumber(obj.dataset_version, "dataset_version", lineNumber, 1),
   };
 }
 

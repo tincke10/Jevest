@@ -31,6 +31,7 @@ function makeHunk(id: string): HunkRecord {
       prUrl: "https://github.com/owner/repo/pull/1",
     },
     needsManualReview: true,
+    datasetVersion: 1,
   };
 }
 

@@ -26,6 +26,7 @@ function makeHunk(id: string): HunkRecord {
     },
     evidence: { commitMessage: "fix: x", issueUrl: null, prUrl: null },
     needsManualReview: true,
+    datasetVersion: 1,
   };
 }
 

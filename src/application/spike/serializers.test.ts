@@ -33,6 +33,7 @@ const hunk: HunkRecord = {
     prUrl: "https://github.com/owner/repo/pull/1",
   },
   needsManualReview: true,
+  datasetVersion: 1,
 };
 
 describe("rawDiff serializer", () => {

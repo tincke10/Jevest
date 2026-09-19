@@ -59,7 +59,24 @@ describe("parseHunkRecordLine", () => {
         prUrl: "https://github.com/owner/repo/pull/1",
       },
       needsManualReview: true,
+      datasetVersion: 1,
     });
+  });
+
+  it("defaults datasetVersion to 1 when dataset_version is absent", () => {
+    const record = parseHunkRecordLine(validRecordJson(), 1);
+    expect(record.datasetVersion).toBe(1);
+  });
+
+  it("parses an explicit dataset_version", () => {
+    const record = parseHunkRecordLine(validRecordJson({ dataset_version: 2 }), 1);
+    expect(record.datasetVersion).toBe(2);
+  });
+
+  it("throws when dataset_version has the wrong type", () => {
+    expect(() => parseHunkRecordLine(validRecordJson({ dataset_version: "2" }), 6)).toThrow(
+      /"dataset_version"/,
+    );
   });
 
   it("throws HunkRecordParseError with the line number on invalid JSON", () => {

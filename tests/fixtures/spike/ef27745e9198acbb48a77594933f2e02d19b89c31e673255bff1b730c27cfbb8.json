@@ -1,0 +1,261 @@
+{
+  "requestId": "req_01a0b86ffb8b70639e292dbcf2115104",
+  "model": "jev-1.13.0",
+  "latencyMs": 328,
+  "usage": {
+    "inputTokens": 6859,
+    "outputTokens": 944
+  },
+  "answers": {
+    "vitest-6108b81-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.48,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.32,
+        "1": 0.13,
+        "2": 0.31,
+        "3": 0.24
+      }
+    },
+    "vitest-6108b81-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-6108b81-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-f08ce4b-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.45,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.32,
+        "1": 0.15,
+        "2": 0.27,
+        "3": 0.26
+      }
+    },
+    "vitest-f08ce4b-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-f08ce4b-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-f58a209-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.39,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.35,
+        "1": 0.15,
+        "2": 0.27,
+        "3": 0.23
+      }
+    },
+    "vitest-f58a209-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-f58a209-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-2d05360-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.43,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.34,
+        "1": 0.14,
+        "2": 0.28,
+        "3": 0.24
+      }
+    },
+    "vitest-2d05360-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-2d05360-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-ccd6d05-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.5,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.31,
+        "1": 0.14,
+        "2": 0.29,
+        "3": 0.26
+      }
+    },
+    "vitest-ccd6d05-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-ccd6d05-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-4f8ef02-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.47,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.31,
+        "1": 0.15,
+        "2": 0.29,
+        "3": 0.25
+      }
+    },
+    "vitest-4f8ef02-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-4f8ef02-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-0767036-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.4,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.34,
+        "1": 0.16,
+        "2": 0.28,
+        "3": 0.22
+      }
+    },
+    "vitest-0767036-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.79
+    },
+    "vitest-0767036-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-376dc3b-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.42,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.34,
+        "1": 0.15,
+        "2": 0.27,
+        "3": 0.24
+      }
+    },
+    "vitest-376dc3b-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-376dc3b-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-5dc4b5c-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.42,
+      "confidence": 0,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.32,
+        "1": 0.16,
+        "2": 0.29,
+        "3": 0.23
+      }
+    },
+    "vitest-5dc4b5c-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.8
+    },
+    "vitest-5dc4b5c-1__touches_security": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-d7bf1a7-1__defect_likelihood": {
+      "type": "score",
+      "score": 1.52,
+      "confidence": 0.02,
+      "legend": {
+        "0": "None: the hunk is correct as written. No plausible input or usage triggers incorrect behavior.",
+        "1": "Unlikely: the hunk looks correct in the common case, but a narrow edge case, such as an unusual input or a rare ordering, might trigger incorrect behavior.",
+        "2": "Likely: the hunk has a specific, describable flaw that a normal input plausibly triggers, even though it is not certain to always fail.",
+        "3": "Certain: the hunk is definitely wrong for its evident purpose. The incorrect behavior is directly visible in the code, not merely suspected."
+      },
+      "probabilities": {
+        "0": 0.29,
+        "1": 0.14,
+        "2": 0.32,
+        "3": 0.25
+      }
+    },
+    "vitest-d7bf1a7-1__touches_public_api": {
+      "type": "noul",
+      "noul": 0.78
+    },
+    "vitest-d7bf1a7-1__touches_security": {
+      "type": "noul",
+      "noul": 0.03
+    }
+  }
+}

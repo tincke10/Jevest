@@ -71,6 +71,11 @@ runs:
 
     - name: Set up pnpm
       uses: pnpm/action-setup@v4
+      with:
+        # Pinned: pnpm/action-setup otherwise reads the CONSUMER repo's
+        # package.json, which may not declare packageManager (or exist).
+        version: 10.29.3
+        package_json_file: ${{ github.action_path }}/package.json
 
     - name: Install Jevest's own dependencies
       shell: bash

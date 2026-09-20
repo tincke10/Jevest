@@ -399,7 +399,7 @@ function parseHunksFromShow(diffText: string): ParsedHunk[] {
 
       results.push({
         path,
-        hunkHeader: starts[i].header,
+        hunkHeader: current.header,
         before: before.join("\n"),
         after: after.join("\n"),
         diff: diffLines.join("\n"),
@@ -465,8 +465,9 @@ function findAssociatedPr(repo: string, sha: string): PrMeta | null {
   const prs = ghJson<Array<{ number: number; html_url: string }>>(
     `repos/${repo}/commits/${sha}/pulls`,
   );
-  if (!prs || prs.length === 0) return null;
-  const number = prs[0].number;
+  const first = prs?.[0];
+  if (!first) return null;
+  const number = first.number;
   const pr = ghJson<{ body: string | null; labels: Array<{ name: string }>; html_url: string }>(
     `repos/${repo}/pulls/${number}`,
   );

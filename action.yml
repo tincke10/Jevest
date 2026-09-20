@@ -34,7 +34,7 @@ inputs:
       Token used to read the PR and publish comments/labels/checks. Needs
       `pull-requests: write` and `checks: write` (falls back to commit
       status if checks:write is absent). Usually the built-in
-      `${{ secrets.GITHUB_TOKEN }}`.
+      the workflow secret GITHUB_TOKEN.
     required: true
   fail-on:
     description: >-

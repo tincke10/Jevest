@@ -24,6 +24,7 @@
     "scripts/profile",
     "scripts/filter",
     "scripts/findings",
-    "scripts/review"
+    "scripts/review",
+    "scripts/dataset"
   ]
 }

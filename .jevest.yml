@@ -1,0 +1,9 @@
+# Jevest self-review config (dogfooding). Jev-only until an Anthropic key
+# with Console credits is available as a secret; inline comments off for
+# the first weeks per docs/ACTION.md rollout advice.
+reviewer:
+  provider: none
+publish:
+  inlineComments: false
+budgetUsd: 1
+failClosed: true

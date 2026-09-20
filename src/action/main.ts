@@ -15,16 +15,6 @@
  * `parseActionInputs` and the `pull_request` / `pull_request_target` event
  * parsing below have no dependency on the pipeline module, so they're safe
  * to unit test without touching a network or a missing module.
- * `../application/pipeline/run-pipeline.js` (runPipeline) is owned by the
- * "scaffold" agent and does not exist in this worktree yet; it's loaded
- * with a dynamic `import()` inside `run()` rather than a static top-level
- * import, specifically so that importing this file to unit-test the
- * functions above does not throw at module-load time before the scaffold
- * lands. (`../adapters/config/jevest-config.js` has since landed and is a
- * normal static import above.) `pnpm typecheck` still resolves the
- * `run-pipeline.js` specifier eagerly and will fail on exactly that one
- * line until the scaffold agent adds the file; this is intentional, called
- * out in the report, and does not affect `pnpm test`.
  */
 import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
@@ -37,6 +27,7 @@ import { createAnthropicReviewer } from "../adapters/reviewers/anthropic-reviewe
 import { createOpenAiReviewer } from "../adapters/reviewers/openai-reviewer.js";
 import { createTypeSafeDecisionAdapter } from "../adapters/typesafe-decision-adapter.js";
 import { createGitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
+import { type PipelineResult, runPipeline } from "../application/pipeline/run-pipeline.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
 import type { PullRequestRef } from "../domain/pull-request.js";
@@ -169,8 +160,25 @@ export async function loadPullRequestRefFromEvent(eventPath: string): Promise<Pu
   return pullRequestRefFromEventPayload(event);
 }
 
-function createReviewer(config: JevestConfig, inputs: ActionInputs): ReviewerPort {
+/**
+ * `undefined` means `reviewer.provider: "none"` — Jev-only mode (SPEC
+ * rollout decision): run-pipeline.ts never calls a reviewer in that case,
+ * so no LLM key is required and none is validated here.
+ */
+export function createReviewer(
+  config: JevestConfig,
+  inputs: ActionInputs,
+): ReviewerPort | undefined {
   const { provider, model } = config.reviewer;
+  if (provider === "none") {
+    return undefined;
+  }
+  if (model === undefined) {
+    // jevest-config.ts's schema already requires this for "anthropic"/"openai"; defensive only.
+    throw new ActionInputError(
+      `.jevest.yml: reviewer.model is required when reviewer.provider is "${provider}"`,
+    );
+  }
   if (provider === "anthropic") {
     if (inputs.anthropicApiKey === undefined) {
       throw new ActionInputError(
@@ -190,13 +198,6 @@ function createReviewer(config: JevestConfig, inputs: ActionInputs): ReviewerPor
   return createOpenAiReviewer({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
   // Deliberately no "claude-cli" branch: that reviewer spends a Claude
   // subscription's quota interactively and has no place in unattended CI.
-}
-
-/** Minimal shape this entrypoint reads off the pipeline result to log and set outputs. */
-interface PipelineResult {
-  readonly check: { readonly conclusion: "success" | "neutral" | "failure" };
-  readonly findingsPublished: number;
-  readonly costUsd: number;
 }
 
 async function writeOutputs(env: NodeJS.ProcessEnv, result: PipelineResult): Promise<void> {
@@ -254,15 +255,11 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     });
     const reviewer = createReviewer(config, inputs);
 
-    // TODO(scaffold): src/application/pipeline/run-pipeline.ts does not
-    // exist in this worktree yet either (owned by the "scaffold" agent).
-    // Same dynamic-import reasoning as above.
-    const { runPipeline } = await import("../application/pipeline/run-pipeline.js");
-    const result = (await runPipeline({
+    const result: PipelineResult = await runPipeline({
       ref,
-      ports: { vcs, decision, reviewer },
+      ports: { vcs, decision, ...(reviewer ? { reviewer } : {}) },
       config,
-    })) as PipelineResult;
+    });
 
     console.log(
       `jevest: PR #${ref.number} — check=${result.check.conclusion} findings=${result.findingsPublished} cost=$${result.costUsd.toFixed(4)}`,

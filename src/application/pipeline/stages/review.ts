@@ -7,6 +7,7 @@
  * recorded and the stage continues (matches the spike/filter runners'
  * fail-per-item, continue-overall pattern).
  */
+import { languageFromPath } from "../../../domain/language.js";
 import type {
   ReviewFindingCandidate,
   ReviewInput,
@@ -16,13 +17,15 @@ import type {
 import { type ModelPricing, reviewCostUsd } from "../../findings/pricing.js";
 import type { HunkProfileEntry } from "./hunk-profile.js";
 
+/**
+ * Extensions this project's own reviewer prompt names beyond what
+ * `languageFromPath` covers (that function only distinguishes the
+ * languages `hunk-profile.ts`'s AST gate cares about). `.vue`/`.php`/
+ * `.blade.php` are resolved via `languageFromPath` FIRST so this stage and
+ * hunk-profile.ts never disagree about those; this map only fills in the
+ * rest.
+ */
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
-  ts: "typescript",
-  tsx: "typescript",
-  js: "javascript",
-  jsx: "javascript",
-  mjs: "javascript",
-  cjs: "javascript",
   py: "python",
   go: "go",
   rs: "rust",
@@ -33,7 +36,6 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   cpp: "cpp",
   hpp: "cpp",
   cs: "csharp",
-  php: "php",
   yml: "yaml",
   yaml: "yaml",
   json: "json",
@@ -41,6 +43,10 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
 };
 
 function inferLanguage(path: string): string {
+  const detected = languageFromPath(path);
+  if (detected !== "other") {
+    return detected;
+  }
   const ext = path.split(".").pop()?.toLowerCase();
   return (ext && LANGUAGE_BY_EXTENSION[ext]) ?? "text";
 }
@@ -85,6 +91,7 @@ function toReviewInput(hunk: HunkProfileEntry): ReviewInput {
       touchesAsync: hunk.touchesAsyncProb,
       touchesPublicApi: hunk.touchesPublicApi,
       touchesPublicApiPartial: hunk.touchesPublicApiPartial,
+      astSkipped: hunk.astSkipped,
     },
   };
 }

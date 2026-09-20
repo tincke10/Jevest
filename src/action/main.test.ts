@@ -1,8 +1,11 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { JevestConfig } from "../adapters/config/jevest-config.js";
 import {
   ActionInputError,
+  type ActionInputs,
+  createReviewer,
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
@@ -94,6 +97,60 @@ describe("pullRequestRefFromEventPayload", () => {
         pull_request: { number: 1, head: { sha: "h" }, base: { sha: "b" } },
       }),
     ).toThrow(ActionInputError);
+  });
+});
+
+function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestConfig {
+  return {
+    reviewer: { provider: "anthropic", model: "claude-sonnet-5", ...overrides },
+    thresholds: {},
+    sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
+    publish: { inlineComments: true },
+    budgetUsd: 5,
+    maxHunks: 50,
+    skipChangeKinds: [],
+    failClosed: true,
+  };
+}
+
+function makeInputs(overrides: Partial<ActionInputs> = {}): ActionInputs {
+  return {
+    configPath: ".jevest.yml",
+    typesafeApiKey: "ts_test",
+    githubToken: "ghp_test",
+    failOn: "never",
+    ...overrides,
+  };
+}
+
+describe("createReviewer", () => {
+  it("returns undefined and requires no LLM key when provider is 'none' (Jev-only mode)", () => {
+    const config = makeConfig({ provider: "none", model: undefined });
+    const reviewer = createReviewer(config, makeInputs());
+    expect(reviewer).toBeUndefined();
+  });
+
+  it("builds an anthropic reviewer when an anthropic key is provided", () => {
+    const config = makeConfig({ provider: "anthropic", model: "claude-sonnet-5" });
+    const reviewer = createReviewer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }));
+    expect(reviewer).toBeDefined();
+  });
+
+  it("throws when provider is anthropic but no anthropic-api-key input was given", () => {
+    const config = makeConfig({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(() => createReviewer(config, makeInputs())).toThrow(ActionInputError);
+  });
+
+  it("throws when provider is openai but no openai-api-key input was given", () => {
+    const config = makeConfig({ provider: "openai", model: "gpt-5.1" });
+    expect(() => createReviewer(config, makeInputs())).toThrow(ActionInputError);
+  });
+
+  it("throws a clear error if model is missing for a non-none provider (defensive; config validation should already catch this)", () => {
+    const config = makeConfig({ provider: "anthropic", model: undefined });
+    expect(() => createReviewer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toThrow(
+      /reviewer\.model is required/,
+    );
   });
 });
 

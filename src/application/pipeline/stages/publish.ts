@@ -24,6 +24,15 @@ export interface PublishStageInput {
   readonly review: ReviewStageResult;
   readonly findingFilter: FindingFilterStageResult;
   readonly mergeGate: MergeGateStageResult;
+  /**
+   * `.jevest.yml`'s `publish.inlineComments` (default true). When false, no
+   * inline comments are published at all — auto-band findings are listed
+   * in the summary comment instead, under "Findings (high confidence)".
+   * Check status and labels are unaffected either way.
+   */
+  readonly inlineCommentsEnabled: boolean;
+  /** True when `reviewer.provider: "none"` (Jev-only mode) — the review stage never ran. */
+  readonly reviewDisabled: boolean;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
@@ -79,6 +88,15 @@ function buildNeedsHumanSection(findingFilter: FindingFilterStageResult): string
     .join("\n");
 }
 
+function buildHighConfidenceFindingsSection(findingFilter: FindingFilterStageResult): string {
+  if (findingFilter.published.length === 0) {
+    return "No high-confidence findings.";
+  }
+  return findingFilter.published
+    .map((f) => `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rationale})`)
+    .join("\n");
+}
+
 function buildCostSection(input: PublishStageInput): string {
   const jevUsage = [
     input.triage.usage,
@@ -111,9 +129,16 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
     `- LLM review skipped: ${triage.skipLlmReview}`,
     `- Needs human: ${triage.needsHumanLabel}`,
     "",
+    ...(input.reviewDisabled
+      ? ["", "**LLM review disabled by config** (reviewer.provider: none — Jev-only mode)."]
+      : []),
+    "",
     "### Skipped hunks",
     buildSkippedHunksSection(input.hunkProfile),
     "",
+    ...(input.inlineCommentsEnabled
+      ? []
+      : ["### Findings (high confidence)", buildHighConfidenceFindingsSection(findingFilter), ""]),
     "### Needs human review",
     buildNeedsHumanSection(findingFilter),
     "",
@@ -213,7 +238,9 @@ export function buildFailClosedPublication(
 export function runPublishStage(input: PublishStageInput): ReviewPublication {
   const summaryMarkdown = buildSummaryMarkdown(input);
   const hunksById = new Map(input.hunkProfile.hunks.map((h) => [h.id, h]));
-  const inlineComments = buildInlineComments(input.findingFilter, hunksById);
+  const inlineComments = input.inlineCommentsEnabled
+    ? buildInlineComments(input.findingFilter, hunksById)
+    : [];
 
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [];

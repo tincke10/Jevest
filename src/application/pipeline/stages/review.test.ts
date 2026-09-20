@@ -36,6 +36,7 @@ function makeHunk(overrides: Partial<HunkProfileEntry> = {}): HunkProfileEntry {
     skippedFromReview: false,
     containsSecret: false,
     profileFailed: false,
+    astSkipped: null,
     ...overrides,
   };
 }
@@ -88,7 +89,41 @@ describe("runReviewStage", () => {
       touchesAsync: 0.1,
       touchesPublicApi: false,
       touchesPublicApiPartial: true,
+      astSkipped: null,
     });
+  });
+
+  it("detects PHP from a .php file path instead of falling back to a hardcoded/generic language", async () => {
+    const hunk = makeHunk({ id: "a.php#0", file: "app/Http/Controllers/UserController.php" });
+    let capturedInput: ReviewInput | undefined;
+    const reviewer = fakeReviewer(async (input) => {
+      capturedInput = input;
+      return makeReviewOutput();
+    });
+    await runReviewStage({ hunks: [hunk], reviewerPort: reviewer, pricing, budgetUsd: 10 });
+    expect(capturedInput!.language).toBe("php");
+  });
+
+  it("detects Vue from a .vue file path", async () => {
+    const hunk = makeHunk({ id: "a.vue#0", file: "src/components/Widget.vue" });
+    let capturedInput: ReviewInput | undefined;
+    const reviewer = fakeReviewer(async (input) => {
+      capturedInput = input;
+      return makeReviewOutput();
+    });
+    await runReviewStage({ hunks: [hunk], reviewerPort: reviewer, pricing, budgetUsd: 10 });
+    expect(capturedInput!.language).toBe("vue");
+  });
+
+  it("detects Blade from a .blade.php file path, distinct from plain PHP", async () => {
+    const hunk = makeHunk({ id: "a.blade#0", file: "resources/views/welcome.blade.php" });
+    let capturedInput: ReviewInput | undefined;
+    const reviewer = fakeReviewer(async (input) => {
+      capturedInput = input;
+      return makeReviewOutput();
+    });
+    await runReviewStage({ hunks: [hunk], reviewerPort: reviewer, pricing, budgetUsd: 10 });
+    expect(capturedInput!.language).toBe("blade");
   });
 
   it("skips hunks marked skippedFromReview or containsSecret", async () => {

@@ -5,9 +5,13 @@
 # the six-stage pipeline this drives.
 #
 # The LLM that writes the actual review (FR-4). Jev never writes text.
+# Set provider: none for Jev-only mode: the review stage never runs (no
+# LLM key needed at all), finding-filter and inline comments stay empty,
+# and the merge gate still runs on triage + CI status. Useful to validate
+# triage/merge-gate behavior on a new repo before spending on LLM reviews.
 reviewer:
-  provider: anthropic # or: openai
-  model: claude-sonnet-5
+  provider: anthropic # or: openai, none
+  model: claude-sonnet-5 # ignored (and optional) when provider is none
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.
@@ -66,3 +70,12 @@ skipChangeKinds:
 # merge gate goes red. Never set this to false outside a controlled
 # experiment.
 failClosed: true
+
+# FR-7 publish behavior.
+publish:
+  # RECOMMENDATION: set this to false for the first weeks of a rollout on a
+  # new repo. Auto-band findings still get evaluated and counted — they
+  # just appear in the summary comment under "Findings (high confidence)"
+  # instead of as inline PR comments, so a team new to the tool can watch
+  # its accuracy before it starts leaving comments on people's code.
+  inlineComments: true

@@ -36,7 +36,8 @@ export interface RunPipelineInput {
   readonly ports: {
     readonly vcs: VcsPort;
     readonly decision: DecisionPort;
-    readonly reviewer: ReviewerPort;
+    /** Not required when `config.reviewer.provider` is `"none"` (Jev-only mode) — the review stage never calls it. */
+    readonly reviewer?: ReviewerPort;
   };
   readonly config: JevestConfig;
   /** Optional: full-file content at a given sha, for hunk-profile's §4.3 AST context. */
@@ -166,13 +167,26 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
   // The LLM reviewer is not Jev — its own per-hunk errors are already
   // handled inside runReviewStage (recorded, pipeline continues), so NFR-2
-  // fail-closed doesn't apply to this call.
-  const review = await runReviewStage({
-    hunks: hunkProfile.hunks,
-    reviewerPort: ports.reviewer,
-    pricing: pricingFor(config.reviewer.model),
-    budgetUsd: config.budgetUsd,
-  });
+  // fail-closed doesn't apply to this call. reviewer.provider: "none" is
+  // Jev-only mode: the review stage never runs at all, no LLM key needed.
+  const reviewDisabled = config.reviewer.provider === "none";
+  let review: ReviewStageResult;
+  if (reviewDisabled) {
+    review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
+  } else {
+    if (!ports.reviewer) {
+      throw new Error(
+        `internal: reviewer.provider is "${config.reviewer.provider}" but no ReviewerPort was provided`,
+      );
+    }
+    review = await runReviewStage({
+      hunks: hunkProfile.hunks,
+      reviewerPort: ports.reviewer,
+      // config validation guarantees model is set whenever provider isn't "none".
+      pricing: pricingFor(config.reviewer.model ?? config.reviewer.provider),
+      budgetUsd: config.budgetUsd,
+    });
+  }
 
   const hunksById = new Map(hunkProfile.hunks.map((h) => [h.id, h.diff]));
   let findingFilter: FindingFilterStageResult;
@@ -234,7 +248,15 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     };
   }
 
-  const publication = runPublishStage({ triage, hunkProfile, review, findingFilter, mergeGate });
+  const publication = runPublishStage({
+    triage,
+    hunkProfile,
+    review,
+    findingFilter,
+    mergeGate,
+    inlineCommentsEnabled: config.publish.inlineComments,
+    reviewDisabled,
+  });
   await ports.vcs.publishReview(input.ref, publication);
 
   return {

@@ -5,6 +5,17 @@
  * `export` line is often outside the hunk; `touches_io` is dropped until
  * there's more labeled support). One Jev request per hunk (NFR-14) — the
  * question wording is reused verbatim from `question-sets/profile.ts`.
+ * These three Jev questions run on the raw diff for ANY language — the
+ * language gate below applies only to the AST-based `touchesPublicApi`.
+ *
+ * Language gate: `ast-labels.ts` parses everything as TypeScript, so
+ * `touchesPublicApi` is only meaningful for actual TypeScript/JavaScript
+ * source (`languageFromPath`). For a `.vue` file, the `<script>`/`<script
+ * setup>` block is extracted and labeled on its own if present; a
+ * template-only hunk (no script block) is treated the same as an
+ * unsupported language. Any other language (PHP, Blade, etc.) always sets
+ * `touchesPublicApi: null` and `astSkipped: "unsupported-language"` —
+ * never guessed from a TypeScript parse of code that isn't TypeScript.
  */
 import { touchesPublicApi } from "../../../domain/ast-labels.js";
 import {
@@ -13,6 +24,7 @@ import {
 } from "../../../domain/confidence-policy.js";
 import type { Usage } from "../../../domain/decision.js";
 import { type SplitHunk, splitFileIntoHunks } from "../../../domain/hunk-splitter.js";
+import { extractVueScript, languageFromPath } from "../../../domain/language.js";
 import type { DecisionPort } from "../../../domain/ports/decision-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
 import { containsSecret, redact } from "../../../domain/redact.js";
@@ -23,6 +35,9 @@ const PIPELINE_PROFILE_QUESTION_NAMES = ["change_kind", "touches_error_handling"
 const pipelineProfileQuestions = profileQuestionSet.questions.filter((q) =>
   PIPELINE_PROFILE_QUESTION_NAMES.includes(q.name),
 );
+
+/** Why `touchesPublicApi` is `null` for a hunk (AST labeling was not possible). */
+export type AstSkipReason = "unsupported-language";
 
 export interface HunkProfileEntry {
   readonly id: string;
@@ -36,9 +51,12 @@ export interface HunkProfileEntry {
   readonly changeKindConfidence: number | null;
   readonly touchesErrorHandlingProb: number | null;
   readonly touchesAsyncProb: number | null;
-  readonly touchesPublicApi: boolean;
+  /** `null` when the file's language doesn't support AST labeling — see `astSkipped`. */
+  readonly touchesPublicApi: boolean | null;
   /** True when computed from the hunk fragment alone (no full-file fetch available). */
   readonly touchesPublicApiPartial: boolean;
+  /** Set when `touchesPublicApi` is `null` because AST labeling doesn't apply to this file's language. */
+  readonly astSkipped: AstSkipReason | null;
   readonly requestId: string | null;
   readonly latencyMs: number;
   readonly usage: Usage;
@@ -69,21 +87,61 @@ export interface HunkProfileStageResult {
   readonly totalUsage: Usage;
 }
 
+interface PublicApiResolution {
+  readonly touchesPublicApi: boolean | null;
+  readonly partial: boolean;
+  readonly astSkipped: AstSkipReason | null;
+}
+
+const UNSUPPORTED_LANGUAGE: PublicApiResolution = {
+  touchesPublicApi: null,
+  partial: false,
+  astSkipped: "unsupported-language",
+};
+
 async function resolvePublicApi(
   hunk: SplitHunk,
   pr: PullRequestData,
   fetchFileContent: HunkProfileStageInput["fetchFileContent"],
-): Promise<{ touchesPublicApi: boolean; partial: boolean }> {
-  if (fetchFileContent) {
-    const [fullBefore, fullAfter] = await Promise.all([
-      fetchFileContent(hunk.file, pr.ref.baseSha),
-      fetchFileContent(hunk.file, pr.ref.headSha),
-    ]);
-    if (fullBefore !== null && fullAfter !== null) {
-      return { touchesPublicApi: touchesPublicApi(fullBefore, fullAfter), partial: false };
+): Promise<PublicApiResolution> {
+  const language = languageFromPath(hunk.file);
+
+  if (language === "typescript" || language === "javascript") {
+    if (fetchFileContent) {
+      const [fullBefore, fullAfter] = await Promise.all([
+        fetchFileContent(hunk.file, pr.ref.baseSha),
+        fetchFileContent(hunk.file, pr.ref.headSha),
+      ]);
+      if (fullBefore !== null && fullAfter !== null) {
+        return {
+          touchesPublicApi: touchesPublicApi(fullBefore, fullAfter),
+          partial: false,
+          astSkipped: null,
+        };
+      }
     }
+    return {
+      touchesPublicApi: touchesPublicApi(hunk.before, hunk.after),
+      partial: true,
+      astSkipped: null,
+    };
   }
-  return { touchesPublicApi: touchesPublicApi(hunk.before, hunk.after), partial: true };
+
+  if (language === "vue") {
+    const beforeScript = extractVueScript(hunk.before);
+    const afterScript = extractVueScript(hunk.after);
+    if (beforeScript === null && afterScript === null) {
+      // Template-only hunk — nothing script-shaped to label.
+      return UNSUPPORTED_LANGUAGE;
+    }
+    return {
+      touchesPublicApi: touchesPublicApi(beforeScript ?? "", afterScript ?? ""),
+      partial: true,
+      astSkipped: null,
+    };
+  }
+
+  return UNSUPPORTED_LANGUAGE;
 }
 
 export async function runHunkProfileStage(
@@ -108,11 +166,11 @@ export async function runHunkProfileStage(
     const id = `${hunk.file}#${index}`;
     const secretCheck = containsSecret(hunk.diff);
 
-    const { touchesPublicApi: hasPublicApi, partial } = await resolvePublicApi(
-      hunk,
-      input.pr,
-      input.fetchFileContent,
-    );
+    const {
+      touchesPublicApi: hasPublicApi,
+      partial,
+      astSkipped,
+    } = await resolvePublicApi(hunk, input.pr, input.fetchFileContent);
 
     if (secretCheck) {
       entries.push({
@@ -129,6 +187,7 @@ export async function runHunkProfileStage(
         touchesAsyncProb: null,
         touchesPublicApi: hasPublicApi,
         touchesPublicApiPartial: partial,
+        astSkipped,
         requestId: null,
         latencyMs: 0,
         usage: { inputTokens: 0, outputTokens: 0 },
@@ -170,6 +229,7 @@ export async function runHunkProfileStage(
         touchesAsyncProb: null,
         touchesPublicApi: hasPublicApi,
         touchesPublicApiPartial: partial,
+        astSkipped,
         requestId: null,
         latencyMs: 0,
         usage: { inputTokens: 0, outputTokens: 0 },
@@ -217,6 +277,7 @@ export async function runHunkProfileStage(
       touchesAsyncProb: asyncDecision.noul,
       touchesPublicApi: hasPublicApi,
       touchesPublicApiPartial: partial,
+      astSkipped,
       requestId: response.requestId,
       latencyMs: response.latencyMs,
       usage: response.usage,

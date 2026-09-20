@@ -84,6 +84,33 @@ describe("loadJevestConfig", () => {
     expect(config.failClosed).toBe(false);
   });
 
+  it("defaults publish.inlineComments to true when omitted", async () => {
+    const filePath = await writeConfig(VALID_YAML);
+    const config = await loadJevestConfig(filePath);
+    expect(config.publish).toEqual({ inlineComments: true });
+  });
+
+  it("accepts an explicit publish.inlineComments: false", async () => {
+    const filePath = await writeConfig(`${VALID_YAML}\npublish:\n  inlineComments: false\n`);
+    const config = await loadJevestConfig(filePath);
+    expect(config.publish).toEqual({ inlineComments: false });
+  });
+
+  it("accepts reviewer.provider 'none' without requiring a model (Jev-only mode)", async () => {
+    const filePath = await writeConfig(
+      "reviewer:\n  provider: none\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
+    );
+    const config = await loadJevestConfig(filePath);
+    expect(config.reviewer.provider).toBe("none");
+  });
+
+  it("still throws when provider is anthropic/openai and model is missing", async () => {
+    const filePath = await writeConfig(
+      "reviewer:\n  provider: anthropic\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
+    );
+    await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+  });
+
   it("accepts the openai provider", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: openai\n  model: gpt-5.1\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",

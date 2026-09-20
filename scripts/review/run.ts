@@ -195,23 +195,38 @@ function buildDecisionPort(mode: Mode): DecisionPort {
   }
 }
 
-function buildReviewerPort(mode: Mode, config: JevestConfig): ReviewerPort {
+/**
+ * `undefined` means `reviewer.provider: "none"` (Jev-only mode) — the
+ * pipeline never calls a reviewer in that case (see run-pipeline.ts), so
+ * `--mode dry-run`/`live`/`replay` never need to build one either.
+ */
+function buildReviewerPort(mode: Mode, config: JevestConfig): ReviewerPort | undefined {
+  if (config.reviewer.provider === "none") {
+    return undefined;
+  }
   switch (mode) {
     case "dry-run":
       return createDryRunReviewer();
     case "live": {
+      const { model } = config.reviewer;
+      if (model === undefined) {
+        // jevest-config.ts's schema already requires this for "anthropic"/"openai"; defensive only.
+        throw new Error(
+          `.jevest.yml: reviewer.model is required when reviewer.provider is "${config.reviewer.provider}"`,
+        );
+      }
       if (config.reviewer.provider === "anthropic") {
         if (!process.env.ANTHROPIC_API_KEY) {
           throw new Error('reviewer.provider "anthropic" requires ANTHROPIC_API_KEY to be set');
         }
         const client = new Anthropic();
-        return createAnthropicReviewer({ client, model: config.reviewer.model });
+        return createAnthropicReviewer({ client, model });
       }
       if (!process.env.OPENAI_API_KEY) {
         throw new Error('reviewer.provider "openai" requires OPENAI_API_KEY to be set');
       }
       const client = new OpenAI();
-      return createOpenAiReviewer({ client, model: config.reviewer.model });
+      return createOpenAiReviewer({ client, model });
     }
     case "replay":
       return createRecordedReviewer({ fixturesDir: REVIEW_FIXTURES_DIR, mode: "replay" });
@@ -280,7 +295,7 @@ async function main(): Promise<number> {
   console.log(`[review] running pipeline (mode=${options.mode}, config=${options.configPath})...`);
   const result = await runPipeline({
     ref,
-    ports: { vcs, decision, reviewer },
+    ports: { vcs, decision, ...(reviewer ? { reviewer } : {}) },
     config,
     ...(fetchFileContent ? { fetchFileContent } : {}),
   });

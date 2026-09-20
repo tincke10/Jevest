@@ -63,6 +63,7 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
     reviewer: { provider: "anthropic", model: "claude-sonnet-5" },
     thresholds: policyConfig,
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
+    publish: { inlineComments: true },
     budgetUsd: 5,
     maxHunks: 50,
     skipChangeKinds: ["rename-or-format"],
@@ -428,5 +429,146 @@ describe("runPipeline", () => {
     expect(second.publication.inlineComments[0]!.fingerprint).toBe(
       first.publication.inlineComments[0]!.fingerprint,
     );
+  });
+
+  it("skips the review stage entirely, empties findings/inline comments, but still runs the merge gate when reviewer.provider is 'none' (Jev-only mode)", async () => {
+    const pr = makePr();
+    const vcs = makeVcs(pr);
+    const decision = scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+    let reviewerCalled = false;
+    const trackedReviewer: ReviewerPort = {
+      review: async (input) => {
+        reviewerCalled = true;
+        return fakeReviewer().review(input);
+      },
+    };
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision, reviewer: trackedReviewer },
+      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+    });
+
+    expect(reviewerCalled).toBe(false);
+    expect(result.failedClosed).toBe(false);
+    expect(result.review).toEqual({
+      reviews: [],
+      totalCostUsd: 0,
+      budgetExceeded: false,
+      skippedForBudgetCount: 0,
+    });
+    expect(result.findingFilter!.published).toEqual([]);
+    expect(result.publication.inlineComments).toEqual([]);
+    expect(result.publication.summaryMarkdown).toContain("LLM review disabled by config");
+    // Merge gate still ran normally on triage + CI status: safe=0.95 at
+    // medium-risk thresholds (autoMin=0.97, confirmMin=0.8) bands as
+    // "neutral" here, not "failure" — proving it genuinely evaluated
+    // rather than being forced to fail-closed by the disabled reviewer.
+    expect(result.mergeGate).not.toBeNull();
+    expect(result.mergeGate!.safeToAutomergeProb).toBe(0.95);
+    expect(result.publication.check.conclusion).toBe("neutral");
+  });
+
+  it("does not require a reviewer port at all when reviewer.provider is 'none'", async () => {
+    const pr = makePr();
+    const vcs = makeVcs(pr);
+    const decision = scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision },
+      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+    });
+
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it("publishes no inline comments and lists auto-band findings in the summary when publish.inlineComments is false", async () => {
+    const pr = makePr();
+    const vcs = makeVcs(pr);
+    const decision = scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
+      "a.ts#0-f0__severity": {
+        type: "score",
+        score: 2,
+        confidence: 0.8,
+        legend: { 0: "nit", 1: "minor", 2: "major", 3: "critical" },
+        probabilities: { 0: 0.1, 1: 0.1, 2: 0.7, 3: 0.1 },
+      },
+      "a.ts#0-f0__is_style_only": { type: "noul", noul: 0.05 },
+      "a.ts#0-f0__actionable": { type: "noul", noul: 0.9 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+    const reviewer = fakeReviewer([
+      {
+        lineStart: 1,
+        lineEnd: 1,
+        claim: "off-by-one",
+        rationale: "uses <= instead of <",
+        suggestedSeverity: "major",
+      },
+    ]);
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision, reviewer },
+      config: makeConfig({ publish: { inlineComments: false } }),
+    });
+
+    expect(result.publication.inlineComments).toEqual([]);
+    expect(result.publication.summaryMarkdown).toContain("Findings (high confidence)");
+    expect(result.publication.summaryMarkdown).toContain("off-by-one");
   });
 });

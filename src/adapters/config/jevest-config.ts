@@ -48,13 +48,38 @@ const sizeThresholdsSchema = z
   })
   .default({ smallMaxChangedLines: 50, mediumMaxChangedLines: 300 });
 
+// "none" is Jev-only mode (SPEC §5 rollout decision): the review stage
+// never runs and no LLM key is required — see run-pipeline.ts. `model` is
+// required for "anthropic"/"openai" but meaningless (and omittable) for
+// "none", enforced below with `superRefine` rather than a stricter type,
+// since zod's `discriminatedUnion` would otherwise force every caller to
+// narrow `config.reviewer` before reading `.model`.
+const reviewerSchema = z
+  .object({
+    provider: z.enum(["anthropic", "openai", "none"]),
+    model: z.string().min(1).optional(),
+  })
+  .superRefine((r, ctx) => {
+    if (r.provider !== "none" && !r.model) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["model"],
+        message: `reviewer.model is required when reviewer.provider is "${r.provider}"`,
+      });
+    }
+  });
+
+const publishSchema = z
+  .object({
+    inlineComments: z.boolean().default(true),
+  })
+  .default({ inlineComments: true });
+
 const jevestConfigSchema = z.object({
-  reviewer: z.object({
-    provider: z.enum(["anthropic", "openai"]),
-    model: z.string().min(1),
-  }),
+  reviewer: reviewerSchema,
   thresholds: z.record(z.string(), z.record(z.string(), thresholdSchema)),
   sizeThresholds: sizeThresholdsSchema,
+  publish: publishSchema,
   budgetUsd: z.number().positive(),
   maxHunks: z.number().int().positive(),
   skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
@@ -62,9 +87,13 @@ const jevestConfigSchema = z.object({
 });
 
 export interface JevestConfig {
-  readonly reviewer: { readonly provider: "anthropic" | "openai"; readonly model: string };
+  readonly reviewer: {
+    readonly provider: "anthropic" | "openai" | "none";
+    readonly model: string | undefined;
+  };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
+  readonly publish: { readonly inlineComments: boolean };
   readonly budgetUsd: number;
   readonly maxHunks: number;
   readonly skipChangeKinds: readonly string[];
@@ -111,9 +140,10 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
   }
 
   return {
-    reviewer: result.data.reviewer,
+    reviewer: { provider: result.data.reviewer.provider, model: result.data.reviewer.model },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,
+    publish: result.data.publish,
     budgetUsd: result.data.budgetUsd,
     maxHunks: result.data.maxHunks,
     skipChangeKinds: result.data.skipChangeKinds,

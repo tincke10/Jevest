@@ -321,6 +321,103 @@ describe("runHunkProfileStage", () => {
     expect(ok.changeKind).toBe("add-behavior");
   });
 
+  it("skips AST labeling for a .php file — touchesPublicApi null, astSkipped set, but still runs Jev questions on the raw diff", async () => {
+    const files: PullRequestData["files"] = [
+      {
+        path: "app/Http/Controllers/UserController.php",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ -1,1 +1,1 @@\n-echo 'old';\n+echo 'new';",
+      },
+    ];
+    const port = createFakeDecisionAdapter(scriptFor("modify-behavior", 0.9, 0.1, 0.1));
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: [],
+      maxHunks: 50,
+    });
+    expect(result.hunks[0]!.touchesPublicApi).toBeNull();
+    expect(result.hunks[0]!.astSkipped).toBe("unsupported-language");
+    // Jev questions still ran on the raw diff (NFR-14/§4.3: language gate is AST-only).
+    expect(result.hunks[0]!.changeKind).toBe("modify-behavior");
+    expect(result.totalRequests).toBe(1);
+  });
+
+  it("skips AST labeling for a .blade.php file the same way as plain PHP", async () => {
+    const files: PullRequestData["files"] = [
+      {
+        path: "resources/views/welcome.blade.php",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ -1,1 +1,1 @@\n-<h1>old</h1>\n+<h1>new</h1>",
+      },
+    ];
+    const port = createFakeDecisionAdapter(scriptFor("modify-behavior", 0.9, 0.1, 0.1));
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: [],
+      maxHunks: 50,
+    });
+    expect(result.hunks[0]!.touchesPublicApi).toBeNull();
+    expect(result.hunks[0]!.astSkipped).toBe("unsupported-language");
+  });
+
+  it("labels a .vue file's extracted <script> block instead of skipping", async () => {
+    const files: PullRequestData["files"] = [
+      {
+        path: "src/components/Widget.vue",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch:
+          "@@ -1,4 +1,4 @@\n <template><div/></template>\n <script setup>\n-export function greet() {}\n+export function greet(name) {}\n </script>",
+      },
+    ];
+    const port = createFakeDecisionAdapter(scriptFor("modify-behavior", 0.9, 0.1, 0.1));
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: [],
+      maxHunks: 50,
+    });
+    expect(result.hunks[0]!.astSkipped).toBeNull();
+    expect(result.hunks[0]!.touchesPublicApi).toBe(true);
+    expect(result.hunks[0]!.touchesPublicApiPartial).toBe(true);
+  });
+
+  it("skips a .vue hunk with no <script> block (template-only change)", async () => {
+    const files: PullRequestData["files"] = [
+      {
+        path: "src/components/Widget.vue",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ -1,1 +1,1 @@\n-<div>old</div>\n+<div>new</div>",
+      },
+    ];
+    const port = createFakeDecisionAdapter(scriptFor("modify-behavior", 0.9, 0.1, 0.1));
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: [],
+      maxHunks: 50,
+    });
+    expect(result.hunks[0]!.touchesPublicApi).toBeNull();
+    expect(result.hunks[0]!.astSkipped).toBe("unsupported-language");
+  });
+
   it("accumulates total usage across hunks", async () => {
     const files: PullRequestData["files"] = [
       {

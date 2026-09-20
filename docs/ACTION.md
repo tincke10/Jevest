@@ -52,8 +52,24 @@ Copy [`config/jevest.example.yml`](../config/jevest.example.yml) to
 `.jevest.yml` at your repo root and adjust: reviewer provider/model,
 confidence-band thresholds per stage and risk level (NFR-13), per-PR
 budget (NFR-10), max hunks per PR, and which `change_kind`s skip the LLM
-reviewer entirely. Point `config-path` elsewhere if you'd rather not use
-the repo root.
+reviewer entirely. `.jevest.yml` is optional — if it's missing, Jevest
+falls back to `config/jevest.example.yml`'s own defaults. Point
+`config-path` elsewhere if you'd rather not use the repo root.
+
+Two options worth knowing about before a first rollout:
+
+- **`reviewer.provider: none`** — Jev-only mode. The review stage never
+  runs (no LLM key required at all), so no findings are ever produced;
+  the merge gate still runs on triage and CI status alone. Useful to
+  validate triage and merge-gate behavior on a new repo, or to run
+  Jevest somewhere an LLM key genuinely isn't available, before turning
+  on actual code review.
+- **`publish.inlineComments: false`** (recommended for the first weeks on
+  a new repo) — auto-band findings are still evaluated, just listed in
+  the summary comment under "Findings (high confidence)" instead of
+  posted as inline PR comments. Lets a team see the tool's accuracy
+  before it starts leaving comments on people's code. Check status and
+  labels are unaffected either way.
 
 ### Permissions
 
@@ -96,6 +112,20 @@ It also never reviews images or binaries, never fine-tunes anything, and
 Jev itself never writes review text — an LLM (Anthropic or OpenAI,
 per your config) writes every finding; Jev only decides what to review,
 how much, and what to publish.
+
+## Language support
+
+Jevest reviews a pull request's diff regardless of language — Jev's
+`change_kind`/`touches_error_handling`/`touches_async` questions and the
+LLM review itself run on the raw diff for any file. The one
+language-specific piece is **AST-based public-API detection**
+(`touches_public_api`, SPEC §4.3): that's TypeScript/JavaScript/Vue only.
+For a `.vue` file, only its `<script>`/`<script setup>` block is
+inspected; a template-only change is treated the same as an unsupported
+language. For everything else (PHP, Blade templates, Python, Go, and so
+on), `touches_public_api` is left unset and the reviewer relies on Jev's
+other surface questions plus its own read of the diff — it never guesses
+public-API impact from a TypeScript parse of code that isn't TypeScript.
 
 ## Security notes
 

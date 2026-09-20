@@ -51,6 +51,7 @@ function makeHunkEntry(overrides: Partial<HunkProfileEntry> = {}): HunkProfileEn
     skippedFromReview: false,
     containsSecret: false,
     profileFailed: false,
+    astSkipped: null,
     ...overrides,
   };
 }
@@ -128,6 +129,8 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter({ published: [finding] }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
 
     expect(result.inlineComments).toHaveLength(1);
@@ -164,6 +167,8 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter({ published: [finding] }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     // before-line 11 ("b") is shifted to after-line 12 by the inserted line.
     expect(result.inlineComments[0]!.line).toBe(12);
@@ -179,6 +184,8 @@ describe("runPublishStage", () => {
         discarded: [makeFinding({ findingId: "c" })],
       }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(result.inlineComments).toHaveLength(0);
   });
@@ -208,6 +215,8 @@ describe("runPublishStage", () => {
         discarded: [makeFinding({ findingId: "x" }), makeFinding({ findingId: "y" })],
       }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
 
     expect(result.summaryMarkdown).toContain("security");
@@ -230,6 +239,8 @@ describe("runPublishStage", () => {
         needsHuman: [makeFinding({ claim: "unverifiable claim", unverified: true })],
       }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(result.summaryMarkdown).toMatch(/unverifiable claim.*unverified/i);
   });
@@ -241,6 +252,8 @@ describe("runPublishStage", () => {
       review: makeReview({ totalCostUsd: 0.1234 }),
       findingFilter: makeFindingFilter(),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(result.summaryMarkdown).toContain("0.1234");
     expect(result.summaryMarkdown.toLowerCase()).toContain("jev");
@@ -253,6 +266,8 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter(),
       mergeGate: makeMergeGate({ conclusion: "failure" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(result.check.conclusion).toBe("failure");
     expect(result.check.title.length).toBeGreaterThan(0);
@@ -266,6 +281,8 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter(),
       mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(success.labelsToAdd).toContain("jevest:auto-merge-ok");
     expect(success.labelsToRemove).not.toContain("jevest:auto-merge-ok");
@@ -276,6 +293,8 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter(),
       mergeGate: makeMergeGate({ conclusion: "failure" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(failure.labelsToAdd).not.toContain("jevest:auto-merge-ok");
     expect(failure.labelsToRemove).toContain("jevest:auto-merge-ok");
@@ -288,8 +307,65 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter(),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     });
     expect(result.labelsToAdd).toContain("jevest:needs-human");
+  });
+
+  it("publishes no inline comments when inlineCommentsEnabled is false, listing auto-band findings in the summary instead", () => {
+    const finding = makeFinding({ claim: "off-by-one", file: "a.ts", lineStart: 10 });
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter({ published: [finding] }),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: false,
+      reviewDisabled: false,
+    });
+
+    expect(result.inlineComments).toEqual([]);
+    expect(result.summaryMarkdown).toContain("Findings (high confidence)");
+    expect(result.summaryMarkdown).toContain("off-by-one");
+    expect(result.summaryMarkdown).toContain("a.ts");
+  });
+
+  it("leaves the check status and labels unchanged when inlineCommentsEnabled is false", () => {
+    const withInline = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter({ published: [makeFinding()] }),
+      mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+    });
+    const withoutInline = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter({ published: [makeFinding()] }),
+      mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: false,
+      reviewDisabled: false,
+    });
+    expect(withoutInline.check).toEqual(withInline.check);
+    expect(withoutInline.labelsToAdd).toEqual(withInline.labelsToAdd);
+    expect(withoutInline.labelsToRemove).toEqual(withInline.labelsToRemove);
+  });
+
+  it("shows 'no high-confidence findings' when inlineCommentsEnabled is false and nothing was published", () => {
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: false,
+      reviewDisabled: false,
+    });
+    expect(result.summaryMarkdown).toMatch(/no.*high.confidence findings/i);
   });
 
   it("is idempotent: identical input produces identical fingerprints on re-run (NFR-12)", () => {
@@ -299,11 +375,40 @@ describe("runPublishStage", () => {
       review: makeReview(),
       findingFilter: makeFindingFilter({ published: [makeFinding()] }),
       mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
     };
     const first = runPublishStage(input);
     const second = runPublishStage(input);
     expect(second.summaryFingerprint).toBe(first.summaryFingerprint);
     expect(second.inlineComments[0]!.fingerprint).toBe(first.inlineComments[0]!.fingerprint);
+  });
+
+  it("notes 'LLM review disabled by config' in the summary when reviewDisabled is true (Jev-only mode)", () => {
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview({ reviews: [], totalCostUsd: 0 }),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: true,
+    });
+    expect(result.summaryMarkdown).toContain("LLM review disabled by config");
+    expect(result.inlineComments).toEqual([]);
+  });
+
+  it("still runs the merge gate normally (triage + CI status) when reviewDisabled is true", () => {
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview({ reviews: [], totalCostUsd: 0 }),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: true,
+    });
+    expect(result.check.conclusion).toBe("success");
   });
 });
 

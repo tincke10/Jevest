@@ -24,8 +24,6 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
       - uses: tincke10/Jevest@main
         with:
           config-path: .jevest.yml
@@ -37,6 +35,7 @@ jobs:
 ```
 
 Pin `@main` to a tag once one is cut; `@main` tracks the latest commit.
+Deliberately no `actions/checkout` step — see "Why no checkout" below.
 
 ### Secrets to set
 
@@ -73,6 +72,27 @@ budgetUsd: 1
 
 Point `config-path` elsewhere if you'd rather not use the repo root.
 
+### Why no checkout
+
+The install snippet above has no `actions/checkout` step, and it doesn't
+need one: `fetchPullRequest`, `.jevest.yml`, and everything else the
+pipeline reads come from the GitHub API, not from a working tree. The one
+thing that used to want a local file — `config-path` — now falls back to
+fetching it from the PR head sha via the contents API when it isn't on
+disk (`resolveConfig` in `src/action/main.ts`), so the checkout was purely
+incidental infrastructure, not a real dependency.
+
+This matters because checkout is not free. Measured on a real consumer
+repo (InvisibleGeeks/prolicht, a 9.7 GB tree): `actions/checkout@v4` took
+**2m43s** of a 3m09s run, versus **22s** for Jevest's own work. Dropping
+the checkout step turns a ~3-minute job into a ~25-second one on a repo
+that size, for zero loss of functionality.
+
+Add `actions/checkout` back only if you specifically want `config-path`
+read from a **modified working tree** — e.g. a prior step in the same job
+rewrites `.jevest.yml` before Jevest runs. In that case the local file
+wins over the API fetch, exactly as before.
+
 Two options worth knowing about before a first rollout:
 
 - **`reviewer.provider: none`** — Jev-only mode. The review stage never
@@ -95,7 +115,9 @@ The workflow's `permissions:` block needs:
 - `pull-requests: write` — inline review comments, the summary comment, labels
 - `checks: write` — the `jevest` check run
 - `issues: write` — labels and the summary comment both go through the issues API
-- `contents: read` — the Action itself doesn't need more; `actions/checkout` does
+- `contents: read` — fetches `.jevest.yml` from the PR head sha via the
+  contents API when it isn't in a local checkout (see "Why no checkout"
+  above); also what `actions/checkout` needs, if you add that step back
 - `statuses: read` — reads the PR head commit's combined CI status for the
   merge gate's CI signal; without it, Jevest reports CI status as
   `"unknown"` instead of failing the run

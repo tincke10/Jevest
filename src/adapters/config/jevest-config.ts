@@ -153,19 +153,19 @@ function toConfidencePolicyConfig(
   return config;
 }
 
-export async function loadJevestConfig(filePath: string): Promise<JevestConfig> {
+/**
+ * Shared by {@link loadJevestConfig} (reads `userRaw` off disk) and
+ * {@link loadJevestConfigFromString} (caller already has the YAML text,
+ * e.g. fetched from the GitHub contents API): everything past "get the
+ * raw override text, or null for none" is identical — parse, merge onto
+ * `config/jevest.example.yml`'s defaults, validate. `label` is only used
+ * to name the source in error messages (a file path for the former, a
+ * caller-supplied description like `"<owner>/<repo>@<sha>:.jevest.yml"`
+ * for the latter).
+ */
+async function resolveJevestConfig(userRaw: string | null, label: string): Promise<JevestConfig> {
   const defaultsRaw = await readFile(EXAMPLE_CONFIG_PATH, "utf8");
   const defaults = parse(defaultsRaw);
-
-  let userRaw: string | null;
-  try {
-    userRaw = await readFile(filePath, "utf8");
-  } catch (error) {
-    if (!isEnoent(error)) {
-      throw error;
-    }
-    userRaw = null;
-  }
 
   let overrides: unknown = {};
   if (userRaw !== null) {
@@ -174,7 +174,7 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
       userParsed = parse(userRaw);
     } catch (error) {
       throw new JevestConfigError(
-        `${filePath}: invalid YAML (${error instanceof Error ? error.message : String(error)})`,
+        `${label}: invalid YAML (${error instanceof Error ? error.message : String(error)})`,
       );
     }
     // An empty file parses to null/undefined — that's "no overrides", not an error.
@@ -184,12 +184,12 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
   }
 
   if (!isPlainObject(overrides)) {
-    throw new JevestConfigError(`${filePath} must be a mapping of config keys to values`);
+    throw new JevestConfigError(`${label} must be a mapping of config keys to values`);
   }
 
   for (const key of Object.keys(overrides)) {
     if (!KNOWN_TOP_LEVEL_KEYS.has(key)) {
-      throw new JevestConfigError(`${filePath}: unknown config key "${key}"`);
+      throw new JevestConfigError(`${label}: unknown config key "${key}"`);
     }
   }
 
@@ -197,7 +197,7 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
 
   const result = jevestConfigSchema.safeParse(merged);
   if (!result.success) {
-    throw new JevestConfigError(`${filePath}: ${result.error.message}`);
+    throw new JevestConfigError(`${label}: ${result.error.message}`);
   }
 
   return {
@@ -210,4 +210,30 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
     skipChangeKinds: result.data.skipChangeKinds,
     failClosed: result.data.failClosed,
   };
+}
+
+export async function loadJevestConfig(filePath: string): Promise<JevestConfig> {
+  let userRaw: string | null;
+  try {
+    userRaw = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (!isEnoent(error)) {
+      throw error;
+    }
+    userRaw = null;
+  }
+  return resolveJevestConfig(userRaw, filePath);
+}
+
+/**
+ * Same merge/validation as {@link loadJevestConfig}, but for YAML text the
+ * caller already has in hand — the GitHub Action fetches `.jevest.yml`
+ * from the PR head sha via the contents API when no local checkout is
+ * present, instead of reading it off disk.
+ */
+export async function loadJevestConfigFromString(
+  yaml: string,
+  label = "<config>",
+): Promise<JevestConfig> {
+  return resolveJevestConfig(yaml, label);
 }

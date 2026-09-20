@@ -13,7 +13,9 @@ inputs:
   config-path:
     description: >-
       Path to the pipeline config file, relative to the consumer repo's
-      root. See config/jevest.example.yml for the shape.
+      root: read from the checkout if present, else fetched from the PR
+      head via the API; no checkout step needed. See
+      config/jevest.example.yml for the shape.
     required: false
     default: ".jevest.yml"
   typesafe-api-key:

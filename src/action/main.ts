@@ -22,11 +22,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Octokit } from "@octokit/rest";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
-import { type JevestConfig, loadJevestConfig } from "../adapters/config/jevest-config.js";
+import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
 import { createAnthropicReviewer } from "../adapters/reviewers/anthropic-reviewer.js";
 import { createOpenAiReviewer } from "../adapters/reviewers/openai-reviewer.js";
 import { createTypeSafeDecisionAdapter } from "../adapters/typesafe-decision-adapter.js";
-import { createGitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
+import {
+  type GitHubVcsAdapter,
+  createGitHubVcsAdapter,
+} from "../adapters/vcs/github-vcs-adapter.js";
 import { type PipelineResult, runPipeline } from "../application/pipeline/run-pipeline.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
@@ -200,6 +203,52 @@ export function createReviewer(
   // subscription's quota interactively and has no place in unattended CI.
 }
 
+function isEnoent(error: unknown): boolean {
+  return (
+    error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT"
+  );
+}
+
+/**
+ * Resolves `.jevest.yml` without requiring a checkout (see docs/ACTION.md
+ * "Why no checkout"): reads `configPath` off disk first — covers a
+ * workflow that DOES check out anyway, or a local `pnpm action` run — and
+ * only if it's not there, fetches it from the PR head sha via the GitHub
+ * contents API instead. A file absent from BOTH places is not an error:
+ * exactly like an empty file, it means "use the built-in defaults from
+ * config/jevest.example.yml" (`loadJevestConfigFromString("", ...)`).
+ * Always logs exactly one line naming which of the three sources was used.
+ */
+export async function resolveConfig(
+  vcs: GitHubVcsAdapter,
+  ref: PullRequestRef,
+  configPath: string,
+): Promise<JevestConfig> {
+  try {
+    const raw = await readFile(configPath, "utf8");
+    console.log(`jevest: config loaded from the local checkout (${configPath})`);
+    return await loadJevestConfigFromString(raw, configPath);
+  } catch (error) {
+    if (!isEnoent(error)) {
+      throw error;
+    }
+  }
+
+  const label = `${ref.owner}/${ref.repo}@${ref.headSha}:${configPath}`;
+  const remote = await vcs.fetchRepoFileContent({
+    owner: ref.owner,
+    repo: ref.repo,
+    path: configPath,
+    ref: ref.headSha,
+  });
+  if (remote === null) {
+    console.log(`jevest: config not found locally or at ${label}; using the built-in defaults`);
+    return await loadJevestConfigFromString("", configPath);
+  }
+  console.log(`jevest: config fetched from ${label} via the GitHub API`);
+  return await loadJevestConfigFromString(remote, label);
+}
+
 async function writeOutputs(env: NodeJS.ProcessEnv, result: PipelineResult): Promise<void> {
   const outputPath = env.GITHUB_OUTPUT;
   if (!outputPath) {
@@ -241,14 +290,14 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
   // "Fail-closed behavior".
   const inputs = parseActionInputs(env);
 
-  let vcs: VcsPort | undefined;
+  let vcs: GitHubVcsAdapter | undefined;
   let ref: PullRequestRef | undefined;
 
   try {
     const eventPath = requireEnvVar(env, "GITHUB_EVENT_PATH");
     ref = await loadPullRequestRefFromEvent(eventPath);
     vcs = createGitHubVcsAdapter({ client: new Octokit({ auth: inputs.githubToken }) });
-    const config = await loadJevestConfig(inputs.configPath);
+    const config = await resolveConfig(vcs, ref, inputs.configPath);
 
     const decision = createTypeSafeDecisionAdapter({
       client: new TypeSafeClient({ apiKey: inputs.typesafeApiKey, retry: { maxRetries: 0 } }),

@@ -155,6 +155,18 @@ export interface GitHubApiClient {
       context: string;
       description?: string;
     }): Promise<GhResponse<unknown>>;
+    /**
+     * `data` is deliberately `unknown`: the real response is a big union
+     * (single file vs. directory listing vs. symlink vs. submodule) and
+     * this adapter only cares about the single-file shape, narrowed by
+     * hand in `fetchRepoFileContent` below rather than fought into a type.
+     */
+    getContent(params: {
+      owner: string;
+      repo: string;
+      path: string;
+      ref: string;
+    }): Promise<GhResponse<unknown>>;
   };
   readonly checks: {
     create(params: {
@@ -177,6 +189,29 @@ export interface GitHubVcsAdapterOptions {
   readonly sleep?: (ms: number) => Promise<void>;
   /** Injectable clock, used to turn `x-ratelimit-reset` into a delay. Default: `Date.now`. */
   readonly now?: () => number;
+}
+
+/**
+ * `VcsPort` plus one GitHub-specific extra the Action entrypoint uses to
+ * read `.jevest.yml` from the PR head sha via the API when there is no
+ * local checkout (see docs/ACTION.md "Why no checkout"). Not part of
+ * `VcsPort` itself — that's the shared, VCS-agnostic contract the review
+ * pipeline runs against — so this stays a GitHub-only capability on the
+ * concrete adapter.
+ */
+export interface GitHubVcsAdapter extends VcsPort {
+  /**
+   * Fetches one file's text content from a repo at a given ref via the
+   * contents API, base64-decoded. Resolves `null` on a 404 (file absent at
+   * that ref) so callers can treat "no such file" as a normal outcome, not
+   * an error.
+   */
+  fetchRepoFileContent(params: {
+    owner: string;
+    repo: string;
+    path: string;
+    ref: string;
+  }): Promise<string | null>;
 }
 
 const PER_PAGE = 100;
@@ -295,7 +330,7 @@ function toCommitStatusState(
   }
 }
 
-export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): VcsPort {
+export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): GitHubVcsAdapter {
   const client = options.client;
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   const sleep = options.sleep ?? defaultSleep;
@@ -523,6 +558,34 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): VcsPor
       await publishSummary(ref, publication);
       await publishLabels(ref, publication);
       await publishCheck(ref, publication);
+    },
+
+    async fetchRepoFileContent(params: {
+      owner: string;
+      repo: string;
+      path: string;
+      ref: string;
+    }): Promise<string | null> {
+      try {
+        const { data } = await withRateLimitRetry(() => client.repos.getContent(params));
+        if (
+          typeof data !== "object" ||
+          data === null ||
+          Array.isArray(data) ||
+          !("content" in data) ||
+          typeof (data as { content: unknown }).content !== "string"
+        ) {
+          throw new Error(
+            `jevest: unexpected contents API response for "${params.path}" — expected a single file, got something else (a directory?)`,
+          );
+        }
+        return Buffer.from((data as { content: string }).content, "base64").toString("utf8");
+      } catch (error) {
+        if (isNotFound(error)) {
+          return null;
+        }
+        throw error;
+      }
     },
   };
 }

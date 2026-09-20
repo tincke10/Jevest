@@ -1,7 +1,12 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JevestConfig } from "../adapters/config/jevest-config.js";
+import type { GitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
+import type { ReviewPublication } from "../domain/ports/vcs-port.js";
+import type { PullRequestData, PullRequestRef } from "../domain/pull-request.js";
 import {
   ActionInputError,
   type ActionInputs,
@@ -9,6 +14,7 @@ import {
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
+  resolveConfig,
 } from "./main.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -164,5 +170,98 @@ describe("loadPullRequestRefFromEvent", () => {
       headSha: "abc123headsha0000000000000000000000000",
       baseSha: "def456basesha0000000000000000000000000",
     });
+  });
+});
+
+const REF: PullRequestRef = {
+  owner: "tincke10",
+  repo: "jevest",
+  number: 42,
+  headSha: "head-sha",
+  baseSha: "base-sha",
+};
+
+function makeFakeVcs(
+  fetchRepoFileContent: GitHubVcsAdapter["fetchRepoFileContent"],
+): GitHubVcsAdapter {
+  return {
+    fetchPullRequest: vi.fn<() => Promise<PullRequestData>>(),
+    publishReview: vi.fn<(ref: PullRequestRef, publication: ReviewPublication) => Promise<void>>(),
+    fetchRepoFileContent,
+  };
+}
+
+describe("resolveConfig", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-action-config-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reads config-path off the local checkout when it exists, without calling the GitHub API", async () => {
+    const configPath = join(dir, ".jevest.yml");
+    await writeFile(configPath, "budgetUsd: 3\n", "utf8");
+    const fetchRepoFileContent = vi.fn();
+    const vcs = makeFakeVcs(fetchRepoFileContent);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const config = await resolveConfig(vcs, REF, configPath);
+
+    expect(config.budgetUsd).toBe(3);
+    expect(fetchRepoFileContent).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("local checkout"));
+    log.mockRestore();
+  });
+
+  it("fetches config-path from the PR head sha via the API when it is not on disk", async () => {
+    const configPath = join(dir, "does-not-exist.jevest.yml");
+    const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
+    const vcs = makeFakeVcs(fetchRepoFileContent);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const config = await resolveConfig(vcs, REF, configPath);
+
+    expect(config.budgetUsd).toBe(7);
+    expect(fetchRepoFileContent).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      path: configPath,
+      ref: "head-sha",
+    });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("via the GitHub API"));
+    log.mockRestore();
+  });
+
+  it("falls back to the built-in defaults, logging one line, when the file is absent both locally and in the repo", async () => {
+    const configPath = join(dir, "does-not-exist.jevest.yml");
+    const vcs = makeFakeVcs(vi.fn().mockResolvedValue(null));
+    const silencedLog = vi.spyOn(console, "log").mockImplementation(() => {});
+    const defaults = await resolveConfig(
+      makeFakeVcs(vi.fn().mockResolvedValue(null)),
+      REF,
+      join(dir, "also-does-not-exist.jevest.yml"),
+    );
+    silencedLog.mockClear();
+
+    const config = await resolveConfig(vcs, REF, configPath);
+
+    expect(config).toEqual(defaults);
+    expect(silencedLog).toHaveBeenCalledWith(
+      expect.stringContaining("using the built-in defaults"),
+    );
+    silencedLog.mockRestore();
+  });
+
+  it("propagates a non-ENOENT local read error instead of falling through to the API", async () => {
+    // `dir` itself is a directory, not a file: readFile on it reliably fails EISDIR, not ENOENT.
+    const fetchRepoFileContent = vi.fn();
+    const vcs = makeFakeVcs(fetchRepoFileContent);
+
+    await expect(resolveConfig(vcs, REF, dir)).rejects.toThrow();
+    expect(fetchRepoFileContent).not.toHaveBeenCalled();
   });
 });

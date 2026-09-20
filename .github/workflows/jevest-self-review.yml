@@ -25,6 +25,11 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
+      # Required here because `uses: ./` needs this repo's own working tree
+      # checked out to run the composite action from. A consumer referencing
+      # `tincke10/Jevest@main` does NOT need this step — see docs/ACTION.md
+      # "Why no checkout": the Action reads everything (including
+      # .jevest.yml, when it's not on disk) via the GitHub API instead.
       - uses: actions/checkout@v4
 
       - name: Run Jevest on itself

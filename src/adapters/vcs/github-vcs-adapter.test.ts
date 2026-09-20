@@ -61,6 +61,13 @@ function createFakeClient(overrides: Partial<GitHubApiClient> = {}): GitHubApiCl
     repos: {
       getCombinedStatusForRef: vi.fn().mockResolvedValue(ghResponse({ state: "success" })),
       createCommitStatus: vi.fn().mockResolvedValue(ghResponse({})),
+      getContent: vi.fn().mockResolvedValue(
+        ghResponse({
+          type: "file",
+          encoding: "base64",
+          content: Buffer.from("reviewer:\n  provider: none\n", "utf8").toString("base64"),
+        }),
+      ),
     },
     checks: {
       create: vi.fn().mockResolvedValue(ghResponse({})),
@@ -523,5 +530,107 @@ describe("createGitHubVcsAdapter — rate-limit backoff", () => {
 
     await expect(adapter.fetchPullRequest(REF)).rejects.toThrow();
     expect(get).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("createGitHubVcsAdapter — fetchRepoFileContent", () => {
+  it("base64-decodes the contents API response into a text string", async () => {
+    const getContent = vi.fn().mockResolvedValue(
+      ghResponse({
+        type: "file",
+        encoding: "base64",
+        content: Buffer.from(
+          "reviewer:\n  provider: anthropic\n  model: claude-sonnet-5\n",
+          "utf8",
+        ).toString("base64"),
+      }),
+    );
+    const client = createFakeClient({ repos: { ...createFakeClient().repos, getContent } });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    const content = await adapter.fetchRepoFileContent({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest.yml",
+      ref: "head-sha",
+    });
+
+    expect(content).toBe("reviewer:\n  provider: anthropic\n  model: claude-sonnet-5\n");
+    expect(getContent).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest.yml",
+      ref: "head-sha",
+    });
+  });
+
+  it("resolves null when the file does not exist at that ref (404)", async () => {
+    const getContent = vi.fn().mockRejectedValue(githubError(404));
+    const client = createFakeClient({ repos: { ...createFakeClient().repos, getContent } });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    const content = await adapter.fetchRepoFileContent({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest.yml",
+      ref: "head-sha",
+    });
+
+    expect(content).toBeNull();
+  });
+
+  it("still throws a non-404 error", async () => {
+    const getContent = vi.fn().mockRejectedValue(githubError(500));
+    const client = createFakeClient({ repos: { ...createFakeClient().repos, getContent } });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await expect(
+      adapter.fetchRepoFileContent({
+        owner: "tincke10",
+        repo: "jevest",
+        path: ".jevest.yml",
+        ref: "head-sha",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("throws when the path is a directory instead of a file", async () => {
+    const getContent = vi.fn().mockResolvedValue(ghResponse([{ type: "file", name: "a.ts" }]));
+    const client = createFakeClient({ repos: { ...createFakeClient().repos, getContent } });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await expect(
+      adapter.fetchRepoFileContent({
+        owner: "tincke10",
+        repo: "jevest",
+        path: "src",
+        ref: "head-sha",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("retries a rate-limited 429 before succeeding", async () => {
+    const getContent = vi
+      .fn()
+      .mockRejectedValueOnce(githubError(429, { "retry-after": "0" }))
+      .mockResolvedValue(
+        ghResponse({
+          type: "file",
+          content: Buffer.from("budgetUsd: 1\n", "utf8").toString("base64"),
+        }),
+      );
+    const client = createFakeClient({ repos: { ...createFakeClient().repos, getContent } });
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const adapter = createGitHubVcsAdapter({ client, sleep });
+
+    const content = await adapter.fetchRepoFileContent({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest.yml",
+      ref: "head-sha",
+    });
+
+    expect(content).toBe("budgetUsd: 1\n");
+    expect(getContent).toHaveBeenCalledTimes(2);
   });
 });

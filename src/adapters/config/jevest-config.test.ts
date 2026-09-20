@@ -2,7 +2,11 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { JevestConfigError, loadJevestConfig } from "./jevest-config.js";
+import {
+  JevestConfigError,
+  loadJevestConfig,
+  loadJevestConfigFromString,
+} from "./jevest-config.js";
 
 const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
 
@@ -243,5 +247,48 @@ describe("loadJevestConfig", () => {
       expect(config.maxHunks).toBe(defaults.maxHunks);
       expect(config.thresholds).toEqual(defaults.thresholds);
     });
+  });
+});
+
+describe("loadJevestConfigFromString", () => {
+  it("parses a valid config from a YAML string, same as loadJevestConfig from a file", async () => {
+    const fromString = await loadJevestConfigFromString(VALID_YAML, "owner/repo@sha:.jevest.yml");
+    const filePath = await writeConfig(VALID_YAML);
+    const fromFile = await loadJevestConfig(filePath);
+
+    expect(fromString).toEqual(fromFile);
+  });
+
+  it("treats an empty string as equivalent to the full defaults", async () => {
+    const config = await loadJevestConfigFromString("", "owner/repo@sha:.jevest.yml");
+    const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+    expect(config).toEqual(defaults);
+  });
+
+  it("deep-merges a partial override, same rules as loadJevestConfig", async () => {
+    const config = await loadJevestConfigFromString("budgetUsd: 1\n", "owner/repo@sha:.jevest.yml");
+    const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+
+    expect(config.budgetUsd).toBe(1);
+    expect(config.thresholds).toEqual(defaults.thresholds);
+  });
+
+  it("throws JevestConfigError naming the given label on invalid YAML", async () => {
+    await expect(
+      loadJevestConfigFromString("reviewer: [oops\n", "owner/repo@sha:.jevest.yml"),
+    ).rejects.toThrow(JevestConfigError);
+    await expect(
+      loadJevestConfigFromString("reviewer: [oops\n", "owner/repo@sha:.jevest.yml"),
+    ).rejects.toThrow(/owner\/repo@sha:\.jevest\.yml/);
+  });
+
+  it("throws loudly, naming the key, for an unknown top-level config key", async () => {
+    await expect(
+      loadJevestConfigFromString("budgetUsdd: 1\n", "owner/repo@sha:.jevest.yml"),
+    ).rejects.toThrow(/budgetUsdd/);
+  });
+
+  it('defaults the label to "<config>" when omitted', async () => {
+    await expect(loadJevestConfigFromString("reviewer: [oops\n")).rejects.toThrow(/<config>/);
   });
 });

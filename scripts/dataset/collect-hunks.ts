@@ -575,8 +575,9 @@ function collectFromRepo(
       const hunks = parseHunksFromShow(showOut);
       if (hunks.length === 0) continue; // no eligible source hunk in this commit — skip it (v2)
 
-      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       const hunk = hunks[0];
+      if (!hunk) continue; // hunks.length > 0 guaranteed above; guard for the type checker.
+      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       defect.push(
         makeRecord(
           repo,
@@ -612,8 +613,9 @@ function collectFromRepo(
       const hunks = parseHunksFromShow(showOut);
       if (hunks.length === 0) continue; // no eligible source hunk in this commit — skip it
 
-      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       const hunk = hunks[0];
+      if (!hunk) continue; // hunks.length > 0 guaranteed above; guard for the type checker.
+      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       let category = categoryFor(c.type);
       if (c.type === "chore") category = refineChoreCategory(c.subject);
 

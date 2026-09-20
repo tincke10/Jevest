@@ -35,6 +35,50 @@ export const CLAUDE_SONNET_5_PRICING: ModelPricing = {
   cacheWritePerMTok: 2.5,
 };
 
+/**
+ * deepseek-v4-pro (DeepSeek-V4-Pro), PEAK rates per
+ * https://api-docs.deepseek.com/quick_start/pricing as of 2026-09-20:
+ * $1.32 / MTok input on cache miss, $0.044 on cache hit, $3.96 output.
+ * Off-peak (outside 01:00–04:00 and 06:00–10:00 UTC, Mon–Fri) is roughly
+ * half; peak is used here so the budget cut-off (NFR-10) never
+ * under-estimates. DeepSeek bills a cache miss at the plain input rate and
+ * lists no separate cache-write charge, hence cacheWritePerMTok 0 — the
+ * adapter reports cache misses as `inputTokens`, so nothing is skipped.
+ */
+export const DEEPSEEK_V4_PRO_PRICING: ModelPricing = {
+  inputPerMTok: 1.32,
+  outputPerMTok: 3.96,
+  cacheReadPerMTok: 0.044,
+  cacheWritePerMTok: 0,
+};
+
+/** deepseek-flash (DeepSeek-V4.1-Flash), peak: $0.30 in (miss), $0.006 (hit), $1.20 out. Same source/date. */
+export const DEEPSEEK_FLASH_PRICING: ModelPricing = {
+  inputPerMTok: 0.3,
+  outputPerMTok: 1.2,
+  cacheReadPerMTok: 0.006,
+  cacheWritePerMTok: 0,
+};
+
+/**
+ * Picks the rate table for a `reviewer.model` id by family. Unknown ids
+ * (including OpenAI's, whose pricing isn't confirmed in this repo's
+ * sources) fall back to the Sonnet 5 table rather than $0, so the budget
+ * cut-off still bites on a mis-typed model name.
+ */
+export function pricingForModel(model: string): ModelPricing {
+  if (model.includes("opus")) {
+    return CLAUDE_OPUS_5_PRICING;
+  }
+  if (model.startsWith("deepseek-flash") || model.startsWith("deepseek-v4-flash")) {
+    return DEEPSEEK_FLASH_PRICING;
+  }
+  if (model.startsWith("deepseek")) {
+    return DEEPSEEK_V4_PRO_PRICING;
+  }
+  return CLAUDE_SONNET_5_PRICING;
+}
+
 const MTOK = 1_000_000;
 
 /** Cost in USD of one reviewer call, given its usage and the model's pricing. */

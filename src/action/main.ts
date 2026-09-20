@@ -24,6 +24,10 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
 import { createAnthropicReviewer } from "../adapters/reviewers/anthropic-reviewer.js";
+import {
+  DEEPSEEK_BASE_URL,
+  createDeepSeekReviewer,
+} from "../adapters/reviewers/deepseek-reviewer.js";
 import { createOpenAiReviewer } from "../adapters/reviewers/openai-reviewer.js";
 import { createTypeSafeDecisionAdapter } from "../adapters/typesafe-decision-adapter.js";
 import {
@@ -49,6 +53,7 @@ export interface ActionInputs {
   readonly typesafeApiKey: string;
   readonly anthropicApiKey?: string;
   readonly openaiApiKey?: string;
+  readonly deepseekApiKey?: string;
   readonly githubToken: string;
   readonly failOn: FailOn;
 }
@@ -93,6 +98,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
   const typesafeApiKey = requireInput(env, "typesafe-api-key");
   const anthropicApiKey = readInput(env, "anthropic-api-key");
   const openaiApiKey = readInput(env, "openai-api-key");
+  const deepseekApiKey = readInput(env, "deepseek-api-key");
   const configPath = readInput(env, "config-path") ?? DEFAULT_CONFIG_PATH;
   const failOnRaw = readInput(env, "fail-on") ?? DEFAULT_FAIL_ON;
   if (failOnRaw !== "never" && failOnRaw !== "failure") {
@@ -106,6 +112,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
     failOn: failOnRaw,
     ...(anthropicApiKey !== undefined ? { anthropicApiKey } : {}),
     ...(openaiApiKey !== undefined ? { openaiApiKey } : {}),
+    ...(deepseekApiKey !== undefined ? { deepseekApiKey } : {}),
   };
 }
 
@@ -190,6 +197,18 @@ export function createReviewer(
     }
     return createAnthropicReviewer({
       client: new Anthropic({ apiKey: inputs.anthropicApiKey }),
+      model,
+    });
+  }
+  if (provider === "deepseek") {
+    if (inputs.deepseekApiKey === undefined) {
+      throw new ActionInputError(
+        'input "deepseek-api-key" is required because .jevest.yml selects the deepseek reviewer',
+      );
+    }
+    // DeepSeek speaks the OpenAI wire protocol: same SDK, different base URL.
+    return createDeepSeekReviewer({
+      client: new OpenAI({ apiKey: inputs.deepseekApiKey, baseURL: DEEPSEEK_BASE_URL }),
       model,
     });
   }

@@ -6,7 +6,7 @@
  * and appends the result to `datasets/findings.jsonl`.
  *
  * Usage:
- *   pnpm findings --provider anthropic|openai|claude-cli [--limit N]
+ *   pnpm findings --provider anthropic|openai|deepseek|claude-cli [--limit N]
  *                 [--budget-usd N] [--estimate] [--out path] [--record]
  *                 [--seed N] [--concurrency N]
  *
@@ -31,6 +31,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { createAnthropicReviewer } from "../../src/adapters/reviewers/anthropic-reviewer.js";
 import { createClaudeCliReviewer } from "../../src/adapters/reviewers/claude-cli-reviewer.js";
+import {
+  DEEPSEEK_BASE_URL,
+  createDeepSeekReviewer,
+} from "../../src/adapters/reviewers/deepseek-reviewer.js";
 import { createOpenAiReviewer } from "../../src/adapters/reviewers/openai-reviewer.js";
 import { createRecordedReviewer } from "../../src/adapters/reviewers/recorded-reviewer.js";
 import { estimateClaudeCliCostUsd } from "../../src/application/findings/estimate-claude-cli-cost.js";
@@ -38,6 +42,7 @@ import { estimateReviewCostUsd } from "../../src/application/findings/estimate-c
 import { generateFindings } from "../../src/application/findings/generate-findings.js";
 import {
   CLAUDE_OPUS_5_PRICING,
+  DEEPSEEK_V4_PRO_PRICING,
   type ModelPricing,
 } from "../../src/application/findings/pricing.js";
 import { summarizeFindings } from "../../src/application/findings/summary.js";
@@ -69,8 +74,8 @@ const ASSUMED_OUTPUT_TOKENS_PER_HUNK = 150;
 const RATE_LIMIT_MAX_ATTEMPTS = 4;
 const RATE_LIMIT_BACKOFF_MS = 60_000;
 
-type Provider = "anthropic" | "openai" | "claude-cli";
-const PROVIDERS: readonly Provider[] = ["anthropic", "openai", "claude-cli"];
+type Provider = "anthropic" | "openai" | "deepseek" | "claude-cli";
+const PROVIDERS: readonly Provider[] = ["anthropic", "openai", "deepseek", "claude-cli"];
 
 export interface CliOptions {
   readonly provider: Provider;
@@ -164,7 +169,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   }
 
   if (!provider) {
-    throw new Error('--provider is required (one of "anthropic", "openai", "claude-cli")');
+    throw new Error(`--provider is required (one of ${PROVIDERS.map((p) => `"${p}"`).join(", ")})`);
   }
 
   return { provider, limit, budgetUsd, estimate, out, record, seed, concurrency };
@@ -173,6 +178,9 @@ export function parseArgs(argv: readonly string[]): CliOptions {
 function pricingFor(provider: Provider): ModelPricing {
   if (provider === "anthropic") {
     return CLAUDE_OPUS_5_PRICING;
+  }
+  if (provider === "deepseek") {
+    return DEEPSEEK_V4_PRO_PRICING;
   }
   if (provider === "claude-cli") {
     // Never actually used for cost math: the claude-cli reviewer always
@@ -205,6 +213,13 @@ function buildReviewer(provider: Provider, record: boolean): ReviewerPort {
       throw new Error('provider "openai" requires OPENAI_API_KEY to be set');
     }
     underlying = createOpenAiReviewer({ client: new OpenAI() });
+  } else if (provider === "deepseek") {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      throw new Error('provider "deepseek" requires DEEPSEEK_API_KEY to be set');
+    }
+    underlying = createDeepSeekReviewer({
+      client: new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: DEEPSEEK_BASE_URL }),
+    });
   } else {
     // claude-cli: no API key check — it deliberately spawns `claude -p`
     // with ANTHROPIC_API_KEY stripped, drawing on the Claude Max

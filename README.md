@@ -11,7 +11,7 @@ Status: phase 0/1 skeleton — hexagonal domain + decision-port adapters
 
 ## Environment
 Set these as environment variables (never commit them):
-`TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL` (optional), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`.
+`TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL` (optional), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`.
 The live TypeSafe test runs only when `TYPESAFE_API_KEY` is present.
 
 ## Phase 0 spike

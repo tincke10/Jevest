@@ -89,13 +89,16 @@ const sizeThresholdsSchema = z
 
 // "none" is Jev-only mode (SPEC §5 rollout decision): the review stage
 // never runs and no LLM key is required — see run-pipeline.ts. `model` is
-// required for "anthropic"/"openai" but meaningless (and omittable) for
-// "none", enforced below with `superRefine` rather than a stricter type,
-// since zod's `discriminatedUnion` would otherwise force every caller to
-// narrow `config.reviewer` before reading `.model`.
+// required for "anthropic"/"openai"/"deepseek" but meaningless (and
+// omittable) for "none", enforced below with `superRefine` rather than a
+// stricter type, since zod's `discriminatedUnion` would otherwise force
+// every caller to narrow `config.reviewer` before reading `.model`.
+export const REVIEWER_PROVIDERS = ["anthropic", "openai", "deepseek", "none"] as const;
+export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
+
 const reviewerSchema = z
   .object({
-    provider: z.enum(["anthropic", "openai", "none"]),
+    provider: z.enum(REVIEWER_PROVIDERS),
     model: z.string().min(1).optional(),
   })
   .superRefine((r, ctx) => {
@@ -127,7 +130,7 @@ const jevestConfigSchema = z.object({
 
 export interface JevestConfig {
   readonly reviewer: {
-    readonly provider: "anthropic" | "openai" | "none";
+    readonly provider: ReviewerProvider;
     readonly model: string | undefined;
   };
   readonly thresholds: ConfidencePolicyConfig;

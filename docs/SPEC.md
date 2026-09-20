@@ -386,6 +386,14 @@ jevest/
 | Orden de trabajo | Fase 1a (filtro de findings) es la hipótesis central y bloqueante; 0b corre en paralelo y no bloquea | Presupuesto del LLM revisor se gasta en 1a |
 | Corridas con `--limit` | Nunca son evidencia: muestra estratificada con semilla y advertencia impresa | Solo smoke tests |
 
+### Decisiones del 2026-09-20
+
+| Tema | Decisión | Consecuencia |
+|---|---|---|
+| Tercer proveedor LLM | DeepSeek (`deepseek-v4-pro` por defecto, `deepseek-flash` como opción barata) vía el SDK de OpenAI apuntado a `https://api.deepseek.com` | Cuarto adapter de `ReviewerPort`; input `deepseek-api-key` en la Action; `pnpm findings --provider deepseek` |
+| Salida estructurada en DeepSeek | Solo soporta `json_object`, no `json_schema`; el adapter valida el JSON contra `reviewOutputSchema` del lado cliente y trata contenido vacío o truncado como `ReviewerParseError` del hunk, nunca como "sin findings" | Un hunk con respuesta inválida queda registrado con error en el resumen; el filtro no ve findings inventados |
+| Costo DeepSeek | Tarifas PICO (01–04 y 06–10 UTC, lun–vie) en la tabla de pricing; cache hit y miss se reportan por separado (`prompt_cache_hit/miss_tokens`) para no cobrar dos veces | El corte por `budgetUsd` nunca subestima; fuera de pico el costo real es ~la mitad |
+
 ### Pendiente
 
 - Nombre y organización para publicar la Action y el dataset (fase 3).

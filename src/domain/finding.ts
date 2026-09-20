@@ -6,7 +6,7 @@
  * `src/application/spike/hunk-record.ts`.
  */
 
-export type ReviewerProvider = "anthropic" | "openai" | "claude-cli";
+export type ReviewerProvider = "anthropic" | "openai" | "deepseek" | "claude-cli";
 export type FindingSeverity = "nit" | "minor" | "major" | "critical";
 /** How the reviewer call was paid for. Omitted on the wire (and undefined here) means "api". */
 export type FindingBilling = "api" | "subscription";
@@ -63,7 +63,12 @@ export class FindingRecordParseError extends Error {
   }
 }
 
-const REVIEWER_PROVIDERS = new Set<ReviewerProvider>(["anthropic", "openai", "claude-cli"]);
+const REVIEWER_PROVIDERS = new Set<ReviewerProvider>([
+  "anthropic",
+  "openai",
+  "deepseek",
+  "claude-cli",
+]);
 const FINDING_SEVERITIES = new Set<FindingSeverity>(["nit", "minor", "major", "critical"]);
 const FINDING_BILLINGS = new Set<FindingBilling>(["api", "subscription"]);
 

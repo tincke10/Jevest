@@ -42,6 +42,7 @@ describe("parseActionInputs", () => {
       INPUT_CONFIG_PATH: "config/jevest.yml",
       INPUT_ANTHROPIC_API_KEY: "sk-ant-test",
       INPUT_OPENAI_API_KEY: "sk-oai-test",
+      INPUT_DEEPSEEK_API_KEY: "sk-ds-test",
       INPUT_FAIL_ON: "failure",
     });
     expect(inputs).toEqual({
@@ -49,6 +50,7 @@ describe("parseActionInputs", () => {
       typesafeApiKey: "ts_test",
       anthropicApiKey: "sk-ant-test",
       openaiApiKey: "sk-oai-test",
+      deepseekApiKey: "sk-ds-test",
       githubToken: "ghp_test",
       failOn: "failure",
     });
@@ -150,6 +152,17 @@ describe("createReviewer", () => {
   it("throws when provider is openai but no openai-api-key input was given", () => {
     const config = makeConfig({ provider: "openai", model: "gpt-5.1" });
     expect(() => createReviewer(config, makeInputs())).toThrow(ActionInputError);
+  });
+
+  it("builds a deepseek reviewer when a deepseek key is provided", () => {
+    const config = makeConfig({ provider: "deepseek", model: "deepseek-v4-pro" });
+    const reviewer = createReviewer(config, makeInputs({ deepseekApiKey: "sk-ds-test" }));
+    expect(reviewer).toBeDefined();
+  });
+
+  it("throws when provider is deepseek but no deepseek-api-key input was given", () => {
+    const config = makeConfig({ provider: "deepseek", model: "deepseek-v4-pro" });
+    expect(() => createReviewer(config, makeInputs())).toThrow(/deepseek-api-key/);
   });
 
   it("throws a clear error if model is missing for a non-none provider (defensive; config validation should already catch this)", () => {

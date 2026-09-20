@@ -15,11 +15,7 @@ import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { PullRequestRef } from "../../domain/pull-request.js";
-import {
-  CLAUDE_OPUS_5_PRICING,
-  CLAUDE_SONNET_5_PRICING,
-  type ModelPricing,
-} from "../findings/pricing.js";
+import { pricingForModel } from "../findings/pricing.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
 import { type HunkProfileStageResult, runHunkProfileStage } from "./stages/hunk-profile.js";
 import { type MergeGateStageResult, runMergeGateStage } from "./stages/merge-gate.js";
@@ -62,10 +58,6 @@ export interface PipelineResult {
   readonly check: import("../../domain/ports/vcs-port.js").ReviewPublication["check"];
   readonly findingsPublished: number;
   readonly costUsd: number;
-}
-
-function pricingFor(model: string): ModelPricing {
-  return model.includes("opus") ? CLAUDE_OPUS_5_PRICING : CLAUDE_SONNET_5_PRICING;
 }
 
 function summaryFields(
@@ -183,7 +175,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       hunks: hunkProfile.hunks,
       reviewerPort: ports.reviewer,
       // config validation guarantees model is set whenever provider isn't "none".
-      pricing: pricingFor(config.reviewer.model ?? config.reviewer.provider),
+      pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
       budgetUsd: config.budgetUsd,
     });
   }

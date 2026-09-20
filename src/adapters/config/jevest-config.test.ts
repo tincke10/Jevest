@@ -129,6 +129,14 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer.provider).toBe("openai");
   });
 
+  it("accepts the deepseek provider", async () => {
+    const filePath = await writeConfig(
+      "reviewer:\n  provider: deepseek\n  model: deepseek-v4-pro\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
+    );
+    const config = await loadJevestConfig(filePath);
+    expect(config.reviewer).toEqual({ provider: "deepseek", model: "deepseek-v4-pro" });
+  });
+
   it("throws a clear error for an unknown provider", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: cohere\n  model: x\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",

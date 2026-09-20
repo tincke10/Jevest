@@ -31,6 +31,11 @@ inputs:
       API key for OpenAI. Required only when .jevest.yml selects the
       openai reviewer. Pass as a secret, never a literal.
     required: false
+  deepseek-api-key:
+    description: >-
+      API key for DeepSeek. Required only when .jevest.yml selects the
+      deepseek reviewer. Pass as a secret, never a literal.
+    required: false
   github-token:
     description: >-
       Token used to read the PR and publish comments/labels/checks. Needs
@@ -96,5 +101,6 @@ runs:
         INPUT_TYPESAFE_API_KEY: ${{ inputs.typesafe-api-key }}
         INPUT_ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         INPUT_OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        INPUT_DEEPSEEK_API_KEY: ${{ inputs.deepseek-api-key }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}

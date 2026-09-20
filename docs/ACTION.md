@@ -29,7 +29,8 @@ jobs:
           config-path: .jevest.yml
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}  # if .jevest.yml selects openai instead
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}      # if .jevest.yml selects openai instead
+          # deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}  # if .jevest.yml selects deepseek instead
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on: never
 ```
@@ -44,6 +45,7 @@ Deliberately no `actions/checkout` step — see "Why no checkout" below.
 | `TYPESAFE_API_KEY` | Always | Jev, the decision layer (NFR-9: environment/secrets only, never a literal in the workflow) |
 | `ANTHROPIC_API_KEY` | If `.jevest.yml` selects `reviewer.provider: anthropic` | |
 | `OPENAI_API_KEY` | If `.jevest.yml` selects `reviewer.provider: openai` | |
+| `DEEPSEEK_API_KEY` | If `.jevest.yml` selects `reviewer.provider: deepseek` | Models `deepseek-v4-pro` (default) or `deepseek-flash`; see "Choosing a reviewer" |
 | `GITHUB_TOKEN` | Always | The built-in token is enough; no PAT needed |
 
 ### `.jevest.yml`
@@ -71,6 +73,25 @@ budgetUsd: 1
 ```
 
 Point `config-path` elsewhere if you'd rather not use the repo root.
+
+### Choosing a reviewer
+
+`reviewer.provider` selects which LLM writes the findings; Jev's role is
+identical whichever you pick. All three are behind the same `ReviewerPort`
+and receive the same prompt, so switching is a config change, not a code
+change.
+
+| Provider | Models | Structured output | Notes |
+|---|---|---|---|
+| `anthropic` | `claude-opus-5`, `claude-sonnet-5` | Server-enforced schema (`messages.parse`) | Default. Prompt caching on the system prompt |
+| `openai` | any chat model | Server-enforced schema (`json_schema`) | Pricing table not confirmed in this repo; cost is estimated at Sonnet 5 rates |
+| `deepseek` | `deepseek-v4-pro` (default), `deepseek-flash` | `json_object` only, validated client-side | OpenAI-compatible endpoint `https://api.deepseek.com`; peak-rate pricing used for the budget cut-off; a 402 means the DeepSeek account has no balance |
+
+DeepSeek's json mode has one documented quirk: the API "may occasionally
+return empty content". Jevest treats an empty or malformed reply as a
+parse error for that hunk (the hunk is reported as unreviewed in the
+summary), never as "no findings" — an empty reply is not evidence that the
+code is fine.
 
 ### Why no checkout
 
@@ -151,8 +172,8 @@ endpoint wired into its GitHub client at all; calling one would be a
 compile error, not just a policy.
 
 It also never reviews images or binaries, never fine-tunes anything, and
-Jev itself never writes review text — an LLM (Anthropic or OpenAI,
-per your config) writes every finding; Jev only decides what to review,
+Jev itself never writes review text — an LLM (Anthropic, OpenAI or
+DeepSeek, per your config) writes every finding; Jev only decides what to review,
 how much, and what to publish.
 
 ## Language support
@@ -179,7 +200,7 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   and secret-exfiltration attacks against PR-review bots work. `pull_request`
   from a fork gets a read-only, fork-scoped `GITHUB_TOKEN` and no repo
   secrets, so this Action simply can't read `TYPESAFE_API_KEY` /
-  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` on a fork PR under that trigger —
+  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` on a fork PR under that trigger —
   it fails the input-parsing step closed instead. If you need
   `pull_request_target` for another reason, do not add this Action to the
   same job/workflow without a manual approval gate in front of it.

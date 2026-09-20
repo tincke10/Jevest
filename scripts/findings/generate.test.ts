@@ -28,6 +28,10 @@ describe("parseArgs", () => {
     expect(parseArgs(["--provider", "openai"]).provider).toBe("openai");
   });
 
+  it("parses --provider deepseek", () => {
+    expect(parseArgs(["--provider", "deepseek"]).provider).toBe("deepseek");
+  });
+
   it("parses --provider claude-cli", () => {
     expect(parseArgs(["--provider", "claude-cli"]).provider).toBe("claude-cli");
   });

@@ -104,9 +104,15 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer.provider).toBe("none");
   });
 
-  it("still throws when provider is anthropic/openai and model is missing", async () => {
+  it("inherits the default model when reviewer.model is omitted for anthropic/openai (partial override)", async () => {
+    const filePath = await writeConfig("reviewer:\n  provider: anthropic\nbudgetUsd: 1\n");
+    const config = await loadJevestConfig(filePath);
+    expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+  });
+
+  it("still throws when reviewer.model is explicitly empty for a non-none provider", async () => {
     const filePath = await writeConfig(
-      "reviewer:\n  provider: anthropic\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
+      'reviewer:\n  provider: anthropic\n  model: ""\nbudgetUsd: 1\n',
     );
     await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
   });
@@ -127,11 +133,10 @@ describe("loadJevestConfig", () => {
     await expect(loadJevestConfig(filePath)).rejects.toThrow(/provider/i);
   });
 
-  it("throws when budgetUsd is missing", async () => {
-    const filePath = await writeConfig(
-      "reviewer:\n  provider: anthropic\n  model: x\nthresholds: {}\nmaxHunks: 10\n",
-    );
-    await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+  it("omitting budgetUsd inherits the default from config/jevest.example.yml (partial override)", async () => {
+    const filePath = await writeConfig("reviewer:\n  provider: anthropic\n  model: x\n");
+    const config = await loadJevestConfig(filePath);
+    expect(config.budgetUsd).toBe(5);
   });
 
   it("throws when budgetUsd is not positive", async () => {
@@ -168,5 +173,75 @@ describe("loadJevestConfig", () => {
   it("throws when the YAML does not parse to an object", async () => {
     const filePath = await writeConfig("- a\n- b\n");
     await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+  });
+
+  describe("partial override (deep merge over config/jevest.example.yml)", () => {
+    it("merges a partial file over the defaults, keeping every unspecified field", async () => {
+      const filePath = await writeConfig("budgetUsd: 1\n");
+      const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+      const config = await loadJevestConfig(filePath);
+
+      expect(config.budgetUsd).toBe(1);
+      expect(config.reviewer).toEqual(defaults.reviewer);
+      expect(config.maxHunks).toBe(defaults.maxHunks);
+      expect(config.thresholds).toEqual(defaults.thresholds);
+      expect(config.sizeThresholds).toEqual(defaults.sizeThresholds);
+      expect(config.skipChangeKinds).toEqual(defaults.skipChangeKinds);
+      expect(config.failClosed).toBe(defaults.failClosed);
+      expect(config.publish).toEqual(defaults.publish);
+    });
+
+    it("overriding one nested threshold leaves every sibling stage/risk at its default value", async () => {
+      const filePath = await writeConfig(
+        "thresholds:\n  triage:\n    low:\n      auto_min: 0.99\n      confirm_min: 0.95\n",
+      );
+      const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+      const config = await loadJevestConfig(filePath);
+
+      expect(config.thresholds.triage!.low).toEqual({ autoMin: 0.99, confirmMin: 0.95 });
+      // Every other risk level in "triage", and every other stage entirely,
+      // is untouched by the override.
+      expect(config.thresholds.triage!.medium).toEqual(defaults.thresholds.triage!.medium);
+      expect(config.thresholds.triage!.high).toEqual(defaults.thresholds.triage!.high);
+      expect(config.thresholds.hunk_profile).toEqual(defaults.thresholds.hunk_profile);
+      expect(config.thresholds.finding_filter).toEqual(defaults.thresholds.finding_filter);
+      expect(config.thresholds.merge_gate).toEqual(defaults.thresholds.merge_gate);
+    });
+
+    it("replaces an array wholesale rather than merging it (skipChangeKinds)", async () => {
+      const filePath = await writeConfig("skipChangeKinds:\n  - delete\n");
+      const config = await loadJevestConfig(filePath);
+      // Not ["rename-or-format", "delete"] — arrays are replaced, not concatenated.
+      expect(config.skipChangeKinds).toEqual(["delete"]);
+    });
+
+    it("throws loudly, naming the key, for an unknown top-level config key (typo protection)", async () => {
+      const filePath = await writeConfig("budgetUsdd: 1\n");
+      await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+      await expect(loadJevestConfig(filePath)).rejects.toThrow(/budgetUsdd/);
+    });
+
+    it("treats an empty .jevest.yml as equivalent to the full defaults", async () => {
+      const filePath = await writeConfig("");
+      const config = await loadJevestConfig(filePath);
+      const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+      expect(config).toEqual(defaults);
+    });
+
+    it("loads the exact reported partial config (provider none + inlineComments false + budgetUsd + failClosed), no thresholds/maxHunks required", async () => {
+      const filePath = await writeConfig(
+        "reviewer:\n  provider: none\npublish:\n  inlineComments: false\nbudgetUsd: 1\nfailClosed: true\n",
+      );
+      const config = await loadJevestConfig(filePath);
+      const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+
+      expect(config.reviewer.provider).toBe("none");
+      expect(config.publish).toEqual({ inlineComments: false });
+      expect(config.budgetUsd).toBe(1);
+      expect(config.failClosed).toBe(true);
+      // Untouched fields fall back to the defaults.
+      expect(config.maxHunks).toBe(defaults.maxHunks);
+      expect(config.thresholds).toEqual(defaults.thresholds);
+    });
   });
 });

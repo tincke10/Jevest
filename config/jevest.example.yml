@@ -1,8 +1,16 @@
-# Jevest pipeline config (SPEC §5 Fase 2). Copy to `.jevest.yml` at your
-# repo root and adjust — this file IS also the single source of built-in
-# defaults: loadJevestConfig() falls back to it when `.jevest.yml` is
-# missing (see src/adapters/config/jevest-config.ts). See docs/SPEC.md for
-# the six-stage pipeline this drives.
+# Jevest pipeline config (SPEC §5 Fase 2). This file IS the single source
+# of built-in defaults (see src/adapters/config/jevest-config.ts). See
+# docs/SPEC.md for the six-stage pipeline this drives.
+#
+# `.jevest.yml` at your repo root is a PARTIAL OVERRIDE of this file, not a
+# copy of it: only write the keys you actually want to change. Anything
+# you omit falls back to the value shown here, deep-merged key by key (so
+# e.g. overriding thresholds.triage.low leaves thresholds.triage.medium
+# and every other stage untouched). Arrays and plain values (budgetUsd,
+# skipChangeKinds, etc.) are replaced wholesale, never merged. An unknown
+# top-level key throws immediately, naming the key — it's almost always a
+# typo, since a partial file having most keys absent is the normal case.
+# A missing or empty `.jevest.yml` is equivalent to this entire file.
 #
 # The LLM that writes the actual review (FR-4). Jev never writes text.
 # Set provider: none for Jev-only mode: the review stage never runs (no

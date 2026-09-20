@@ -213,7 +213,8 @@ const SECURITY_PATH_RE = /(auth|crypto|security|jwt|session|password|token|csrf|
 function isEligibleSourcePath(path: string): boolean {
   if (!path.endsWith(".ts")) return false;
   const segments = path.split("/");
-  const base = segments[segments.length - 1];
+  const base = segments.at(-1);
+  if (base === undefined) return false; // path.split("/") on a non-empty string always has a last element; guard for the type checker.
 
   if (TSCONFIG_RE.test(base)) return false;
   if (EXCLUDE_FILE_RE.test(base)) return false;
@@ -235,6 +236,7 @@ function parseArgs(argv: string[]) {
   const opts: Record<string, string | boolean> = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === undefined) continue;
     if (!a.startsWith("--")) continue;
     const key = a.slice(2);
     const next = argv[i + 1];
@@ -345,8 +347,8 @@ function parseHunksFromShow(diffText: string): ParsedHunk[] {
   for (const rawBlock of fileBlocks) {
     const block = `diff --git ${rawBlock}`;
     const headerMatch = block.match(/^diff --git a\/(.+?) b\/(.+?)\n/);
-    if (!headerMatch) continue;
-    const path = headerMatch[2];
+    const path = headerMatch?.[2];
+    if (path === undefined) continue; // no `b/<path>` capture — not a parseable file diff block
 
     if (/^(new file mode|deleted file mode|rename from|rename to)/m.test(block)) continue;
     if (/^Binary files /m.test(block)) continue;
@@ -361,14 +363,17 @@ function parseHunksFromShow(diffText: string): ParsedHunk[] {
     }
 
     for (let i = 0; i < starts.length; i++) {
-      const start = starts[i].index;
-      const end = i + 1 < starts.length ? starts[i + 1].index : block.length;
+      const current = starts[i];
+      if (!current) continue; // i < starts.length always yields an element; guard for the type checker.
+      const next = starts[i + 1];
+      const start = current.index;
+      const end = next ? next.index : block.length;
       const hunkBody = block.slice(start, end);
       const lines = hunkBody.split("\n").slice(1); // drop the @@ header line itself
 
       const before: string[] = [];
       const after: string[] = [];
-      const diffLines: string[] = [starts[i].header];
+      const diffLines: string[] = [current.header];
       let changedLines = 0;
 
       for (const line of lines) {
@@ -394,7 +399,7 @@ function parseHunksFromShow(diffText: string): ParsedHunk[] {
 
       results.push({
         path,
-        hunkHeader: starts[i].header,
+        hunkHeader: current.header,
         before: before.join("\n"),
         after: after.join("\n"),
         diff: diffLines.join("\n"),
@@ -460,8 +465,9 @@ function findAssociatedPr(repo: string, sha: string): PrMeta | null {
   const prs = ghJson<Array<{ number: number; html_url: string }>>(
     `repos/${repo}/commits/${sha}/pulls`,
   );
-  if (!prs || prs.length === 0) return null;
-  const number = prs[0].number;
+  const first = prs?.[0];
+  if (!first) return null;
+  const number = first.number;
   const pr = ghJson<{ body: string | null; labels: Array<{ name: string }>; html_url: string }>(
     `repos/${repo}/pulls/${number}`,
   );
@@ -569,8 +575,9 @@ function collectFromRepo(
       const hunks = parseHunksFromShow(showOut);
       if (hunks.length === 0) continue; // no eligible source hunk in this commit — skip it (v2)
 
-      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       const hunk = hunks[0];
+      if (!hunk) continue; // hunks.length > 0 guaranteed above; guard for the type checker.
+      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       defect.push(
         makeRecord(
           repo,
@@ -606,8 +613,9 @@ function collectFromRepo(
       const hunks = parseHunksFromShow(showOut);
       if (hunks.length === 0) continue; // no eligible source hunk in this commit — skip it
 
-      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       const hunk = hunks[0];
+      if (!hunk) continue; // hunks.length > 0 guaranteed above; guard for the type checker.
+      const parent = sh("git", ["-C", dir, "rev-parse", `${c.sha}^`], dir).trim();
       let category = categoryFor(c.type);
       if (c.type === "chore") category = refineChoreCategory(c.subject);
 

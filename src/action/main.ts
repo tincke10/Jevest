@@ -61,7 +61,7 @@ const DEFAULT_FAIL_ON: FailOn = "never";
  * silently read `undefined` forever.
  */
 function inputEnvVar(name: string): string {
-  return `INPUT_${name.replace(/ /g, "_").toUpperCase()}`;
+  return `INPUT_${name.replace(/[ -]/g, "_").toUpperCase()}`;
 }
 
 function readInput(env: NodeJS.ProcessEnv, name: string): string | undefined {

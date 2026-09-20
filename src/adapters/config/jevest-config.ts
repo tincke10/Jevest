@@ -4,13 +4,21 @@
  * Schema validated with zod. Thresholds are stage -> risk -> {auto_min,
  * confirm_min}, feeding `createConfidencePolicy` directly (NFR-13).
  *
- * `.jevest.yml` is optional: when the given path does not exist (ENOENT),
- * this falls back to `config/jevest.example.yml` itself as the built-in
- * defaults — the example file IS the single source of truth for defaults,
- * so there is no separate hardcoded default object to drift out of sync
- * with it. Any other read error (bad permissions, path is a directory,
- * etc.) still throws — only a missing file is a legitimate "use defaults"
- * signal.
+ * `.jevest.yml` is a PARTIAL override, not a complete file: this always
+ * loads `config/jevest.example.yml` as the defaults (the example file IS
+ * the single source of truth for defaults, so there is no separate
+ * hardcoded default object to drift out of sync with it), deep-merges
+ * whatever `.jevest.yml` contains on top of it (missing or an empty file
+ * both mean "no overrides at all"), and validates the MERGED result with
+ * the schema below. Plain objects are merged key by key recursively (so
+ * `thresholds.triage.low` can be overridden without touching
+ * `thresholds.triage.medium` or any other stage); arrays and scalars are
+ * replaced wholesale by the override, never combined. Any other read
+ * error (bad permissions, path is a directory, etc.) still throws — only
+ * a missing file is a legitimate "no overrides" signal. An unknown
+ * top-level key in `.jevest.yml` throws immediately, naming the key, as
+ * typo protection — a partial file's whole point is that most keys are
+ * absent on purpose, so a real typo would otherwise silently do nothing.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,8 +29,39 @@ import type { SizeThresholds } from "../../domain/size.js";
 
 const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
 
+const KNOWN_TOP_LEVEL_KEYS = new Set([
+  "reviewer",
+  "thresholds",
+  "sizeThresholds",
+  "publish",
+  "budgetUsd",
+  "maxHunks",
+  "skipChangeKinds",
+  "failClosed",
+]);
+
 function isEnoent(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/**
+ * Recursively merges `override` onto `base`: a plain object merges key by
+ * key (recursing when both sides are plain objects at that key), while an
+ * array or scalar in `override` replaces whatever was at `base` entirely.
+ */
+function deepMerge(base: unknown, override: unknown): unknown {
+  if (isPlainObject(base) && isPlainObject(override)) {
+    const merged: Record<string, unknown> = { ...base };
+    for (const [key, value] of Object.entries(override)) {
+      merged[key] = key in base ? deepMerge(base[key], value) : value;
+    }
+    return merged;
+  }
+  return override;
 }
 
 export class JevestConfigError extends Error {
@@ -115,26 +154,48 @@ function toConfidencePolicyConfig(
 }
 
 export async function loadJevestConfig(filePath: string): Promise<JevestConfig> {
-  let raw: string;
+  const defaultsRaw = await readFile(EXAMPLE_CONFIG_PATH, "utf8");
+  const defaults = parse(defaultsRaw);
+
+  let userRaw: string | null;
   try {
-    raw = await readFile(filePath, "utf8");
+    userRaw = await readFile(filePath, "utf8");
   } catch (error) {
     if (!isEnoent(error)) {
       throw error;
     }
-    raw = await readFile(EXAMPLE_CONFIG_PATH, "utf8");
+    userRaw = null;
   }
 
-  let parsed: unknown;
-  try {
-    parsed = parse(raw);
-  } catch (error) {
-    throw new JevestConfigError(
-      `${filePath}: invalid YAML (${error instanceof Error ? error.message : String(error)})`,
-    );
+  let overrides: unknown = {};
+  if (userRaw !== null) {
+    let userParsed: unknown;
+    try {
+      userParsed = parse(userRaw);
+    } catch (error) {
+      throw new JevestConfigError(
+        `${filePath}: invalid YAML (${error instanceof Error ? error.message : String(error)})`,
+      );
+    }
+    // An empty file parses to null/undefined — that's "no overrides", not an error.
+    if (userParsed !== null && userParsed !== undefined) {
+      overrides = userParsed;
+    }
   }
 
-  const result = jevestConfigSchema.safeParse(parsed);
+  if (!isPlainObject(overrides)) {
+    throw new JevestConfigError(`${filePath} must be a mapping of config keys to values`);
+  }
+
+  for (const key of Object.keys(overrides)) {
+    if (!KNOWN_TOP_LEVEL_KEYS.has(key)) {
+      throw new JevestConfigError(`${filePath}: unknown config key "${key}"`);
+    }
+  }
+
+  const merged = deepMerge(defaults, overrides);
+
+  const result = jevestConfigSchema.safeParse(merged);
   if (!result.success) {
     throw new JevestConfigError(`${filePath}: ${result.error.message}`);
   }

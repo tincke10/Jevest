@@ -48,13 +48,29 @@ Pin `@main` to a tag once one is cut; `@main` tracks the latest commit.
 
 ### `.jevest.yml`
 
-Copy [`config/jevest.example.yml`](../config/jevest.example.yml) to
-`.jevest.yml` at your repo root and adjust: reviewer provider/model,
-confidence-band thresholds per stage and risk level (NFR-13), per-PR
-budget (NFR-10), max hunks per PR, and which `change_kind`s skip the LLM
-reviewer entirely. `.jevest.yml` is optional — if it's missing, Jevest
-falls back to `config/jevest.example.yml`'s own defaults. Point
-`config-path` elsewhere if you'd rather not use the repo root.
+`.jevest.yml` is a **partial override**; only write what you change. Every
+setting lives in [`config/jevest.example.yml`](../config/jevest.example.yml)
+with its default value — that file doubles as the built-in defaults, so
+Jevest deep-merges whatever `.jevest.yml` contains on top of it (missing
+or empty means "no overrides at all"). A key you omit, at any depth,
+falls back to the default shown in the example file: overriding
+`thresholds.triage.low` alone leaves every other risk level and every
+other stage exactly as shown there. Arrays and plain values
+(`budgetUsd`, `skipChangeKinds`, etc.) are replaced wholesale by your
+override, never merged. An unknown top-level key throws immediately,
+naming the key — with most keys absent being the normal case for a
+partial file, a typo would otherwise silently do nothing. For example, a
+repo doing a Jev-only dry run needs only:
+
+```yaml
+reviewer:
+  provider: none
+publish:
+  inlineComments: false
+budgetUsd: 1
+```
+
+Point `config-path` elsewhere if you'd rather not use the repo root.
 
 Two options worth knowing about before a first rollout:
 

@@ -16,6 +16,10 @@ permissions:
   pull-requests: write
   checks: write
   issues: write
+  # Read-only: lets fetchPullRequest read the combined commit status for the
+  # merge gate's CI signal. Without it, GitHub returns 403 and Jevest
+  # degrades to reporting CI status as "unknown" rather than failing the run.
+  statuses: read
 
 jobs:
   review:

@@ -186,6 +186,65 @@ describe("createGitHubVcsAdapter — fetchPullRequest", () => {
     const data = await adapter.fetchPullRequest(REF);
     expect(data.ciStatus).toBe("failure");
   });
+
+  it('degrades to ciStatus "unknown" and logs a warning when the token can\'t read combined status (403)', async () => {
+    const client = createFakeClient({
+      repos: {
+        ...createFakeClient().repos,
+        getCombinedStatusForRef: vi.fn().mockRejectedValue(githubError(403)),
+      },
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const adapter = createGitHubVcsAdapter({ client });
+
+    const data = await adapter.fetchPullRequest(REF);
+
+    expect(data.ciStatus).toBe("unknown");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('degrades to ciStatus "unknown" when the combined status endpoint 404s', async () => {
+    const client = createFakeClient({
+      repos: {
+        ...createFakeClient().repos,
+        getCombinedStatusForRef: vi.fn().mockRejectedValue(githubError(404)),
+      },
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const adapter = createGitHubVcsAdapter({ client });
+
+    const data = await adapter.fetchPullRequest(REF);
+
+    expect(data.ciStatus).toBe("unknown");
+    warn.mockRestore();
+  });
+
+  it("still throws a non-403/404 error from the combined status call", async () => {
+    const client = createFakeClient({
+      repos: {
+        ...createFakeClient().repos,
+        getCombinedStatusForRef: vi.fn().mockRejectedValue(githubError(500)),
+      },
+    });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await expect(adapter.fetchPullRequest(REF)).rejects.toThrow();
+  });
+
+  it("still retries and surfaces a rate-limited 403 on combined status instead of degrading", async () => {
+    const getCombinedStatusForRef = vi
+      .fn()
+      .mockRejectedValue(githubError(403, { "retry-after": "0" }));
+    const client = createFakeClient({
+      repos: { ...createFakeClient().repos, getCombinedStatusForRef },
+    });
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    const adapter = createGitHubVcsAdapter({ client, sleep, maxRetries: 1 });
+
+    await expect(adapter.fetchPullRequest(REF)).rejects.toThrow();
+    expect(getCombinedStatusForRef).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("createGitHubVcsAdapter — publishReview inline comments", () => {

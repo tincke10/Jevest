@@ -338,6 +338,36 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): VcsPor
     }
   }
 
+  /**
+   * CI status is an optional signal for the merge gate, not a load-bearing
+   * one: a `GITHUB_TOKEN` without `statuses: read` (or a repo with no
+   * commit statuses at all) must degrade to "unknown", never fail the
+   * whole run. Only a 403 (missing scope) or 404 degrades; anything else,
+   * including a rate-limited 403 that `withRateLimitRetry` gives up on,
+   * still throws.
+   */
+  async function fetchCiStatus(
+    owner: string,
+    repo: string,
+    headSha: string,
+  ): Promise<PullRequestData["ciStatus"]> {
+    try {
+      const { data: combined } = await withRateLimitRetry(() =>
+        client.repos.getCombinedStatusForRef({ owner, repo, ref: headSha }),
+      );
+      return toCiStatus(combined.state);
+    } catch (error) {
+      if (!isPermissionDenied(error) && !isNotFound(error)) {
+        throw error;
+      }
+      console.warn(
+        'jevest: combined commit status not readable (403/404); reporting ciStatus as "unknown". ' +
+          "Grant `permissions: { statuses: read }` to the workflow to get the real CI status.",
+      );
+      return "unknown";
+    }
+  }
+
   async function publishCheck(ref: PullRequestRef, publication: ReviewPublication): Promise<void> {
     const { owner, repo } = ref;
     try {
@@ -466,9 +496,7 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): VcsPor
       const files = await listAllPages((page) =>
         client.pulls.listFiles({ owner, repo, pull_number: number, per_page: PER_PAGE, page }),
       );
-      const { data: combined } = await withRateLimitRetry(() =>
-        client.repos.getCombinedStatusForRef({ owner, repo, ref: pr.head.sha }),
-      );
+      const ciStatus = await fetchCiStatus(owner, repo, pr.head.sha);
 
       return {
         ref: { owner, repo, number, headSha: pr.head.sha, baseSha: pr.base.sha },
@@ -484,7 +512,7 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): VcsPor
           deletions: file.deletions,
           ...(file.patch !== undefined ? { patch: file.patch } : {}),
         })),
-        ciStatus: toCiStatus(combined.state),
+        ciStatus,
       };
     },
 

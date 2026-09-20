@@ -18,6 +18,7 @@ permissions:
   pull-requests: write
   checks: write
   issues: write
+  statuses: read
 
 jobs:
   review:
@@ -95,6 +96,9 @@ The workflow's `permissions:` block needs:
 - `checks: write` — the `jevest` check run
 - `issues: write` — labels and the summary comment both go through the issues API
 - `contents: read` — the Action itself doesn't need more; `actions/checkout` does
+- `statuses: read` — reads the PR head commit's combined CI status for the
+  merge gate's CI signal; without it, Jevest reports CI status as
+  `"unknown"` instead of failing the run
 
 Without `checks: write` (e.g. a fork's default `GITHUB_TOKEN`), the Action
 falls back to the legacy commit-status API and logs that it did, rather

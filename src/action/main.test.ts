@@ -15,8 +15,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(__dirname, "../../tests/fixtures/github/pull_request.event.json");
 
 const BASE_ENV: NodeJS.ProcessEnv = {
-  "INPUT_GITHUB-TOKEN": "ghp_test",
-  "INPUT_TYPESAFE-API-KEY": "ts_test",
+  INPUT_GITHUB_TOKEN: "ghp_test",
+  INPUT_TYPESAFE_API_KEY: "ts_test",
 };
 
 describe("parseActionInputs", () => {
@@ -33,10 +33,10 @@ describe("parseActionInputs", () => {
   it("reads every provided input, keyed by the GitHub Actions dash-preserving env convention", () => {
     const inputs = parseActionInputs({
       ...BASE_ENV,
-      "INPUT_CONFIG-PATH": "config/jevest.yml",
-      "INPUT_ANTHROPIC-API-KEY": "sk-ant-test",
-      "INPUT_OPENAI-API-KEY": "sk-oai-test",
-      "INPUT_FAIL-ON": "failure",
+      INPUT_CONFIG_PATH: "config/jevest.yml",
+      INPUT_ANTHROPIC_API_KEY: "sk-ant-test",
+      INPUT_OPENAI_API_KEY: "sk-oai-test",
+      INPUT_FAIL_ON: "failure",
     });
     expect(inputs).toEqual({
       configPath: "config/jevest.yml",
@@ -49,17 +49,17 @@ describe("parseActionInputs", () => {
   });
 
   it("throws when github-token is missing", () => {
-    const { "INPUT_GITHUB-TOKEN": _omit, ...rest } = BASE_ENV;
+    const { INPUT_GITHUB_TOKEN: _omit, ...rest } = BASE_ENV;
     expect(() => parseActionInputs(rest)).toThrow(ActionInputError);
   });
 
   it("throws when typesafe-api-key is missing", () => {
-    const { "INPUT_TYPESAFE-API-KEY": _omit, ...rest } = BASE_ENV;
+    const { INPUT_TYPESAFE_API_KEY: _omit, ...rest } = BASE_ENV;
     expect(() => parseActionInputs(rest)).toThrow(ActionInputError);
   });
 
   it("throws on an invalid fail-on value", () => {
-    expect(() => parseActionInputs({ ...BASE_ENV, "INPUT_FAIL-ON": "always" })).toThrow(
+    expect(() => parseActionInputs({ ...BASE_ENV, INPUT_FAIL_ON: "always" })).toThrow(
       ActionInputError,
     );
   });

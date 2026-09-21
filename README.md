@@ -1,78 +1,195 @@
+<div align="center">
+
 # Jevest
 
-Automated PR review pipeline using **Jev** (TypeSafe AI) as a millisecond
-decision layer over an LLM reviewer: it decides what to review, how much,
-and what to publish.
+**Automated pull-request review with [Jev](https://typesafe.ai) as the decision layer around an LLM reviewer.**
+Jev decides *what to review, how much, and what to publish* in milliseconds with calibrated confidence. The LLM only writes the findings.
 
-Full design and scope: [docs/SPEC.md](docs/SPEC.md).
+[![CI](https://github.com/tincke10/Jevest/actions/workflows/ci.yml/badge.svg)](https://github.com/tincke10/Jevest/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Node 20](https://img.shields.io/badge/node-20-339933?logo=node.js&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)
+![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-980%2B-brightgreen)
 
-Status: phase 0/1 skeleton — hexagonal domain + decision-port adapters
-(`fake`, `recorded`, `typesafe`), config-driven confidence bands.
+<img src="docs/assets/pipeline.svg" alt="The six-stage Jevest pipeline: triage, hunk profile, LLM review, finding filter, merge gate, publish" width="980">
 
-## Environment
-Set these as environment variables (never commit them):
-`TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL` (optional), `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`.
-The live TypeSafe test runs only when `TYPESAFE_API_KEY` is present.
+</div>
 
-## Phase 0 spike
+---
 
-`pnpm spike` runs the three hunk serializers from `datasets/hunks.jsonl`
-through a DecisionPort and reports **H0** (SPEC §4): can Jev flag a code
-defect with recall ≥ 0.85 and F1 ≥ 0.75? Below that, the project pivots
-before phase 1 starts.
+## Why this exists
 
-Modes (`--mode`, auto-detected if omitted — `replay` if fixtures exist
-under `tests/fixtures/spike/`, else `dry-run`):
-- `dry-run` — no API key needed; `FakeDecisionAdapter` with seeded
-  pseudo-random answers. Exercises the pipeline; metrics are meaningless.
-- `live` — real Jev calls (`TYPESAFE_API_KEY` required).
-- `record` — `live`, wrapped to save fixtures for replay.
-- `replay` — fixtures only, no network, no key required.
+LLM review bots get switched off for three reasons: they comment too much, they spend the same effort on a dependency bump as on an auth change, and every false finding costs *another* LLM call to verify. Jevest puts a cheap, calibrated decision model in front of and behind the LLM:
 
-Once `TYPESAFE_API_KEY` is set, record real answers and see H0:
-```sh
-TYPESAFE_API_KEY=... pnpm spike --mode record
+| Pain | What Jevest does about it | Who decides |
+|---|---|---|
+| **Noise** | Every LLM finding is re-judged: real defect? style-only? actionable? High confidence publishes, medium goes to a human queue, low is dropped and counted | Jev, one request per finding |
+| **Indiscriminate cost** | Triage on the PR's metadata, then a surface profile per hunk; format-only hunks never reach the LLM; per-run and cumulative spend caps | Jev + code |
+| **Blind auto-merge** | A merge gate that only ever emits a check conclusion. Jevest has no merge call wired at all | Jev, one request |
+
+And one rule that came from measuring, not from the pitch: **Jev never judges code.** It recognizes text: what kind of change a hunk is, what a finding claims, what a PR says about itself. Asking it "does this hunk have a bug?" failed on a clean dataset (see [Evidence](#evidence-so-far)). Asking it "what does this hunk touch?" works.
+
+## What a run looks like
+
+<div align="center">
+<img src="docs/assets/run.svg" alt="Animated terminal output of a Jevest run on a real pull request" width="820">
+</div>
+
+Every run leaves on the PR:
+
+- **one summary comment** (triage decision, hunks skipped and why, findings by band, cost, merge-gate verdict), upserted in place on every push;
+- **inline comments** only for high-confidence findings, fingerprinted so re-runs never duplicate them;
+- **labels** such as `jevest:needs-human`, `jevest:spend-warning`;
+- **a `jevest` check run** carrying the merge-gate signal: green, neutral or red.
+
+If Jev does not answer, the run **fails closed**: triage assumes high risk, nothing is published inline, everything goes to the human queue, the check goes red with the reason.
+
+## How Jev decides
+
+Every answer comes back with a probability and a confidence. The confidence lands in one of three bands, configured per stage and per risk level, and the band picks the action:
+
+```mermaid
+flowchart LR
+    A([Jev answer<br/>+ confidence]) --> B{confidence ≥ auto_min?}
+    B -- yes --> C[act automatically<br/>publish · skip · green check]
+    B -- no --> D{confidence ≥ confirm_min?}
+    D -- yes --> E[ask a human<br/>needs-human queue · neutral check]
+    D -- no --> F[escalate / fail closed<br/>red check · nothing inline]
+    style C fill:#065f46,color:#ecfdf5,stroke:#10b981
+    style E fill:#78350f,color:#fffbeb,stroke:#f59e0b
+    style F fill:#7f1d1d,color:#fef2f2,stroke:#ef4444
 ```
 
-Writes `reports/spike-<timestamp>.json` (gitignored) and `.md` (kept).
+Thresholds rise with risk: a `critical` merge gate needs 0.999 to go green, a `low` one 0.95. Numbers are never handed to Jev to interpret (it does not count or compare); sizes and counts are resolved in code and passed as words. One item per request: packing ten hunks into one state makes the ten answers converge on each other, so Jevest never does it.
 
-**H0 failed** (SPEC §4.1, 2026-09-19): Jev can't judge whether a hunk has a
-defect. The project pivoted — Jev now only answers surface/recognition
-questions, never "does this have a bug?" (SPEC §4.2).
+## Install in a repo
 
-## Phase 0b: surface-profile spike (H0')
+Three steps, no checkout, about 25 seconds per run.
 
-`pnpm profile:label` derives AST ground truth (`change_kind`,
-`touches_public_api`, `touches_error_handling`, `touches_async`,
-`touches_io`) for every hunk via the TypeScript compiler API, writing
-`datasets/profile-labels.jsonl`.
+**1. Add the workflow** `.github/workflows/jevest.yml`:
 
-`pnpm spike:profile` runs that question set (default serializer
-`raw-diff`) and reports **H0'** (SPEC §4.2): choice accuracy ≥ 0.90 on
-`change_kind`, F1 ≥ 0.85 on each noul, median confidence ≥ 0.5. Same
-`--mode`/`--limit`/`--seed`/`--batch-size` flags as `pnpm spike`; fixtures
-under `tests/fixtures/spike-profile/`. **H0' does not block phase 1b** —
-if it fails, the hunk-profile stage falls back to path/size metadata.
-
-## Phase 1a: finding-filter spike (H1, blocking)
-
-`pnpm filter` runs the filter question set (`is_real_defect`, `severity`,
-`is_style_only`, `actionable`) over a findings dataset and reports **H1**
-(SPEC §4.2, the central hypothesis): recall of real findings kept ≥ 0.95
-and noise discarded ≥ 0.40. **If H1 fails, Jev does not filter findings.**
-
-```sh
-pnpm filter --findings <path> [--batch-size N] [--mode live|record|replay|dry-run]
+```yaml
+name: Jevest review
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+  issues: write
+  statuses: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tincke10/Jevest@main
+        with:
+          typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-`datasets/findings.jsonl` doesn't exist yet (produced by the reviewer
-pipeline); `tests/fixtures/findings-synthetic.jsonl` (14 hand-labeled
-records, real and noise, all four severities) stands in for smoke-testing
-the filter runner until then. Same four modes as `pnpm spike`; fixtures
-under `tests/fixtures/filter/`. The report's `judge` slot is `undefined`
-until the LLM-judge baseline (H6) is merged in.
+**2. Add the secrets**: `TYPESAFE_API_KEY` always, plus the key of the reviewer you pick below.
 
-## Running tests
-```sh
-pnpm install && pnpm test && pnpm typecheck
+**3. Optionally add `.jevest.yml`** at the repo root. It is a partial override; write only what you change. A first rollout usually looks like this:
+
+```yaml
+reviewer:
+  provider: none        # Jev-only for the first weeks: labels, summary and check, no LLM
+publish:
+  inlineComments: false
+budgetUsd: 2            # per run
+spendCap:
+  usd: 50               # per month, for the whole service
+  warnAtUsd: 40
 ```
+
+Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml).
+
+## Choose a reviewer
+
+The LLM is pluggable behind one port and one prompt; switching is a config change.
+
+| `reviewer.provider` | Models | Billing | Secret |
+|---|---|---|---|
+| `anthropic` (default) | `claude-sonnet-5`, `claude-opus-5` | API credits | `ANTHROPIC_API_KEY` |
+| `openai` | any chat model | API credits | `OPENAI_API_KEY` |
+| `deepseek` | `deepseek-v4-pro`, `deepseek-flash` | API credits, 4–15× cheaper per token | `DEEPSEEK_API_KEY` |
+| `claude-cli` | `claude-opus-5`, `claude-sonnet-5` | A Claude **Pro/Max subscription** via `claude setup-token` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| `none` | — | Free: Jev-only run | — |
+
+Three cost controls stack on top of each other:
+
+| Control | Scope | Default | When it bites |
+|---|---|---|---|
+| `budgetUsd` | one run | 5 | the review stage stops calling the LLM, remaining hunks are reported as skipped |
+| `spendCap` | the whole repo, per month or total | 50 / warn at 40 | the LLM stage is skipped, run continues Jev-only, banner + label + `::warning::` |
+| `maxHunks` | one run | 50 | extra hunks are not profiled or reviewed |
+
+The cumulative ledger lives in an issue of your own repo ("Jevest spend ledger"), updated by every run. Reset it by editing or closing the issue.
+
+## Evidence so far
+
+Jevest is built spike-first: a hypothesis with a pass/fail criterion written down *before* the run, a dataset with exact labels, recorded fixtures so anyone can replay the numbers without a key. Everything below ran against the real `jev-latest`.
+
+| Hypothesis | Question to Jev | Result | Verdict |
+|---|---|---|---|
+| **H0** | "Does this hunk have a defect?" — 100 source hunks, 50/50 | P 0.84 · R 0.72 · F1 0.77 · **confidence ≈ 0** | **FAIL** → pivot: Jev never judges defects |
+| **H0′** | "What kind of change is this? Does it touch error handling / async / public API?" | `change_kind` acc 0.80 (conf 0.97) · `touches_error_handling` F1 0.89 · `touches_async` F1 0.85 | **PARTIAL** → error handling and async in the pipeline, public API via AST instead |
+| **H1** | "Is this LLM finding a real defect?" — the central hypothesis | 14 findings / 100 hunks from a strict reviewer: too little noise to measure | **PENDING** a thorough-mode pass |
+| **H7** | "Does the PR description match what actually changed?" — 100 PRs, 100 crossed descriptions with exact labels | running | **IN PROGRESS** |
+
+Two things we learned the hard way and now enforce in code: dataset labels must be clean before any number means anything (v1 had test files and docs confounding the label), and batching items into one Jev request anchors the answers to each other (std 0.004–0.026 across ten different hunks). Reports live in [`reports/`](reports), the write-ups in [`docs/analysis/`](docs/analysis), the full design and decision log in [docs/SPEC.md](docs/SPEC.md).
+
+## Architecture
+
+Hexagonal, strict TypeScript, strict TDD.
+
+```
+src/domain/        questions · decisions · confidence bands · metrics · spend cap · ports (no SDK imports)
+src/adapters/      typesafe · fake · recorded decision adapters
+                   reviewers: anthropic · openai · deepseek · claude-cli · recorded
+                   summarizers · spend ledgers (GitHub issue, local file) · vcs (GitHub, local diff) · config
+src/application/   the six pipeline stages · spike runners · reports · datasets loaders
+src/action/        the GitHub Action entrypoint
+scripts/           CLIs: spike · spike:profile · filter · findings · coherence · review · action
+datasets/          hunks.jsonl (100, labeled) · findings.jsonl · prs.jsonl (100) · coherence-pairs.jsonl (200)
+tests/fixtures/    recorded Jev and LLM answers: every report replays offline
+```
+
+Every real API is behind a port with a fake and a recorded adapter, so the whole suite and every spike run without a key. The Action runs the TypeScript source with `tsx`; there is no build step and no bundle to drift.
+
+## Local development
+
+```sh
+pnpm install
+pnpm test && pnpm typecheck && pnpm lint
+```
+
+| Command | What it does |
+|---|---|
+| `pnpm spike --mode replay` | H0 report from recorded fixtures (no key) |
+| `pnpm spike:profile --mode replay` | H0′ report |
+| `pnpm filter --findings datasets/findings.jsonl` | H1 finding-filter report |
+| `pnpm findings --provider claude-cli --record` | generate LLM findings over the hunks dataset |
+| `pnpm dataset:prs` · `pnpm coherence:summarize` · `pnpm coherence` | H7: collect PRs, summarize diffs, run the coherence spike |
+| `pnpm review --git main..HEAD` or `--diff <file>` | run the six stages locally on a diff |
+| `pnpm action` | run the Action entrypoint with `INPUT_*` env vars |
+
+Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `DEEPSEEK_API_KEY`; `claude-cli` uses your local Claude Code login. Keys are read from the environment only and are never written to a file.
+
+## Roadmap
+
+- [x] Phase 0 · H0 spike, dataset v2, pivot
+- [x] Phase 0b · H0′ surface profile, AST labeler, batch-anchoring fix
+- [x] Phase 1b · six-stage local pipeline, fail-closed, idempotent publishing
+- [x] Phase 2 · composite GitHub Action, no checkout, partial `.jevest.yml`, spend cap
+- [ ] Phase 1a · H1 finding filter with enough noise, LLM-judge baseline, calibration (ECE)
+- [ ] Phase 0c · H7 intent–change coherence → product-aware triage with a `.jevest/context.yml`
+- [ ] Phase 3 · adversarial suite, tagged release, published dataset and benchmark
+
+## License
+
+[MIT](LICENSE). Datasets are derived from MIT-licensed open-source repositories (zod, vitest, hono, tRPC); see [datasets/README.md](datasets/README.md).

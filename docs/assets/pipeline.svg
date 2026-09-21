@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="330" viewBox="0 0 980 330" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="jev" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="llm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d97706"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="gh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#059669"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <path id="flow" d="M 40 175 H 940"/>
+  </defs>
+
+  <rect width="980" height="330" rx="16" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="979" height="329" rx="16" fill="none" stroke="#30363d"/>
+
+  <!-- title -->
+  <text x="490" y="36" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="700">One pull request, six decisions, milliseconds of Jev around one LLM call</text>
+
+  <!-- legend -->
+  <g font-size="12" fill="#8b949e">
+    <rect x="300" y="52" width="12" height="12" rx="3" fill="url(#jev)"/><text x="318" y="63">Jev · typed decision, calibrated confidence</text>
+    <rect x="560" y="52" width="12" height="12" rx="3" fill="url(#llm)"/><text x="578" y="63">LLM · writes the findings</text>
+    <rect x="740" y="52" width="12" height="12" rx="3" fill="url(#gh)"/><text x="758" y="63">GitHub</text>
+  </g>
+
+  <!-- connector with flowing dashes -->
+  <path d="M 40 175 H 940" stroke="#30363d" stroke-width="6" fill="none"/>
+  <path d="M 40 175 H 940" stroke="#58a6ff" stroke-width="2" fill="none" stroke-dasharray="10 14" opacity="0.7">
+    <animate attributeName="stroke-dashoffset" from="48" to="0" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- travelling PR token -->
+  <g filter="url(#glow)">
+    <circle r="7" fill="#58a6ff">
+      <animateMotion dur="9s" repeatCount="indefinite" keyPoints="0;0.03;0.03;0.2;0.2;0.37;0.37;0.54;0.54;0.71;0.71;0.88;0.88;1" keyTimes="0;0.05;0.14;0.19;0.28;0.33;0.42;0.47;0.56;0.61;0.70;0.75;0.84;1" calcMode="linear">
+        <mpath href="#flow"/>
+      </animateMotion>
+    </circle>
+  </g>
+
+  <!-- stages -->
+  <g font-size="13" text-anchor="middle">
+    <!-- 1 Triage -->
+    <g transform="translate(60 110)">
+      <rect width="130" height="130" rx="12" fill="url(#jev)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="0.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#f5f3ff" font-weight="700" font-size="14">1 · Triage</text>
+      <text x="65" y="52" fill="#ede9fe" font-size="11">title · body · paths</text>
+      <text x="65" y="68" fill="#ede9fe" font-size="11">category · risk</text>
+      <text x="65" y="84" fill="#ede9fe" font-size="11">needs human?</text>
+      <text x="65" y="100" fill="#ede9fe" font-size="11">injected instructions?</text>
+      <text x="65" y="120" fill="#c4b5fd" font-size="10">1 request · N questions</text>
+    </g>
+
+    <!-- 2 Hunk profile -->
+    <g transform="translate(213 110)">
+      <rect width="130" height="130" rx="12" fill="url(#jev)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="1.9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#f5f3ff" font-weight="700" font-size="14">2 · Hunk profile</text>
+      <text x="65" y="52" fill="#ede9fe" font-size="11">change kind</text>
+      <text x="65" y="68" fill="#ede9fe" font-size="11">touches error handling?</text>
+      <text x="65" y="84" fill="#ede9fe" font-size="11">touches async?</text>
+      <text x="65" y="100" fill="#ede9fe" font-size="11">format-only → skip</text>
+      <text x="65" y="120" fill="#c4b5fd" font-size="10">1 request per hunk</text>
+    </g>
+
+    <!-- 3 Review LLM -->
+    <g transform="translate(366 110)">
+      <rect width="130" height="130" rx="12" fill="url(#llm)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="3.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#fffbeb" font-weight="700" font-size="14">3 · Review</text>
+      <text x="65" y="52" fill="#fef3c7" font-size="11">Claude · GPT · DeepSeek</text>
+      <text x="65" y="68" fill="#fef3c7" font-size="11">hunk + profile in</text>
+      <text x="65" y="84" fill="#fef3c7" font-size="11">structured findings out</text>
+      <text x="65" y="100" fill="#fef3c7" font-size="11">empty list is valid</text>
+      <text x="65" y="120" fill="#fde68a" font-size="10">budget-capped</text>
+    </g>
+
+    <!-- 4 Finding filter -->
+    <g transform="translate(519 110)">
+      <rect width="130" height="130" rx="12" fill="url(#jev)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="4.9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#f5f3ff" font-weight="700" font-size="14">4 · Finding filter</text>
+      <text x="65" y="52" fill="#ede9fe" font-size="11">real defect?</text>
+      <text x="65" y="68" fill="#ede9fe" font-size="11">severity · style-only?</text>
+      <text x="65" y="84" fill="#ede9fe" font-size="11">actionable?</text>
+      <text x="65" y="100" fill="#ede9fe" font-size="11">publish · human · drop</text>
+      <text x="65" y="120" fill="#c4b5fd" font-size="10">1 request per finding</text>
+    </g>
+
+    <!-- 5 Merge gate -->
+    <g transform="translate(672 110)">
+      <rect width="130" height="130" rx="12" fill="url(#jev)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="6.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#f5f3ff" font-weight="700" font-size="14">5 · Merge gate</text>
+      <text x="65" y="52" fill="#ede9fe" font-size="11">triage + findings + CI</text>
+      <text x="65" y="68" fill="#ede9fe" font-size="11">safe to automerge?</text>
+      <text x="65" y="84" fill="#ede9fe" font-size="11">green · neutral · red</text>
+      <text x="65" y="100" fill="#ede9fe" font-size="11">never merges</text>
+      <text x="65" y="120" fill="#c4b5fd" font-size="10">1 request</text>
+    </g>
+
+    <!-- 6 Publish -->
+    <g transform="translate(825 110)">
+      <rect width="130" height="130" rx="12" fill="url(#gh)" opacity="0.92">
+        <animate attributeName="opacity" values="0.55;1;0.55" keyTimes="0;0.5;1" dur="9s" begin="7.9s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.2 1;0.4 0 0.2 1"/>
+      </rect>
+      <text x="65" y="28" fill="#ecfdf5" font-weight="700" font-size="14">6 · Publish</text>
+      <text x="65" y="52" fill="#d1fae5" font-size="11">summary comment</text>
+      <text x="65" y="68" fill="#d1fae5" font-size="11">inline comments</text>
+      <text x="65" y="84" fill="#d1fae5" font-size="11">labels · check run</text>
+      <text x="65" y="100" fill="#d1fae5" font-size="11">idempotent upserts</text>
+      <text x="65" y="120" fill="#a7f3d0" font-size="10">fail-closed on error</text>
+    </g>
+  </g>
+
+  <!-- footer -->
+  <text x="490" y="290" text-anchor="middle" fill="#8b949e" font-size="12">Jev never writes a review and never judges code. It recognizes: what kind of change, what a finding claims, what the PR says about itself.</text>
+  <text x="490" y="310" text-anchor="middle" fill="#6e7681" font-size="11">One item per Jev request — batching anchors the answers (SPEC NFR-14).</text>
+</svg>

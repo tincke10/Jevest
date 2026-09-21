@@ -25,7 +25,7 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 | H1 | Is this LLM finding a real defect? (central) | **pending** | needs the thorough findings pass |
 | H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **pending** | same run as H1 |
 | H3 | Is confidence calibrated over findings (ECE < 0.1)? | **pending** | same run as H1, needs ≥ 200 findings |
-| H7 | Does the PR description match the change? | **pending** | a 6-pair smoke run exists, not evidence |
+| H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **not measured** | phase 1b instrumentation |
 
@@ -178,10 +178,17 @@ benchmark. Not replayable.
 | H2 · LLM tokens saved by triage + profile (−30%) | per-PR token accounting with and without Jev | not instrumented yet |
 | H4 · Jev latency per PR (p95 < 2 s for ≤ 50 hunks) | per-PR sum of Jev latencies | not instrumented yet |
 
-The only H7 number on disk is a 6-pair smoke run
-(`reports/spike-coherence-2026-09-21T16-17-18-177Z.md`, without-summary
-variant, recall 1.000, precision 0.750, ECE 0.288, PARTIAL); it is a
-`--limit` run and therefore not evidence.
+H7 ran on 2026-09-21 over all 200 pairs against live Jev, both variants
+(`reports/spike-coherence-2026-09-21T23-52-31-417Z.md`). With the LLM
+summary of the diff in the state, Jev separates crossed descriptions almost
+perfectly (1 false negative, 0 false positives at the best threshold; p95
+latency 295 ms; 200 requests in 48 s). Without the summary, on title, body
+and path-derived facts alone, recall drops to 0.88 and calibration slips to
+ECE 0.102. Reading: the summary is what turns "code" into text Jev can judge;
+the product-aware triage adopts it. Caveats: descriptions were crossed within
+the same repo but not chosen to be near-duplicates, so this measures the easy
+half of the problem; 6 of 100 incoherent pairs carry a basename leak (listed
+in datasets/README.md) and none of them appears among the worst pairs.
 
 H5 was recorded against live Jev on 2026-09-21
 (`reports/adversarial-2026-09-21T21-38-55-741Z.md`, fixtures under

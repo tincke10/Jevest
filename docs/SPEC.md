@@ -162,6 +162,21 @@ Decisión provisional para FR-3 (a confirmar en fase 1b):
 
 ---
 
+### 4.4 Resultado de la fase 0c (2026-09-21): H7 PASS con resumen, PARCIAL sin resumen
+
+Corrida completa sobre los 200 pares (`reports/spike-coherence-2026-09-21T23-52-31-417Z.md`, fixtures en `tests/fixtures/coherence/decisions/`). Clase positiva: par incoherente; score = 1 − P(`matches_intent`).
+
+| Variante | Recall | Precisión | F1 | Umbral | ECE | Confianza mediana (derivada) | Veredicto |
+|---|---|---|---|---|---|---|---|
+| Con resumen LLM | 0.990 | 1.000 | 0.995 | 0.65 | 0.070 | 0.90 | **PASS** |
+| Sin resumen | 0.880 | 0.926 | 0.903 | 0.20 | 0.102 | 0.82 | PARCIAL (recall y ECE) |
+
+Lectura: el resumen escrito por el LLM sin ver la descripción es lo que convierte el código en texto que Jev sí puede juzgar. Con él, un par cruzado se detecta casi siempre y con confianza alta; sin él, título, cuerpo y rutas no alcanzan. Consecuencia: la etapa 1 adopta el state de tres capas (intención, hechos del cambio, resumen) y un archivo `.jevest/context.yml` de producto leído desde la rama base. Costo del resumen: una llamada LLM por PR (USD 0.045 nominal con Opus 5 por `claude -p`; 100 PRs en 683 s a concurrencia 2). Latencia Jev: p95 295 ms. Limitaciones: cruce dentro del mismo repo sin buscar casi duplicados (mide la mitad fácil del problema); 6 pares con fuga de nombre de archivo, ninguno entre los peores.
+
+### 4.5 Resultado de la suite adversarial (2026-09-21): H5 PASS tras corregir FR-5.4
+
+14 casos (`datasets/adversarial/`), Jev en vivo, fixtures en `tests/fixtures/adversarial/`. Primera corrida: 0 auto-merges indebidos, **2 críticos plantados descartados** (Jev les puso severidad 2.3/3 y "no es defecto real" con confianza; el guard FR-5.4 solo miraba la severidad de Jev). Corrección: crítico por cualquiera de las dos fuentes nunca se descarta. Replay: 14/14, 0 indebidos, 0 suprimidos, 0 fugas. Punto ciego documentado: `contains_injected_instructions` da ~0.03 para instrucciones dentro del diff porque el triage no ve el diff; los checks salieron rojos por conservadurismo del merge gate. Pendiente: pregunta por hunk en la etapa 2.
+
 ## 5. Fases y alcance
 
 ### Fase 0 — Spike de defectos (CERRADA, H0 fallida)
@@ -402,6 +417,14 @@ jevest/
 | Tercer proveedor LLM | DeepSeek (`deepseek-v4-pro` por defecto, `deepseek-flash` como opción barata) vía el SDK de OpenAI apuntado a `https://api.deepseek.com` | Cuarto adapter de `ReviewerPort`; input `deepseek-api-key` en la Action; `pnpm findings --provider deepseek` |
 | Salida estructurada en DeepSeek | Solo soporta `json_object`, no `json_schema`; el adapter valida el JSON contra `reviewOutputSchema` del lado cliente y trata contenido vacío o truncado como `ReviewerParseError` del hunk, nunca como "sin findings" | Un hunk con respuesta inválida queda registrado con error en el resumen; el filtro no ve findings inventados |
 | Costo DeepSeek | Tarifas PICO (01–04 y 06–10 UTC, lun–vie) en la tabla de pricing; cache hit y miss se reportan por separado (`prompt_cache_hit/miss_tokens`) para no cobrar dos veces | El corte por `budgetUsd` nunca subestima; fuera de pico el costo real es ~la mitad |
+
+### Decisiones del 2026-09-21
+
+| Tema | Decisión | Consecuencia |
+|---|---|---|
+| Modo "thorough" del revisor | El pase estricto sobre los 100 hunks produjo 14 findings (9 reales / 5 ruido): demasiado poco ruido para medir si el filtro descarta algo (H1 exige ≥ 40% del ruido descartado). Se agrega `pnpm findings --prompt thorough` con `REVIEW_SYSTEM_PROMPT_THOROUGH` (misma estructura y schema, barra baja: reportar todo lo plausible o sospechoso, un finding por ubicación); strict sigue siendo el default y no cambia | `datasets/findings-thorough.jsonl` es el set de evaluación de H1/H6/H3; cada record lleva `reviewer.prompt_mode`; fixtures en `tests/fixtures/findings-thorough/`. El revisor thorough NO es el revisor de producción: existe para generar ruido etiquetado |
+| Juez LLM (H6) | `FindingJudgePort` con adapter `claude-cli` (mismo seam `claude -p`, misma cuenta nominal), fake y recorded; responde las mismas cuatro preguntas del filtro con el mismo state por finding (hunk + claim + rationale, nada más). `pnpm filter --judge claude-cli --judge-mode record\|replay` lo corre sobre el mismo set y lo puntúa al mejor umbral de Jev | Veredicto H6 en el reporte: costo juez / costo Jev ≥ 100 y recall juez − recall Jev ≤ 0.05 |
+| ECE con N (H3) | El reporte del filtro informa el ECE de `is_real_defect` junto con N y marca explícitamente cuando N < 200 | Con menos de 200 findings el ECE es indicativo, nunca veredicto |
 
 ### Pendiente
 

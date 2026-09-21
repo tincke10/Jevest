@@ -1,0 +1,39 @@
+{
+  "requestId": "req_01a0c66151f87167be24ffc534881a73",
+  "model": "jev-1.13.0",
+  "latencyMs": 275,
+  "usage": {
+    "inputTokens": 1934,
+    "outputTokens": 123
+  },
+  "answers": {
+    "matches_intent": {
+      "type": "noul",
+      "noul": 0.03
+    },
+    "user_facing": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "breaking": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "needs_product_owner": {
+      "type": "noul",
+      "noul": 0.05
+    },
+    "risk_level": {
+      "type": "choice",
+      "choice": "low",
+      "confidence": 0.65,
+      "probabilities": {
+        "medium": 0.08,
+        "low": 0.72,
+        "high": 0,
+        "none": 0.2,
+        "critical": 0
+      }
+    }
+  }
+}

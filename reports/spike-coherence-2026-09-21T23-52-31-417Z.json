@@ -1,0 +1,922 @@
+{
+  "generatedAt": "2026-09-21T23:52:31.410Z",
+  "datasetVersion": 1,
+  "summarizer": {
+    "prCount": 100,
+    "failures": 0,
+    "inputTokens": 200,
+    "outputTokens": 74544,
+    "nominalCostUsd": 4.484369000000002,
+    "totalLatencyMs": 949607
+  },
+  "variants": [
+    {
+      "variant": "with-summary",
+      "sampleCount": 200,
+      "coherentCount": 100,
+      "incoherentCount": 100,
+      "failureCount": 0,
+      "matchesIntent": {
+        "sweep": [
+          {
+            "threshold": 0.05,
+            "matrix": {
+              "tp": 100,
+              "fp": 94,
+              "tn": 6,
+              "fn": 0
+            },
+            "precision": 0.5154639175257731,
+            "recall": 1,
+            "f1": 0.6802721088435374
+          },
+          {
+            "threshold": 0.1,
+            "matrix": {
+              "tp": 100,
+              "fp": 27,
+              "tn": 73,
+              "fn": 0
+            },
+            "precision": 0.7874015748031497,
+            "recall": 1,
+            "f1": 0.881057268722467
+          },
+          {
+            "threshold": 0.15,
+            "matrix": {
+              "tp": 100,
+              "fp": 17,
+              "tn": 83,
+              "fn": 0
+            },
+            "precision": 0.8547008547008547,
+            "recall": 1,
+            "f1": 0.9216589861751151
+          },
+          {
+            "threshold": 0.2,
+            "matrix": {
+              "tp": 100,
+              "fp": 12,
+              "tn": 88,
+              "fn": 0
+            },
+            "precision": 0.8928571428571429,
+            "recall": 1,
+            "f1": 0.9433962264150945
+          },
+          {
+            "threshold": 0.25,
+            "matrix": {
+              "tp": 100,
+              "fp": 9,
+              "tn": 91,
+              "fn": 0
+            },
+            "precision": 0.9174311926605505,
+            "recall": 1,
+            "f1": 0.9569377990430622
+          },
+          {
+            "threshold": 0.3,
+            "matrix": {
+              "tp": 100,
+              "fp": 8,
+              "tn": 92,
+              "fn": 0
+            },
+            "precision": 0.9259259259259259,
+            "recall": 1,
+            "f1": 0.9615384615384615
+          },
+          {
+            "threshold": 0.35,
+            "matrix": {
+              "tp": 100,
+              "fp": 5,
+              "tn": 95,
+              "fn": 0
+            },
+            "precision": 0.9523809523809523,
+            "recall": 1,
+            "f1": 0.975609756097561
+          },
+          {
+            "threshold": 0.4,
+            "matrix": {
+              "tp": 100,
+              "fp": 3,
+              "tn": 97,
+              "fn": 0
+            },
+            "precision": 0.970873786407767,
+            "recall": 1,
+            "f1": 0.9852216748768473
+          },
+          {
+            "threshold": 0.45,
+            "matrix": {
+              "tp": 100,
+              "fp": 2,
+              "tn": 98,
+              "fn": 0
+            },
+            "precision": 0.9803921568627451,
+            "recall": 1,
+            "f1": 0.99009900990099
+          },
+          {
+            "threshold": 0.5,
+            "matrix": {
+              "tp": 100,
+              "fp": 2,
+              "tn": 98,
+              "fn": 0
+            },
+            "precision": 0.9803921568627451,
+            "recall": 1,
+            "f1": 0.99009900990099
+          },
+          {
+            "threshold": 0.55,
+            "matrix": {
+              "tp": 99,
+              "fp": 2,
+              "tn": 98,
+              "fn": 1
+            },
+            "precision": 0.9801980198019802,
+            "recall": 0.99,
+            "f1": 0.9850746268656716
+          },
+          {
+            "threshold": 0.6,
+            "matrix": {
+              "tp": 99,
+              "fp": 1,
+              "tn": 99,
+              "fn": 1
+            },
+            "precision": 0.99,
+            "recall": 0.99,
+            "f1": 0.99
+          },
+          {
+            "threshold": 0.65,
+            "matrix": {
+              "tp": 99,
+              "fp": 0,
+              "tn": 100,
+              "fn": 1
+            },
+            "precision": 1,
+            "recall": 0.99,
+            "f1": 0.9949748743718593
+          },
+          {
+            "threshold": 0.7,
+            "matrix": {
+              "tp": 98,
+              "fp": 0,
+              "tn": 100,
+              "fn": 2
+            },
+            "precision": 1,
+            "recall": 0.98,
+            "f1": 0.98989898989899
+          },
+          {
+            "threshold": 0.75,
+            "matrix": {
+              "tp": 98,
+              "fp": 0,
+              "tn": 100,
+              "fn": 2
+            },
+            "precision": 1,
+            "recall": 0.98,
+            "f1": 0.98989898989899
+          },
+          {
+            "threshold": 0.8,
+            "matrix": {
+              "tp": 98,
+              "fp": 0,
+              "tn": 100,
+              "fn": 2
+            },
+            "precision": 1,
+            "recall": 0.98,
+            "f1": 0.98989898989899
+          },
+          {
+            "threshold": 0.85,
+            "matrix": {
+              "tp": 96,
+              "fp": 0,
+              "tn": 100,
+              "fn": 4
+            },
+            "precision": 1,
+            "recall": 0.96,
+            "f1": 0.9795918367346939
+          },
+          {
+            "threshold": 0.9,
+            "matrix": {
+              "tp": 95,
+              "fp": 0,
+              "tn": 100,
+              "fn": 5
+            },
+            "precision": 1,
+            "recall": 0.95,
+            "f1": 0.9743589743589743
+          },
+          {
+            "threshold": 0.95,
+            "matrix": {
+              "tp": 84,
+              "fp": 0,
+              "tn": 100,
+              "fn": 16
+            },
+            "precision": 1,
+            "recall": 0.84,
+            "f1": 0.9130434782608696
+          }
+        ],
+        "bestThreshold": 0.65,
+        "bestMetrics": {
+          "threshold": 0.65,
+          "matrix": {
+            "tp": 99,
+            "fp": 0,
+            "tn": 100,
+            "fn": 1
+          },
+          "precision": 1,
+          "recall": 0.99,
+          "f1": 0.9949748743718593
+        },
+        "fixedThreshold": 0.5,
+        "fixedMetrics": {
+          "threshold": 0.5,
+          "matrix": {
+            "tp": 100,
+            "fp": 2,
+            "tn": 98,
+            "fn": 0
+          },
+          "precision": 0.9803921568627451,
+          "recall": 1,
+          "f1": 0.99009900990099
+        },
+        "ece": 0.06965000000000028,
+        "confidence": {
+          "p10": 0.7,
+          "p50": 0.8999999999999999,
+          "p90": 0.96,
+          "mean": 0.8484999999999998
+        }
+      },
+      "secondary": {
+        "userFacing": {
+          "yesCount": 165,
+          "noCount": 35,
+          "meanProbability": 0.7659999999999996,
+          "meanConfidence": 0.8056
+        },
+        "breaking": {
+          "yesCount": 28,
+          "noCount": 172,
+          "meanProbability": 0.2347499999999999,
+          "meanConfidence": 0.6698999999999999
+        },
+        "needsProductOwner": {
+          "yesCount": 8,
+          "noCount": 192,
+          "meanProbability": 0.1966,
+          "meanConfidence": 0.629
+        },
+        "riskLevel": {
+          "counts": {
+            "none": 2,
+            "low": 15,
+            "medium": 150,
+            "high": 33,
+            "critical": 0
+          },
+          "meanConfidence": 0.8978499999999997
+        }
+      },
+      "worstPairs": [
+        {
+          "pairId": "trpc/trpc#7375|trpc/trpc#7375",
+          "prId": "trpc/trpc#7375",
+          "descriptionPrId": "trpc/trpc#7375",
+          "label": "coherent",
+          "descriptionTitle": "docs: add observable deprecation note to subscriptions reference projects",
+          "changeAreas": [
+            "examples"
+          ],
+          "probability": 0.36,
+          "confidence": 0.28,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "vitest-dev/vitest#11271|vitest-dev/vitest#11271",
+          "prId": "vitest-dev/vitest#11271",
+          "descriptionPrId": "vitest-dev/vitest#11271",
+          "label": "coherent",
+          "descriptionTitle": "fix(reporter): `agent` to respect `--silent`",
+          "changeAreas": [
+            "packages/vitest",
+            "test"
+          ],
+          "probability": 0.42,
+          "confidence": 0.16000000000000003,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "honojs/hono#5283|honojs/hono#5256",
+          "prId": "honojs/hono#5283",
+          "descriptionPrId": "honojs/hono#5256",
+          "label": "incoherent",
+          "descriptionTitle": "fix(client): support custom buildSearchParams and filter undefined query in $ws()",
+          "changeAreas": [
+            "src/client"
+          ],
+          "probability": 0.48,
+          "confidence": 0.040000000000000036,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "trpc/trpc#7284|trpc/trpc#7284",
+          "prId": "trpc/trpc#7284",
+          "descriptionPrId": "trpc/trpc#7284",
+          "label": "coherent",
+          "descriptionTitle": "chore: Add superset config",
+          "changeAreas": [
+            ".superset"
+          ],
+          "probability": 0.59,
+          "confidence": 0.17999999999999994,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "trpc/trpc#7350|trpc/trpc#7350",
+          "prId": "trpc/trpc#7350",
+          "descriptionPrId": "trpc/trpc#7350",
+          "label": "coherent",
+          "descriptionTitle": "chore: upgrade pnpm to 10.33.1",
+          "changeAreas": [
+            ".github",
+            "examples",
+            "<root>",
+            "packages/openapi",
+            "packages/upgrade"
+          ],
+          "probability": 0.61,
+          "confidence": 0.21999999999999997,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "vitest-dev/vitest#11124|vitest-dev/vitest#11124",
+          "prId": "vitest-dev/vitest#11124",
+          "descriptionPrId": "vitest-dev/vitest#11124",
+          "label": "coherent",
+          "descriptionTitle": "test(ui): improve explorer filter assertions",
+          "changeAreas": [
+            ".github",
+            "test"
+          ],
+          "probability": 0.62,
+          "confidence": 0.24,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6539|colinhacks/zod#6533",
+          "prId": "colinhacks/zod#6539",
+          "descriptionPrId": "colinhacks/zod#6533",
+          "label": "incoherent",
+          "descriptionTitle": "Collapse toZod's enum leaf normalizer to a dummy union",
+          "changeAreas": [
+            "packages/docs",
+            "packages/zod"
+          ],
+          "probability": 0.35,
+          "confidence": 0.30000000000000004,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6153|colinhacks/zod#6153",
+          "prId": "colinhacks/zod#6153",
+          "descriptionPrId": "colinhacks/zod#6153",
+          "label": "coherent",
+          "descriptionTitle": "fix: upgrade vulnerable direct dependencies",
+          "changeAreas": [
+            "<root>",
+            "packages/docs"
+          ],
+          "probability": 0.68,
+          "confidence": 0.3600000000000001,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6533|colinhacks/zod#6533",
+          "prId": "colinhacks/zod#6533",
+          "descriptionPrId": "colinhacks/zod#6533",
+          "label": "coherent",
+          "descriptionTitle": "Collapse toZod's enum leaf normalizer to a dummy union",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.68,
+          "confidence": 0.3600000000000001,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "trpc/trpc#7572|trpc/trpc#7572",
+          "prId": "trpc/trpc#7572",
+          "descriptionPrId": "trpc/trpc#7572",
+          "label": "coherent",
+          "descriptionTitle": "build(deps): upgrade pnpm to v12",
+          "changeAreas": [
+            ".github",
+            "<root>",
+            "examples",
+            "packages/client"
+          ],
+          "probability": 0.69,
+          "confidence": 0.3799999999999999,
+          "basenameLeak": false
+        }
+      ],
+      "totals": {
+        "requests": 200,
+        "inputTokens": 369776,
+        "outputTokens": 24600,
+        "latencyP50Ms": 231.5,
+        "latencyP95Ms": 295.0999999999999,
+        "wallTimeMs": 48343
+      },
+      "h7": {
+        "verdict": "PASS",
+        "reasons": []
+      }
+    },
+    {
+      "variant": "without-summary",
+      "sampleCount": 200,
+      "coherentCount": 100,
+      "incoherentCount": 100,
+      "failureCount": 0,
+      "matchesIntent": {
+        "sweep": [
+          {
+            "threshold": 0.05,
+            "matrix": {
+              "tp": 100,
+              "fp": 100,
+              "tn": 0,
+              "fn": 0
+            },
+            "precision": 0.5,
+            "recall": 1,
+            "f1": 0.6666666666666666
+          },
+          {
+            "threshold": 0.1,
+            "matrix": {
+              "tp": 99,
+              "fp": 44,
+              "tn": 56,
+              "fn": 1
+            },
+            "precision": 0.6923076923076923,
+            "recall": 0.99,
+            "f1": 0.8148148148148148
+          },
+          {
+            "threshold": 0.15,
+            "matrix": {
+              "tp": 96,
+              "fp": 19,
+              "tn": 81,
+              "fn": 4
+            },
+            "precision": 0.8347826086956521,
+            "recall": 0.96,
+            "f1": 0.8930232558139534
+          },
+          {
+            "threshold": 0.2,
+            "matrix": {
+              "tp": 88,
+              "fp": 7,
+              "tn": 93,
+              "fn": 12
+            },
+            "precision": 0.9263157894736842,
+            "recall": 0.88,
+            "f1": 0.9025641025641025
+          },
+          {
+            "threshold": 0.25,
+            "matrix": {
+              "tp": 84,
+              "fp": 6,
+              "tn": 94,
+              "fn": 16
+            },
+            "precision": 0.9333333333333333,
+            "recall": 0.84,
+            "f1": 0.8842105263157894
+          },
+          {
+            "threshold": 0.3,
+            "matrix": {
+              "tp": 81,
+              "fp": 5,
+              "tn": 95,
+              "fn": 19
+            },
+            "precision": 0.9418604651162791,
+            "recall": 0.81,
+            "f1": 0.8709677419354839
+          },
+          {
+            "threshold": 0.35,
+            "matrix": {
+              "tp": 79,
+              "fp": 4,
+              "tn": 96,
+              "fn": 21
+            },
+            "precision": 0.9518072289156626,
+            "recall": 0.79,
+            "f1": 0.8633879781420766
+          },
+          {
+            "threshold": 0.4,
+            "matrix": {
+              "tp": 79,
+              "fp": 2,
+              "tn": 98,
+              "fn": 21
+            },
+            "precision": 0.9753086419753086,
+            "recall": 0.79,
+            "f1": 0.8729281767955802
+          },
+          {
+            "threshold": 0.45,
+            "matrix": {
+              "tp": 79,
+              "fp": 2,
+              "tn": 98,
+              "fn": 21
+            },
+            "precision": 0.9753086419753086,
+            "recall": 0.79,
+            "f1": 0.8729281767955802
+          },
+          {
+            "threshold": 0.5,
+            "matrix": {
+              "tp": 79,
+              "fp": 1,
+              "tn": 99,
+              "fn": 21
+            },
+            "precision": 0.9875,
+            "recall": 0.79,
+            "f1": 0.8777777777777778
+          },
+          {
+            "threshold": 0.55,
+            "matrix": {
+              "tp": 76,
+              "fp": 1,
+              "tn": 99,
+              "fn": 24
+            },
+            "precision": 0.987012987012987,
+            "recall": 0.76,
+            "f1": 0.8587570621468925
+          },
+          {
+            "threshold": 0.6,
+            "matrix": {
+              "tp": 75,
+              "fp": 1,
+              "tn": 99,
+              "fn": 25
+            },
+            "precision": 0.9868421052631579,
+            "recall": 0.75,
+            "f1": 0.8522727272727272
+          },
+          {
+            "threshold": 0.65,
+            "matrix": {
+              "tp": 73,
+              "fp": 1,
+              "tn": 99,
+              "fn": 27
+            },
+            "precision": 0.9864864864864865,
+            "recall": 0.73,
+            "f1": 0.839080459770115
+          },
+          {
+            "threshold": 0.7,
+            "matrix": {
+              "tp": 72,
+              "fp": 0,
+              "tn": 100,
+              "fn": 28
+            },
+            "precision": 1,
+            "recall": 0.72,
+            "f1": 0.8372093023255813
+          },
+          {
+            "threshold": 0.75,
+            "matrix": {
+              "tp": 70,
+              "fp": 0,
+              "tn": 100,
+              "fn": 30
+            },
+            "precision": 1,
+            "recall": 0.7,
+            "f1": 0.8235294117647058
+          },
+          {
+            "threshold": 0.8,
+            "matrix": {
+              "tp": 68,
+              "fp": 0,
+              "tn": 100,
+              "fn": 32
+            },
+            "precision": 1,
+            "recall": 0.68,
+            "f1": 0.8095238095238095
+          },
+          {
+            "threshold": 0.85,
+            "matrix": {
+              "tp": 67,
+              "fp": 0,
+              "tn": 100,
+              "fn": 33
+            },
+            "precision": 1,
+            "recall": 0.67,
+            "f1": 0.8023952095808384
+          },
+          {
+            "threshold": 0.9,
+            "matrix": {
+              "tp": 65,
+              "fp": 0,
+              "tn": 100,
+              "fn": 35
+            },
+            "precision": 1,
+            "recall": 0.65,
+            "f1": 0.787878787878788
+          },
+          {
+            "threshold": 0.95,
+            "matrix": {
+              "tp": 46,
+              "fp": 0,
+              "tn": 100,
+              "fn": 54
+            },
+            "precision": 1,
+            "recall": 0.46,
+            "f1": 0.6301369863013699
+          }
+        ],
+        "bestThreshold": 0.2,
+        "bestMetrics": {
+          "threshold": 0.2,
+          "matrix": {
+            "tp": 88,
+            "fp": 7,
+            "tn": 93,
+            "fn": 12
+          },
+          "precision": 0.9263157894736842,
+          "recall": 0.88,
+          "f1": 0.9025641025641025
+        },
+        "fixedThreshold": 0.5,
+        "fixedMetrics": {
+          "threshold": 0.5,
+          "matrix": {
+            "tp": 79,
+            "fp": 1,
+            "tn": 99,
+            "fn": 21
+          },
+          "precision": 0.9875,
+          "recall": 0.79,
+          "f1": 0.8777777777777778
+        },
+        "ece": 0.10190000000000005,
+        "confidence": {
+          "p10": 0.518,
+          "p50": 0.8200000000000001,
+          "p90": 0.92,
+          "mean": 0.7624
+        }
+      },
+      "secondary": {
+        "userFacing": {
+          "yesCount": 139,
+          "noCount": 61,
+          "meanProbability": 0.6313000000000002,
+          "meanConfidence": 0.5968000000000002
+        },
+        "breaking": {
+          "yesCount": 2,
+          "noCount": 198,
+          "meanProbability": 0.10460000000000001,
+          "meanConfidence": 0.7932000000000002
+        },
+        "needsProductOwner": {
+          "yesCount": 1,
+          "noCount": 199,
+          "meanProbability": 0.09849999999999992,
+          "meanConfidence": 0.804
+        },
+        "riskLevel": {
+          "counts": {
+            "none": 7,
+            "low": 55,
+            "medium": 126,
+            "high": 12,
+            "critical": 0
+          },
+          "meanConfidence": 0.6819000000000003
+        }
+      },
+      "worstPairs": [
+        {
+          "pairId": "honojs/hono#5256|honojs/hono#5297",
+          "prId": "honojs/hono#5256",
+          "descriptionPrId": "honojs/hono#5297",
+          "label": "incoherent",
+          "descriptionTitle": "fix(client): keep a param value of \"index\" in $url() and $path()",
+          "changeAreas": [
+            "src/client"
+          ],
+          "probability": 0.91,
+          "confidence": 0.8200000000000001,
+          "basenameLeak": true
+        },
+        {
+          "pairId": "vitest-dev/vitest#11123|vitest-dev/vitest#11260",
+          "prId": "vitest-dev/vitest#11123",
+          "descriptionPrId": "vitest-dev/vitest#11260",
+          "label": "incoherent",
+          "descriptionTitle": "fix(ui): fix collapse/expand suite with file name search",
+          "changeAreas": [
+            "packages/ui",
+            "test"
+          ],
+          "probability": 0.89,
+          "confidence": 0.78,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "honojs/hono#5272|honojs/hono#5291",
+          "prId": "honojs/hono#5272",
+          "descriptionPrId": "honojs/hono#5291",
+          "label": "incoherent",
+          "descriptionTitle": "fix(client): normalize root WebSocket URLs",
+          "changeAreas": [
+            "src/client"
+          ],
+          "probability": 0.87,
+          "confidence": 0.74,
+          "basenameLeak": true
+        },
+        {
+          "pairId": "colinhacks/zod#6534|colinhacks/zod#6553",
+          "prId": "colinhacks/zod#6534",
+          "descriptionPrId": "colinhacks/zod#6553",
+          "label": "incoherent",
+          "descriptionTitle": "fix(v4): don't let format checks overwrite tighter min/max bounds",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.86,
+          "confidence": 0.72,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6533|colinhacks/zod#6540",
+          "prId": "colinhacks/zod#6533",
+          "descriptionPrId": "colinhacks/zod#6540",
+          "label": "incoherent",
+          "descriptionTitle": "refactor: collapse cachedInternal back into cached",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.85,
+          "confidence": 0.7,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6575|colinhacks/zod#6520",
+          "prId": "colinhacks/zod#6575",
+          "descriptionPrId": "colinhacks/zod#6520",
+          "label": "incoherent",
+          "descriptionTitle": "Widen literal inputs in property check types",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.84,
+          "confidence": 0.6799999999999999,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6519|colinhacks/zod#6531",
+          "prId": "colinhacks/zod#6519",
+          "descriptionPrId": "colinhacks/zod#6531",
+          "label": "incoherent",
+          "descriptionTitle": "Build literal and enum pattern regexes lazily",
+          "changeAreas": [
+            "packages/treeshake",
+            "packages/zod"
+          ],
+          "probability": 0.84,
+          "confidence": 0.6799999999999999,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6531|colinhacks/zod#6600",
+          "prId": "colinhacks/zod#6531",
+          "descriptionPrId": "colinhacks/zod#6600",
+          "label": "incoherent",
+          "descriptionTitle": "feat(instanceof): key the .properties() shape off the instance type",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.84,
+          "confidence": 0.6799999999999999,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "honojs/hono#5283|honojs/hono#5256",
+          "prId": "honojs/hono#5283",
+          "descriptionPrId": "honojs/hono#5256",
+          "label": "incoherent",
+          "descriptionTitle": "fix(client): support custom buildSearchParams and filter undefined query in $ws()",
+          "changeAreas": [
+            "src/client"
+          ],
+          "probability": 0.84,
+          "confidence": 0.6799999999999999,
+          "basenameLeak": false
+        },
+        {
+          "pairId": "colinhacks/zod#6587|colinhacks/zod#6570",
+          "prId": "colinhacks/zod#6587",
+          "descriptionPrId": "colinhacks/zod#6570",
+          "label": "incoherent",
+          "descriptionTitle": "fix(compile): unwind the doc indent when a child generator throws",
+          "changeAreas": [
+            "packages/zod"
+          ],
+          "probability": 0.82,
+          "confidence": 0.6399999999999999,
+          "basenameLeak": true
+        }
+      ],
+      "totals": {
+        "requests": 200,
+        "inputTokens": 302498,
+        "outputTokens": 24600,
+        "latencyP50Ms": 232,
+        "latencyP95Ms": 274.2999999999999,
+        "wallTimeMs": 47154
+      },
+      "h7": {
+        "verdict": "PARTIAL",
+        "reasons": [
+          "recall 0.880 at the best threshold is below the required 0.9",
+          "ECE 0.102 is not below the required 0.1"
+        ]
+      }
+    }
+  ]
+}

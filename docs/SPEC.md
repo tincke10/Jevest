@@ -136,8 +136,9 @@ Principio del pivote: **Jev responde preguntas de reconocimiento, nunca de razon
 | H2 | Triage + perfil de hunks reducen costo del LLM | Tokens LLM por PR con y sin Jev | −30% tokens con misma tasa de detección (rebajado: ya no se omiten hunks por defecto) | 1b |
 | H4 | Latencia total de Jev por PR es despreciable | Suma de latencias Jev p95 por PR | p95 < 2 s para PRs de ≤ 50 hunks | 1b |
 | H5 | El pipeline resiste PRs adversariales | Suite de PRs con instrucciones inyectadas | 0 auto-merges indebidos; 0 findings críticos suprimidos | 1b |
+| **H7** | Jev detecta cuándo la descripción de una PR no coincide con el cambio real (coherencia intención–cambio), con un state de tres capas: intención del autor (título/cuerpo, no confiable), hechos del cambio calculados en código a partir de rutas y conteos (universal al lenguaje) y un resumen del diff escrito por un LLM que nunca ve la descripción | Dataset `datasets/prs.jsonl` (100 PRs OSS mergeadas con descripción ≥ 200 chars) y `datasets/coherence-pairs.jsonl` (100 pares coherentes + 100 pares con descripción cruzada de otra PR del mismo repo; ground truth exacta sin etiquetado manual). Pregunta primaria `matches_intent` (noul). Dos variantes: **con** resumen LLM y **sin** resumen (control: solo intención + hechos de ruta) | Sobre pares incoherentes: recall ≥ 0.90 con precisión ≥ 0.85 al mejor umbral; ECE < 0.1; confianza mediana ≥ 0.5. Se juzga cada variante por separado: si la variante **sin** resumen ya cumple, el resumen LLM no se incorpora al pipeline. Un pase con recall < 0.75 en ambas variantes cierra H7 como FAIL | 0c |
 
-Regla de corte: **H1 es bloqueante para la fase 1b**. H0' no bloquea: si falla, la etapa 2 se reduce a metadatos de ruta y el LLM recibe todos los hunks.
+Regla de corte: **H1 es bloqueante para la fase 1b**. H7 no bloquea nada: decide si el triage (etapa 1) recibe un state de producto en lugar de metadatos planos. H0' no bloquea: si falla, la etapa 2 se reduce a metadatos de ruta y el LLM recibe todos los hunks.
 
 ### 4.3 Resultado de la fase 0b (2026-09-19): H0' PARCIAL
 
@@ -178,6 +179,14 @@ Decisión provisional para FR-3 (a confirmar en fase 1b):
 - Etiquetador por AST y diff (ts-morph o el compilador de TypeScript) para `change_kind`, `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io` sobre los 100 hunks v2.
 - Reutilizar el runner del spike con el set de preguntas nuevo y ground truth multi-etiqueta.
 - Salida: reporte H0'.
+
+### Fase 0c — Spike de coherencia intención–cambio (H7, no bloqueante; iniciada el 2026-09-21)
+- Dataset de PRs mergeadas (`scripts/dataset/collect-prs.ts` → `datasets/prs.jsonl`) y pares con descripción cruzada (`datasets/coherence-pairs.jsonl`), mismos repos OSS que los hunks.
+- Hechos del cambio calculados en código a partir de rutas y conteos (`change-facts.ts`): tipo de archivo, lenguajes, áreas, tamaño en palabras, flags de tests/deps/CI/migraciones. Universal al lenguaje: no parsea código.
+- `ChangeSummarizerPort`: un LLM describe el diff a nivel de comportamiento sin ver título ni cuerpo (adapters claude-cli, fake, grabado).
+- State de tres capas (`coherence-state.ts`) y set de preguntas (`matches_intent`, `user_facing`, `breaking`, `needs_product_owner`, `risk_level`). Un par por request (NFR-14).
+- Runner y reporte con las dos variantes (con y sin resumen) y fixtures grabadas para replay sin costo.
+- Salida: reporte H7. Si pasa, la etapa 1 (triage) adopta este state y un archivo `.jevest/context.yml` de producto leído desde la rama base.
 
 ### Fase 1b — Pipeline local (CLI)
 - Las 6 etapas corriendo sobre un PR dado por URL o por diff local.

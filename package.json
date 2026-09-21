@@ -18,7 +18,8 @@
     "filter": "tsx scripts/filter/run.ts",
     "findings": "tsx scripts/findings/generate.ts",
     "action": "tsx src/action/main.ts",
-    "review": "tsx scripts/review/run.ts"
+    "review": "tsx scripts/review/run.ts",
+    "dataset:prs": "tsx scripts/dataset/collect-prs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

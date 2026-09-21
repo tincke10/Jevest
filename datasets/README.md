@@ -310,3 +310,156 @@ summarizes it; the script is authoritative). `--repos` accepts an explicit
 comma-separated `owner/name` list to rebalance across repos, and
 `--fallback-repos` to change which repos only get used to top up a shortfall —
 useful for Phase 1's larger (≥500-hunk) dataset.
+
+---
+
+# `prs.jsonl` + `coherence-pairs.jsonl` — H7 intent–change coherence (dataset_version 1)
+
+Dataset for hypothesis **H7** (SPEC.md §4.2): can Jev tell whether a PR's
+*description* matches what the PR *actually changes*? H0 showed Jev recognizes
+text rather than reasoning about code, so H7 asks a text-vs-text question with
+exact, automatically derived labels.
+
+Two files, both produced by one run of `scripts/dataset/collect-prs.ts`
+(`pnpm dataset:prs`, defaults: `--per-repo 25 --max-scan 400 --seed 42
+--dataset-version 1`). Wire shape is the zod schema in
+`src/application/coherence/pr-record.ts` (`parsePrRecordsJsonl`,
+`parseCoherencePairsJsonl`); selection rules are the pure, unit-tested
+functions in `src/application/coherence/pr-selection.ts`.
+
+- **`prs.jsonl`** — 100 records, one merged PR each: `id` (`owner/name#N`),
+  `repo`, `number`, `title`, `body` (template-stripped, redacted), `labels`,
+  `author`, `base_sha`, `head_sha`, `merged_at`, `files[]` (`path`, `status`,
+  `additions`, `deletions`, optional `patch`), `dataset_version`.
+- **`coherence-pairs.jsonl`** — 200 records: `pr_id` (the CHANGE side),
+  `description_pr_id` (the INTENT side), `label` (`coherent` iff the two ids
+  are equal).
+
+## 1. Sources
+
+| Repo | License | PRs kept | Closed PRs scanned |
+|---|---|---|---|
+| [colinhacks/zod](https://github.com/colinhacks/zod) | MIT | 25 | 55 |
+| [vitest-dev/vitest](https://github.com/vitest-dev/vitest) | MIT | 25 | 77 |
+| [honojs/hono](https://github.com/honojs/hono) | MIT | 25 | 108 |
+| [trpc/trpc](https://github.com/trpc/trpc) | MIT | 25 | 244 |
+| **Total** | | **100** | **484** |
+
+Same four MIT repos as `hunks.jsonl` (§1 above). Every repo filled its 25
+within `--max-scan`; the collector's cross-repo top-up was not needed.
+Scanning order is GitHub's `pulls.list state=closed sort=updated
+direction=desc`, so a re-run on a later date selects newer PRs — the
+committed files are the ground truth, the script is how they were made.
+
+## 2. Selection rules (`isEligiblePr`)
+
+A closed PR is kept only if **all** of these hold:
+
+1. **Merged** (`merged_at` set).
+2. **Human author**: login does not end in `[bot]` and is not
+   `dependabot` / `renovate` / `github-actions`.
+3. **Real description**: body length **≥ 200 chars *after*
+   `stripPrTemplate`**, which removes HTML comments (`<!-- … -->`, including
+   multi-line), markdown checklist lines (`- [ ]` / `- [x]`), any markdown
+   heading whose section is empty, trailing whitespace, and collapses 3+
+   blank lines. Measuring before stripping would let a bare PR template pass.
+4. **Small change**: 1–12 files and additions + deletions ≤ 500 in total.
+5. **At least one source file**: not every file is docs (`*.md`, `*.mdx`,
+   anything under a `docs/` segment), a lockfile (`pnpm-lock.yaml`,
+   `package-lock.json`, `yarn.lock`, `bun.lockb`) or under `.changeset/`.
+6. **No secret** in title, body or any patch per `containsSecret`
+   (`src/domain/redact.ts`). Stored title/body/patches are additionally
+   passed through `redact`; zero `[REDACTED]` markers ended up in the file.
+
+Checks 1–3 and the title/body half of 6 run on the `pulls.list` payload; only
+PRs that pass them pay a `pulls.listFiles` call. A file's `patch` is omitted
+when GitHub does not return one (binary) or when it exceeds 12,000 chars —
+3 of the stored files have no patch for that reason. GitHub's `copied`
+status is stored as `added`; `changed`/`unchanged` as `modified`.
+
+Rejections in this run, by reason:
+
+| Reason | zod | vitest | hono | trpc | Total |
+|---|---|---|---|---|---|
+| not-merged | 8 | 30 | 68 | 172 | 278 |
+| short-body | 2 | 12 | 8 | 1 | 23 |
+| secret | 4 | 3 | 6 | 8 | 21 |
+| file-count | 6 | 1 | 0 | 13 | 20 |
+| bot-author | 0 | 5 | 0 | 15 | 20 |
+| too-many-changed-lines | 7 | 0 | 1 | 5 | 13 |
+| no-source-file | 3 | 1 | 0 | 5 | 9 |
+
+Distributions of the 100 kept PRs (nearest-rank percentiles):
+
+| Metric | min | p25 | p50 | p75 | p90 | max |
+|---|---|---|---|---|---|---|
+| body chars (stripped) | 211 | 695 | 1096 | 1763 | 2361 | 4826 |
+| files | 1 | 2 | 2 | 4 | 6 | 9 |
+| changed lines | 1 | 24 | 50 | 110 | 158 | 304 |
+
+## 3. Crossed-description protocol (`generateCoherencePairs`)
+
+For every PR the collector emits two pairs:
+
+- **coherent**: the PR's change with its **own** title/body.
+- **incoherent**: the same change with the title/body of a **different PR
+  from the same repo**.
+
+The foreign description is chosen per repo by a seeded **Sattolo cycle**
+(`--seed 42`, PRNG in `src/application/spike/prng.ts`): a single n-cycle over
+the repo's PRs, so no PR is ever paired with its own description and every
+PR's description is used **exactly once** as a foreign one. Same-repo
+crossing is deliberate: a zod description on a hono diff would be
+"incoherent" from vocabulary alone and teach nothing.
+
+Why the labels are exact: an eligible PR's own description is, by
+construction, the author's account of that change and it was merged by
+maintainers who read both — so `coherent` needs no human check. And a
+description written for a *different* change cannot be an account of this
+one — so `incoherent` needs none either. No manual labeling, no
+`needs_manual_review` flag, and a re-run with the same `prs.jsonl` and seed
+regenerates `coherence-pairs.jsonl` byte-for-byte.
+
+## 4. Known limitations
+
+- **Same-repo crossing only.** Incoherent pairs never cross repos, so the
+  dataset says nothing about cross-project confusion — that case is
+  trivially easy and was excluded on purpose.
+- **Basename leak in foreign descriptions.** A foreign description can
+  mention, verbatim, the basename of a file the change touches (two PRs in
+  the same area both saying `client.ts`). Such a pair is still labeled
+  `incoherent` — the description is genuinely about another change — but a
+  file-name-matching shortcut would get it wrong. **6 of the 100 incoherent
+  pairs** have at least one basename of the change appearing verbatim in the
+  foreign title/body (`countBasenameLeaks`): zod#6600←#6534 (`schemas.ts`),
+  zod#6587←#6570 (`compile.ts`), hono#5377←#5266 (`index.ts`),
+  hono#5256←#5297 (`client.ts`, `client.test.ts`), hono#5272←#5291
+  (`client.test.ts`), trpc#7191←#7286 (`resolveResponse.ts`). They are
+  reported, not filtered.
+- **Incoherent is "wrong PR", not "subtly wrong".** A foreign description
+  from the same repo is usually about a different feature entirely. The
+  dataset does not contain the harder real-world case of a description that
+  is *almost* right (stale after a review round, or omitting one of three
+  changes). H7 measures whether Jev can see the gross mismatch first.
+- **`containsSecret` over-rejects.** The 21 `secret` rejections were
+  inspected: the ones matched in title/body are all false positives of the
+  generic `key = value` rule (`key === 'ref'`, `keys on a path boundary`,
+  `accessKey: string`). This loses a few legitimate PRs; it never lets a
+  secret through, which is the side we want to err on.
+- **Description quality is uneven.** 200 stripped chars is a low bar; some
+  bodies are mostly a reproduction snippet or a link to an issue rather than
+  a prose account of the change. `labels` is empty for most records (these
+  repos rarely label PRs).
+- **Recency bias.** Sorting by `updated desc` favours PRs touched recently;
+  the 484 scanned PRs are all from the months before 2026-09-21.
+
+## 5. Reproducing
+
+```bash
+# Requires: gh (authenticated) or GITHUB_TOKEN, Node 20+, pnpm install.
+pnpm dataset:prs            # defaults: --per-repo 25 --max-scan 400 --seed 42
+pnpm dataset:prs --repos owner/name,owner/name --per-repo 50 --out datasets/prs.jsonl
+```
+
+The script prints per-repo counts, rejections by reason, the distributions
+above and the basename-leak count at the end of every run.

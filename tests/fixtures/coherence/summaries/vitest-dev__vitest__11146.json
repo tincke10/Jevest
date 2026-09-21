@@ -1,0 +1,31 @@
+{
+  "summary": {
+    "whatChanges": "When `vitest list` uses static parsing, collection/parse failures in test files now set the process exit code to 1 instead of exiting successfully. E2E tests and snapshots cover basic, `--json`, and `--json=<file>` output modes for this case.",
+    "behaviorChanges": [
+      "`vitest list` with static parsing exits with code 1 when a file fails to parse or contains no test suite",
+      "Errors such as \"No test suite found in file ...\" are reported on stderr with an empty stdout and a failing exit status",
+      "CI pipelines running `vitest list` in static-parse mode will now fail on parse errors rather than pass"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "CLI list command",
+      "test collection/static parsing",
+      "exit codes",
+      "end-to-end tests"
+    ],
+    "risks": [
+      "Scripts or CI that tolerated a zero exit code from `vitest list` may now break when any file fails static parsing",
+      "process.exitCode is set globally, so a subsequent successful operation in the same process would still exit non-zero unless reset"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 567,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 2716
+  },
+  "latencyMs": 7319,
+  "nominalCostUsd": 0.041345
+}

@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "`StreamingApi.abort()` now wraps each abort subscriber call in a try/catch and swallows rejected promises returned by listeners, so a throwing or async-rejecting listener no longer stops remaining listeners from running or produces an unhandled rejection. Tests cover sync throws, rejecting thenables, and async listeners.",
+    "behaviorChanges": [
+      "A listener registered via onAbort() that throws synchronously no longer propagates the error out of abort(); subsequent listeners still run.",
+      "Listeners returning a rejected promise or rejecting thenable no longer trigger unhandled rejection events.",
+      "abort() still sets aborted = true and invokes all subscribers regardless of individual listener failures."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["streaming responses", "abort handling"],
+    "risks": [
+      "Listener errors are silently swallowed with no logging, making cleanup failures hard to diagnose.",
+      "Async listener completion is not awaited, so abort() returns before async cleanup finishes."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 496,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1769
+  },
+  "latencyMs": 6639,
+  "nominalCostUsd": 0.030615500000000004
+}

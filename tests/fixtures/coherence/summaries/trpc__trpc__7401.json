@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "In the tRPC WebSocket adapter, a failed subscription now removes its entry from the per-connection subscription map before the error is reported, matching the cleanup already done on successful completion.",
+    "behaviorChanges": [
+      "Subscription IDs are released when a subscription errors, so the same ID can be reused by the client without colliding with a stale entry",
+      "Per-connection subscription tracking no longer accumulates entries for subscriptions that failed, reducing leaked state on long-lived sockets",
+      "Connection close/cleanup no longer attempts to tear down subscriptions that already ended in error"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["websocket subscriptions", "server adapters"],
+    "risks": [
+      "Deleting before onError/respond means handlers observing subscription state during the error callback now see the ID already removed",
+      "If the map entry could have been replaced by a newer subscription with the same ID, the delete could remove the wrong (newer) entry"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 554,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 874
+  },
+  "latencyMs": 7689,
+  "nominalCostUsd": 0.0231155
+}

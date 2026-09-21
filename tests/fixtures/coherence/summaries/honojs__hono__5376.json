@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "The `accepts` helper now compares Accept-style header values case-insensitively, lowercasing both the client's accept entry and the supported entry (including wildcard subtype matching) before comparison. The returned value still uses the caller's original `supports` casing. Tests cover media types, language tags, wildcards, and q=0 entries.",
+    "behaviorChanges": [
+      "Requests with `Accept: TEXT/HTML` now match a supported `text/html` instead of falling back to the default",
+      "`Accept-Language: EN-US` now matches a supported `en-US`",
+      "Case-different subtype wildcards like `TEXT/*` now match `text/html`",
+      "A case-different entry with `q=0` (e.g. `EN;q=0`) is now correctly treated as not acceptable, yielding the default"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["content negotiation", "HTTP request handling", "language/locale selection"],
+    "risks": [
+      "Applications that relied on exact case matching to reject differently-cased Accept values will now match and may select a different response type or language",
+      "Lowercasing happens on every comparison call, adding minor per-request allocation in the negotiation loop",
+      "Only `matchType` is case-folded; any other casing-sensitive logic in the parse/sort path (e.g. q-value handling elsewhere) is unchanged and could remain inconsistent"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 608,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1944
+  },
+  "latencyMs": 7544,
+  "nominalCostUsd": 0.0351655
+}

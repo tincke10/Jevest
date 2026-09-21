@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "whatChanges": "Upgrades the repo's package manager from pnpm 10.33.1 to 12.4.1 (engines + packageManager + lockfile entry), bumps the CI pnpm/action-setup action to v6, deletes .npmrc and moves its settings into pnpm-workspace.yaml with an expanded allowBuilds list and a minimumReleaseAgeExclude, and switches the two Railway example configs from the NIXPACKS builder to RAILPACK.",
+    "behaviorChanges": [
+      "Local installs and CI now require/use pnpm 12.4.1; pnpm ^12.0.0 is enforced via engines.",
+      "Install settings (public hoisting, strict-peer-dependencies off, workspace linking, --no-warnings) now come from pnpm-workspace.yaml instead of .npmrc.",
+      "Postinstall build scripts are now explicitly allowed for many packages (prisma, playwright, sharp, esbuild, swc, workerd, etc.) instead of only esbuild.",
+      "The lockfile now pins pnpm itself as a packageManagerDependency with platform-specific @pnpm/exe binaries.",
+      "Railway deployments of the websockets-starter and sse-chat examples build with RAILPACK instead of NIXPACKS."
+    ],
+    "userFacing": false,
+    "breaking": true,
+    "areas": [
+      "build tooling",
+      "dependency management",
+      "CI workflows",
+      "example app deployment configuration"
+    ],
+    "risks": [
+      "Major pnpm version jump (10 → 12) can change hoisting/resolution behavior and break installs or builds for contributors still on pnpm 10.",
+      "Removing .npmrc means any tool or environment that reads .npmrc settings (rather than pnpm-workspace.yaml) loses them.",
+      "Switching Railway examples to the RAILPACK builder may change the runtime image or break deploys that relied on NIXPACKS.",
+      "packages/client/bin/intent.js was modified but its contents are not visible in the diff, so its effect is unverified."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1118,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5649
+  },
+  "latencyMs": 13236,
+  "nominalCostUsd": 0.0849655
+}

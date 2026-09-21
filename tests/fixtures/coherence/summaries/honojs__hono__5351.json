@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "The AWS Lambda streaming adapter now pipes the response body through Node's `stream/promises` pipeline via an async generator instead of writing chunks in a loop, so writes respect the destination's backpressure and the handler waits for the stream to finish. Adds runtime tests covering pacing and mid-stream body errors.",
+    "behaviorChanges": [
+      "Lambda response streaming honors the response stream's highWaterMark, so the web ReadableStream is no longer drained far ahead of what the destination has written",
+      "The streaming handler promise resolves only after the response stream has actually finished writing, not just after the last write() call",
+      "Errors thrown mid-body now propagate through the pipeline and are handled by the handler's existing error path (logged as 'Error processing request:') instead of being silently unhandled",
+      "On error, the writable is destroyed by the pipeline rather than being ended normally"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["AWS Lambda adapter", "response streaming"],
+    "risks": [
+      "`pipeline` destroys the writable on error; Lambda's response stream may then terminate the response differently than the previous end()-only behavior",
+      "Depends on `node:stream/promises`, tightening the adapter's coupling to a Node runtime",
+      "Slower per-chunk delivery when the destination is slow could change timing-sensitive streaming responses (e.g. SSE latency)"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 739,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2586
+  },
+  "latencyMs": 9192,
+  "nominalCostUsd": 0.0448605
+}

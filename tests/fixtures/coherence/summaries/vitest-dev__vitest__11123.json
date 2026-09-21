@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "In the Vitest UI test explorer summary bar, the \"RUNNING (n)\" counter is now hidden when viewing a static HTML report, and the summary switches from a two-row grid to a single-row flex layout in that mode. A `data-testid=\"explorer-summary\"` hook was added and covered by an e2e test.",
+    "behaviorChanges": [
+      "Static HTML reports no longer show the 'RUNNING (count)' entry in the explorer summary",
+      "Summary layout in report mode renders as a single-line flex row instead of the two-row grid used in live UI mode",
+      "Summary container now exposes a data-testid=\"explorer-summary\" attribute in the DOM",
+      "E2E test asserts RUNNING is absent in static mode and visible in ui mode"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["Vitest UI test explorer", "static HTML report", "end-to-end tests"],
+    "risks": [
+      "The separator '/' between FAIL and RUNNING is still rendered in report mode, so the summary may read 'FAIL (n) / PASS (n)' with a dangling slash",
+      "Layout classes diverge between the two modes, so styling regressions could appear only in one mode"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 587,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1614
+  },
+  "latencyMs": 6735,
+  "nominalCostUsd": 0.0313405
+}

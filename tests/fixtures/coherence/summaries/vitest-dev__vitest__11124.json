@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Test-infrastructure only changes to Vitest's Playwright UI e2e suite: CI now uploads Playwright trace artifacts, a new skipped-test fixture is added (bumping expected counts), viewport sizing moves from global config to per-spec, explorer rows are opened via direct click/dispatch instead of hover+button, and filter assertions now check explorer summary counts including a new \"Only Tests\" case.",
+    "behaviorChanges": [
+      "CI runs upload a `playwright-traces-<os>-node-<version>` artifact (1-day retention) from test/ui/test-results when the unit suite finishes, ignored if absent.",
+      "The UI test fixture project gains a `skipped.test.ts` file, so fixture totals become 2 skipped tests and 1 skipped file.",
+      "Playwright's default Desktop Chrome viewport is restored globally; ui.spec.ts sets 800x1600 itself and the scroll test grows to 1000x2000."
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["end-to-end UI tests", "CI workflow", "test fixtures"],
+    "risks": [
+      "Explorer assertions depend on hard-coded viewport heights; adding fixture files can push rows out of the virtual scroller's render window and cause flaky failures (acknowledged in the added comments).",
+      "Replacing hover + 'btn-open-details' click with a plain row click in merge-reports.spec removes coverage of the details button affordance.",
+      "Using dispatchEvent('click') bypasses Playwright actionability checks, so genuinely unclickable/obscured rows would no longer be caught.",
+      "Trace artifacts are uploaded on every non-cancelled unit matrix job, adding CI storage/upload time."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 906,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4740
+  },
+  "latencyMs": 11045,
+  "nominalCostUsd": 0.0705755
+}

@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Fixes the server's streaming response error handler so it unwraps the inner error from the `{ error, path }` object before converting it to a TRPCError. Server `onError` callbacks now receive the actual error with its real message and cause instead of an empty-message wrapper. Tests and snapshots updated accordingly.",
+    "behaviorChanges": [
+      "Server `onError` for errors thrown during streamed/iterable responses now reports the original error message instead of an empty string",
+      "The TRPCError passed to `onError` now has the original thrown error as its `cause`",
+      "Output-validation failures in streaming responses surface the full Zod issue list in the logged error message"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["server error handling", "streaming responses", "tests"],
+    "risks": [
+      "Operators with log parsing or error-reporting rules keyed on the previously empty message will now see different (and longer) messages",
+      "The `path` field from the wrapped cause is still passed as `undefined` to onError, so stream error location remains unreported"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 591,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2048
+  },
+  "latencyMs": 7959,
+  "nominalCostUsd": 0.0357805
+}

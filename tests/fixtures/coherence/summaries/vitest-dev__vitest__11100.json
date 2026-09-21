@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "In the expect package's equality logic, subset-equality testers are now filtered out before delegating to an asymmetric matcher's `asymmetricMatch`. Recursive subset testers (closures) are tracked in a WeakSet so they can be identified. Tests are added covering asymmetric matchers nested inside `toMatchObject`.",
+    "behaviorChanges": [
+      "Asymmetric matchers (e.g. expect.arrayContaining) used inside toMatchObject now compare their contents with full equality instead of inheriting subset semantics",
+      "Assertions like expect([{id:1}]).toMatchObject(expect.arrayContaining([{id:1, required:'x'}])) now fail where they previously passed",
+      "Nested cases such as { nested: expect.arrayContaining([{ id: 1 }]) } no longer match array items that carry extra properties",
+      "Custom testers passed through to asymmetricMatch no longer include subsetEquality or its recursive closure variants"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["assertions / expect matchers", "test framework equality logic"],
+    "risks": [
+      "Existing user test suites relying on the previous lenient subset behavior inside asymmetric matchers will start failing",
+      "Identity-based WeakSet tracking only catches subset testers created via subsetEquality; equivalent testers constructed elsewhere or re-wrapped would not be filtered",
+      "Filtering removes these testers for all asymmetric matchers, potentially affecting matchers beyond arrayContaining/objectContaining"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1127,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2153
+  },
+  "latencyMs": 13336,
+  "nominalCostUsd": 0.0502305
+}

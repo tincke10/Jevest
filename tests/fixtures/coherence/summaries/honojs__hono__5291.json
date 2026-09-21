@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "In the Hono RPC client (`hc`), WebSocket URLs built by `$ws()` now strip a trailing `/index` segment before parameter substitution, so `client.index.$ws()` connects to the root path instead of `/index`. Path parameter values equal to \"index\" are preserved. Tests updated accordingly.",
+    "behaviorChanges": [
+      "`client.index.$ws()` now opens a connection to `ws://host/` rather than `ws://host/index`, matching how non-WebSocket RPC calls resolve index routes.",
+      "Query parameters are appended to the normalized root URL (e.g. `ws://localhost/?id=123`).",
+      "A dynamic route param whose value is `index` (e.g. `$ws({ param: { id: 'index' } })`) still produces `ws://host/index`, since normalization happens before param replacement."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "WebSocket connections"],
+    "risks": [
+      "Any server or proxy that was actually listening on the literal `/index` WebSocket path will no longer receive connections from this client.",
+      "Normalization is applied only to the `ws` branch; if `removeIndexString` matches more broadly than intended (e.g. paths ending in `index` for other reasons), URLs could be altered unexpectedly."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 813,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2750
+  },
+  "latencyMs": 9297,
+  "nominalCostUsd": 0.04835049999999999
+}

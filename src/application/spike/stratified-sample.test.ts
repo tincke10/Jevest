@@ -86,3 +86,40 @@ describe("stratifiedSample", () => {
     expect(() => stratifiedSample(hunks, { limit: -1, seed: 42 })).toThrow(RangeError);
   });
 });
+
+describe("stratifiedSampleBy", () => {
+  const items = [
+    { id: "a", kind: "x" },
+    { id: "b", kind: "x" },
+    { id: "c", kind: "x" },
+    { id: "d", kind: "y" },
+    { id: "e", kind: "y" },
+    { id: "f", kind: "y" },
+  ];
+
+  it("picks half positive / half negative, deterministically, in original order", async () => {
+    const { stratifiedSampleBy } = await import("./stratified-sample.js");
+    const isPositive = (item: { kind: string }) => item.kind === "x";
+
+    const first = stratifiedSampleBy(items, isPositive, { limit: 4, seed: 7 });
+    const second = stratifiedSampleBy(items, isPositive, { limit: 4, seed: 7 });
+
+    expect(first).toEqual(second);
+    expect(first).toHaveLength(4);
+    expect(first.filter(isPositive)).toHaveLength(2);
+    const order = first.map((i) => items.indexOf(i));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("backfills from the other class when one runs short", async () => {
+    const { stratifiedSampleBy } = await import("./stratified-sample.js");
+    const picked = stratifiedSampleBy(items, (i) => i.id === "a", { limit: 4, seed: 1 });
+    expect(picked).toHaveLength(4);
+    expect(picked.some((i) => i.id === "a")).toBe(true);
+  });
+
+  it("returns everything when limit covers the whole set", async () => {
+    const { stratifiedSampleBy } = await import("./stratified-sample.js");
+    expect(stratifiedSampleBy(items, () => true, { limit: 6, seed: 1 })).toEqual(items);
+  });
+});

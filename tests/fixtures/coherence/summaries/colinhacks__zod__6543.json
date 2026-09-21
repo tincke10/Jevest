@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "In Zod v4's lazy failure result, the captured raw issues and parse context are dropped once the `error` is built by the getter or assigned via the setter, so a retained `safeParse` failure result no longer keeps the parsed input alive. A GC-based test verifies the release.",
+    "behaviorChanges": [
+      "Holding a failed safeParse result no longer retains a strong reference to the parsed input value after the error is read or replaced, reducing memory retention.",
+      "Assigning `result.error` also releases the internal issues/context, not just reading it.",
+      "New test uses V8 flags and forced GC to assert the parsed inputs become collectable."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation / parsing", "memory usage", "tests"],
+    "risks": [
+      "If `result.error` is set to a falsy value (e.g. undefined) after the captures are cleared, the getter re-enters the build branch and would throw on `issues.map` of undefined.",
+      "Any future code path needing `issues` or `ctx` after first error access will now see undefined.",
+      "The GC test relies on v8.setFlagsFromString('--expose-gc') and timing heuristics, which can be flaky or environment-dependent in CI.",
+      "Error construction is now effectively one-shot; repeated lazy rebuilds are no longer possible."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 832,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1899
+  },
+  "latencyMs": 11417,
+  "nominalCostUsd": 0.0403155
+}

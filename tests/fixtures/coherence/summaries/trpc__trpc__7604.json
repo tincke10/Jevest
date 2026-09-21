@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "In the tRPC jsonl stream consumer, reads for promise and async-iterable chunks now check the reader's `done` flag. If the stream ends cleanly before the expected chunk arrives, a clear `Error('Stream closed unexpectedly')` is thrown/rejected instead of a confusing `TypeError` from destructuring `undefined`. Regression tests cover both cases.",
+    "behaviorChanges": [
+      "Truncated streams (clean EOF mid-iteration) now reject pending promises with 'Stream closed unexpectedly' instead of 'value is not iterable' TypeError",
+      "Async iterables from a prematurely closed stream throw a descriptive Error when iteration continues past the last received chunk",
+      "Consumers no longer risk hanging/looping on `undefined` chunk values after stream end"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["streaming / jsonl serialization", "error handling", "tests"],
+    "risks": [
+      "Error is a generic `Error` with a hardcoded message, not a typed/tRPC error, so callers can only match on the string",
+      "Code that previously relied on the TypeError (or on silent behavior) when a stream truncated will now see a different error type/message"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 584,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2802
+  },
+  "latencyMs": 8069,
+  "nominalCostUsd": 0.043145499999999996
+}

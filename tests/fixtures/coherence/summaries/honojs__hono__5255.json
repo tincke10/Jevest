@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "The accepts helper's default matcher now supports wildcard subtypes: `type/*` matches any supported value with the same main type, while `*/*` and `*` deliberately match nothing and fall through to the configured default. Candidates are sorted by quality factor and then by specificity, and the input array is no longer mutated.",
+    "behaviorChanges": [
+      "An Accept header like `application/*` now resolves to a supported type such as `application/json` instead of returning the default.",
+      "`Accept: */*` (or `*` for headers like Accept-Encoding) now returns the configured default instead of matching a supported value.",
+      "When several accepted types share the same q value, more specific entries (exact > type/* > */*) are tried first, so an exact match wins over a wildcard.",
+      "The returned value is the matched entry from `supports`, not the raw header token.",
+      "The `accepts` array passed to the matcher is copied before sorting, so callers' arrays are no longer reordered in place."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["content negotiation", "HTTP request helpers"],
+    "risks": [
+      "Treating `*/*` as a non-match diverges from common HTTP content-negotiation expectations; clients sending `Accept: */*` will get the default rather than the first supported type.",
+      "For token-based headers like Accept-Encoding/Accept-Language, a bare `*` now yields the default, which may change previously negotiated encodings.",
+      "Language tags such as `en-US` are split on `/` in matchType, so prefix wildcards only work for slash-delimited media types.",
+      "Specificity ordering only applies within equal q values, so a low-q exact match still loses to a higher-q wildcard that matches nothing."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1000,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2408
+  },
+  "latencyMs": 13401,
+  "nominalCostUsd": 0.0496055
+}

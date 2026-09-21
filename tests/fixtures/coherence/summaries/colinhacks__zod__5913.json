@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Adds a new public `toZod<T>()` helper to Zod v4 core, classic, and mini. It returns the schema unchanged at runtime but type-checks at compile time that the schema's output type exactly equals `T`, emitting per-key mismatch diagnostics for object schemas. Documentation and type-level tests are added.",
+    "behaviorChanges": [
+      "`z.toZod<T>()(schema)` is now exported from zod/v4 classic, zod/mini, zod/v4/core, and core `util`",
+      "Schemas whose output type is not exactly `T` (extra keys, missing optional keys, wrong property types, missing `readonly`, bare `z.any()`) now fail to compile",
+      "Object schema mismatches report the specific offending key with `expected`/`received` in the type error",
+      "The returned value keeps the original schema type, so members like `.shape.username` and chained methods remain available",
+      "Docs gain a \"Matching an existing type\" section contrasting `toZod` with `satisfies z.ZodType<T>`"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation library API", "TypeScript type inference", "documentation"],
+    "risks": [
+      "The recursive mapped/conditional types (`ToZodShape`, `ToZodTarget`) could trigger excessive type instantiation depth or slow type-checking on large schemas",
+      "Exact equality is asymmetric: intersection targets only match `.and()` and flat targets only match `.safeExtend()`, which is likely to surprise users",
+      "Runtime implementation is a bare `as any` identity cast, so no validation is performed and the guarantee is purely compile-time",
+      "Adding a new `toZod` export to classic/mini/core barrels could collide with existing user re-exports or wildcard imports"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 946,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 6885
+  },
+  "latencyMs": 11368,
+  "nominalCostUsd": 0.0930255
+}

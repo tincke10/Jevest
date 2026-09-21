@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "Pins the CI Bun version to 1.3.9 instead of \"latest\", and bumps the private @trpc/tests package to version 11.17.0 along with its @trpc/client and @trpc/server dependencies.",
+    "behaviorChanges": [
+      "CI example tests now run on Bun 1.3.9 rather than whatever Bun release is latest",
+      "The internal tests package declares a version field (11.17.0) and depends on tRPC client/server 11.17.0 instead of 11.16.0"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["build tooling", "continuous integration", "internal test package dependencies"],
+    "risks": [
+      "Pinned Bun version will drift and must be bumped manually to pick up fixes",
+      "Test package now requires @trpc/client and @trpc/server 11.17.0 to be resolvable; if those versions aren't published/linked in the workspace, installs could fail"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 451,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1143
+  },
+  "latencyMs": 5366,
+  "nominalCostUsd": 0.0232305
+}

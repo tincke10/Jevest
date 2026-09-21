@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "The Hono RPC client's `$ws()` method now builds WebSocket query strings through the same `buildSearchParams` option used by HTTP requests, instead of appending params manually. Custom serializers now apply to WebSocket URLs, and undefined query values are dropped. Tests cover both cases.",
+    "behaviorChanges": [
+      "A custom `buildSearchParams` passed to `hc()` is now applied to `$ws()` URLs (e.g. arrays serialized as `tags[]=tag1&tags[]=tag2`) rather than being ignored",
+      "Query parameters with `undefined` values are omitted from the WebSocket URL instead of being stringified/appended",
+      "Default array handling for `$ws()` now follows the shared search-param builder rather than the inline append logic",
+      "Param replacement uses optional chaining, so a null-ish first argument no longer risks differing handling"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "WebSocket connections", "query string serialization"],
+    "risks": [
+      "Existing apps relying on the old `$ws()` array encoding (repeated `key=value`) may now send a different query string if a custom builder is configured, breaking server-side parsing",
+      "Switching from `searchParams.set` to `append` could duplicate keys if the builder emits the same key more than once",
+      "Servers that previously received explicitly empty/undefined params will now see them absent"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 768,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1796
+  },
+  "latencyMs": 10115,
+  "nominalCostUsd": 0.0376855
+}

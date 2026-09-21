@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Negative q-values in Accept headers are now clamped to 0 instead of 1, so refused types sort last instead of first. Values above 1 and NaN still clamp to 1. Tests updated to assert the new ordering.",
+    "behaviorChanges": [
+      "`q=-1` (or any negative q) now yields quality 0 instead of 1, placing that media type last in the sorted result",
+      "`q=-Infinity` still maps to 0, but now via the generic negative branch rather than a special case",
+      "Content negotiation no longer selects a type the client explicitly refused with a negative q over a legitimately weighted one",
+      "`q=Infinity` and other out-of-range positive values continue to clamp to 1; NaN still clamps to 1"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP content negotiation", "Accept header parsing"],
+    "risks": [
+      "Callers that relied on negative q being treated as highest priority will see different negotiated responses",
+      "Clamping (rather than rejecting) makes the q sequence non-monotonic, so results depend on the sort being stable/correct for equal q values",
+      "Malformed headers containing negative q now silently produce a 0-quality entry rather than an error, which may mask client bugs"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 818,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1543
+  },
+  "latencyMs": 10416,
+  "nominalCostUsd": 0.0364055
+}

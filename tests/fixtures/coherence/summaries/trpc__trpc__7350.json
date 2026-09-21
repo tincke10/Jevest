@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "whatChanges": "Bumps pnpm from 9.12.2 to 10.33.1 in root and example packages, updates example CI to pnpm/action-setup@v5, fixes the coverage flag passthrough in CI, excludes coverage output from coverage globs, imports describe from vitest, and makes the OpenAPI CLI create missing output directories before writing.",
+    "behaviorChanges": [
+      "The openapi CLI now creates the output file's parent directories recursively instead of failing when the target directory does not exist",
+      "Repo requires pnpm ^10.33.1; installs with pnpm 9 now fail the engines check",
+      "Example CI workflows resolve pnpm via action-setup v5 from packageManager instead of a pinned 8.5.1",
+      "CI test run passes --coverage to vitest directly rather than through the `--` separator",
+      "Coverage reports no longer include files under coverage/ directories"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": [
+      "openapi CLI",
+      "build tooling",
+      "CI workflows",
+      "package manager configuration",
+      "test configuration"
+    ],
+    "risks": [
+      "The pnpm 9 to 10 major bump can change lockfile format, hoisting and lifecycle-script defaults, potentially breaking installs for contributors and consumers",
+      "pnpm/action-setup@v5 without a pinned version relies entirely on the packageManager field; example packages pinned to 10.33.1 may diverge from the root",
+      "mkdirSync with recursive:true silently creates arbitrary directory trees from user-supplied --output paths",
+      "Dropping `--` in the CI test command assumes the pnpm 10 argument-forwarding behavior; the flag could be misrouted under other pnpm versions"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1068,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2459
+  },
+  "latencyMs": 13012,
+  "nominalCostUsd": 0.051815499999999994
+}

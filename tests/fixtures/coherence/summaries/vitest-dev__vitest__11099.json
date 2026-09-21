@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "whatChanges": "Rewrites one e2e test for async leak detection: replaces the flaky `fs.readFile` (FSREQCALLBACK) scenario with an `fs.watch` (FSEVENTWRAP) one, and swaps the partial `toContain` assertion for a full inline snapshot of stderr including the \"Async Leaks 1\" header.",
+    "behaviorChanges": [],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["testing", "async leak detection tests"],
+    "risks": [
+      "Full inline snapshot of stderr is stricter than the previous substring match, so unrelated output/formatting changes will now fail this test",
+      "FSEVENTWRAP handle naming and fs.watch behavior are platform-dependent (macOS vs Linux), which may make the snapshot environment-specific",
+      "The unclosed watcher in the leaking case keeps a file watch open during the test run"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 454,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1506
+  },
+  "latencyMs": 5791,
+  "nominalCostUsd": 0.0269355
+}

@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "whatChanges": "Replaces the two `existsSync`/`mkdirSync` checks that created `.vitest` and its scope subdirectory with a single recursive `mkdirSync` call for the report directory.",
+    "behaviorChanges": [
+      "Report directories are created recursively, so a scope containing nested path segments now works instead of throwing ENOENT",
+      "Directory creation no longer fails with EEXIST in the race where another process creates the directory between the check and the mkdir"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["test reporting", "report output directory setup"],
+    "risks": [
+      "If a file (not a directory) already exists at the report path, recursive mkdir still throws EEXIST/ENOTDIR — error surface differs slightly from before"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 464,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 956
+  },
+  "latencyMs": 5924,
+  "nominalCostUsd": 0.0216855
+}

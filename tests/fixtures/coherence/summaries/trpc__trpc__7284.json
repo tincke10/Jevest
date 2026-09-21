@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "Adds a new `.superset/config.json` tooling file declaring a setup step that runs `pnpm install` and an empty teardown list, so the environment tooling that reads this file installs dependencies automatically.",
+    "behaviorChanges": [
+      "Environments provisioned via the .superset config now run `pnpm install` as a setup step",
+      "No teardown commands are configured for such environments"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["development environment configuration", "build tooling"],
+    "risks": [
+      "Setup assumes pnpm is available and that the repo is a pnpm project; a mismatched package manager or missing lockfile would make setup fail",
+      "Empty teardown means no cleanup step runs after the environment is used"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 420,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 766
+  },
+  "latencyMs": 6333,
+  "nominalCostUsd": 0.0186855
+}

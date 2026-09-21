@@ -19,7 +19,10 @@
     "findings": "tsx scripts/findings/generate.ts",
     "action": "tsx src/action/main.ts",
     "review": "tsx scripts/review/run.ts",
-    "dataset:prs": "tsx scripts/dataset/collect-prs.ts"
+    "dataset:prs": "tsx scripts/dataset/collect-prs.ts",
+    "coherence:summarize": "tsx scripts/coherence/summarize.ts",
+    "coherence": "tsx scripts/coherence/run.ts",
+    "adversarial": "tsx scripts/adversarial/run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

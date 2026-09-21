@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "whatChanges": "Zod's base64 and base64url string formats now carry a lax charset regex as their runtime `pattern` (actual validity still enforced by the isValidBase64 helpers), while JSON Schema generation swaps that lax regex back to the exact block-structure regex for both `pattern` and record `patternProperties`.",
+    "behaviorChanges": [
+      "z.templateLiteral([...,z.base64()]) now composes correctly: prefixed values like \"id-AAAA\" validate and bare \"AAAA\" is rejected, where the old ^$| alternation leaked",
+      "Parsing multi-megabyte base64/base64url values inside template literals no longer overflows the regex stack",
+      "z.toJSONSchema() on base64/base64url still emits the exact quantified pattern despite the laxer runtime regex",
+      "looseRecord with a base64url key now emits regexes.base64url.source in patternProperties instead of the charset-only regex",
+      "schema._zod.def.pattern for base64 is now the charset regex /^[0-9a-zA-Z+/]*={0,2}$/ rather than regexes.base64"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "schema validation (string formats)",
+      "JSON Schema generation",
+      "template literal schemas"
+    ],
+    "risks": [
+      "Code reading schema._zod.def.pattern directly (custom codegen, other JSON Schema emitters) now gets a permissive regex that accepts invalid base64 such as \"A\" or \"AAAAA\"",
+      "The lax-to-exact swap is keyed by RegExp identity in a Map; any path that clones or recreates the pattern object loses the swap and emits the lax pattern",
+      "Template literals composing base64 accept the lax block-less charset, so a base64 segment of invalid length may pass inside a template literal even though z.base64() alone rejects it",
+      "base64urlCharset/base64Charset are now exported from core schemas, widening the public surface"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1101,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3397
+  },
+  "latencyMs": 14160,
+  "nominalCostUsd": 0.0620205
+}

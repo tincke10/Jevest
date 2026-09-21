@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Signed-cookie parsing now accepts cookies whose value is an empty string. The dot-separator index check in `parseSigned` was loosened from `< 1` to `< 0`, so a cookie like `name=.signature` is verified and returned as `''` instead of being skipped. Tests cover the empty-value case for both the parser and the cookie helper.",
+    "behaviorChanges": [
+      "getSignedCookie / parseSigned now return '' for a validly signed empty-string cookie value, instead of omitting the key (previously undefined)",
+      "Signed cookies whose serialized form begins with '.' (empty value) are now signature-verified rather than silently skipped; an invalid signature on them yields false",
+      "Test helpers switched from truthiness checks to explicit `=== false` comparisons, so empty values are no longer reported as 'INVALID'"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["cookie handling", "signed cookies", "HTTP middleware"],
+    "risks": [
+      "Consumer code using truthiness (`cookie || fallback`) on signed cookie values can no longer distinguish an empty string from a missing/invalid cookie; only `=== false`/`undefined` checks are reliable",
+      "Callers that previously received `undefined` for empty signed cookies now get `''`, which may change downstream branching",
+      "Malformed cookie values starting with '.' now enter the signature-verification path instead of being skipped early"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 879,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1899
+  },
+  "latencyMs": 12724,
+  "nominalCostUsd": 0.0414905
+}

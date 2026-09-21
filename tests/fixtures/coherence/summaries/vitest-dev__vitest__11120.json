@@ -1,0 +1,31 @@
+{
+  "summary": {
+    "whatChanges": "Vitest now prints a yellow \"Vitest\" labeled warning to stderr when an inline project that omits an explicit `extends` option registers plugins already inherited from the declaring config file, suggesting removing the duplicates or setting `extends` explicitly. E2E tests cover the warning and its suppression cases.",
+    "behaviorChanges": [
+      "Running Vitest with an inline project that re-declares a plugin already present in the parent config emits a new warning on stderr naming the duplicated plugin(s) and the declaring config file.",
+      "No warning is emitted when the project sets `extends: true` or `extends: false` explicitly.",
+      "No warning is emitted when the duplicate plugin count originates from the declaring config itself (parent already lists it twice)."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "test runner configuration",
+      "project/workspace resolution",
+      "CLI output and warnings"
+    ],
+    "risks": [
+      "Detection is by plugin `name` only, so distinct plugins sharing a name (or legitimately intentional duplicates) can trigger false-positive warnings.",
+      "Warnings written to stderr may break user tooling or snapshot tests that assert empty stderr output.",
+      "Counting logic (count > 1 && parentCount > 0 && count > parentCount) may miss or misreport cases where a plugin legitimately appears multiple times in both configs."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 578,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3192
+  },
+  "latencyMs": 6839,
+  "nominalCostUsd": 0.04689549999999999
+}

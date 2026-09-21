@@ -1,0 +1,32 @@
+{
+  "summary": {
+    "whatChanges": "Adds the dotAll (`s`) flag to the regexes that swap Suspense fallbacks and ErrorBoundary placeholders for real content during JSX streaming, so replacement works when markup spans newlines. Also simplifies the ErrorBoundary pattern by dropping a redundant lazy group. New SSE streaming tests cover multi-line fallbacks and nested/sibling Suspense boundaries.",
+    "behaviorChanges": [
+      "Suspense fallback markup containing newlines is now correctly replaced by the resolved async content instead of being left in the stream",
+      "ErrorBoundary placeholder replacement now matches content spanning multiple lines, so multi-line children are swapped for the fallback on error",
+      "SSE responses rendering async JSX with multi-line content emit the resolved content (with each line prefixed by `data: `) rather than the unreplaced fallback/placeholder markup",
+      "Nested and sibling Suspense boundaries with multi-line fallbacks now resolve to their final content"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "JSX streaming rendering",
+      "Suspense and ErrorBoundary components",
+      "server-sent events helper"
+    ],
+    "risks": [
+      "With dotAll enabled, the lazy `.*?` can now span newlines and could match across an unintended boundary if a matching end marker appears later in multi-boundary output",
+      "ErrorBoundary capture group 1 no longer includes the leading lazy segment, changing what the replacement callback receives for group-based substitutions",
+      "The `s` regex flag requires ES2018+ runtimes; older targets/environments would throw on regex construction"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1005,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3126
+  },
+  "latencyMs": 13133,
+  "nominalCostUsd": 0.056910499999999996
+}

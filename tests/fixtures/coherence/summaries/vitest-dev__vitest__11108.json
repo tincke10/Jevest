@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The CI workflow now also triggers on pull request `closed` events (in addition to opened/synchronize/reopened), while the lint, changed-files diff, and playwright-deps image jobs are guarded to skip whenever the triggering action is `closed`.",
+    "behaviorChanges": [
+      "CI workflow runs are created when a pull request is closed or merged, where previously none were",
+      "On closed-PR runs, the lint, 'changed' diff, and playwright-deps-image jobs are skipped",
+      "Pull request event types are now explicitly listed, so other PR activity types no longer trigger the workflow"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["CI/CD", "build tooling"],
+    "risks": [
+      "Jobs not shown in the diff that depend on 'changed' outputs may behave unexpectedly or be skipped on closed-PR runs",
+      "Extra workflow runs on every PR close consume Actions minutes and may show as skipped/neutral checks",
+      "Explicit types list drops previously-covered default-adjacent events if any workflow logic relied on them"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 570,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1135
+  },
+  "latencyMs": 7490,
+  "nominalCostUsd": 0.026125499999999996
+}

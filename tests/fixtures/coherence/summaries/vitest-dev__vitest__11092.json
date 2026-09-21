@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Vitest's spy registry now stores mocks as WeakRefs with a FinalizationRegistry so uncalled mocks can be garbage collected. `clearAllMocks()` only clears mocks marked dirty (actually invoked, including their prototype mock), `resetAllMocks()` derefs and prunes dead entries, and docs raise the minimum Firefox version to 79.",
+    "behaviorChanges": [
+      "vi.clearAllMocks() now skips mocks that have never been invoked, so mockClear is not called on them",
+      "Calling an instance mock also marks its prototype mock dirty, so clearAllMocks clears both",
+      "vi.resetAllMocks() skips/removes mocks already garbage collected",
+      "Mock instances are no longer strongly retained by the global registry, allowing GC",
+      "Documented browser support raises Firefox minimum from 78 to 79 (WeakRef/FinalizationRegistry)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["mocking/spies", "test runner runtime", "browser support documentation"],
+    "risks": [
+      "Requires WeakRef and FinalizationRegistry at runtime; older environments would throw",
+      "Dirty tracking only triggers on invocation, so mocks whose state is mutated some other way won't be cleared by clearAllMocks",
+      "DIRTY_MOCK_STATES holds strong references to called mocks and is only pruned in mockClear, so invoked mocks can still be retained",
+      "Subclass/prototype dirty marking depends on prototypeState lookup at creation time; mocks created before the prototype mock may not propagate"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1112,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3736
+  },
+  "latencyMs": 13510,
+  "nominalCostUsd": 0.06568550000000001
+}

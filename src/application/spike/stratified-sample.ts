@@ -1,9 +1,13 @@
 /**
- * A seeded, label-stratified subsample of hunks for `--limit N` (dataset is
- * ordered defect-first, so a plain `slice(0, N)` would trivially be all
- * defects and make any H0 verdict meaningless). Picks half defect / half
- * benign, backfilling from whichever class has spare capacity when one
- * class runs short, and returns the selection in original dataset order.
+ * A seeded, label-stratified subsample for `--limit N`: datasets are
+ * ordered by label (hunks defect-first, coherence pairs coherent-first per
+ * PR), so a plain `slice(0, N)` would be one class only and make any
+ * verdict meaningless. Picks half positive / half negative, backfilling
+ * from whichever class has spare capacity when one runs short, and returns
+ * the selection in original dataset order.
+ *
+ * {@link stratifiedSampleBy} is the generic form (any item, any predicate);
+ * {@link stratifiedSample} is the hunk-specific wrapper the H0/H0' CLIs use.
  */
 import type { HunkRecord } from "./hunk-record.js";
 import { hashString, mulberry32 } from "./prng.js";
@@ -28,45 +32,54 @@ function shuffle<T>(items: readonly T[], rng: () => number): T[] {
 }
 
 /**
- * Picks `limit` hunks, half defect and half benign (the odd one, if any,
- * goes to defect), deterministically for a given seed. Falls back to
- * returning every hunk when `limit >= hunks.length`.
+ * Picks `limit` items, half positive and half negative (the odd one, if any,
+ * goes to positive), deterministically for a given seed. Falls back to
+ * returning every item when `limit >= items.length`.
  */
-export function stratifiedSample(
-  hunks: readonly HunkRecord[],
+export function stratifiedSampleBy<T>(
+  items: readonly T[],
+  isPositive: (item: T) => boolean,
   options: StratifiedSampleOptions,
-): HunkRecord[] {
+): T[] {
   const { limit, seed } = options;
   if (limit < 0) {
     throw new RangeError(`limit must be >= 0, got ${limit}`);
   }
-  if (limit >= hunks.length) {
-    return [...hunks];
+  if (limit >= items.length) {
+    return [...items];
   }
 
-  const defects = hunks.filter((h) => h.label.defect);
-  const benign = hunks.filter((h) => !h.label.defect);
+  const positives = items.filter(isPositive);
+  const negatives = items.filter((item) => !isPositive(item));
 
-  let defectCount = Math.min(Math.ceil(limit / 2), defects.length);
-  let benignCount = Math.min(limit - defectCount, benign.length);
+  let positiveCount = Math.min(Math.ceil(limit / 2), positives.length);
+  let negativeCount = Math.min(limit - positiveCount, negatives.length);
 
-  let shortfall = limit - defectCount - benignCount;
+  let shortfall = limit - positiveCount - negativeCount;
   if (shortfall > 0) {
-    const extraDefect = Math.min(shortfall, defects.length - defectCount);
-    defectCount += extraDefect;
-    shortfall -= extraDefect;
+    const extra = Math.min(shortfall, positives.length - positiveCount);
+    positiveCount += extra;
+    shortfall -= extra;
   }
   if (shortfall > 0) {
-    const extraBenign = Math.min(shortfall, benign.length - benignCount);
-    benignCount += extraBenign;
-    shortfall -= extraBenign;
+    const extra = Math.min(shortfall, negatives.length - negativeCount);
+    negativeCount += extra;
+    shortfall -= extra;
   }
 
-  const rngDefect = mulberry32((seed ^ hashString("defect")) >>> 0);
-  const rngBenign = mulberry32((seed ^ hashString("benign")) >>> 0);
-  const pickedDefect = shuffle(defects, rngDefect).slice(0, defectCount);
-  const pickedBenign = shuffle(benign, rngBenign).slice(0, benignCount);
+  const rngPositive = mulberry32((seed ^ hashString("defect")) >>> 0);
+  const rngNegative = mulberry32((seed ^ hashString("benign")) >>> 0);
+  const selected = new Set<T>([
+    ...shuffle(positives, rngPositive).slice(0, positiveCount),
+    ...shuffle(negatives, rngNegative).slice(0, negativeCount),
+  ]);
+  return items.filter((item) => selected.has(item));
+}
 
-  const selectedIds = new Set([...pickedDefect, ...pickedBenign].map((h) => h.id));
-  return hunks.filter((h) => selectedIds.has(h.id));
+/** Hunk-specific wrapper: positive = defect. Same seeds and picks as before the generic form existed. */
+export function stratifiedSample(
+  hunks: readonly HunkRecord[],
+  options: StratifiedSampleOptions,
+): HunkRecord[] {
+  return stratifiedSampleBy(hunks, (h) => h.label.defect, options);
 }

@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Changes Zod's object type inference so index-signature shapes use a mapped type (`{ [k in string]: ... }`) instead of `Record<string, ...>`, which lets self-referential recursive object schema type aliases resolve. Adds type-level and runtime tests in both the classic and mini test suites.",
+    "behaviorChanges": [
+      "Recursive type aliases like `type F = z.ZodObject<{ [k: string]: F }>` now infer concrete input/output types instead of failing to resolve",
+      "z.input/z.output for schemas with string index-signature shapes resolve through a mapped type, preserving distinct input vs output types in recursive unions",
+      "Key type of inferred indexed objects remains `string` (asserted by new tests)",
+      "Same fix applies to zod/mini object inference"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema type inference (TypeScript types)", "object schemas", "tests"],
+    "risks": [
+      "Mapped type vs Record may subtly alter inferred type display or assignability in downstream code, affecting compile results for existing users",
+      "Change is type-level only; no runtime validation behavior is altered, so any runtime expectation from the new tests relies on existing behavior",
+      "Deeply recursive aliases could still hit TypeScript recursion/instantiation depth limits not covered by the added tests"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 725,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3115
+  },
+  "latencyMs": 8883,
+  "nominalCostUsd": 0.0498005
+}

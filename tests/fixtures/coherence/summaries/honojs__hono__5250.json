@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "The CSRF middleware now treats OPTIONS as a safe HTTP method alongside GET and HEAD, so OPTIONS requests skip origin/Sec-Fetch-Site validation and pass through to the handler instead of being rejected. A test asserts OPTIONS /form returns 200.",
+    "behaviorChanges": [
+      "OPTIONS requests are no longer blocked by the CSRF middleware regardless of Origin header",
+      "Cross-origin preflight OPTIONS requests reach the route handler and return its response (e.g. 200 OK) instead of a CSRF failure"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["CSRF protection middleware", "HTTP request handling"],
+    "risks": [
+      "Applications that defined state-changing logic on OPTIONS routes lose CSRF protection for those routes",
+      "Behavior change is silent — existing deployments relying on OPTIONS being rejected will now allow those requests through"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 534,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1301
+  },
+  "latencyMs": 6327,
+  "nominalCostUsd": 0.0268855
+}

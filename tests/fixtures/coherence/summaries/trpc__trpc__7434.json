@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The WebSocket client now registers an abort listener on the subscription's AbortSignal that completes the observer (and completes immediately if the signal is already aborted), and removes that same listener on teardown. A test verifies the server-side listener is cleaned up after aborting.",
+    "behaviorChanges": [
+      "Aborting a subscription's AbortSignal now completes the observable and tears the subscription down, sending subscription.stop to the server",
+      "Passing an already-aborted signal completes the subscription immediately instead of leaving it open",
+      "Server-side subscription listeners are released on abort, preventing leaked handlers",
+      "Teardown now removes the correct abort listener (previously it removed a handler that was never added)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["websocket client", "subscriptions", "tests"],
+    "risks": [
+      "Abort now yields a 'complete' rather than an error/cancellation signal, which consumers relying on onComplete semantics may observe differently",
+      "Immediate completion for pre-aborted signals fires synchronously during subscribe, before any onStarted callback"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 594,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1408
+  },
+  "latencyMs": 7275,
+  "nominalCostUsd": 0.0294555
+}

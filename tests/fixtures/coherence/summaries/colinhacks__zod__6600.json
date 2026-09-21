@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Tightens the TypeScript signature of `ZodInstanceOf.properties()` so the shape must use keys that exist on the instance type, with schemas whose output is assignable to each property's type; method-valued keys are excluded from the allowed shape. A type test covers the new constraints.",
+    "behaviorChanges": [
+      "`.properties()` on `z.instanceof(...)` now autocompletes keys from the instance type",
+      "Passing an unknown key (e.g. `nmae`) to `.properties()` is a compile-time error",
+      "Passing a schema of the wrong type for a property (e.g. `size: z.string()`) is a compile-time error",
+      "Keys whose values are functions/methods (e.g. `File.text`) are rejected in the shape",
+      "Narrowing a wider property with a literal schema still type-checks and is reflected in the inferred type"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["schema validation library types", "TypeScript developer experience"],
+    "risks": [
+      "Existing code that passed extra or loosely-typed keys to `z.instanceof().properties()` will now fail to compile",
+      "Excluding all function-typed keys prevents validating method properties even when intentional",
+      "Constraint uses `$ZodType<unknown, T[k]>`, so schemas whose output isn't exactly assignable to the property type may be rejected in edge cases (optional/readonly/index-signature members)",
+      "Runtime behavior is unchanged, so the stricter types could mismatch previously-working runtime usage"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 637,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 2650
+  },
+  "latencyMs": 8191,
+  "nominalCostUsd": 0.042435
+}

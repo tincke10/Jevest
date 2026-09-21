@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "The ETag middleware now trims whitespace around each entry when parsing the `If-None-Match` header, so tags with optional whitespace before the comma (allowed by RFC 9110) are matched. A test covers a list with spaces on both sides of a separator.",
+    "behaviorChanges": [
+      "Requests sending `If-None-Match: \"a\" , \"b\"` (space before the comma) now match and return 304 Not Modified instead of a full 200 response.",
+      "Leading/trailing whitespace around any entry in the If-None-Match list is ignored during comparison."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP caching / ETag middleware"],
+    "risks": [
+      "Clients that previously received fresh 200 bodies for such headers now get 304, which could surface stale-cache bugs on the client side.",
+      "Trimming is whitespace-only and does not handle quoted values containing commas, so malformed headers are still split naively."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 579,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1188
+  },
+  "latencyMs": 6842,
+  "nominalCostUsd": 0.0268805
+}

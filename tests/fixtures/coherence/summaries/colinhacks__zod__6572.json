@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Zod v4's parse memoizer now stores its per-parse caches in WeakMap/WeakSet instead of Map/Set, so parsed input objects are no longer kept alive by the schema-attached bucket cache. A new test uses WeakRef plus a manually exposed V8 gc to assert the input is collectable after parsing a recursive schema.",
+    "behaviorChanges": [
+      "Objects passed to parse() on recursive/memoized schemas are no longer retained after the parse finishes, so long-lived schemas stop accumulating memory.",
+      "Memoizer cache entries and back-edge records can be garbage collected mid-parse rather than living for the whole parse context.",
+      "Test suite adds a GC-dependent test that enables --expose-gc at runtime via v8.setFlagsFromString."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation / parsing", "memory management", "tests"],
+    "risks": [
+      "WeakMap/WeakSet require object keys; any primitive or non-object value reaching bucket.get/set or backEdges.add would now throw instead of being cached.",
+      "Cache entries may be collected while still logically needed, potentially changing cycle-detection or memoization hits under memory pressure.",
+      "The new test depends on GC timing and v8.setFlagsFromString('--expose-gc'), which is inherently flaky and mutates process-wide V8 flags for the rest of the test run.",
+      "WeakRef is used although the stated compile target (es2020) lacks it, relying on a runtime cast."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 861,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2666
+  },
+  "latencyMs": 11182,
+  "nominalCostUsd": 0.0487105
+}

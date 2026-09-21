@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "In both Zod v4 classic and mini, `ZodEnum.options` is now built from the schema's internal parsed value set instead of `Object.values(def.entries)`. For numeric TypeScript enums, the reverse-mapping string keys no longer appear in `options`, which now matches exactly what parsing accepts. Tests were added for both variants.",
+    "behaviorChanges": [
+      "z.enum(SomeNumericEnum).options no longer contains the reverse-mapping string keys (e.g. \"Tuna\"), only the numeric values",
+      "options now always matches the set of values the schema will accept at parse time",
+      "Same change applies to z.enum in zod/mini",
+      "Ordering of options now follows the internal values set rather than Object.values order"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["schema validation library", "enum schemas"],
+    "risks": [
+      "Code that iterated options for numeric enums and expected both keys and values (e.g. building UI lists or docs) will now see half as many entries",
+      "Element order of options may differ from the previous Object.values order, affecting order-sensitive consumers or snapshot tests",
+      "The `as util.EnumValue[]` cast bypasses type checking of what _zod.values actually contains",
+      "Relies on _zod.values being populated before options is assigned during construction"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 678,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1758
+  },
+  "latencyMs": 8188,
+  "nominalCostUsd": 0.035055499999999996
+}

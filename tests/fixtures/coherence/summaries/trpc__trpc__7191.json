@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Adds a `maxBatchSize` option to tRPC server handler options. When a batched HTTP request contains more calls than the limit, it is rejected with a `BAD_REQUEST` error (\"Batch call exceeds maximum size\"). Docs move the batch-limit recipe from context to the httpBatchLink page; tests updated.",
+    "behaviorChanges": [
+      "Server adapters accept a new optional `maxBatchSize` handler option (default unlimited).",
+      "Batch requests exceeding `maxBatchSize` fail with a 400 BAD_REQUEST error and message 'Batch call exceeds maximum size' before procedures run.",
+      "Docs now recommend `maxBatchSize` on the server plus matching `maxItems` on httpBatchLink, and the context-based batch-limiting recipe is removed."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["tRPC server HTTP handling", "request batching", "documentation"],
+    "risks": [
+      "The limit is enforced only in the JSON content-type handler's parse path; other content types (e.g. form-data/octet-stream) are unaffected.",
+      "Rejection uses BAD_REQUEST (400) rather than TOO_MANY_REQUESTS (429), so clients matching on the old error code from the documented recipe will see a different code.",
+      "The whole batch fails at parse time, so no individual calls resolve when the limit is exceeded."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 600,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3554
+  },
+  "latencyMs": 6866,
+  "nominalCostUsd": 0.0510655
+}

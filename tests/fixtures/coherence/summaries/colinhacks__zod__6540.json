@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Collapses Zod's two lazy-value helpers into one: `util.cached` now returns the prototype-backed `Cached` box (previously `cachedInternal`), and `cachedInternal` is removed. Object, JIT object, and discriminated-union schemas now call `cached`. Tests are rewritten to cover the single implementation.",
+    "behaviorChanges": [
+      "`util.cachedInternal` no longer exists as an export.",
+      "Boxes from `util.cached` no longer have an own enumerable `value`: `Object.keys(box)` is empty and spreading yields `{}`.",
+      "`value` is now inherited from a shared prototype instead of being redefined as an own property on first read.",
+      "`util.allowsEval` and internal schema caches (object shape normalization, discriminated-union map) use the new box shape.",
+      "Cached boxes carry two state slots instead of a self-replacing accessor, per the stated memory/access-cost rationale."
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["schema validation library internals", "public utility API"],
+    "risks": [
+      "`z.core.util.cached` is public; consumers relying on the own enumerable `value` (spread, `Object.keys`, JSON serialization, structuredClone) will silently get an empty object.",
+      "Any code still importing `util.cachedInternal` breaks at build or runtime.",
+      "Boxes now retain the getter reference in `_getter` and expose `_value`/`_getter` slots that were not previously observable.",
+      "Dropped test coverage for property-descriptor semantics means regressions in box shape would go unnoticed."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 815,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3353
+  },
+  "latencyMs": 10678,
+  "nominalCostUsd": 0.05443050000000001
+}

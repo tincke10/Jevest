@@ -1,0 +1,24 @@
+{
+  "summary": {
+    "whatChanges": "Adds a new static SVG asset, a \"Legora\" wordmark logo (102×20 viewBox, single path), to the website's logos directory. No code references or usages of the file appear in the diff.",
+    "behaviorChanges": [
+      "A new file is served at the site's static logos path (/logos/Legora.svg)."
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["website static assets", "branding/logos"],
+    "risks": [
+      "The SVG path has no explicit fill/currentColor, so it renders in the default black and won't adapt to dark themes.",
+      "Asset is added but not referenced anywhere in the diff, so it may be unused dead weight."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 379,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2022
+  },
+  "latencyMs": 4759,
+  "nominalCostUsd": 0.030220499999999997
+}

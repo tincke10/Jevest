@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "In the Hono RPC client, `$url()`/`$path()` now strip the synthetic `index` segment before substituting path params instead of after. This stops a param whose value is literally `index` from being deleted from the generated path. Tests cover nested, root-level, optional-param and query-string cases.",
+    "behaviorChanges": [
+      "`client.docs[':page'].$path({param:{page:'index'}})` now returns `/docs/index` instead of having the `index` segment stripped",
+      "Root-level param values of `index` are preserved, yielding `/index`",
+      "`$url()` produces URLs retaining `index` param values, e.g. `http://localhost/docs/index?filter=test`",
+      "The synthetic `.index` proxy alias is still removed, so `client.files[':dir'].index` still gives `/files/123`",
+      "Query params are appended after index-stripping, so a query value cannot be affected by the stripping logic"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "URL/path generation", "tests"],
+    "risks": [
+      "Stripping `index` from the un-substituted template could remove a literal `index` segment that a user intended to keep in a static route ending in `/index`",
+      "Behavior change is silent: code relying on the old stripping of `index`-valued params will now emit different paths",
+      "Only `$url`/`$path` were changed; the actual request path building elsewhere in the client may still use the old ordering, risking divergence between generated and requested URLs"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 988,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2363
+  },
+  "latencyMs": 12597,
+  "nominalCostUsd": 0.048855499999999996
+}

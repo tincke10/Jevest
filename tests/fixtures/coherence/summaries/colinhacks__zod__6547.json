@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Adds `.validate()` and `.validateAsync()` instance methods to classic Zod schemas, delegating to the existing top-level parse helpers. `.validate()` acts as a type guard on the schema's input type. Docs now show the method form, noting `z.validate(schema, data)` remains the zod/mini form. Tests cover narrowing, params, async, and mini's absence of the methods.",
+    "behaviorChanges": [
+      "Classic schemas expose `.validate(data, params?)` returning a boolean that narrows `data` to the schema's input type",
+      "Classic schemas expose `.validateAsync(data, params?)` returning a Promise<boolean> for async refinements",
+      "Calling `.validate()` on a schema with async refinements throws `$ZodAsyncError`",
+      "zod/mini schemas still have no validate methods; only the top-level `z.validate()` function",
+      "Docs recommend `.validate()`/`.validateAsync()` methods over the top-level function for classic Zod"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation API", "TypeScript types", "documentation"],
+    "risks": [
+      "New `validate`/`validateAsync` method names could collide with user-defined properties or subclass members on ZodType",
+      "Tests note that passing a `params` context bypasses the compiled fast path, so `.validate()` with params on a compiled schema is slower than the documented fast path"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 660,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2725
+  },
+  "latencyMs": 7719,
+  "nominalCostUsd": 0.044275499999999995
+}

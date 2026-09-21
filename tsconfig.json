@@ -25,6 +25,8 @@
     "scripts/filter",
     "scripts/findings",
     "scripts/review",
-    "scripts/dataset"
+    "scripts/dataset",
+    "scripts/coherence",
+    "scripts/adversarial"
   ]
 }

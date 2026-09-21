@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Re-exports the internal `Unwrap` type from `@trpc/server` as `TRPCUnwrap`, so generated `.d.ts` files can reference it. Adds a test example with a generic authentication middleware factory plus a server-only tsconfig, and wires that extra type-check into the example's build script.",
+    "behaviorChanges": [
+      "`@trpc/server` now publicly exposes a `TRPCUnwrap` type alias (marked @internal)",
+      "Declaration emit for code using generic procedure/middleware factories can now name the previously unexported `Unwrap` type instead of failing",
+      "The internal-types-export example build additionally runs `tsc -p tsconfig.server-only.json`, emitting to build/server-only"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["tRPC server public type exports", "example/test fixtures", "build tooling"],
+    "risks": [
+      "Exporting an internal type widens the public API surface; consumers may depend on `TRPCUnwrap` even though it is annotated @internal and could change",
+      "The new example creates a tRPC instance inside a factory function, which may be an unusual pattern to hold up as a supported example"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 583,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1424
+  },
+  "latencyMs": 7330,
+  "nominalCostUsd": 0.0293405
+}

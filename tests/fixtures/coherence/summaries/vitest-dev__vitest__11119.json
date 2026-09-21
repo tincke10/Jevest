@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "V8 coverage now wraps the URL-to-file-path conversion in a try/catch and skips coverage entries whose URL can't be converted (e.g. virtual modules like `/@fs/virtual:...`) instead of throwing. Test fixtures add a third virtual file case, and the virtual-files coverage test is excluded from two test projects.",
+    "behaviorChanges": [
+      "Coverage runs no longer crash when V8 reports a script URL that isn't a valid file URL; such entries are silently omitted from the report.",
+      "Virtual modules resolved to non-file-like ids are excluded from the V8 coverage report rather than causing an error.",
+      "The virtual-files coverage test now runs with injectCjsGlobals disabled and is skipped in two of the test projects."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["code coverage (V8 provider)", "test fixtures/configuration"],
+    "risks": [
+      "The catch block swallows all conversion errors with no warning, so genuinely malformed-but-real files would drop out of coverage silently and be hard to diagnose.",
+      "Excluding the virtual-files test from two project configurations reduces coverage of this fix in those environments."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 700,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2571
+  },
+  "latencyMs": 9068,
+  "nominalCostUsd": 0.0437355
+}

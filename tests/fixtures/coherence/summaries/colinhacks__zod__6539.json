@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "Reworks the type-level normalizer behind `z.toZod<T>()`: intersections are now flattened (so `.and()` and `.safeExtend()` schemas match either spelling of the target) and callables stop the recursion so function signatures survive. Docs for `toZod` move from the basics page to the API page, dropping the intersection caveat.",
+    "behaviorChanges": [
+      "`z.toZod<{a:number}&{b:string}>()` now accepts a `.safeExtend()` schema, and a flat object target now accepts an `.and()` schema; both previously failed to compile",
+      "Function-typed targets (e.g. `z.toZod<() => string>()`) are compared by signature instead of being normalized away",
+      "The previous requirement that a target equal its own homomorphic rebuild before recursing is removed, changing which nested types get normalized",
+      "The `toZod` documentation section is now on the API reference page instead of Basic usage, and the intersection/`Flatten` guidance is gone"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema type inference", "TypeScript types", "documentation"],
+    "risks": [
+      "Dropping the `AssertEqual<T, {[K in keyof T]: T[K]}>` guard means non-plain object types (arrays, tuples, Date, Promise, class instances, branded types) are now walked and rebuilt, potentially weakening the exactness guarantee or erasing nominality",
+      "Unconditional recursion through object properties may increase type instantiation depth and compile time, or hit 'type instantiation is excessively deep' on recursive types",
+      "Code relying on the previously-failing intersection vs. flat-object distinction (e.g. tests with `@ts-expect-error`) will now report unused expect-error",
+      "Docs no longer mention the `Flatten` workaround, which may leave users of older versions without guidance"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1253,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4378
+  },
+  "latencyMs": 15942,
+  "nominalCostUsd": 0.0756305
+}

@@ -1,0 +1,31 @@
+{
+  "summary": {
+    "whatChanges": "Adds `maxWorkers` to the list of CLI options that override per-project config in Vitest, so `--maxWorkers` now propagates to every project instead of being ignored. Adds an e2e test for it, and updates the merge-reports snapshot to a different project/test ordering.",
+    "behaviorChanges": [
+      "Running `vitest --maxWorkers=N` now sets maxWorkers on each resolved project, overriding project-level config",
+      "Project configs that define their own maxWorkers are overridden when the CLI flag is passed",
+      "Merge-reports reporter output snapshot now lists browser project results before node project results (linux/macos grouping order changed)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "test runner configuration",
+      "CLI options",
+      "workspace/projects resolution",
+      "reporters"
+    ],
+    "risks": [
+      "Projects that intentionally set a different maxWorkers will silently have it overridden by the CLI flag, possibly changing concurrency/resource use",
+      "The merge-reports snapshot reordering is not explained by any source change in this diff, suggesting ordering may be nondeterministic and the test could be flaky"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 638,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2852
+  },
+  "latencyMs": 8036,
+  "nominalCostUsd": 0.044995499999999994
+}

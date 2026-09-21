@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The prettyJSON middleware now detects JSON responses with a regex instead of a `startsWith('application/json')` check. Structured-suffix types like `application/problem+json` and `application/vnd.api+json` are now pretty-printed, while lookalikes such as `application/json-seq` are left untouched. Tests cover both cases.",
+    "behaviorChanges": [
+      "Responses with `+json` content types (e.g. application/problem+json, application/vnd.api+json) are now re-serialized with indentation when pretty printing is active.",
+      "Responses with content types that merely start with `application/json`, such as `application/json-seq`, are no longer parsed or reformatted and pass through unchanged.",
+      "Content-Type matching is now case-insensitive and tolerates parameters/whitespace after the type (e.g. `; charset=utf-8`)."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP middleware", "JSON response formatting"],
+    "risks": [
+      "Any caller that relied on streaming/sequence JSON types being reformatted will see raw output instead.",
+      "Pretty-printing `+json` bodies buffers and re-parses the whole response, so previously untouched large or streamed vendor-JSON responses are now fully read into memory and will error if the body is not valid JSON.",
+      "The regex only accepts `application/...`; JSON-ish types under other top-level types (e.g. text/json) remain unhandled."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 757,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1899
+  },
+  "latencyMs": 9808,
+  "nominalCostUsd": 0.0384405
+}

@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "whatChanges": "Zod v4 `prefault` no longer strips `undefined` from its output/default types, and object parsing (runtime, JIT, and compiled codegen) now always emits a key for defaulted properties even when the resolved value is `undefined`. Mini's `prefault` accepts `undefined` defaults. Tests added for classic and mini.",
+    "behaviorChanges": [
+      "Parsing an object with a prefaulted field that resolves to undefined now yields the key present with value undefined instead of omitting it (e.g. `{a: undefined}` rather than `{}`)",
+      "`z.prefault(schema, undefined)` / a factory returning undefined is now allowed by the types instead of being rejected by `NoUndefined`",
+      "Output type of a prefault schema is now `output<T>` (may include undefined) instead of `NoUndefined<output<T>>`",
+      "Same key-preserving behavior applies in jitless, JIT, and `compileFn`/`z.compile` code paths, and inside tuples, lazy, nullable, and readonly wrappers",
+      "A prefault wrapped in `.optional()` still drops the key when input is absent"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": [
+      "schema validation",
+      "object parsing",
+      "type inference",
+      "compiled parser codegen",
+      "zod mini API"
+    ],
+    "risks": [
+      "Parsed object shape changed: consumers relying on `Object.keys`, spread, or JSON.stringify of prefaulted fields will see an extra undefined key",
+      "Widened prefault output type can introduce new `undefined` in inferred types, causing downstream type errors",
+      "Three separate implementations (interpreter `handlePropertyResult`, JIT codegen, compile.ts `mayOmitUndefined`) must stay in sync; divergence would give inconsistent results per execution mode",
+      "Tests mutate global `z.config({jitless})` state, which can leak if a test throws outside the try/finally"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1339,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4691
+  },
+  "latencyMs": 17521,
+  "nominalCostUsd": 0.0809105
+}

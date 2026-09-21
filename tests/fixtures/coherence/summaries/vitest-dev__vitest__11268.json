@@ -1,0 +1,22 @@
+{
+  "summary": {
+    "whatChanges": "Updates documented default values only: `benchmark.exclude` is now shown as `['**/node_modules/**', '**/.git/**']` instead of the old list (and `[]` in JSDoc), and `watch` is documented as also defaulting to `false` when an AI coding agent is detected. No runtime code is changed.",
+    "behaviorChanges": [],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["documentation", "config type definitions", "benchmark config", "watch mode config"],
+    "risks": [
+      "Docs/JSDoc claim defaults (agent-detection for watch, new benchmark exclude globs) that are not implemented in any code visible in this diff, so they could be inaccurate if the corresponding logic doesn't exist",
+      "The JSDoc glob is written with an escaped separator (`**\\/node_modules/**`) to avoid closing the comment block, which may render oddly in editor tooltips"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 509,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1334
+  },
+  "latencyMs": 6354,
+  "nominalCostUsd": 0.0265905
+}

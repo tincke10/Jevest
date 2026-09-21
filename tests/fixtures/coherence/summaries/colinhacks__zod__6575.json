@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Adds a public `withParser(schema, parser)` API (plus the `INVALID` sentinel) that installs an externally generated synchronous parser as a schema's fast path, returning a clone. `compile()` is refactored to build on it, then overrides the validator with its generated assert-only variant. Both helpers are re-exported from zod classic and zod/mini.",
+    "behaviorChanges": [
+      "`z.withParser(schema, parser)` is available: returns a clone whose parse/safeParse, Standard Schema validate, and z.parse use the supplied parser, leaving the original schema untouched",
+      "`INVALID` is exported publicly; a supplied parser returning it defers to the normal Zod runtime so callers still get real ZodError issues",
+      "`withParser` throws `ZodCompileUnsupportedError` for schemas containing a reference cycle (recursive/lazy)",
+      "Supplied parsers are bypassed for async parses, backward direction/encode, skipChecks, and fallback re-entry, which run on the runtime instead",
+      "`z.validate()` on a withParser clone answers via the supplied parser"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation", "compiled/fast-path parsing", "public API exports"],
+    "risks": [
+      "A supplied parser that succeeds with a value contradicting the schema is returned to callers unchecked at runtime (only the TS signature guards it), so parse() can return a wrongly typed value",
+      "Docs note the parser must build fresh output rather than return its input; violating this is undetectable and can leak/alias caller objects",
+      "compile() now routes through withParser's recursive-schema check, so recursion failures surface from a different code path (swallowed unless options.strict)",
+      "Truncated diff hides whether installCompiledUserMethods and validator wiring behave identically for compile() after the refactor"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 889,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5128
+  },
+  "latencyMs": 11305,
+  "nominalCostUsd": 0.0740305
+}

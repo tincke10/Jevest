@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Reworks RegExpRouter's wildcard matching so trailing-wildcard middleware registered after a path label (e.g. `/:name/*`) also matches sibling routes with differently named params, normalizing param labels and escaping more regex meta characters. Handler ordering metadata switches from param count to the registered path. Adds router test cases, excluding them for LinearRouter.",
+    "behaviorChanges": [
+      "Middleware registered as `/:name/*` (or `/:name{[^/]+}/*`) now also runs for routes declared with a different param name such as `/:id`",
+      "Matched handlers are ordered by registration order across wildcard middleware and concrete routes, instead of by parameter count",
+      "Wildcard path patterns now escape `?`, `{`, `}` and `|` when building the matching regexp, changing which paths a wildcard route associates with",
+      "Params captured by the wildcard middleware and the concrete handler are reported under their own respective names",
+      "LinearRouter explicitly does not support the new trailing-wildcard-after-label cases (listed as excluded tests)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["routing", "middleware matching"],
+    "risks": [
+      "The new combined regexp for label/wildcard normalization is intricate; mis-parsing patterns with nested braces or alternation could silently change route association",
+      "Only the default `{[^/]+}` pattern is normalized; other custom patterns are escaped literally, so matching still depends on exact textual equality",
+      "Switching handler metadata from paramCount to path changes sort/ordering semantics and could reorder middleware in existing apps",
+      "buildAllMatchers now iterates only routes keys (not middleware keys), so a method present solely in middleware may no longer get a matcher"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1240,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 6209
+  },
+  "latencyMs": 17023,
+  "nominalCostUsd": 0.09361549999999999
+}

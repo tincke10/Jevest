@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "In the Vitest UI trace view, the split between the step list and the iframe preview is now saved to localStorage when the user drags the splitter, and restored on reload instead of always resetting to the 30/70 default. An end-to-end test covers this for both the UI and HTML reporter.",
+    "behaviorChanges": [
+      "Dragging the trace view splitter stores both pane sizes under the localStorage key 'vitest-ui_splitpanes-traceViewSplitSizes'.",
+      "Reopening or reloading the trace view restores the previously chosen pane widths rather than the fixed 30/70 split.",
+      "Default trace pane split remains 30/70 for users with no stored value."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["Vitest UI", "trace viewer", "layout persistence", "end-to-end tests"],
+    "risks": [
+      "Pane sizes are only written when the resized event reports exactly two panes; other pane counts silently skip persistence.",
+      "A corrupted or out-of-range stored value could produce a pane size conflicting with the min-size=\"20\" constraint.",
+      "The setting is global across all traces, so per-trace layout preferences are not possible.",
+      "The new Playwright test relies on mouse-drag geometry and polling, which can be flaky in CI."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 585,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3368
+  },
+  "latencyMs": 6897,
+  "nominalCostUsd": 0.0488305
+}

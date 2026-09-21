@@ -49,6 +49,33 @@ describe("FakeDecisionAdapter", () => {
     ).rejects.toThrow(UnscriptedQuestionError);
   });
 
+  it("accepts a function script that computes answers from the state and questions", async () => {
+    const adapter = createFakeDecisionAdapter((state, questions) => {
+      const answers: Record<string, NoulDecision> = {};
+      for (const key of Object.keys(questions)) {
+        answers[key] = { type: "noul", noul: state === "hot" ? 0.9 : 0.1 };
+      }
+      return answers;
+    });
+    const questions = { flag: { type: "noul", instructions: "risky?" } satisfies NoulQuestion };
+
+    const hot = await adapter.decide("hot", questions);
+    const cold = await adapter.decide("cold", questions);
+
+    expect(hot.answers.flag).toEqual({ type: "noul", noul: 0.9 });
+    expect(cold.answers.flag).toEqual({ type: "noul", noul: 0.1 });
+  });
+
+  it("throws UnscriptedQuestionError when a function script omits a question key", async () => {
+    const adapter = createFakeDecisionAdapter(() => ({}));
+
+    await expect(
+      adapter.decide("state", {
+        flag: { type: "noul", instructions: "risky?" } satisfies NoulQuestion,
+      }),
+    ).rejects.toThrow(UnscriptedQuestionError);
+  });
+
   it("fills request metadata deterministically", async () => {
     const adapter = createFakeDecisionAdapter({ flag: { type: "noul", noul: 0.1 } });
     const response = await adapter.decide("state", {

@@ -1,0 +1,33 @@
+{
+  "summary": {
+    "whatChanges": "Adds a prototype-backed `util.cachedInternal` lazy box (class with getter on the prototype) and switches object, JIT-object, and discriminated-union schema internals to it. Simplifies `util.cached` by dropping its unreachable \"cached value already set\" throw while keeping its own enumerable `value` shape. Adds tests covering both.",
+    "behaviorChanges": [
+      "`z.core.util` gains a new exported `cachedInternal` helper returning a `{ value: T }` box whose `value` lives on the prototype (no own property, not enumerable, not spreadable)",
+      "`util.cached` no longer contains the unreachable branch that threw \"cached value already set\"; it still memoizes on first read as an own enumerable, configurable, non-writable property",
+      "Object, JIT-object, and discriminated-union schemas now allocate the lighter internal cache box for normalized defs and the discriminator map",
+      "Internal cache boxes expose `_getter`/`_value` fields and re-run the getter if the first invocation throws"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "schema validation library internals",
+      "object and discriminated union schemas",
+      "utility helpers"
+    ],
+    "risks": [
+      "cachedInternal boxes have no own `value`, so any code that spreads, serializes, or enumerates them (e.g. Object.keys / JSON.stringify) silently loses the value",
+      "Assigning to `box.value` now throws TypeError in strict mode for the internal box since the prototype accessor has no setter",
+      "A getter that throws leaves the internal box unresolved and re-executes on the next read, allowing repeated side effects",
+      "Caching undefined works only because the getter reference is cleared; the `_value as T` cast hides type unsoundness"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1697,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2941
+  },
+  "latencyMs": 21882,
+  "nominalCostUsd": 0.0723605
+}

@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Reworks Zod's internal `toZod` type-level normalization: instead of rebuilding enum-like leaves through a mapped type, every non-object leaf is unioned with a private unique symbol. This makes the assignability check stricter, so plain literal unions no longer satisfy a numeric enum target. A test asserting the new rejection is added.",
+    "behaviorChanges": [
+      "z.toZod<{ rank: NumericEnum }>() now rejects a schema built from z.union([z.literal(1), z.literal(2)]), which previously type-checked",
+      "All non-object leaf types, not just enum leaves, go through the normalization step during toZod comparison",
+      "z.enum(SomeEnum) against a matching enum target still passes, as before"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["schema validation typings", "TypeScript type inference", "tests"],
+    "risks": [
+      "Existing TypeScript code using z.toZod with literal unions against enum targets will start failing compilation",
+      "Broadening normalization from enum leaves to all leaves may change matching for other primitive/branded/any cases beyond the single tested scenario",
+      "Relying on a unique symbol union to defeat structural identity is subtle and could interact unexpectedly with unions containing never or any"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1013,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1777
+  },
+  "latencyMs": 12523,
+  "nominalCostUsd": 0.0436205
+}

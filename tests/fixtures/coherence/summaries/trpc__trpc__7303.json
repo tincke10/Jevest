@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Adds two new exported TypeScript helper types, `inferSubscriptionInput` and `inferSubscriptionOutput`, to `@trpc/server`. The output helper unwraps async-iterable yields for generator subscriptions while returning the raw output for legacy observable subscriptions. Documentation and type-level tests are added; no runtime code changes.",
+    "behaviorChanges": [
+      "`@trpc/server` now exports the types `inferSubscriptionInput` and `inferSubscriptionOutput`.",
+      "`inferSubscriptionOutput` resolves to the yielded item type for async-generator subscriptions and to the observable value type for legacy observable subscriptions.",
+      "Docs page \"Infer Types\" now documents per-procedure and subscription inference helpers with an example subscription procedure."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["tRPC server type inference API", "documentation", "type tests"],
+    "risks": [
+      "`inferSubscriptionOutput` relies on matching `LegacyObservableSubscriptionProcedure<any>`; procedures that don't fit either branch cleanly could infer unexpected types.",
+      "Type-only addition increases the public API surface that must be maintained for backward compatibility."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 612,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4208
+  },
+  "latencyMs": 6831,
+  "nominalCostUsd": 0.0579055
+}

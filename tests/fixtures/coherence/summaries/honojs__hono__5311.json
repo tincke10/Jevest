@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Content negotiation now honors quality value 0 as an explicit rejection. The `accepts` helper filters out `q=0` entries before matching, and the header-based language detector skips languages with `q=0`. Tests cover both, including wildcard rejection and falling through to the next detector.",
+    "behaviorChanges": [
+      "An Accept header entry with q=0 (e.g. `application/json;q=0`) no longer matches a supported type; the configured default is returned instead",
+      "A wildcard rejected with q=0 (e.g. `application/*;q=0`) no longer matches types in that range",
+      "Accept-Language entries with q=0 are no longer detected; detection falls through to remaining entries, the next detector, or the fallback language",
+      "Requests like `/?lang=ja` with `accept-language: fr;q=0` now resolve via the querystring detector and set the language cookie accordingly"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["content negotiation", "language detection middleware"],
+    "risks": [
+      "Applications that previously relied on q=0 entries still matching will now receive the default/fallback value, changing served content type or language",
+      "The accepts helper may now return the configured default more often when clients send q=0 entries, even if other acceptable types exist that were previously reachable"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 609,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2732
+  },
+  "latencyMs": 8027,
+  "nominalCostUsd": 0.0430705
+}

@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Converts the npm release workflow from push-triggered to manual dispatch only, drops the version-change detection job, and gates publishing behind a reviewer-approved `npm` GitHub environment. The `mini_version` input becomes optional and selects back-publish vs. normal release. AGENTS.md and the security-advisory skill are updated to match.",
+    "behaviorChanges": [
+      "Pushing a version bump (or any change to packages/*/package.json or the workflow file) to main no longer triggers a release; nothing publishes on push.",
+      "Releases now require a manual `workflow_dispatch` run that pauses for approval in the `npm` environment before publishing.",
+      "The `mini_version` dispatch input is now optional; empty means a normal release, a value means back-publishing @zod/mini only.",
+      "Test, lint and circular-dependency jobs run only on the normal-release path (empty `mini_version`), not on back-publish dispatches.",
+      "The version_changed job and its guard are gone, so a dispatch runs the publish path regardless of whether a version was bumped."
+    ],
+    "userFacing": false,
+    "breaking": true,
+    "areas": ["release automation", "CI/CD workflows", "contributor and agent documentation"],
+    "risks": [
+      "With version-change detection removed, a dispatch without a bump relies solely on each publish step skipping already-published versions; if any step lacks that guard it could fail or republish.",
+      "Releases now depend on a manually configured `npm` environment (reviewers, branch restriction, trusted publisher binding) that is not visible in the diff; misconfiguration would either block or over-permit publishing.",
+      "Back-publish dispatches skip test, lint and circular-dependency gates entirely.",
+      "Documentation hardcodes a specific environment ID and reviewer names, which can drift from the actual GitHub settings."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1231,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4408
+  },
+  "latencyMs": 15656,
+  "nominalCostUsd": 0.07538049999999999
+}

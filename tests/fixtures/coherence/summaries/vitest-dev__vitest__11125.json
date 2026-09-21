@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "In the Vitest UI test explorer summary, the SKIP counter now always shows a real number instead of \"--\", and pass/fail/skip totals are computed from the actual matched tests rather than being suppressed when a pass/fail filter is active.",
+    "behaviorChanges": [
+      "Explorer summary SKIP badge shows an actual count at all times, not '--' unless 'Only Tests' mode is on.",
+      "Skipped and todo tests are now tallied into the summary's skipped total instead of being ignored.",
+      "Failed counts are no longer forced to 0 while the pass-only filter is active (and vice versa); e.g. a failing file matched via a passing child now reports fail=1.",
+      "Summary numbers no longer change based on which status filters are toggled."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["Vitest UI test explorer", "test summary counters", "UI end-to-end tests"],
+    "risks": [
+      "Counts shown may no longer align with the filtered list of visible items, since totals now include states excluded by the active status filter.",
+      "The 'Only Tests' filter flag is now unused for the SKIP display, so skipped totals at file level and test level may be conflated."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 656,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3346
+  },
+  "latencyMs": 9116,
+  "nominalCostUsd": 0.0503855
+}

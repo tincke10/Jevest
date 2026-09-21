@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "Renames zod v4 core's exported `process` JSON Schema helper to `processSchema` across the to-json-schema modules, keeping `process` as a deprecated export alias (which declares no module-scope binding), and adds an esbuild-based test that bundles classic and mini entrypoints alongside injected node-global polyfills.",
+    "behaviorChanges": [
+      "Bundles that reach `toJSONSchema` no longer emit a module-scope `const/function process` declaration, so banner-injected `process` polyfills no longer cause a duplicate-declaration parse error",
+      "`z.core.processSchema` is now the primary export name for the JSON Schema processing helper",
+      "`z.core.process` still resolves, now as a deprecated alias to `processSchema`",
+      "New test suite bundles the classic and mini entrypoints with esbuild and re-parses the output to detect symbol collisions"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["JSON Schema generation", "bundler compatibility", "public API exports", "tests"],
+    "risks": [
+      "The deprecated `process` alias keeps the old export name in the public surface; consumers re-exporting it under a lexical binding could reintroduce the collision",
+      "The new test adds an esbuild build dependency and a 30s timeout, which may be slow or flaky in CI",
+      "The patch is truncated, so remaining `process(` call sites in json-schema-processors.ts cannot be confirmed renamed",
+      "`JSONSchemaGenerator.process` method name is unchanged, so naming is now inconsistent between the class method and the free function"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 871,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5823
+  },
+  "latencyMs": 9989,
+  "nominalCostUsd": 0.0805305
+}

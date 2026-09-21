@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "When `fakeTimers.toNotFake` is set (and `toFake` is not), Vitest now always appends `nextTick` and `queueMicrotask` to the exclusion list, so those APIs stay native. Docs are reworded and unit tests updated accordingly.",
+    "behaviorChanges": [
+      "With `toNotFake` configured, `process.nextTick` is no longer replaced by fake timers, on any pool (not just forks)",
+      "With `toNotFake` configured, `queueMicrotask` is no longer replaced by fake timers",
+      "Other timers listed outside `toNotFake` (e.g. setTimeout) continue to be faked as before",
+      "Docs now state that faking nextTick/queueMicrotask requires using `toFake`"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["test runner fake timers", "documentation"],
+    "risks": [
+      "Tests that relied on nextTick or queueMicrotask being faked while using `toNotFake` will now hang or behave differently until switched to `toFake`",
+      "Silent config override: users explicitly omitting these from `toNotFake` get them excluded anyway, with no warning"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 654,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2155
+  },
+  "latencyMs": 8011,
+  "nominalCostUsd": 0.0384255
+}

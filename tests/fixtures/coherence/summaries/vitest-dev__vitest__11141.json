@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Type-only change: moves the `BrowserTraceEntryKind` and `MarkOptions` browser trace types into Vitest's public browser module and re-exports them from the browser context entry points, and drops the side-effect `@vitest/expect` type import that pulled in chai types from `vitest/config.d.ts`.",
+    "behaviorChanges": [
+      "`BrowserTraceEntryKind` and `MarkOptions` are now exported from `vitest/internal/browser` and `vitest/browser/context` instead of being declared locally in `@vitest/browser`'s context types.",
+      "`vitest/config` no longer transitively pulls in `@vitest/expect`/chai type declarations."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "browser mode type definitions",
+      "public TypeScript API surface",
+      "vitest config typings"
+    ],
+    "risks": [
+      "Projects relying on `vitest/config` to implicitly provide chai global types may now see TypeScript errors and need an explicit import.",
+      "If `vitest/internal/browser` isn't resolvable in a consumer's setup, `@vitest/browser`'s context types now fail to resolve `BrowserTraceEntryKind`/`MarkOptions` that were previously declared inline.",
+      "Duplicate re-exports of the same names across multiple browser context entry points could cause export-conflict type errors."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 827,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1934
+  },
+  "latencyMs": 10658,
+  "nominalCostUsd": 0.0405405
+}

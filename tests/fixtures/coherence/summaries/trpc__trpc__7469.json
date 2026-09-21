@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "tRPC's `httpLink` and `httpBatchLink` now abort the underlying fetch when a subscription is unsubscribed before the request settles. Each operation gets its own AbortController raced with the caller's signal, and the teardown function aborts it unless the request already completed. Tests cover both links.",
+    "behaviorChanges": [
+      "Unsubscribing a query/mutation made through httpLink cancels the in-flight fetch instead of leaving it running",
+      "Unsubscribing through httpBatchLink aborts that operation's signal, cancelling the batched fetch request",
+      "The fetch signal's abort reason is an AbortError after unsubscribe",
+      "Teardown after the request already resolved or rejected no longer triggers an abort"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["tRPC client links", "HTTP request cancellation"],
+    "risks": [
+      "In httpBatchLink, aborting one operation's signal may cancel the whole shared batch request for other operations, depending on dataLoader's signal-merging behavior",
+      "Requests that previously completed in the background after unsubscribe (e.g. warming a cache or non-idempotent mutations) are now cancelled mid-flight",
+      "The isDone flag is set inside promise callbacks, so a synchronous unsubscribe immediately after settlement could still race and abort",
+      "raceAbortSignals allocates a listener/controller per operation; no visible cleanup of the raced signal on completion"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 695,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 3195
+  },
+  "latencyMs": 8518,
+  "nominalCostUsd": 0.04985049999999999
+}

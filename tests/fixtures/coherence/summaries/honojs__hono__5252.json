@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Fixes wildcard path matching in the LinearRouter and PatternRouter. Suffix wildcards like `/assets*` now match any path starting with that prefix (but not shorter ones), while trailing `/*` matches only at a segment boundary (the bare path or anything after a slash), no longer matching `/pathfoo`. Tests added to the shared router suite.",
+    "behaviorChanges": [
+      "Route `/assets*` now matches `/assets`, `/assets-v2` and `/assets/app.js`, but no longer matches `/asset`",
+      "Route `/path/*` matches `/path` and `/path/to/file` but no longer matches `/pathfoo`",
+      "Route `/a/*/b/*` matches `/a/x/b` and `/a/x/b/c` but not `/a/x/bz`",
+      "PatternRouter builds a different regex suffix (`(?:$|/)`, `''`, or `/?$`) depending on how the path ends"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP routing", "wildcard path matching"],
+    "risks": [
+      "Apps relying on the old loose prefix matching (e.g. `/path/*` catching `/pathfoo`) will now get no match / 404",
+      "Only LinearRouter and PatternRouter are updated here; other router implementations in the project may now behave inconsistently unless they already match this semantic",
+      "LinearRouter's new endsWithSlashStar branch bypasses the previous trailing-slash tolerance logic, which could change edge cases with trailing slashes"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1385,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2685
+  },
+  "latencyMs": 17530,
+  "nominalCostUsd": 0.0620005
+}

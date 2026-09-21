@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Adds an \"Open\" button next to test annotations of type \"traces\" in the Vitest UI and HTML report. Clicking it opens a new tab, fetches the trace attachment, and loads it into the hosted Playwright Trace Viewer via postMessage, with pop-up and failure fallbacks. Adds browser fixture and Playwright e2e tests.",
+    "behaviorChanges": [
+      "Annotations with type 'traces' now show an 'Open trace' button in both the editor view and the test report view",
+      "Clicking it opens a new tab at https://trace.playwright.dev/next/ and posts the downloaded trace blob to it",
+      "If pop-ups are blocked, a browser alert tells the user to allow pop-ups",
+      "If fetching the trace fails or the viewer doesn't respond within 10s, the popup shows a 'Failed to Open Playwright Trace' page",
+      "A download link still renders alongside the new Open button for trace attachments"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["Vitest UI", "HTML test report", "test annotations/attachments", "end-to-end tests"],
+    "risks": [
+      "Trace contents are sent to the third-party site trace.playwright.dev, an external network dependency and potential data-exposure concern",
+      "Hardcoded '/next/' viewer URL and 'ready'/'load' message protocol can break if Playwright changes it",
+      "Async fetch happens after window.open, so pop-up blockers or slow networks may leave a blank tab; the 10s timeout is fixed",
+      "Errors are swallowed by a bare catch, giving users a generic failure page with no diagnostic detail"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 672,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4688
+  },
+  "latencyMs": 8505,
+  "nominalCostUsd": 0.0642055
+}

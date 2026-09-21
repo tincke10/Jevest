@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "Adds a `servers` option to the tRPC OpenAPI generator and a matching `--server-url` CLI flag, so generated documents can include an OpenAPI `servers` array. When omitted, no `servers` key is emitted. Exports a `ServerObject` type; docs/README updated (including awaiting `generateOpenAPIDocument`).",
+    "behaviorChanges": [
+      "`generateOpenAPIDocument` accepts a `servers` array that is passed through into the generated document",
+      "New CLI flag `--server-url <url>` emits `servers: [{ url }]` in the output JSON",
+      "CLI help text and docs table now list `--server-url`",
+      "`ServerObject` is exported from the openapi package types",
+      "Documents still omit `servers` entirely when no URL is supplied"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["OpenAPI document generation", "CLI tooling", "documentation"],
+    "risks": [
+      "Only a single server URL can be set via the CLI; multiple servers require the programmatic API",
+      "No validation of the provided URL, so a malformed `--server-url` is written straight into the spec",
+      "Docs now show `await generateOpenAPIDocument`, implying an async API that readers may have been calling synchronously"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 551,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 4536
+  },
+  "latencyMs": 6757,
+  "nominalCostUsd": 0.0596605
+}

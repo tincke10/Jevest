@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The spy package now caches a bound reference to `Set.prototype.add` for its internal dirty-mock-state tracking instead of calling the method dynamically. This lets users spy on or mock `Set.prototype.add` without interfering with Vitest's internal mock bookkeeping. Tests cover spying on `Set.prototype.add` and calling mocked prototype methods while that spy is active.",
+    "behaviorChanges": [
+      "`vi.spyOn(Set.prototype, 'add')` no longer records Vitest's own internal calls, so the spy only sees calls made by user code",
+      "Mock invocations no longer route through a user-replaceable `Set.prototype.add`, avoiding recursion/pollution when that method is spied on",
+      "Mocked prototype methods still register calls correctly while a `Set.prototype.add` spy is installed",
+      "`mockClear`, `vi.clearAllMocks` and `vi.resetAllMocks` behave as expected for a `Set.prototype.add` spy"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["mocking and spying", "test framework internals"],
+    "risks": [
+      "The bound reference is captured at module load; any earlier patching of `Set.prototype.add` in the environment would be baked into internal bookkeeping permanently",
+      "Only `add` is hardened — other built-in methods used internally (e.g. `Set.prototype.delete`, `WeakRef`, `FinalizationRegistry`) remain vulnerable to the same class of interference"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 778,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2107
+  },
+  "latencyMs": 10314,
+  "nominalCostUsd": 0.0410455
+}

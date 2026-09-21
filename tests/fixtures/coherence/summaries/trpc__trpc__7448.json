@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Test-only cleanup fixes in the upgrade package's React test harness: the optimistic-update fixture teardown becomes an async disposable that waits for in-flight mutations to settle before resetting state and unmounting, and the shared test helper clears the module-scoped queryClient on every renderApp call.",
+    "behaviorChanges": [
+      "Fixture teardown now awaits pending mutations (vi.waitFor on queryClient.isMutating() === 0) before resetting fixture state and unmounting",
+      "Teardown uses `await using` with makeAsyncResource instead of synchronous `using`/makeResource",
+      "Each renderApp call starts with a cleared queryClient, discarding cache left by a prior run or vitest retry"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["test infrastructure", "React query test fixtures"],
+    "risks": [
+      "vi.waitFor in teardown can time out or stall if a mutation never settles, masking or delaying the real test failure",
+      "Clearing the shared queryClient on every render breaks any test relying on cache persistence across multiple renders in one test",
+      "Relies on `await using` / async disposable support in the test runtime and on makeAsyncResource being exported from unstable-core-do-not-import"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 903,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1400
+  },
+  "latencyMs": 10268,
+  "nominalCostUsd": 0.0371005
+}

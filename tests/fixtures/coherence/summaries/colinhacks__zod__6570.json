@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "Wraps the body of `Doc.indented()` in try/finally so the indent level unwinds even when the callback throws. Previously, a compile error caught higher up (falling back to a runtime island) left the document permanently over-indented, corrupting formatting of all later emitted lines. Adds a test snapshotting the generated code.",
+    "behaviorChanges": [
+      "Compiled/generated code emitted after a thrown-and-caught nested compilation now has correct indentation instead of accumulating extra levels",
+      "Debug output of `compileFn(schema, { debug: true }).code` for schemas with islanded sub-schemas (e.g. coerce inside nullable) is formatted consistently"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation compiler", "generated code formatting", "tests"],
+    "risks": [
+      "Only whitespace/formatting is affected; any downstream snapshot tests asserting the previously mis-indented output would now fail",
+      "The inline snapshot in the new test hardcodes generated code, so unrelated codegen changes will break it"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 657,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1744
+  },
+  "latencyMs": 8589,
+  "nominalCostUsd": 0.034390500000000004
+}

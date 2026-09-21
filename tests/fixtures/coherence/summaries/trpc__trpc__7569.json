@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "Adds an `allowBuilds` section to the pnpm workspace config that disables esbuild's postinstall build script, so pnpm will not run esbuild's native binary install step during dependency installation.",
+    "behaviorChanges": [
+      "During `pnpm install`, esbuild's postinstall/build script is no longer executed",
+      "pnpm no longer prompts/warns about esbuild as an ignored or unapproved build script"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["build tooling", "dependency management"],
+    "risks": [
+      "If esbuild relies on its postinstall step to fetch/link the platform-specific binary, builds or dev servers using esbuild could fail at runtime",
+      "`allowBuilds` requires a pnpm version that supports the key; older pnpm may ignore or reject the config"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 440,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 799
+  },
+  "latencyMs": 5100,
+  "nominalCostUsd": 0.0195155
+}

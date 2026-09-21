@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "httpBatchStreamLink now creates an AbortController per operation and merges it with the caller's signal. When a subscriber unsubscribes before the request settles, the link aborts the underlying fetch instead of doing nothing. A test asserts the fetch signal is aborted with an AbortError on unsubscribe.",
+    "behaviorChanges": [
+      "Unsubscribing from an in-flight httpBatchStreamLink query/mutation now aborts the underlying fetch request instead of leaving it running",
+      "The operation passed to the batch loader carries a combined signal (caller signal raced with an internal per-operation controller)",
+      "No abort is triggered if the request already resolved or rejected (guarded by an isDone flag)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["tRPC client links", "HTTP batching/streaming", "request cancellation"],
+    "risks": [
+      "Because operations are batched, aborting one operation's signal may cancel the shared HTTP request and break sibling operations in the same batch, depending on how the batch loader combines signals",
+      "Server work is now cancelled on unsubscribe, which changes side-effect behavior for mutations that were previously allowed to complete",
+      "`raceAbortSignals` must be imported in this file; the diff does not show the import",
+      "The `isDone` flag is set inside promise callbacks, so a synchronous unsubscribe in the same tick as resolution could still fire an abort"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 707,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1831
+  },
+  "latencyMs": 8975,
+  "nominalCostUsd": 0.0365105
+}

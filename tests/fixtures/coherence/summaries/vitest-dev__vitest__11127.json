@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Fixes mock registration ordering in Vitest's bare module mocker: pending mocks are now snapshotted and cleared up front, resolved in parallel, then applied strictly in queue order so the last `vi.doMock`/`vi.unmock` for a path wins. Adds an e2e test covering duplicate `doMock` calls for the same path.",
+    "behaviorChanges": [
+      "Repeated vi.doMock calls for the same path without an import in between now consistently use the last registered factory instead of a race-dependent one",
+      "Mock/unmock application order matches the order the calls were queued, not the order their path resolution completed",
+      "The pending mock queue is cleared before resolution begins, so mocks queued during resolution are no longer discarded"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["test runner module mocking", "end-to-end tests"],
+    "risks": [
+      "Clearing pendingIds before awaiting resolution changes reentrancy semantics; mocks queued mid-resolution are handled by a separate pass and could interleave differently than before",
+      "Tests that relied on the previous (resolution-order) mock application behavior may now produce different mocked modules"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 597,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2094
+  },
+  "latencyMs": 7707,
+  "nominalCostUsd": 0.0363905
+}

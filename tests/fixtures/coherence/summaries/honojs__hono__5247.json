@@ -1,0 +1,28 @@
+{
+  "summary": {
+    "whatChanges": "Rewrites the IPv4-in-IPv6 branch of `expandIPv6` to compute the two trailing hex groups directly from the dotted-quad octets instead of round-tripping through the binary conversion helpers. Fixes expansion of addresses whose embedded IPv4 part yields zero groups, and adds test cases covering them.",
+    "behaviorChanges": [
+      "expandIPv6('::ffff:0.0.0.1') now returns the fully expanded '0000:...:ffff:0000:0001' instead of a malformed/compressed result",
+      "expandIPv6('::0.0.0.0') expands to eight zero groups",
+      "Embedded IPv4 suffixes in full-length addresses (e.g. '2001:db8:1:2:3:4:0.0.0.1') expand correctly",
+      "Anything comparing or matching expanded IPv6 strings (e.g. IP-based restriction) now matches these previously mis-expanded addresses"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["IP address utilities", "networking/IP matching"],
+    "risks": [
+      "Octets are parsed with Number without range/count validation; malformed input passing the regex could yield NaN or wrong hex groups",
+      "Bitwise `<<` coerces to 32-bit signed ints; out-of-range octet values would silently wrap instead of erroring",
+      "Output hex groups are unpadded here and rely on the subsequent padding loop; any change to that loop would break results"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 924,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1508
+  },
+  "latencyMs": 12482,
+  "nominalCostUsd": 0.0387055
+}

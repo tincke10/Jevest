@@ -1,0 +1,23 @@
+{
+  "summary": {
+    "whatChanges": "Adds two tests to the Zod v4 classic error suite covering lazily built `safeParse` errors: one asserts the ZodError's stack contains no frames from the (deep, deferred) reader, using a plain Error as a control; the other asserts reading `result.error` leaves the caller's current `Error.stackTraceLimit` untouched.",
+    "behaviorChanges": [],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["validation library tests", "error handling"],
+    "risks": [
+      "The stack-frame assertions depend on V8-specific stack formatting ('ZodError: [' prefix, 'at ' lines); they may be flaky or fail on other JS engines.",
+      "The control assertion relies on `readDeep` appearing in the stack, which can break if the engine inlines or tail-calls the recursion, or if stackTraceLimit is ambiently low.",
+      "The stackTraceLimit test mutates global `Error.stackTraceLimit`; concurrent or parallel test execution could observe the temporary value."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 571,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1462
+  },
+  "latencyMs": 7263,
+  "nominalCostUsd": 0.0294205
+}

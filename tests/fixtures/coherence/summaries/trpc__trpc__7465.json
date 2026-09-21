@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Changes how the generated llms.txt table-of-contents file is built: doc links now use each doc's permalink (respecting custom slug frontmatter) instead of the file-path-based id, are emitted as absolute URLs prefixed with the site URL, and the file now begins with an H1 heading.",
+    "behaviorChanges": [
+      "Links in the generated llms.txt are absolute (site URL prefixed) rather than site-relative paths.",
+      "Docs with custom `slug` frontmatter now link to their real permalink instead of an id-derived path.",
+      "The llms.txt content starts with an H1 (`# <title>`) line that was previously plain text."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["documentation site", "llms.txt generation", "build tooling"],
+    "risks": [
+      "If siteConfig.url is undefined or misconfigured, links become malformed (e.g. 'undefined/docs/...').",
+      "The slash-deduplication regex only runs on the non-http branch, so permalinks already starting with 'http' bypass normalization.",
+      "Consumers that previously parsed relative paths from llms.txt will now receive absolute URLs."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 534,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1372
+  },
+  "latencyMs": 6778,
+  "nominalCostUsd": 0.0275955
+}

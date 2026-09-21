@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "The RPC client's query string builder now skips `undefined` entries inside array values, so a query like `tag: ['a', undefined, 'b']` serialises as `tag=a&tag=b` instead of including the literal string `undefined`. Tests cover arrays with empty strings and all-undefined arrays.",
+    "behaviorChanges": [
+      "Requests built by the client no longer include `tag=undefined` for undefined array elements; the entry is omitted.",
+      "An array whose entries are all undefined produces no query parameters at all.",
+      "Empty-string array entries are still preserved (e.g. `tag=`)."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "query string serialization"],
+    "risks": [
+      "Servers or tests that relied on receiving the literal string \"undefined\" as a query value will now see a missing entry, changing array length/indices server-side.",
+      "Only strict `undefined` is skipped; `null` array entries still serialise as the string \"null\"."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 456,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1824
+  },
+  "latencyMs": 5623,
+  "nominalCostUsd": 0.030165499999999998
+}

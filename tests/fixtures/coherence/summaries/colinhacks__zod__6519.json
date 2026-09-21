@@ -1,0 +1,35 @@
+{
+  "summary": {
+    "whatChanges": "Makes `safeParse`/`safeParseAsync` build their `ZodError` lazily: failed results expose `error` via a memoizing getter/setter, so issue finalization and error construction only happen on first read. Standard Schema `validate` now runs the schema directly, finalizing issues without a ZodError, and turns a synchronously throwing check into a rejected promise. Bundle-size ceilings raised.",
+    "behaviorChanges": [
+      "Failed safeParse results no longer construct a ZodError until `.error` is read; custom/global error maps now run at read time, not parse time",
+      "The error instance is built once and cached; `result.error` can also be assigned to",
+      "`~standard.validate` with a check that throws synchronously now returns a rejected Promise instead of throwing synchronously",
+      "Standard Schema failures are produced by running the schema directly and finalizing raw issues, bypassing the previous IssueBag/safeParse path",
+      "Allowed gzipped bundle sizes for zod/mini fixtures raised by roughly 33–37 bytes each"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "schema validation / parsing",
+      "error reporting",
+      "Standard Schema integration",
+      "bundle size budgets"
+    ],
+    "risks": [
+      "Error maps and issue finalization now run lazily, so side-effecting or config-dependent maps observe different timing/state (tests had to explicitly read `.error` to trigger them)",
+      "The failure result is no longer a plain object: the `error` getter fires on spread, clone, or serialization, and errors thrown during finalization now surface at read sites instead of at parse",
+      "In `standardProps.validate` a synchronous throw is swallowed and the schema is re-run asynchronously, so side-effecting checks can execute twice",
+      "`_safeParse` dropped the `_Err ?? $ZodError` fallback, so passing no error class now throws when the error is read"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1615,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 8007
+  },
+  "latencyMs": 19767,
+  "nominalCostUsd": 0.12097050000000001
+}

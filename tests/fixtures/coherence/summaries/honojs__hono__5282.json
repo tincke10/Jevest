@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "When cloning a Hono request whose body was already consumed as FormData, the clone now also strips the stale `Content-Length` header (in addition to `Content-Type`), letting the runtime regenerate headers for the re-serialized multipart body. A test covers the new behavior.",
+    "behaviorChanges": [
+      "Cloned requests with FormData bodies no longer carry the original Content-Length header",
+      "Re-serialized multipart clones get runtime-generated content headers, avoiding a length mismatch with the new boundary"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP request handling", "request cloning / multipart form data"],
+    "risks": [
+      "Downstream consumers or middleware that relied on Content-Length being present on cloned FormData requests will now see it missing",
+      "Only applies when the cached body is a FormData instance; other consumed body types still keep the original Content-Length"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 428,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1437
+  },
+  "latencyMs": 4947,
+  "nominalCostUsd": 0.0255955
+}

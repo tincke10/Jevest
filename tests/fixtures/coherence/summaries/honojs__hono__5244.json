@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The RPC client now skips header and cookie entries whose value is `undefined` instead of sending them as the literal string \"undefined\", and omits the Cookie header entirely when no cookie values remain. Tests cover both cases.",
+    "behaviorChanges": [
+      "Headers passed as undefined (from args.header or the client's headers option) are no longer sent with the value \"undefined\"; they are omitted.",
+      "Cookie entries with undefined values are dropped from the serialized Cookie header.",
+      "No Cookie header is sent at all when every provided cookie value is undefined (previously an empty Cookie header was sent).",
+      "Servers receiving these requests now see missing headers/cookies rather than bogus values, so `c.req.header(...)` returns undefined."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "HTTP headers and cookies"],
+    "risks": [
+      "Code depending on the previous behavior (receiving an empty Cookie header or a header literally set to \"undefined\") will now see the header absent.",
+      "Headers are now built by iterating and calling set(), so multi-value header semantics from the previous Headers constructor input could differ."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 550,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1991
+  },
+  "latencyMs": 6755,
+  "nominalCostUsd": 0.0341855
+}

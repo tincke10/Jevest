@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "In the Vitest UI test explorer's filtering logic, when a non-file node is expanded, the owning file node is now included in the matched-node set if the file itself matches the current search/filter. The rest of the diff adds explanatory comments/TODOs and a UI e2e assertion that searching hides non-matching files.",
+    "behaviorChanges": [
+      "When expanding a nested suite/test while a search or filter is active, the parent file row is now kept visible if the file name itself matches the filter",
+      "Explorer entry lists for expanded subtrees can include the owning file node that was previously omitted",
+      "UI e2e test now verifies that typing a search term removes non-matching files (sample.test.ts) from the explorer"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["Vitest UI test explorer", "search and filtering", "end-to-end tests"],
+    "risks": [
+      "Adding the file ID to the matched set could produce duplicate or unexpectedly visible rows in the flattened explorer list",
+      "Behavior depends on the matcher treating file nodes consistently; a matching file may now pull in entries users expect to be filtered out",
+      "Only one e2e assertion covers the new path; other expand+filter combinations remain untested"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 684,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2108
+  },
+  "latencyMs": 8622,
+  "nominalCostUsd": 0.038705500000000004
+}

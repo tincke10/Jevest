@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "In the standalone-server example, the `randomNumber` subscription is rewritten from an `observable()` with a `setInterval` to an async generator that yields a random number and sleeps 200ms in a loop until the request's abort signal fires. The `observable` import is dropped.",
+    "behaviorChanges": [
+      "The example subscription emits its first value immediately instead of waiting 200ms for the first interval tick",
+      "Emission cadence is now 200ms plus per-iteration overhead rather than a fixed interval timer",
+      "Cleanup happens via the subscription's abort signal instead of clearInterval in a teardown function",
+      "The example no longer imports from '@trpc/server/observable'"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["example applications", "tRPC subscriptions"],
+    "risks": [
+      "`opts.signal` is optional (`?.`); if undefined, the loop never terminates on client disconnect and may run indefinitely",
+      "The abort signal is only checked between sleeps, so the generator can linger up to 200ms after abort"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 608,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1194
+  },
+  "latencyMs": 7710,
+  "nominalCostUsd": 0.0276655
+}

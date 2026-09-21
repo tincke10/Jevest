@@ -1,0 +1,32 @@
+{
+  "summary": {
+    "whatChanges": "Rewrites Zod's practical email regex to a lookahead-free, self-contained form that accepts the same strings. The new pattern appears in validation issues and JSON Schema `pattern` output, and an embedded `z.email()` in a template literal no longer imposes its dot rules on the other parts. Adds differential/fuzz tests.",
+    "behaviorChanges": [
+      "The `pattern` string reported in email validation issues and in `toJSONSchema` output is now the new lookahead-free regex source.",
+      "Template literals containing `z.email()` no longer reject other segments due to the email's leading-dot / double-dot lookaheads (e.g. `a@b.cc|a..b` now passes).",
+      "Email accept/reject results for standalone `z.email()` remain unchanged, verified by exhaustive and fuzz differential tests against the old regex."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "string validation (email)",
+      "JSON Schema generation",
+      "template literal schemas",
+      "tests"
+    ],
+    "risks": [
+      "Consumers that snapshot or string-compare the emitted email `pattern` (issues, JSON Schema) will see a different value and need updating.",
+      "The new pattern's alternation/star structure could have different backtracking characteristics on long non-matching inputs than the lookahead version.",
+      "Equivalence is only demonstrated for strings up to length 6 over a 9-character alphabet plus randomized fuzzing, not proven in general."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 930,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5924
+  },
+  "latencyMs": 11973,
+  "nominalCostUsd": 0.08301549999999999
+}

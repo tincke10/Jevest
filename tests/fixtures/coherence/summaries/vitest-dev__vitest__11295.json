@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "In the jsdom environment's Blob compatibility helper, the internal buffer is now read from `_bytes` with a fallback to `_buffer`, matching jsdom 28's renamed internal field. A test asserts a Blob used as a Request body preserves its contents.",
+    "behaviorChanges": [
+      "Blobs passed through the jsdom compat layer (e.g. as a Request body or FormData entry) retain their bytes under jsdom 28 instead of producing empty/undefined content",
+      "Existing jsdom versions exposing `_buffer` continue to work via fallback"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["test runner jsdom environment", "Blob/FormData/fetch compatibility"],
+    "risks": [
+      "Relies on jsdom private internals (`implSymbol`, `_bytes`/`_buffer`); a future rename breaks it again",
+      "If `_bytes` exists but has a different type/shape than `_buffer`, the constructed Node Blob could hold incorrect data",
+      "No guard when both fields are undefined — would pass `undefined` into the Blob constructor"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 550,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1186
+  },
+  "latencyMs": 6463,
+  "nominalCostUsd": 0.0261355
+}

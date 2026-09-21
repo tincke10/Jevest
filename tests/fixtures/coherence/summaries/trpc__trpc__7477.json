@@ -1,0 +1,32 @@
+{
+  "summary": {
+    "whatChanges": "Fixes inverted boolean logic in tRPC's request-id validation. Previously only NaN was rejected; booleans, objects, arrays and undefined passed silently. Now any id that isn't null, a string, or a non-NaN number throws \"Invalid request id\". Adds a regression test suite covering valid and invalid ids.",
+    "behaviorChanges": [
+      "Incoming RPC/WebSocket messages with a boolean, object, or array id are now rejected with 'Invalid request id'",
+      "Messages with a missing/undefined id are now rejected instead of being accepted",
+      "null, string (including empty), and numeric (including 0) ids continue to be accepted",
+      "NaN ids still throw, as before"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": [
+      "tRPC server RPC message parsing",
+      "WebSocket/subscription handling",
+      "input validation",
+      "tests"
+    ],
+    "risks": [
+      "Clients that previously sent messages without an id (undefined) or with non-primitive ids will now receive errors where they previously succeeded",
+      "Stricter validation surfaces at message parse time, potentially terminating or erroring subscription/stop flows that relied on loose ids"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1021,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2197
+  },
+  "latencyMs": 14470,
+  "nominalCostUsd": 0.0480205
+}

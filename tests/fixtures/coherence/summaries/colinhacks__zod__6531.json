@@ -1,0 +1,31 @@
+{
+  "summary": {
+    "whatChanges": "In Zod v4 core, the regex `pattern` for enum and literal schemas is no longer built eagerly in the constructor. It is now defined as a lazy internal that computes the regex on first access, reading the enum entries or literal values from the schema definition at that time.",
+    "behaviorChanges": [
+      "Enum/literal `_zod.pattern` is computed on first access instead of at schema construction, so constructing these schemas does less work.",
+      "Enum patterns are derived from `def.entries` at access time, so changes to the definition before first access are reflected in the regex.",
+      "`_zod.pattern` is now a lazily-defined property rather than a plain assigned value."
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": [
+      "schema validation library (enum and literal schemas)",
+      "regex pattern generation / JSON Schema conversion inputs"
+    ],
+    "risks": [
+      "Code that inspects or enumerates `_zod` properties (spread, `Object.keys`, cloning) may no longer see `pattern` the same way now that it is lazily defined.",
+      "Lazy evaluation reads `def.entries`/`def.values` later, so any mutation of the definition after construction can produce a different pattern than before.",
+      "Errors in regex construction now surface at first pattern access rather than at schema creation, making failures appear at a different point.",
+      "Empty-alternation fallback logic is duplicated in both lazy getters; divergence between enum and literal handling could go unnoticed."
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 851,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1743
+  },
+  "latencyMs": 12458,
+  "nominalCostUsd": 0.0392305
+}

@@ -1,0 +1,30 @@
+{
+  "summary": {
+    "whatChanges": "Makes static parsing the default for test collection: `vitest list` and the programmatic `Vitest.collect()` now statically analyse test files instead of executing them, with `--no-static-parse` to opt back into running files. Docs and e2e snapshots updated accordingly.",
+    "behaviorChanges": [
+      "`vitest list` now collects tests via static parsing by default; `--no-static-parse` restores the previous run-based behavior",
+      "`Vitest.collect(filters, options)` defaults to static parsing when `staticParse` is not explicitly `false`",
+      "`vitest list --json` output now includes a `location` object (line/column) for each test",
+      "Test ordering changed in typecheck listing output (e.g. `type.test-d.ts` now appears last)",
+      "CLI help text and docs mark `staticParse` as default `true` and no longer experimental"
+    ],
+    "userFacing": true,
+    "breaking": true,
+    "areas": ["test collection / listing CLI", "Vitest node API", "documentation"],
+    "risks": [
+      "Static analysis cannot resolve dynamically generated tests (loops, helpers, computed names), so collected lists may differ from actual runs",
+      "Errors that only surface when executing test files may no longer be reported during collection — the error-output e2e test had to add `--no-static-parse`",
+      "Changed default is a breaking change for scripts/tools parsing `vitest list` output, which now includes `location` and different ordering",
+      "Programmatic callers relying on `collect()` executing files must now explicitly pass `staticParse: false`"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 739,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5177
+  },
+  "latencyMs": 10571,
+  "nominalCostUsd": 0.0707705
+}

@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "whatChanges": "Adds Sury (v11) as a dev dependency for the test suite and docs site, adds test coverage for Sury schemas as tRPC input/output validators (sync, async, and transform pipelines), and documents a Sury example in the validators docs page.",
+    "behaviorChanges": [
+      "Validators documentation page now includes a Sury usage example alongside Zod, Valibot, etc.",
+      "Test suite and docs site install the new `sury` package"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["documentation", "tests", "dependencies", "input/output validation"],
+    "risks": [
+      "Sury is pinned to exact version 11.0.0; future releases may break the snapshot-based tests that assert exact error message strings",
+      "Sury declares an optional `rescript` peer dependency, which may surface peer-dependency warnings during install"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 441,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 5138
+  },
+  "latencyMs": 5977,
+  "nominalCostUsd": 0.0629305
+}

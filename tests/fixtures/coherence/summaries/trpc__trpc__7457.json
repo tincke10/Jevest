@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Fixes `makeResource`/`makeAsyncResource` so a pre-existing `Symbol.dispose`/`Symbol.asyncDispose` method is invoked with the object as `this` (via `.call(it)`) instead of unbound. Adds unit tests covering `this` preservation and disposing an async generator with a native async dispose.",
+    "behaviorChanges": [
+      "Disposing a wrapped resource now calls its original dispose/asyncDispose method bound to the object, so methods relying on `this` work correctly",
+      "Async generators with native Symbol.asyncDispose (Bun, Node 24+) can be disposed without throwing, and their `finally` cleanup runs",
+      "New tests added for the disposable stream utility"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["streaming/subscriptions", "resource disposal utilities", "tests"],
+    "risks": [
+      "Existing dispose implementations that previously ran unbound (undefined `this`) will now receive the wrapper object, which could alter their behavior",
+      "Rebinding invokes the original method on the mutated wrapper `it`, which now has an overwritten dispose symbol — potential for unexpected self-reference in custom implementations"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 551,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2046
+  },
+  "latencyMs": 7123,
+  "nominalCostUsd": 0.0347605
+}

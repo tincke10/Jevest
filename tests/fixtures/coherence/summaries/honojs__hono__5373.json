@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "Fixes the linear router so a URL with an empty path segment (e.g. `/u//posts`) no longer matches a route with a named parameter in that position. Previously only trailing empty segments were rejected; now any empty segment aborts the match. A shared router test case covers both cases.",
+    "behaviorChanges": [
+      "Requests like GET /u//posts no longer match the route /u/:id/posts and return no handler (404) instead of matching with an empty param value",
+      "Trailing empty segments (e.g. /u/) continue to not match, via the reworked check",
+      "New shared router test suite 'Empty path segment' runs against all router implementations"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP routing", "URL parameter matching"],
+    "risks": [
+      "Apps that relied on empty parameter values matching (e.g. /u//posts hitting a handler with id='') will now get no match",
+      "Fix applied only to the linear router; other router implementations must already satisfy the new shared test or they will fail",
+      "Consistency across routers depends on all implementations agreeing on empty-segment semantics"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 627,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 1278
+  },
+  "latencyMs": 8104,
+  "nominalCostUsd": 0.028980499999999996
+}

@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "Number and bigint format checks (e.g. `.int()`, `z.int64()`) now narrow the stored minimum/maximum bounds instead of overwriting them, so bounds set by earlier `.min()`/`.max()` calls survive. Tests cover the new ordering behavior for `minValue`/`maxValue` and JSON Schema output.",
+    "behaviorChanges": [
+      "z.number().min(0).max(23).int() now keeps minimum 0 / maximum 23 instead of being widened to the int32 range",
+      "z.bigint().min(0n).max(23n).check(z.int64()) reports minValue 0n and maxValue 23n",
+      "toJSONSchema output for number schemas is now order-independent between .int() and .min()/.max(), emitting the tighter bounds",
+      "Format checks only tighten bag.minimum/maximum; they no longer relax previously stored tighter bounds"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["schema validation", "number/bigint constraints", "JSON Schema generation"],
+    "risks": [
+      "Callers relying on the old overwrite semantics (format widening previously narrowed bounds) will see different minValue/maxValue and JSON Schema output",
+      "Bounds set by .min()/.max() applied after a format check still overwrite unconditionally, so full order-independence may not hold in the reverse direction",
+      "Bigint bounds are compared against Number.NEGATIVE_INFINITY/POSITIVE_INFINITY with casts; mixed bigint/number typing in the bag relies on loose comparison semantics",
+      "Only bag metadata changes; the format check's own runtime validation range is unchanged, so metadata and actual validation could diverge"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 901,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2152
+  },
+  "latencyMs": 12644,
+  "nominalCostUsd": 0.0445705
+}

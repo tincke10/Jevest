@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "whatChanges": "Moves `tinyexec` to the pnpm catalog across vitest, e2e tests, and test-utils, loosens the catalog pins for `tinybench` and `tinyexec` to caret ranges, and drops a stale `tinybench@6.1.3` minimum-release-age exclusion. Resolved versions in the lockfile stay unchanged.",
+    "behaviorChanges": [
+      "tinyexec version is now declared once in the workspace catalog instead of pinned per-package",
+      "tinybench and tinyexec can resolve to newer minor/patch releases on a fresh install instead of the exact pinned versions",
+      "tinybench@6.1.3 is no longer exempted from the minimum release age check"
+    ],
+    "userFacing": false,
+    "breaking": false,
+    "areas": ["dependency management", "build tooling"],
+    "risks": [
+      "Caret ranges let tinybench/tinyexec drift to newer versions on lockfile refresh, which could introduce untested behavior in benchmarking and process spawning",
+      "tinyexec is a runtime dependency of the published vitest package, so the loosened range affects what consumers install"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 520,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2080
+  },
+  "latencyMs": 6727,
+  "nominalCostUsd": 0.034325499999999995
+}

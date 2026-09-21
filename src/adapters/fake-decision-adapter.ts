@@ -1,6 +1,9 @@
 /**
  * Deterministic DecisionPort for stage tests (SPEC §10.2): configured with a
- * map of scripted answers per question key; throws on a key with no script.
+ * map of scripted answers per question key, or — like the fake summarizer —
+ * with a function that computes the answers from the state and questions
+ * (for dry runs whose question keys are the same on every request). Throws
+ * on a key with no script so a test never silently gets a stub answer.
  */
 import type { Decision, DecisionResponse } from "../domain/decision.js";
 import type { AnswersFor, DecisionPort, State } from "../domain/ports/decision-port.js";
@@ -13,17 +16,25 @@ export class UnscriptedQuestionError extends Error {
   }
 }
 
+export type FakeDecisionScriptFn = (
+  state: State,
+  questions: Record<string, Question>,
+) => Record<string, Decision>;
+
+export type FakeDecisionScript = Record<string, Decision> | FakeDecisionScriptFn;
+
 let counter = 0;
 
-export function createFakeDecisionAdapter(script: Record<string, Decision>): DecisionPort {
+export function createFakeDecisionAdapter(script: FakeDecisionScript): DecisionPort {
   return {
     async decide<Q extends Record<string, Question>>(
-      _state: State,
+      state: State,
       questions: Q,
     ): Promise<DecisionResponse<AnswersFor<Q>>> {
+      const scripted = typeof script === "function" ? script(state, questions) : script;
       const answers: Record<string, Decision> = {};
       for (const key of Object.keys(questions)) {
-        const decision = script[key];
+        const decision = scripted[key];
         if (!decision) {
           throw new UnscriptedQuestionError(key);
         }

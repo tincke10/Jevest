@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "The prettyJSON middleware now parses a clone of the response body inside a try/catch, passing the response through untouched when the body is empty, not valid JSON, or already consumed. When it does prettify, it deletes the now-stale Content-Length header. Tests cover these cases.",
+    "behaviorChanges": [
+      "204/304 and empty JSON-typed responses pass through instead of erroring when pretty printing is active",
+      "Responses with a JSON content-type but non-JSON body are returned unchanged, with original headers (ETag, Content-Length, custom) intact",
+      "A response whose body was already read by another middleware no longer causes a failure; it is left as is",
+      "Prettified responses no longer carry a stale Content-Length header",
+      "The original response body is no longer consumed by the middleware (a clone is read instead)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["HTTP middleware", "JSON response formatting"],
+    "risks": [
+      "Cloning the response buffers the body an extra time, adding memory/CPU overhead for large JSON payloads and potentially affecting streamed responses",
+      "Removing Content-Length changes response framing (clients/proxies may see chunked instead of fixed-length responses)",
+      "The broad catch silently swallows all parse and clone errors, hiding genuine malformed-JSON problems"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 730,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2510
+  },
+  "latencyMs": 9126,
+  "nominalCostUsd": 0.0438755
+}

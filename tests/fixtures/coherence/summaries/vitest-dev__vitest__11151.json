@@ -1,0 +1,29 @@
+{
+  "summary": {
+    "whatChanges": "Refactors Rollup/esbuild error serialization into a reusable `toRollupError` helper and uses it when building failed file tasks during static AST collection. Transform/parse failures now surface a single error carrying `__vitest_rollup_error__` details (plugin, id, frame, loc) instead of a flattened list of esbuild messages. Adds e2e fixtures and tests.",
+    "behaviorChanges": [
+      "`vitest list` on a file with a syntax/transform error now prints the full transform error including 'Transform failed with 1 error:', the plugin name and the offending file, and exits 1",
+      "Failed file tasks from static collection expose one error with `__vitest_rollup_error__` metadata (plugin, id, frame, loc) instead of multiple errors synthesized from esbuild `errors`/`pluginCode`",
+      "Error stacks for transform failures are no longer rewritten to `<relative path>:line:column`; the original stack is preserved",
+      "`handleRollupError` is now implemented on top of the new exported `toRollupError`, keeping its throwing behavior"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["test collection / listing", "error reporting", "module transform pipeline"],
+    "risks": [
+      "Consumers/reporters parsing the previous per-esbuild-error array (one entry per message with a relative-path stack) will see a different shape: a single error object",
+      "`toRollupError` returns undefined for errors lacking plugin/frame/id, so some transform errors may fall back to the plain name/message/stack path and lose the previous esbuild detail extraction",
+      "`cause` is cast to `TestError | undefined` without validation, so arbitrary cause values may be mis-typed",
+      "New e2e assertions depend on Vite/esbuild message wording ('Transform failed with 1 error:', 'Plugin: vite:') and could break on upstream changes"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1095,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2980
+  },
+  "latencyMs": 13041,
+  "nominalCostUsd": 0.0577005
+}

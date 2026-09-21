@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "whatChanges": "The RPC client now only appends `?` plus the query string when the serialized search params are non-empty. Requests, `$url()`, and `$path()` no longer produce a dangling `?` when a query object yields no parameters (e.g. all-undefined values or a custom `buildSearchParams` returning nothing). Tests cover the new behavior.",
+    "behaviorChanges": [
+      "Client requests with a query object that serializes to nothing now hit `/search` instead of `/search?`",
+      "`$url(...).href` and `$path(...)` omit the trailing `?` for empty serialized queries",
+      "A custom `buildSearchParams` returning an empty `URLSearchParams` no longer adds `?` to the URL",
+      "Empty-string query values are still preserved (`/search?q=`)"
+    ],
+    "userFacing": true,
+    "breaking": false,
+    "areas": ["RPC client", "URL building"],
+    "risks": [
+      "Code or tests asserting the previous trailing-`?` URLs, or servers/proxies keying caches on that exact string, will see different URLs",
+      "Behavior only changes when the serializer yields zero params; query objects producing empty-but-present values still emit `?`"
+    ]
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 561,
+    "cacheReadInputTokens": 1031,
+    "cacheCreationInputTokens": 2206
+  },
+  "latencyMs": 7359,
+  "nominalCostUsd": 0.0366105
+}

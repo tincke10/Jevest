@@ -93,7 +93,16 @@ const sizeThresholdsSchema = z
 // omittable) for "none", enforced below with `superRefine` rather than a
 // stricter type, since zod's `discriminatedUnion` would otherwise force
 // every caller to narrow `config.reviewer` before reading `.model`.
-export const REVIEWER_PROVIDERS = ["anthropic", "openai", "deepseek", "none"] as const;
+// "claude-cli" runs `claude -p` and bills a Claude subscription (Pro/Max)
+// through a long-lived OAuth token from `claude setup-token`, instead of
+// per-token API credits — see docs/ACTION.md "Claude subscription in CI".
+export const REVIEWER_PROVIDERS = [
+  "anthropic",
+  "openai",
+  "deepseek",
+  "claude-cli",
+  "none",
+] as const;
 export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 
 const reviewerSchema = z

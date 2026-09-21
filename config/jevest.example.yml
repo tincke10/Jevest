@@ -18,10 +18,13 @@
 # and the merge gate still runs on triage + CI status. Useful to validate
 # triage/merge-gate behavior on a new repo before spending on LLM reviews.
 reviewer:
-  provider: anthropic # or: openai, deepseek, none
+  provider: anthropic # or: openai, deepseek, claude-cli, none
   model: claude-sonnet-5 # ignored (and optional) when provider is none
   # deepseek: model deepseek-v4-pro (default quality) or deepseek-flash
   # (cheapest). Needs the DEEPSEEK_API_KEY secret / deepseek-api-key input.
+  # claude-cli: bills a Claude Pro/Max subscription via `claude -p`; needs
+  # the CLAUDE_CODE_OAUTH_TOKEN secret / claude-code-oauth-token input
+  # (generate it with `claude setup-token`). See docs/ACTION.md.
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

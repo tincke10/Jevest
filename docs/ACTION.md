@@ -46,6 +46,7 @@ Deliberately no `actions/checkout` step — see "Why no checkout" below.
 | `ANTHROPIC_API_KEY` | If `.jevest.yml` selects `reviewer.provider: anthropic` | |
 | `OPENAI_API_KEY` | If `.jevest.yml` selects `reviewer.provider: openai` | |
 | `DEEPSEEK_API_KEY` | If `.jevest.yml` selects `reviewer.provider: deepseek` | Models `deepseek-v4-pro` (default) or `deepseek-flash`; see "Choosing a reviewer" |
+| `CLAUDE_CODE_OAUTH_TOKEN` | If `.jevest.yml` selects `reviewer.provider: claude-cli` | From `claude setup-token` (Claude Pro/Max); see "Claude subscription in CI" |
 | `GITHUB_TOKEN` | Always | The built-in token is enough; no PAT needed |
 
 ### `.jevest.yml`
@@ -86,6 +87,34 @@ change.
 | `anthropic` | `claude-opus-5`, `claude-sonnet-5` | Server-enforced schema (`messages.parse`) | Default. Prompt caching on the system prompt |
 | `openai` | any chat model | Server-enforced schema (`json_schema`) | Pricing table not confirmed in this repo; cost is estimated at Sonnet 5 rates |
 | `deepseek` | `deepseek-v4-pro` (default), `deepseek-flash` | `json_object` only, validated client-side | OpenAI-compatible endpoint `https://api.deepseek.com`; peak-rate pricing used for the budget cut-off; a 402 means the DeepSeek account has no balance |
+| `claude-cli` | `claude-opus-5` (default), `claude-sonnet-5` | Schema-enforced by `claude -p --json-schema` | Bills a Claude Pro/Max **subscription**, not API credits; `budgetUsd` tracks the CLI's nominal list price. See "Claude subscription in CI" |
+
+### Claude subscription in CI (`claude-cli`)
+
+If you have a Claude Pro or Max subscription and no Anthropic Console
+credits, the `claude-cli` reviewer runs `claude -p` on the runner and
+authenticates with a long-lived OAuth token, the same mechanism Anthropic's
+own `claude-code-action` documents for subscribers:
+
+1. On your machine, run `claude setup-token` and copy the token it prints.
+2. Store it as the repository secret `CLAUDE_CODE_OAUTH_TOKEN`.
+3. Pass it to the Action as `claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}`
+   and set `reviewer.provider: claude-cli` in `.jevest.yml`.
+
+The Action installs `@anthropic-ai/claude-code` on the runner only when
+that input is present (about 15–20 s extra per run).
+
+Know what you are signing up for:
+
+- **The token is one person's subscription.** Every PR review on the repo
+  draws on that person's Max/Pro quota, alongside their own interactive
+  use. A busy repo can exhaust it. `budgetUsd` still caps each run, using
+  the nominal list price the CLI reports.
+- **It is a personal credential**, not an org one. Rotate it by running
+  `claude setup-token` again; revoke it from the Claude account's
+  settings if it leaks.
+- **Never for `pull_request_target` or fork PRs.** Same rule as every
+  other secret here (see "Security notes").
 
 DeepSeek's json mode has one documented quirk: the API "may occasionally
 return empty content". Jevest treats an empty or malformed reply as a

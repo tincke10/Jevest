@@ -43,6 +43,7 @@ describe("parseActionInputs", () => {
       INPUT_ANTHROPIC_API_KEY: "sk-ant-test",
       INPUT_OPENAI_API_KEY: "sk-oai-test",
       INPUT_DEEPSEEK_API_KEY: "sk-ds-test",
+      INPUT_CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-test",
       INPUT_FAIL_ON: "failure",
     });
     expect(inputs).toEqual({
@@ -51,6 +52,7 @@ describe("parseActionInputs", () => {
       anthropicApiKey: "sk-ant-test",
       openaiApiKey: "sk-oai-test",
       deepseekApiKey: "sk-ds-test",
+      claudeCodeOauthToken: "sk-ant-oat-test",
       githubToken: "ghp_test",
       failOn: "failure",
     });
@@ -163,6 +165,20 @@ describe("createReviewer", () => {
   it("throws when provider is deepseek but no deepseek-api-key input was given", () => {
     const config = makeConfig({ provider: "deepseek", model: "deepseek-v4-pro" });
     expect(() => createReviewer(config, makeInputs())).toThrow(/deepseek-api-key/);
+  });
+
+  it("builds a claude-cli reviewer when a Claude Code OAuth token is provided", () => {
+    const config = makeConfig({ provider: "claude-cli", model: "claude-opus-5" });
+    const reviewer = createReviewer(
+      config,
+      makeInputs({ claudeCodeOauthToken: "sk-ant-oat-test" }),
+    );
+    expect(reviewer).toBeDefined();
+  });
+
+  it("throws when provider is claude-cli but no claude-code-oauth-token input was given", () => {
+    const config = makeConfig({ provider: "claude-cli", model: "claude-opus-5" });
+    expect(() => createReviewer(config, makeInputs())).toThrow(/claude-code-oauth-token/);
   });
 
   it("throws a clear error if model is missing for a non-none provider (defensive; config validation should already catch this)", () => {

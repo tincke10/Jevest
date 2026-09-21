@@ -36,6 +36,13 @@ inputs:
       API key for DeepSeek. Required only when .jevest.yml selects the
       deepseek reviewer. Pass as a secret, never a literal.
     required: false
+  claude-code-oauth-token:
+    description: >-
+      Long-lived OAuth token from `claude setup-token` (Claude Pro/Max
+      subscription). Required only when .jevest.yml selects the claude-cli
+      reviewer; every review then draws on that subscription's quota. Pass
+      as a secret, never a literal.
+    required: false
   github-token:
     description: >-
       Token used to read the PR and publish comments/labels/checks. Needs
@@ -89,6 +96,13 @@ runs:
       working-directory: ${{ github.action_path }}
       run: pnpm install --frozen-lockfile --prod=false
 
+    - name: Install Claude Code CLI (claude-cli reviewer only)
+      # Only when a subscription token is supplied: the claude-cli reviewer
+      # shells out to `claude -p`, which is not on a runner by default.
+      if: ${{ inputs.claude-code-oauth-token != '' }}
+      shell: bash
+      run: npm install -g @anthropic-ai/claude-code
+
     - name: Run Jevest
       shell: bash
       working-directory: ${{ github.action_path }}
@@ -102,5 +116,6 @@ runs:
         INPUT_ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         INPUT_OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         INPUT_DEEPSEEK_API_KEY: ${{ inputs.deepseek-api-key }}
+        INPUT_CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude-code-oauth-token }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
         INPUT_FAIL_ON: ${{ inputs.fail-on }}

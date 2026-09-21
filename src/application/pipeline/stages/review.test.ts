@@ -185,6 +185,29 @@ describe("runReviewStage", () => {
     expect(result.skippedForBudgetCount).toBe(2);
   });
 
+  it("prefers the reviewer's nominalCostUsd over token pricing (subscription-billed claude-cli)", async () => {
+    const hunk = makeHunk();
+    const reviewer = fakeReviewer(async () =>
+      makeReviewOutput({
+        nominalCostUsd: 0.42,
+        usage: {
+          inputTokens: 1_000_000,
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+      }),
+    );
+    const result = await runReviewStage({
+      hunks: [hunk],
+      reviewerPort: reviewer,
+      pricing,
+      budgetUsd: 10,
+    });
+    expect(result.reviews[0]?.costUsd).toBe(0.42);
+    expect(result.totalCostUsd).toBe(0.42);
+  });
+
   it("accumulates total cost across reviews", async () => {
     const hunks = [makeHunk({ id: "a#0" }), makeHunk({ id: "b#0" })];
     const reviewer = fakeReviewer(async () => makeReviewOutput());

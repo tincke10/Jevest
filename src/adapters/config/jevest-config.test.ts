@@ -137,6 +137,14 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer).toEqual({ provider: "deepseek", model: "deepseek-v4-pro" });
   });
 
+  it("accepts the claude-cli provider (Claude subscription via OAuth token)", async () => {
+    const filePath = await writeConfig(
+      "reviewer:\n  provider: claude-cli\n  model: claude-opus-5\nbudgetUsd: 1\n",
+    );
+    const config = await loadJevestConfig(filePath);
+    expect(config.reviewer).toEqual({ provider: "claude-cli", model: "claude-opus-5" });
+  });
+
   it("throws a clear error for an unknown provider", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: cohere\n  model: x\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",

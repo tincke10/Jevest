@@ -112,7 +112,10 @@ export async function runReviewStage(input: ReviewStageInput): Promise<ReviewSta
 
     try {
       const output = await input.reviewerPort.review(toReviewInput(hunk));
-      const costUsd = reviewCostUsd(output.usage, input.pricing);
+      // A subscription-billed reviewer (claude-cli) reports the CLI's own
+      // nominal list-price cost; that number is what the budget cap should
+      // track, not a re-computation from a per-token pricing table.
+      const costUsd = output.nominalCostUsd ?? reviewCostUsd(output.usage, input.pricing);
       totalCostUsd += costUsd;
 
       reviews.push({

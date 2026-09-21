@@ -24,6 +24,7 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
 import { createAnthropicReviewer } from "../adapters/reviewers/anthropic-reviewer.js";
+import { createClaudeCliReviewer } from "../adapters/reviewers/claude-cli-reviewer.js";
 import {
   DEEPSEEK_BASE_URL,
   createDeepSeekReviewer,
@@ -54,6 +55,8 @@ export interface ActionInputs {
   readonly anthropicApiKey?: string;
   readonly openaiApiKey?: string;
   readonly deepseekApiKey?: string;
+  /** Long-lived OAuth token from `claude setup-token` (Claude Pro/Max), for the claude-cli reviewer. */
+  readonly claudeCodeOauthToken?: string;
   readonly githubToken: string;
   readonly failOn: FailOn;
 }
@@ -99,6 +102,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
   const anthropicApiKey = readInput(env, "anthropic-api-key");
   const openaiApiKey = readInput(env, "openai-api-key");
   const deepseekApiKey = readInput(env, "deepseek-api-key");
+  const claudeCodeOauthToken = readInput(env, "claude-code-oauth-token");
   const configPath = readInput(env, "config-path") ?? DEFAULT_CONFIG_PATH;
   const failOnRaw = readInput(env, "fail-on") ?? DEFAULT_FAIL_ON;
   if (failOnRaw !== "never" && failOnRaw !== "failure") {
@@ -113,6 +117,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
     ...(anthropicApiKey !== undefined ? { anthropicApiKey } : {}),
     ...(openaiApiKey !== undefined ? { openaiApiKey } : {}),
     ...(deepseekApiKey !== undefined ? { deepseekApiKey } : {}),
+    ...(claudeCodeOauthToken !== undefined ? { claudeCodeOauthToken } : {}),
   };
 }
 
@@ -212,14 +217,29 @@ export function createReviewer(
       model,
     });
   }
+  if (provider === "claude-cli") {
+    // Bills a Claude Pro/Max subscription through `claude -p`, authenticated
+    // by the long-lived OAuth token from `claude setup-token` — the same
+    // mechanism Anthropic's own claude-code-action uses for subscribers.
+    // The token belongs to ONE person's subscription: the consumer repo's
+    // owner accepts that every PR review draws on that person's quota.
+    if (inputs.claudeCodeOauthToken === undefined) {
+      throw new ActionInputError(
+        'input "claude-code-oauth-token" is required because .jevest.yml selects the claude-cli reviewer',
+      );
+    }
+    // The claude-cli seam spawns `claude` with the current process env (minus
+    // ANTHROPIC_API_KEY, which would shadow the subscription); the CLI reads
+    // this variable to authenticate without an interactive login.
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = inputs.claudeCodeOauthToken;
+    return createClaudeCliReviewer({ model });
+  }
   if (inputs.openaiApiKey === undefined) {
     throw new ActionInputError(
       'input "openai-api-key" is required because .jevest.yml selects the openai reviewer',
     );
   }
   return createOpenAiReviewer({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
-  // Deliberately no "claude-cli" branch: that reviewer spends a Claude
-  // subscription's quota interactively and has no place in unattended CI.
 }
 
 function isEnoent(error: unknown): boolean {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { JevestConfig } from "../../adapters/config/jevest-config.js";
+import { createFakeSpendLedger } from "../../adapters/spend-ledger/fake-spend-ledger.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { Decision } from "../../domain/decision.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
@@ -65,6 +66,7 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
     publish: { inlineComments: true },
     budgetUsd: 5,
+    spendCap: { usd: 50, period: "month", warnAtUsd: 40 },
     maxHunks: 50,
     skipChangeKinds: ["rename-or-format"],
     failClosed: true,
@@ -570,5 +572,264 @@ describe("runPipeline", () => {
     expect(result.publication.inlineComments).toEqual([]);
     expect(result.publication.summaryMarkdown).toContain("Findings (high confidence)");
     expect(result.publication.summaryMarkdown).toContain("off-by-one");
+  });
+});
+
+describe("runPipeline spend cap (NFR-10 cumulative)", () => {
+  const NOW = new Date("2026-09-21T16:00:00.000Z");
+
+  /** Medium risk so the full pipeline runs; no findings so the filter has nothing to ask. */
+  function fullRunPort(): DecisionPort {
+    return scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+  }
+
+  function trackedReviewer(): ReviewerPort & { calls: number } {
+    const tracked = {
+      calls: 0,
+      async review(input: Parameters<ReviewerPort["review"]>[0]) {
+        tracked.calls += 1;
+        return fakeReviewer().review(input);
+      },
+    };
+    return tracked;
+  }
+
+  it("reads the ledger, runs the review and records llm + jev spend for the PR", async () => {
+    const pr = makePr();
+    const vcs = makeVcs(pr);
+    const reviewer = trackedReviewer();
+    const spendLedger = createFakeSpendLedger();
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(reviewer.calls).toBe(1);
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    expect(result.spendLedgerError).toBeNull();
+    expect(spendLedger.entries).toHaveLength(1);
+    const entry = spendLedger.entries[0]!;
+    expect(entry.periodKey).toBe("2026-09");
+    expect(entry.prNumber).toBe(1);
+    expect(entry.headSha).toBe("head");
+    expect(entry.llmUsd).toBe(result.review!.totalCostUsd);
+    expect(entry.llmUsd).toBeGreaterThan(0);
+    // triage (1 input token) + hunk-profile (1 input token) at $0.042/MTok.
+    expect(entry.jevUsd).toBeCloseTo((2 * 0.042) / 1e6, 12);
+    expect(entry.at).toBe(NOW.toISOString());
+    // The evaluation reported is the post-run one (cumulative after this run).
+    expect(result.spendCap).toMatchObject({
+      status: "ok",
+      periodKey: "2026-09",
+      spentUsd: spendLedger.current()!.spentUsd,
+      capUsd: 50,
+    });
+    expect(result.publication.summaryMarkdown).toContain("### Spend cap");
+    expect(result.publication.labelsToRemove).toContain("jevest:spend-warning");
+  });
+
+  it("skips the LLM review (Jev-only run) when the cap is already reached, still records the run", async () => {
+    const pr = makePr();
+    const vcs = makeVcs(pr);
+    const reviewer = trackedReviewer();
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-09", spentUsd: 50, runs: 10, updatedAt: "2026-09-20T00:00:00Z" },
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(reviewer.calls).toBe(0);
+    expect(result.reviewSkippedForSpendCap).toBe(true);
+    expect(result.review).toEqual({
+      reviews: [],
+      totalCostUsd: 0,
+      budgetExceeded: false,
+      skippedForBudgetCount: 0,
+    });
+    expect(result.mergeGate).not.toBeNull();
+    expect(result.spendCap?.status).toBe("reached");
+    expect(spendLedger.entries[0]?.llmUsd).toBe(0);
+    expect(spendLedger.current()?.runs).toBe(11);
+    expect(result.publication.summaryMarkdown).toContain("LLM review skipped: spend cap reached");
+    expect(result.publication.labelsToAdd).toContain("jevest:spend-cap-reached");
+    expect(result.publication.summaryMarkdown).not.toContain("LLM review disabled by config");
+  });
+
+  it("passes the clamped effective budget to the review stage when little is left under the cap", async () => {
+    const pr = makePr({
+      files: [
+        {
+          path: "a.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 1,
+          patch: "@@ -1,1 +1,1 @@\n-old\n+new",
+        },
+        {
+          path: "b.ts",
+          status: "modified",
+          additions: 1,
+          deletions: 1,
+          patch: "@@ -1,1 +1,1 @@\n-old\n+new",
+        },
+      ],
+    });
+    const vcs = makeVcs(pr);
+    const reviewer = trackedReviewer();
+    // 49.9999 spent: 0.0001 left, which one fake review (100 in / 20 out at Sonnet 5 rates = $0.0004) exceeds.
+    const spendLedger = createFakeSpendLedger({
+      seed: {
+        periodKey: "2026-09",
+        spentUsd: 49.9999,
+        runs: 10,
+        updatedAt: "2026-09-20T00:00:00Z",
+      },
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    expect(reviewer.calls).toBe(1);
+    expect(result.review?.budgetExceeded).toBe(true);
+    expect(result.review?.skippedForBudgetCount).toBe(1);
+    expect(result.spendCap?.status).toBe("reached");
+  });
+
+  it("treats a ledger from a previous month as zero and starts a fresh total", async () => {
+    const vcs = makeVcs(makePr());
+    const reviewer = trackedReviewer();
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-08", spentUsd: 50, runs: 10, updatedAt: "2026-08-31T00:00:00Z" },
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(reviewer.calls).toBe(1);
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    expect(spendLedger.current()).toMatchObject({ periodKey: "2026-09", runs: 1 });
+  });
+
+  it("carries a warning status and label once spend passes warnAtUsd", async () => {
+    const vcs = makeVcs(makePr());
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-09", spentUsd: 41, runs: 10, updatedAt: "2026-09-20T00:00:00Z" },
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer: trackedReviewer(), spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    expect(result.spendCap?.status).toBe("warning");
+    expect(result.publication.labelsToAdd).toContain("jevest:spend-warning");
+    expect(result.publication.check.summary).toContain("Spend cap warning");
+  });
+
+  it("does not fail the run when the ledger cannot be read: runs the review on the full budget and notes it", async () => {
+    const vcs = makeVcs(makePr());
+    const reviewer = trackedReviewer();
+    const spendLedger = createFakeSpendLedger({ readError: new Error("issues API 500") });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(result.failedClosed).toBe(false);
+    expect(reviewer.calls).toBe(1);
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    // The fake only fails `read`; `record` still went through, so the
+    // post-run evaluation is known and reported alongside the read error.
+    expect(result.spendCap).toMatchObject({ status: "ok", periodKey: "2026-09" });
+    expect(result.spendLedgerError).toContain("issues API 500");
+    expect(result.publication.summaryMarkdown).toContain(
+      "spend ledger unavailable: issues API 500",
+    );
+  });
+
+  it("does not fail the run when recording fails: keeps the pre-run evaluation and notes the error", async () => {
+    const vcs = makeVcs(makePr());
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-09", spentUsd: 10, runs: 2, updatedAt: "2026-09-20T00:00:00Z" },
+      recordError: new Error("update 502"),
+    });
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer: trackedReviewer(), spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(result.failedClosed).toBe(false);
+    expect(result.spendCap).toMatchObject({ status: "ok", spentUsd: 10 });
+    expect(result.spendLedgerError).toContain("update 502");
+  });
+
+  it("leaves spendCap null and never touches the ledger when no port is wired", async () => {
+    const vcs = makeVcs(makePr());
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: fullRunPort(), reviewer: trackedReviewer() },
+      config: makeConfig(),
+    });
+    expect(result.spendCap).toBeNull();
+    expect(result.spendLedgerError).toBeNull();
+    expect(result.reviewSkippedForSpendCap).toBe(false);
+    expect(result.publication.summaryMarkdown).not.toContain("Spend cap");
+  });
+
+  it("does not record anything on a triage-only run (FR-2.3), which spends nothing on the LLM", async () => {
+    const vcs = makeVcs(makePr());
+    const spendLedger = createFakeSpendLedger();
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: scriptedPort(HIGH_RISK_TRIAGE_SCRIPT), spendLedger },
+      config: makeConfig(),
+    });
+    expect(result.review).toBeNull();
+    expect(spendLedger.entries).toEqual([]);
+    expect(result.spendCap).toBeNull();
   });
 });

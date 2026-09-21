@@ -68,6 +68,19 @@ sizeThresholds:
 # Jev is $0.042/MTok input, negligible in comparison.
 budgetUsd: 5
 
+# Cumulative cap over the WHOLE service (NFR-10, second half), on top of
+# the per-run budgetUsd above. The running total lives in one "Jevest
+# spend ledger" issue in your repo (see docs/ACTION.md "Spend cap"). Once
+# the total reaches `usd`, the LLM review stage is skipped (Jev-only run)
+# until the period rolls over or you edit/close the ledger issue; from
+# `warnAtUsd` on, every run carries a warning. This is what protects a
+# personal Claude subscription when reviewer.provider is claude-cli.
+# Always present: to run without a cap, set `usd` to a very high number.
+spendCap:
+  usd: 50 # hard stop; warnAtUsd must be below it
+  period: month # "month" = calendar month in UTC, resets automatically; "total" = never resets
+  warnAtUsd: 40
+
 # Hard cap on hunks profiled/reviewed per PR (FR-3.4 says one Jev request
 # per hunk, so this also bounds request count).
 maxHunks: 50

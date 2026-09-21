@@ -68,6 +68,12 @@ outputs:
     description: "Number of findings published (inline + summary), as a string."
   cost-usd:
     description: "Total LLM + Jev cost for this run, in USD, as a string."
+  spend-usd:
+    description: >-
+      Cumulative spend counted against `spendCap` in .jevest.yml AFTER this
+      run (current period), in USD, as a string; empty when the spend
+      ledger issue could not be read or the run ended before the review
+      stage. See docs/ACTION.md "Spend cap".
 
 runs:
   using: "composite"

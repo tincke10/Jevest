@@ -166,6 +166,41 @@ describe("loadJevestConfig", () => {
     await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
   });
 
+  describe("spendCap", () => {
+    it("defaults to usd 50 / month / warnAtUsd 40 from config/jevest.example.yml", async () => {
+      const filePath = await writeConfig("reviewer:\n  provider: anthropic\n  model: x\n");
+      const config = await loadJevestConfig(filePath);
+      expect(config.spendCap).toEqual({ usd: 50, period: "month", warnAtUsd: 40 });
+    });
+
+    it("deep-merges a partial spendCap override (only usd) onto the defaults", async () => {
+      const filePath = await writeConfig("spendCap:\n  usd: 100\n");
+      const config = await loadJevestConfig(filePath);
+      expect(config.spendCap).toEqual({ usd: 100, period: "month", warnAtUsd: 40 });
+    });
+
+    it('accepts period "total"', async () => {
+      const filePath = await writeConfig("spendCap:\n  period: total\n");
+      const config = await loadJevestConfig(filePath);
+      expect(config.spendCap.period).toBe("total");
+    });
+
+    it("throws when warnAtUsd is not below usd", async () => {
+      const filePath = await writeConfig("spendCap:\n  usd: 10\n  warnAtUsd: 10\n");
+      await expect(loadJevestConfig(filePath)).rejects.toThrow(/warnAtUsd/);
+    });
+
+    it("throws when usd is not positive", async () => {
+      const filePath = await writeConfig("spendCap:\n  usd: 0\n  warnAtUsd: -1\n");
+      await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+    });
+
+    it("throws on an unknown period", async () => {
+      const filePath = await writeConfig("spendCap:\n  period: week\n");
+      await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
+    });
+  });
+
   it("throws when a threshold's confirm_min exceeds auto_min", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: anthropic\n  model: x\n" +

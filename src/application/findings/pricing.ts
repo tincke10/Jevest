@@ -90,3 +90,15 @@ export function reviewCostUsd(usage: ReviewUsage, pricing: ModelPricing): number
     (usage.cacheCreationInputTokens / MTOK) * pricing.cacheWritePerMTok
   );
 }
+
+/**
+ * Jev (TypeSafe AI) list price per the task brief and config/jevest.example.yml:
+ * $0.042 per million INPUT tokens; output is not billed separately. Used
+ * to book Jev's (negligible) share into the cumulative spend ledger so the
+ * cap counts everything the run cost, not just the LLM reviewer.
+ */
+export const JEV_INPUT_USD_PER_MTOK = 0.042;
+
+export function jevCostUsd(inputTokens: number): number {
+  return (inputTokens / MTOK) * JEV_INPUT_USD_PER_MTOK;
+}

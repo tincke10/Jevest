@@ -13,9 +13,16 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  */
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
+import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { PullRequestRef } from "../../domain/pull-request.js";
-import { pricingForModel } from "../findings/pricing.js";
+import {
+  type SpendCapEvaluation,
+  type SpendLedger,
+  evaluateSpendCap,
+  spendPeriodKey,
+} from "../../domain/spend-cap.js";
+import { jevCostUsd, pricingForModel } from "../findings/pricing.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
 import { type HunkProfileStageResult, runHunkProfileStage } from "./stages/hunk-profile.js";
 import { type MergeGateStageResult, runMergeGateStage } from "./stages/merge-gate.js";
@@ -34,10 +41,19 @@ export interface RunPipelineInput {
     readonly decision: DecisionPort;
     /** Not required when `config.reviewer.provider` is `"none"` (Jev-only mode) — the review stage never calls it. */
     readonly reviewer?: ReviewerPort;
+    /**
+     * Cumulative spend ledger behind `config.spendCap` (NFR-10). Optional:
+     * without it the cap is not enforced and `spendCap` in the result is
+     * `null`. Read/record failures never fail the run — see `readSpendCap`
+     * and `recordSpend` below.
+     */
+    readonly spendLedger?: SpendLedgerPort;
   };
   readonly config: JevestConfig;
   /** Optional: full-file content at a given sha, for hunk-profile's §4.3 AST context. */
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
+  /** Injectable clock for the spend cap's period key and ledger timestamps. Default: `new Date()`. */
+  readonly now?: () => Date;
 }
 
 export interface PipelineResult {
@@ -58,7 +74,29 @@ export interface PipelineResult {
   readonly check: import("../../domain/ports/vcs-port.js").ReviewPublication["check"];
   readonly findingsPublished: number;
   readonly costUsd: number;
+  /**
+   * Cumulative spend cap state (NFR-10) AFTER this run was recorded, or the
+   * pre-run state when recording failed. `null` when no ledger port was
+   * wired, the run ended before the review stage, or the ledger could not
+   * be read (`spendLedgerError` then says why).
+   */
+  readonly spendCap: SpendCapEvaluation | null;
+  /** True when the review stage was skipped because the cap was already reached before this run. */
+  readonly reviewSkippedForSpendCap: boolean;
+  /** Ledger read/record failure, if any. Never fails the run — surfaces in the summary comment instead. */
+  readonly spendLedgerError: string | null;
 }
+
+type SpendFields = Pick<
+  PipelineResult,
+  "spendCap" | "reviewSkippedForSpendCap" | "spendLedgerError"
+>;
+
+const NO_SPEND_INFO: SpendFields = {
+  spendCap: null,
+  reviewSkippedForSpendCap: false,
+  spendLedgerError: null,
+};
 
 function summaryFields(
   publication: import("../../domain/ports/vcs-port.js").ReviewPublication,
@@ -69,6 +107,83 @@ function summaryFields(
     check: publication.check,
     findingsPublished: findingFilter?.published.length ?? 0,
     costUsd: review?.totalCostUsd ?? 0,
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Reads the ledger and evaluates the cap BEFORE the review stage. A ledger
+ * that cannot be read is reported, not fatal: the run proceeds on the full
+ * per-run `budgetUsd` (status effectively "ok") and the summary carries a
+ * "spend ledger unavailable" note, because a flaky issues API must not
+ * turn every review into a fail-closed run.
+ */
+async function readSpendCap(
+  spendLedger: SpendLedgerPort,
+  config: JevestConfig,
+  now: Date,
+): Promise<{ evaluation: SpendCapEvaluation | null; error: string | null }> {
+  try {
+    const ledger = await spendLedger.read();
+    return {
+      evaluation: evaluateSpendCap({
+        ledger,
+        cap: config.spendCap,
+        now,
+        requestedBudgetUsd: config.budgetUsd,
+      }),
+      error: null,
+    };
+  } catch (error) {
+    const message = errorMessage(error);
+    console.warn(`jevest: spend ledger unavailable (${message}); cumulative cap not enforced`);
+    return { evaluation: null, error: message };
+  }
+}
+
+/**
+ * Books this run into the ledger right after the review stage — before
+ * finding-filter/merge-gate can fail closed — so LLM money already spent
+ * is never lost from the total. Jev's share counts triage + hunk-profile
+ * input tokens (the stages that ran so far); finding-filter and merge-gate
+ * tokens are left out on purpose, a rounding error at $0.042/MTok that is
+ * not worth a second ledger write. Returns the post-run evaluation, or the
+ * pre-run one when recording fails (again reported, never fatal).
+ */
+async function recordSpend(
+  spendLedger: SpendLedgerPort,
+  input: RunPipelineInput,
+  now: Date,
+  preRun: SpendCapEvaluation | null,
+  jevInputTokens: number,
+  llmUsd: number,
+): Promise<{ evaluation: SpendCapEvaluation | null; error: string | null }> {
+  let recorded: SpendLedger;
+  try {
+    recorded = await spendLedger.record({
+      periodKey: spendPeriodKey(input.config.spendCap.period, now),
+      prNumber: input.ref.number,
+      headSha: input.ref.headSha,
+      llmUsd,
+      jevUsd: jevCostUsd(jevInputTokens),
+      at: now.toISOString(),
+    });
+  } catch (error) {
+    const message = errorMessage(error);
+    console.warn(`jevest: could not record spend in the ledger (${message})`);
+    return { evaluation: preRun, error: message };
+  }
+  return {
+    evaluation: evaluateSpendCap({
+      ledger: recorded,
+      cap: input.config.spendCap,
+      now,
+      requestedBudgetUsd: input.config.budgetUsd,
+    }),
+    error: null,
   };
 }
 
@@ -109,6 +224,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
       publication,
       ...summaryFields(publication, null, null),
+      ...NO_SPEND_INFO,
     };
   }
 
@@ -126,8 +242,24 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
       publication,
       ...summaryFields(publication, null, null),
+      ...NO_SPEND_INFO,
     };
   }
+
+  // Cumulative spend cap (NFR-10): evaluated once here, before anything
+  // that costs LLM money. "reached" turns this into a Jev-only run exactly
+  // like reviewer.provider "none"; otherwise the review stage gets the
+  // per-run budget clamped to what is left under the cap.
+  const now = (input.now ?? (() => new Date()))();
+  const preRun = ports.spendLedger
+    ? await readSpendCap(ports.spendLedger, config, now)
+    : { evaluation: null, error: null };
+  const reviewSkippedForSpendCap = preRun.evaluation?.status === "reached";
+  let spend: SpendFields = {
+    spendCap: preRun.evaluation,
+    reviewSkippedForSpendCap,
+    spendLedgerError: preRun.error,
+  };
 
   let hunkProfile: HunkProfileStageResult;
   try {
@@ -154,6 +286,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
       publication,
       ...summaryFields(publication, null, null),
+      ...spend,
     };
   }
 
@@ -161,9 +294,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   // handled inside runReviewStage (recorded, pipeline continues), so NFR-2
   // fail-closed doesn't apply to this call. reviewer.provider: "none" is
   // Jev-only mode: the review stage never runs at all, no LLM key needed.
+  // A reached spend cap takes the same path (see above).
   const reviewDisabled = config.reviewer.provider === "none";
   let review: ReviewStageResult;
-  if (reviewDisabled) {
+  if (reviewDisabled || reviewSkippedForSpendCap) {
     review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
   } else {
     if (!ports.reviewer) {
@@ -176,8 +310,24 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       reviewerPort: ports.reviewer,
       // config validation guarantees model is set whenever provider isn't "none".
       pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
-      budgetUsd: config.budgetUsd,
+      budgetUsd: preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd,
     });
+  }
+
+  if (ports.spendLedger) {
+    const recorded = await recordSpend(
+      ports.spendLedger,
+      input,
+      now,
+      preRun.evaluation,
+      triage.usage.inputTokens + hunkProfile.totalUsage.inputTokens,
+      review.totalCostUsd,
+    );
+    spend = {
+      spendCap: recorded.evaluation,
+      reviewSkippedForSpendCap,
+      spendLedgerError: [preRun.error, recorded.error].filter((e) => e !== null).join("; ") || null,
+    };
   }
 
   const hunksById = new Map(hunkProfile.hunks.map((h) => [h.id, h.diff]));
@@ -204,6 +354,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
       publication,
       ...summaryFields(publication, null, review),
+      ...spend,
     };
   }
 
@@ -237,6 +388,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
       publication,
       ...summaryFields(publication, findingFilter, review),
+      ...spend,
     };
   }
 
@@ -248,6 +400,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     mergeGate,
     inlineCommentsEnabled: config.publish.inlineComments,
     reviewDisabled,
+    spendCap: spend.spendCap,
+    reviewSkippedForSpendCap: spend.reviewSkippedForSpendCap,
+    spendLedgerError: spend.spendLedgerError,
   });
   await ports.vcs.publishReview(input.ref, publication);
 
@@ -262,5 +417,6 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     mergeGate,
     publication,
     ...summaryFields(publication, findingFilter, review),
+    ...spend,
   };
 }

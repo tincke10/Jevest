@@ -12,6 +12,7 @@
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
+import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { FindingFilterStageResult } from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
@@ -33,10 +34,83 @@ export interface PublishStageInput {
   readonly inlineCommentsEnabled: boolean;
   /** True when `reviewer.provider: "none"` (Jev-only mode) — the review stage never ran. */
   readonly reviewDisabled: boolean;
+  /**
+   * Cumulative spend cap state AFTER this run was recorded (NFR-10, see
+   * src/domain/spend-cap.ts). `undefined`/`null` means unknown: no ledger
+   * port was wired, or reading it failed (then `spendLedgerError` says
+   * why). Labels are only touched when an evaluation is present.
+   */
+  readonly spendCap?: SpendCapEvaluation | null;
+  /** True when the review stage was skipped because the cap was already reached before this run. */
+  readonly reviewSkippedForSpendCap?: boolean;
+  /** Why the ledger could not be read/recorded, for the summary note; `null` when it worked. */
+  readonly spendLedgerError?: string | null;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
 const NEEDS_HUMAN_LABEL = "jevest:needs-human";
+const SPEND_WARNING_LABEL = "jevest:spend-warning";
+const SPEND_CAP_REACHED_LABEL = "jevest:spend-cap-reached";
+
+function usd(value: number): string {
+  return value.toFixed(2);
+}
+
+function periodWording(evaluation: SpendCapEvaluation): string {
+  return evaluation.period === "total" ? "in total" : `this ${evaluation.period}`;
+}
+
+function buildSpendCapSection(input: PublishStageInput): string[] {
+  const { spendCap, spendLedgerError } = input;
+  if (!spendCap && !spendLedgerError) {
+    return [];
+  }
+  return [
+    "### Spend cap",
+    ...(spendLedgerError
+      ? [
+          `- spend ledger unavailable: ${spendLedgerError} — cumulative cap not enforced on this run.`,
+        ]
+      : []),
+    ...(spendCap
+      ? [
+          `- USD ${usd(spendCap.spentUsd)} of ${usd(spendCap.capUsd)} ${periodWording(spendCap)} (${usd(spendCap.remainingUsd)} left)`,
+          `- Status: ${spendCap.status}${spendCap.status === "reached" ? " — the LLM review stage is skipped until the cap resets or is raised" : ""}`,
+        ]
+      : []),
+    "",
+  ];
+}
+
+function spendCapCheckLine(spendCap: SpendCapEvaluation | null | undefined): string {
+  if (!spendCap || spendCap.status === "ok") {
+    return "";
+  }
+  return ` Spend cap ${spendCap.status}: USD ${usd(spendCap.spentUsd)} of ${usd(spendCap.capUsd)} (${spendCap.periodKey}).`;
+}
+
+function applySpendCapLabels(
+  spendCap: SpendCapEvaluation | null | undefined,
+  labelsToAdd: string[],
+  labelsToRemove: string[],
+): void {
+  if (!spendCap) {
+    return;
+  }
+  switch (spendCap.status) {
+    case "reached":
+      labelsToAdd.push(SPEND_CAP_REACHED_LABEL);
+      labelsToRemove.push(SPEND_WARNING_LABEL);
+      return;
+    case "warning":
+      labelsToAdd.push(SPEND_WARNING_LABEL);
+      labelsToRemove.push(SPEND_CAP_REACHED_LABEL);
+      return;
+    case "ok":
+      labelsToRemove.push(SPEND_WARNING_LABEL, SPEND_CAP_REACHED_LABEL);
+      return;
+  }
+}
 
 function sha256(...parts: string[]): string {
   return createHash("sha256").update(parts.join(":")).digest("hex");
@@ -120,9 +194,16 @@ function buildCostSection(input: PublishStageInput): string {
 function buildSummaryMarkdown(input: PublishStageInput): string {
   const { triage, findingFilter, mergeGate } = input;
 
+  const skippedForSpendCap = input.reviewSkippedForSpendCap === true;
+  const spendCapBanner =
+    skippedForSpendCap && input.spendCap
+      ? `**LLM review skipped: spend cap reached** — USD ${usd(input.spendCap.spentUsd)} of ${usd(input.spendCap.capUsd)} ${periodWording(input.spendCap)}. Jev-only run; raise \`spendCap.usd\` or reset the ledger to resume LLM reviews.`
+      : "**LLM review skipped: spend cap reached** — Jev-only run.";
+
   return [
     "## Jevest review",
     "",
+    ...(skippedForSpendCap ? [spendCapBanner, ""] : []),
     "### Triage",
     `- Category: ${triage.category}`,
     `- Risk level: ${triage.riskLevel}`,
@@ -133,6 +214,7 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
       ? ["", "**LLM review disabled by config** (reviewer.provider: none — Jev-only mode)."]
       : []),
     "",
+    ...buildSpendCapSection(input),
     "### Skipped hunks",
     buildSkippedHunksSection(input.hunkProfile),
     "",
@@ -256,6 +338,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
   } else {
     labelsToRemove.push(NEEDS_HUMAN_LABEL);
   }
+  applySpendCapLabels(input.spendCap, labelsToAdd, labelsToRemove);
 
   return {
     summaryMarkdown,
@@ -266,7 +349,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     check: {
       conclusion: input.mergeGate.conclusion,
       title: `Jevest: ${input.mergeGate.conclusion}`,
-      summary: `Triage: ${input.triage.category}/${input.triage.riskLevel}. Published ${input.findingFilter.published.length} finding(s), ${input.findingFilter.needsHuman.length} need human review.`,
+      summary: `Triage: ${input.triage.category}/${input.triage.riskLevel}. Published ${input.findingFilter.published.length} finding(s), ${input.findingFilter.needsHuman.length} need human review.${spendCapCheckLine(input.spendCap)}`,
     },
   };
 }

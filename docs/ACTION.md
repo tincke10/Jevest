@@ -158,13 +158,103 @@ Two options worth knowing about before a first rollout:
   before it starts leaving comments on people's code. Check status and
   labels are unaffected either way.
 
+### Spend cap
+
+Jevest has three cost controls, and they answer different questions:
+
+| Control | Scope | What happens when hit |
+|---|---|---|
+| `budgetUsd` | One run (one PR, one commit) | The review stage stops calling the LLM for the remaining hunks of that run; findings already produced are kept |
+| `spendCap` | The whole service, cumulative over a period | The LLM review stage is skipped entirely (Jev-only run) until the period rolls over or the cap is raised/reset |
+| `maxHunks` | One run | Hunks beyond the limit are not profiled or reviewed |
+
+`spendCap` is what protects a **personal Claude subscription** when
+`reviewer.provider` is `claude-cli`: `budgetUsd` alone only bounds each
+PR, and a busy repo can still burn through a Max plan one PR at a time.
+Defaults (from `config/jevest.example.yml`):
+
+```yaml
+spendCap:
+  usd: 50          # hard stop
+  period: month    # "month" = calendar month in UTC, resets automatically; "total" = never resets
+  warnAtUsd: 40    # must be below usd; from here on every run carries a warning
+```
+
+It is always on. To run without a cumulative cap, set `usd` to a very
+high number — there is deliberately no `enabled: false`, so the spend
+stays visible in the ledger either way.
+
+**What it does on each run.** After triage, Jevest reads the ledger and
+compares the period's total against `usd`:
+
+- below `warnAtUsd`: normal run. The per-run budget is still clamped to
+  whatever is left under the cap, so a run can never push the total
+  more than one `budgetUsd` past it.
+- at or above `warnAtUsd`: normal run, plus a `::warning::` annotation
+  on the job, the `jevest:spend-warning` label on the PR, and a line in
+  the `jevest` check summary.
+- at or above `usd`: the LLM review stage is skipped exactly like
+  `reviewer.provider: none` — triage, hunk-profile and the merge gate
+  still run on Jev alone. The summary comment opens with **"LLM review
+  skipped: spend cap reached"**, the PR gets `jevest:spend-cap-reached`,
+  and the job gets a `::warning::` (never an error: a reached cap is a
+  degraded run, not a failed one, and `fail-on` is unaffected).
+
+After the review stage the run's LLM cost plus Jev's share (input tokens
+at $0.042/MTok) is added to the ledger, and the summary comment shows a
+"Spend cap" section: `USD <spent> of <cap> this month (<left> left)`.
+The action output `spend-usd` carries the cumulative total after the run.
+
+**Where the ledger lives.** In one open issue of the consumer repo,
+titled "Jevest spend ledger", labelled `jevest`, and identified by the
+marker `<!-- jevest:spend-ledger -->` in its body (the same idempotent
+upsert pattern as the summary comment). It is created on the first run
+and rewritten in place afterwards. The body is a short table for humans
+followed by a fenced ` ```json ` block that is the actual source of truth:
+
+```json
+{
+  "period_key": "2026-09",
+  "spent_usd": 12.3456,
+  "runs": 7,
+  "updated_at": "2026-09-21T16:00:00.000Z"
+}
+```
+
+No extra permission is needed: `issues: write` (already required for
+labels and the summary comment) covers it. `pnpm review` local runs use
+the same logic over a git-ignored file, `.jevest/spend-ledger.json` in
+the reviewed repo.
+
+**How to reset, raise or lower.**
+
+- Reset the counter: edit `spent_usd` in the JSON block (e.g. to `0`),
+  or close the ledger issue — the next run creates a fresh one. A
+  `period: month` cap also resets by itself on the first run of a new
+  UTC month; the old issue is reused, its total starts over.
+- Raise or lower the cap: change `spendCap.usd` / `warnAtUsd` in
+  `.jevest.yml`. The ledger only stores what was spent, never the cap,
+  so a config change takes effect on the next run with no reset needed.
+- Switch to `period: total`: the stored total is keyed by period
+  (`"2026-09"` vs `"total"`), so switching starts a new count from zero.
+
+**Known race, accepted on purpose.** Two runs on different PRs can both
+read the same balance, both pass the check, and both record. The
+overshoot is bounded by one `budgetUsd` per concurrent run — fine for a
+safety net whose job is to stop the bleeding by the next run, not to be
+cent-exact accounting. If the ledger issue cannot be read or written
+(API outage, revoked token), the run does **not** fail: it proceeds on
+the full per-run `budgetUsd`, logs a `::warning::`, and the summary
+comment says "spend ledger unavailable: <reason>".
+
 ### Permissions
 
 The workflow's `permissions:` block needs:
 
 - `pull-requests: write` — inline review comments, the summary comment, labels
 - `checks: write` — the `jevest` check run
-- `issues: write` — labels and the summary comment both go through the issues API
+- `issues: write` — labels, the summary comment and the "Jevest spend
+  ledger" issue (see "Spend cap") all go through the issues API
 - `contents: read` — fetches `.jevest.yml` from the PR head sha via the
   contents API when it isn't in a local checkout (see "Why no checkout"
   above); also what `actions/checkout` needs, if you add that step back
@@ -186,7 +276,10 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
   decision, hunks skipped and why, findings sent to a human review queue,
   and the run's cost.
 - **Labels**, added/removed per the triage and merge-gate outcome (e.g.
-  `needs-human-review`, `jevest:auto-merge-ok`).
+  `needs-human-review`, `jevest:auto-merge-ok`) and the spend cap state
+  (`jevest:spend-warning`, `jevest:spend-cap-reached`).
+- **One "Jevest spend ledger" issue** per repo, holding the cumulative
+  spend behind `spendCap` (see "Spend cap").
 - **A `jevest` check run** (or commit status, see above) carrying the
   merge-gate conclusion: green, neutral ("needs a human"), or red.
 

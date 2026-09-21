@@ -30,6 +30,7 @@ import {
   createDeepSeekReviewer,
 } from "../adapters/reviewers/deepseek-reviewer.js";
 import { createOpenAiReviewer } from "../adapters/reviewers/openai-reviewer.js";
+import { createGitHubIssueSpendLedger } from "../adapters/spend-ledger/github-issue-spend-ledger.js";
 import { createTypeSafeDecisionAdapter } from "../adapters/typesafe-decision-adapter.js";
 import {
   type GitHubVcsAdapter,
@@ -288,6 +289,44 @@ export async function resolveConfig(
   return await loadJevestConfigFromString(remote, label);
 }
 
+/**
+ * The `GITHUB_OUTPUT` lines, one per output declared in action.yml.
+ * `spend-usd` is the cumulative total AFTER this run per the spend ledger;
+ * empty when unknown (no ledger, run ended before the review stage, or
+ * the ledger was unreachable — see `spendCapAnnotations`).
+ */
+export function buildOutputLines(result: PipelineResult): string {
+  return (
+    `check-conclusion=${result.check.conclusion}\n` +
+    `findings-published=${result.findingsPublished}\n` +
+    `cost-usd=${result.costUsd}\n` +
+    `spend-usd=${result.spendCap?.spentUsd ?? ""}\n`
+  );
+}
+
+/**
+ * Workflow annotations for the cumulative spend cap (NFR-10). Always
+ * `::warning::`, never `::error::`, even when the cap is reached: a reached
+ * cap degrades the run to Jev-only, it is not a failed review, and
+ * fail-closed semantics (`fail-on`) are unchanged by it.
+ */
+export function spendCapAnnotations(result: PipelineResult): string[] {
+  const lines: string[] = [];
+  const cap = result.spendCap;
+  if (cap && cap.status !== "ok") {
+    const detail = result.reviewSkippedForSpendCap ? " (LLM review skipped on this run)" : "";
+    lines.push(
+      `::warning::Jevest spend cap: USD ${cap.spentUsd.toFixed(2)} of ${cap.capUsd.toFixed(2)} (period ${cap.periodKey}) — ${cap.status}${detail}`,
+    );
+  }
+  if (result.spendLedgerError) {
+    lines.push(
+      `::warning::Jevest spend ledger unavailable: ${result.spendLedgerError} — cumulative cap not enforced on this run`,
+    );
+  }
+  return lines;
+}
+
 async function writeOutputs(env: NodeJS.ProcessEnv, result: PipelineResult): Promise<void> {
   const outputPath = env.GITHUB_OUTPUT;
   if (!outputPath) {
@@ -296,11 +335,7 @@ async function writeOutputs(env: NodeJS.ProcessEnv, result: PipelineResult): Pro
     );
     return;
   }
-  const lines =
-    `check-conclusion=${result.check.conclusion}\n` +
-    `findings-published=${result.findingsPublished}\n` +
-    `cost-usd=${result.costUsd}\n`;
-  await appendFile(outputPath, lines, "utf8");
+  await appendFile(outputPath, buildOutputLines(result), "utf8");
 }
 
 async function publishFailureCheck(
@@ -335,23 +370,35 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
   try {
     const eventPath = requireEnvVar(env, "GITHUB_EVENT_PATH");
     ref = await loadPullRequestRefFromEvent(eventPath);
-    vcs = createGitHubVcsAdapter({ client: new Octokit({ auth: inputs.githubToken }) });
+    const octokit = new Octokit({ auth: inputs.githubToken });
+    vcs = createGitHubVcsAdapter({ client: octokit });
     const config = await resolveConfig(vcs, ref, inputs.configPath);
 
     const decision = createTypeSafeDecisionAdapter({
       client: new TypeSafeClient({ apiKey: inputs.typesafeApiKey, retry: { maxRetries: 0 } }),
     });
     const reviewer = createReviewer(config, inputs);
+    // Same token, same `issues: write` permission the summary comment and
+    // labels already need — the ledger is one issue in the consumer repo.
+    const spendLedger = createGitHubIssueSpendLedger({
+      client: octokit,
+      owner: ref.owner,
+      repo: ref.repo,
+      cap: config.spendCap,
+    });
 
     const result: PipelineResult = await runPipeline({
       ref,
-      ports: { vcs, decision, ...(reviewer ? { reviewer } : {}) },
+      ports: { vcs, decision, spendLedger, ...(reviewer ? { reviewer } : {}) },
       config,
     });
 
     console.log(
       `jevest: PR #${ref.number} — check=${result.check.conclusion} findings=${result.findingsPublished} cost=$${result.costUsd.toFixed(4)}`,
     );
+    for (const line of spendCapAnnotations(result)) {
+      console.log(line);
+    }
     await writeOutputs(env, result);
 
     if (inputs.failOn === "failure" && result.check.conclusion === "failure") {

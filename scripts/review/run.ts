@@ -28,6 +28,7 @@ import { createRecordedDecisionAdapter } from "../../src/adapters/recorded-decis
 import { createAnthropicReviewer } from "../../src/adapters/reviewers/anthropic-reviewer.js";
 import { createOpenAiReviewer } from "../../src/adapters/reviewers/openai-reviewer.js";
 import { createRecordedReviewer } from "../../src/adapters/reviewers/recorded-reviewer.js";
+import { createLocalFileSpendLedger } from "../../src/adapters/spend-ledger/local-file-spend-ledger.js";
 import { createTypeSafeDecisionAdapter } from "../../src/adapters/typesafe-decision-adapter.js";
 import {
   createGitFileContentFetcher,
@@ -44,6 +45,8 @@ const DEFAULT_CONFIG_PATH = join(REPO_ROOT, ".jevest.yml");
 const DEFAULT_OUT_DIR = join(REPO_ROOT, "reports/review");
 const DECISION_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/review/decisions");
 const REVIEW_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/review/reviews");
+/** Relative to the reviewed repo (cwd), git-ignored in this one. */
+export const LOCAL_SPEND_LEDGER_PATH = ".jevest/spend-ledger.json";
 
 type Mode = "live" | "replay" | "dry-run";
 const MODES: readonly Mode[] = ["live", "replay", "dry-run"];
@@ -291,11 +294,17 @@ async function main(): Promise<number> {
   const decision = buildDecisionPort(options.mode);
   const reviewer = buildReviewerPort(options.mode, config);
   const fetchFileContent = options.gitRange ? createGitFileContentFetcher(repoDir) : undefined;
+  // Local counterpart of the GitHub-issue ledger the Action uses: keeps
+  // `spendCap` meaningful for `--mode live` runs against a real LLM. The
+  // file is git-ignored; delete it to reset (see docs/ACTION.md "Spend cap").
+  const spendLedger = createLocalFileSpendLedger({
+    filePath: join(repoDir, LOCAL_SPEND_LEDGER_PATH),
+  });
 
   console.log(`[review] running pipeline (mode=${options.mode}, config=${options.configPath})...`);
   const result = await runPipeline({
     ref,
-    ports: { vcs, decision, ...(reviewer ? { reviewer } : {}) },
+    ports: { vcs, decision, spendLedger, ...(reviewer ? { reviewer } : {}) },
     config,
     ...(fetchFileContent ? { fetchFileContent } : {}),
   });

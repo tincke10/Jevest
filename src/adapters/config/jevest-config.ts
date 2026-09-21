@@ -26,6 +26,7 @@ import { parse } from "yaml";
 import { z } from "zod";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { SizeThresholds } from "../../domain/size.js";
+import type { SpendCapConfig } from "../../domain/spend-cap.js";
 
 const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
 
@@ -35,6 +36,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   "sizeThresholds",
   "publish",
   "budgetUsd",
+  "spendCap",
   "maxHunks",
   "skipChangeKinds",
   "failClosed",
@@ -126,12 +128,29 @@ const publishSchema = z
   })
   .default({ inlineComments: true });
 
+// Cumulative cap over the whole service (see src/domain/spend-cap.ts), as
+// opposed to `budgetUsd`, which caps ONE run. Always present: a consumer
+// that wants no cap sets a very high `usd` — there is deliberately no
+// `enabled: false` switch, so the ledger issue still gets written and the
+// spend stays visible either way.
+const spendCapSchema = z
+  .object({
+    usd: z.number().positive(),
+    period: z.enum(["month", "total"]),
+    warnAtUsd: z.number().nonnegative(),
+  })
+  .refine((c) => c.warnAtUsd < c.usd, {
+    path: ["warnAtUsd"],
+    message: "spendCap.warnAtUsd must be < spendCap.usd",
+  });
+
 const jevestConfigSchema = z.object({
   reviewer: reviewerSchema,
   thresholds: z.record(z.string(), z.record(z.string(), thresholdSchema)),
   sizeThresholds: sizeThresholdsSchema,
   publish: publishSchema,
   budgetUsd: z.number().positive(),
+  spendCap: spendCapSchema,
   maxHunks: z.number().int().positive(),
   skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
   failClosed: z.boolean().default(true),
@@ -146,6 +165,7 @@ export interface JevestConfig {
   readonly sizeThresholds: SizeThresholds;
   readonly publish: { readonly inlineComments: boolean };
   readonly budgetUsd: number;
+  readonly spendCap: SpendCapConfig;
   readonly maxHunks: number;
   readonly skipChangeKinds: readonly string[];
   readonly failClosed: boolean;
@@ -218,6 +238,7 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
     sizeThresholds: result.data.sizeThresholds,
     publish: result.data.publish,
     budgetUsd: result.data.budgetUsd,
+    spendCap: result.data.spendCap,
     maxHunks: result.data.maxHunks,
     skipChangeKinds: result.data.skipChangeKinds,
     failClosed: result.data.failClosed,

@@ -317,7 +317,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 | NFR-7 | Todo contenido del PR es **untrusted**. La pregunta `contains_injected_instructions` corre en triage y su resultado propaga a merge gate. La suite adversarial (H5) es test de regresión en CI | Jaggedness |
 | NFR-8 | Las instrucciones y criterios se escriben en inglés. El contenido del PR va tal cual; H0 mide si el idioma del código o comentarios afecta | Docs State |
 | NFR-9 | `TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL` y la key del LLM solo por secretos de entorno | Docs |
-| NFR-10 | Presupuesto por PR y por día en `.jevest.yml`; al superarlo, el pipeline degrada a triage-only y lo informa | Experimento |
+| NFR-10 | Presupuesto por PR (`budgetUsd`) y tope acumulado por período (`spendCap`: por mes UTC o total, con aviso previo en `warnAtUsd`) en `.jevest.yml`; al superar el tope acumulado, el pipeline degrada a Jev-only (sin revisor LLM) y lo informa en el resumen, el check y un label; el acumulado vive en un issue "Jevest spend ledger" del repo | Experimento |
 | NFR-11 | Dominio y etapas testeables sin red con adapters fake y grabados | TDD estricto |
 | NFR-12 | Runs idempotentes: re-ejecutar sobre el mismo commit no duplica comentarios ni labels | GitHub |
 | NFR-13 | Los umbrales de confianza viven en configuración versionada, por etapa y por nivel de riesgo, nunca hardcodeados | Docs Confidence |

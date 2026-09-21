@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { ReviewPublication } from "../../../domain/ports/vcs-port.js";
+import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
 import {
+  type PublishStageInput,
   buildFailClosedPublication,
   runPublishStage,
   runTriageOnlyPublishStage,
@@ -409,6 +412,86 @@ describe("runPublishStage", () => {
       reviewDisabled: true,
     });
     expect(result.check.conclusion).toBe("success");
+  });
+});
+
+describe("runPublishStage spend cap", () => {
+  function evaluation(overrides: Partial<SpendCapEvaluation> = {}): SpendCapEvaluation {
+    return {
+      status: "ok",
+      period: "month",
+      periodKey: "2026-09",
+      spentUsd: 12.3456,
+      capUsd: 50,
+      warnAtUsd: 40,
+      remainingUsd: 37.6544,
+      effectiveBudgetUsd: 5,
+      ...overrides,
+    };
+  }
+
+  function publish(extra: Partial<PublishStageInput>): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      ...extra,
+    });
+  }
+
+  it("omits the section and touches no spend labels when no spend cap info is given", () => {
+    const result = publish({});
+    expect(result.summaryMarkdown).not.toContain("Spend cap");
+    expect(result.labelsToAdd).not.toContain("jevest:spend-warning");
+    expect(result.labelsToRemove).not.toContain("jevest:spend-warning");
+  });
+
+  it("renders spent/cap/period/remaining and clears both spend labels when ok", () => {
+    const result = publish({ spendCap: evaluation() });
+    expect(result.summaryMarkdown).toContain("### Spend cap");
+    expect(result.summaryMarkdown).toContain("USD 12.35 of 50.00 this month (37.65 left)");
+    expect(result.summaryMarkdown).toContain("Status: ok");
+    expect(result.labelsToRemove).toEqual(
+      expect.arrayContaining(["jevest:spend-warning", "jevest:spend-cap-reached"]),
+    );
+    expect(result.check.summary).not.toContain("Spend cap");
+  });
+
+  it("adds the warning label and a check-summary line when warning", () => {
+    const result = publish({
+      spendCap: evaluation({ status: "warning", spentUsd: 42, remainingUsd: 8 }),
+    });
+    expect(result.labelsToAdd).toContain("jevest:spend-warning");
+    expect(result.labelsToRemove).toContain("jevest:spend-cap-reached");
+    expect(result.check.summary).toContain("Spend cap warning: USD 42.00 of 50.00 (2026-09)");
+  });
+
+  it("puts 'LLM review skipped: spend cap reached' at the top and adds the reached label", () => {
+    const result = publish({
+      spendCap: evaluation({ status: "reached", spentUsd: 50.5, remainingUsd: 0 }),
+      reviewSkippedForSpendCap: true,
+    });
+    const lines = result.summaryMarkdown.split("\n");
+    expect(lines[2]).toContain("**LLM review skipped: spend cap reached**");
+    expect(result.labelsToAdd).toContain("jevest:spend-cap-reached");
+    expect(result.labelsToRemove).toContain("jevest:spend-warning");
+    expect(result.check.summary).toContain("Spend cap reached: USD 50.50 of 50.00 (2026-09)");
+  });
+
+  it("notes an unavailable ledger in the summary without touching labels", () => {
+    const result = publish({ spendCap: null, spendLedgerError: "boom 500" });
+    expect(result.summaryMarkdown).toContain("spend ledger unavailable: boom 500");
+    expect(result.labelsToAdd).not.toContain("jevest:spend-warning");
+    expect(result.labelsToRemove).not.toContain("jevest:spend-warning");
+  });
+
+  it('uses "in total" wording for the total period', () => {
+    const result = publish({ spendCap: evaluation({ period: "total", periodKey: "total" }) });
+    expect(result.summaryMarkdown).toContain("USD 12.35 of 50.00 in total (37.65 left)");
   });
 });
 

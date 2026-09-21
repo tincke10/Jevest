@@ -5,16 +5,20 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JevestConfig } from "../adapters/config/jevest-config.js";
 import type { GitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
+import type { PipelineResult } from "../application/pipeline/run-pipeline.js";
 import type { ReviewPublication } from "../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../domain/pull-request.js";
+import type { SpendCapEvaluation } from "../domain/spend-cap.js";
 import {
   ActionInputError,
   type ActionInputs,
+  buildOutputLines,
   createReviewer,
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
   resolveConfig,
+  spendCapAnnotations,
 } from "./main.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -117,6 +121,7 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
     publish: { inlineComments: true },
     budgetUsd: 5,
+    spendCap: { usd: 50, period: "month", warnAtUsd: 40 },
     maxHunks: 50,
     skipChangeKinds: [],
     failClosed: true,
@@ -292,5 +297,94 @@ describe("resolveConfig", () => {
 
     await expect(resolveConfig(vcs, REF, dir)).rejects.toThrow();
     expect(fetchRepoFileContent).not.toHaveBeenCalled();
+  });
+});
+
+function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
+  const publication: ReviewPublication = {
+    summaryMarkdown: "",
+    summaryFingerprint: "fp",
+    inlineComments: [],
+    labelsToAdd: [],
+    labelsToRemove: [],
+    check: { conclusion: "success", title: "Jevest: success", summary: "ok" },
+  };
+  return {
+    ref: { owner: "acme", repo: "widgets", number: 1, headSha: "h", baseSha: "b" },
+    failedClosed: false,
+    failureReason: null,
+    triage: null,
+    hunkProfile: null,
+    review: null,
+    findingFilter: null,
+    mergeGate: null,
+    publication,
+    check: publication.check,
+    findingsPublished: 2,
+    costUsd: 0.1234,
+    spendCap: null,
+    reviewSkippedForSpendCap: false,
+    spendLedgerError: null,
+    ...overrides,
+  };
+}
+
+function evaluation(overrides: Partial<SpendCapEvaluation> = {}): SpendCapEvaluation {
+  return {
+    status: "ok",
+    period: "month",
+    periodKey: "2026-09",
+    spentUsd: 12.5,
+    capUsd: 50,
+    warnAtUsd: 40,
+    remainingUsd: 37.5,
+    effectiveBudgetUsd: 5,
+    ...overrides,
+  };
+}
+
+describe("buildOutputLines", () => {
+  it("emits the four outputs, with spend-usd as the cumulative total after this run", () => {
+    expect(buildOutputLines(makeResult({ spendCap: evaluation() }))).toBe(
+      "check-conclusion=success\nfindings-published=2\ncost-usd=0.1234\nspend-usd=12.5\n",
+    );
+  });
+
+  it("emits an empty spend-usd when the cumulative total is unknown", () => {
+    expect(buildOutputLines(makeResult())).toContain("spend-usd=\n");
+  });
+});
+
+describe("spendCapAnnotations", () => {
+  it("emits nothing when the cap is ok and the ledger worked", () => {
+    expect(spendCapAnnotations(makeResult({ spendCap: evaluation() }))).toEqual([]);
+  });
+
+  it("emits a ::warning:: on warning", () => {
+    expect(
+      spendCapAnnotations(
+        makeResult({ spendCap: evaluation({ status: "warning", spentUsd: 42 }) }),
+      ),
+    ).toEqual(["::warning::Jevest spend cap: USD 42.00 of 50.00 (period 2026-09) — warning"]);
+  });
+
+  it("emits a ::warning:: (never ::error::) on reached, so the job does not fail", () => {
+    const lines = spendCapAnnotations(
+      makeResult({
+        spendCap: evaluation({ status: "reached", spentUsd: 50.2 }),
+        reviewSkippedForSpendCap: true,
+      }),
+    );
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(
+      /^::warning::Jevest spend cap: USD 50.20 of 50.00 \(period 2026-09\) — reached/,
+    );
+    expect(lines[0]).toContain("LLM review skipped");
+  });
+
+  it("emits a ::warning:: when the ledger was unavailable", () => {
+    expect(spendCapAnnotations(makeResult({ spendLedgerError: "issues 500" }))).toEqual([
+      "::warning::Jevest spend ledger unavailable: issues 500 — cumulative cap not enforced on this run",
+    ]);
   });
 });

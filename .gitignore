@@ -4,3 +4,6 @@ reports/*.json
 coverage
 *.tsbuildinfo
 .DS_Store
+
+# Local spend ledger written by `pnpm review` (see docs/ACTION.md "Spend cap")
+.jevest/

@@ -106,7 +106,7 @@ spendCap:
   warnAtUsd: 40
 ```
 
-Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml).
+Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml). Pinning to a release tag instead of `@main`: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Choose a reviewer
 

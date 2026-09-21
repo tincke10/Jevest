@@ -1,3 +1,27 @@
+# Published datasets
+
+Every file below is committed in this directory, redistributable under the
+repository's MIT license, and derived only from MIT-licensed open-source
+repositories (licenses verified at collection time, see each section). Record
+counts are the committed files at the time of writing; the file is the ground
+truth, the count is a convenience. Each dataset's wire format is the zod schema
+next to the TypeScript type named in the table; the parser throws on any
+malformed line, so "it loads" is a meaningful check.
+
+| File | Records | Labels | Source repos (license) | Schema (TS type) | Produced by | Known limitations |
+|---|---|---|---|---|---|---|
+| `hunks.jsonl` | 100 (50 defect / 50 benign) | `label.defect`, `label.category`; `touches_security` / `touches_public_api` path heuristics; every record `needs_manual_review: true` | zod, vitest, hono, tRPC (all MIT) | `HunkRecord` in `src/application/spike/hunk-record.ts` | `npx tsx scripts/dataset/collect-hunks.ts --workdir <dir> --target-defect 50 --target-benign 50 --max-scan 800` | Seed labels from commit metadata (`fix:` + issue link), not a line-by-line read; first eligible hunk per commit; `src/*.ts` only; squash-merge assumption (§ hunks 5) |
+| `profile-labels.jsonl` | 100 (one per hunk) | `change_kind`, `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io`, AST-derived on changed lines (labels v2); `needs_manual_review: true` | same hunks as above | `ProfileLabelRecord` in `src/application/profile/profile-label-record.ts` | `pnpm profile:label` | Rule blind spots documented in `docs/analysis/h0-prime-error-analysis.md` (barrel re-exports, declaration merging, `#private` fields, regex literals); 4–14 positives per rare noul |
+| `findings.jsonl` | 14 (strict reviewer pass over the 100 hunks) | `label.real` by line-overlap with the fix, `suggested_severity`; `needs_manual_review: true` | findings over the same four repos' hunks | `FindingRecord` in `src/domain/finding.ts` | `pnpm findings --provider claude-cli --record --budget-usd 15` | Far below the ≥ 200 findings SPEC §4.2 needs for H1/H3; line-overlap misses a correct finding reported a few lines off; a thorough-prompt pass is in progress (`FINDINGS.md`) |
+| `prs.jsonl` | 100 merged PRs (25 per repo) | none (source records; title/body/files after template stripping and redaction) | zod, vitest, hono, tRPC (all MIT) | `PrRecord` in `src/application/coherence/pr-record.ts` | `pnpm dataset:prs` (defaults `--per-repo 25 --max-scan 400 --seed 42`) | Recency bias (`updated desc`); uneven description quality; `containsSecret` over-rejects (21 PRs dropped, all false positives) |
+| `coherence-pairs.jsonl` | 200 (100 coherent / 100 incoherent) | `label` exact by construction: own description vs. a seeded same-repo foreign description | derived from `prs.jsonl` | `CoherencePair` in `src/application/coherence/pr-record.ts` | same `pnpm dataset:prs` run (Sattolo cycle, seed 42) | Same-repo crossing only; 6 pairs leak a file basename into the foreign description; "wrong PR", never "subtly wrong" |
+| `adversarial/*.json` | 14 cases (13 attack families + 1 benign control) | `attackFamily`, `plantedFinding` (one critical defect per case), `expect.attacked`, `expect.forbiddenPublishedText` | hand-written, no external source | `AdversarialCase` in `src/application/adversarial/adversarial-case.ts` | written by hand; hunk headers and planted line numbers computed from the diff bodies | Synthetic and small; the LLM reviewer is held constant (it reports exactly the planted finding), so the suite measures the Jev-driven stages, not the reviewer |
+
+How each spike consumes these files, and the recorded Jev answers that let
+every report replay without a key, are in `docs/BENCHMARK.md`.
+
+---
+
 # `hunks.jsonl` — Phase 0 spike dataset (dataset_version 2)
 
 Seed dataset for hypothesis **H0** (SPEC.md §4, §5 "Fase 0"): can Jev classify a code

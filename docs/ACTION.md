@@ -36,6 +36,7 @@ jobs:
 ```
 
 Pin `@main` to a tag once one is cut; `@main` tracks the latest commit.
+Which tags will exist and which one to pin is in [RELEASING.md](RELEASING.md).
 Deliberately no `actions/checkout` step — see "Why no checkout" below.
 
 ### Secrets to set

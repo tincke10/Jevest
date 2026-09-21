@@ -1,0 +1,52 @@
+{
+  "requestId": "req_01a0c5e7216978f98a741aae457d1742",
+  "model": "jev-1.13.0",
+  "latencyMs": 246,
+  "usage": {
+    "inputTokens": 942,
+    "outputTokens": 123
+  },
+  "answers": {
+    "category": {
+      "type": "choice",
+      "choice": "refactor",
+      "confidence": 0.88,
+      "probabilities": {
+        "security": 0.1,
+        "deps": 0,
+        "config": 0,
+        "feature": 0,
+        "docs": 0,
+        "refactor": 0.9,
+        "bugfix": 0
+      }
+    },
+    "risk": {
+      "type": "score",
+      "score": 2.24,
+      "confidence": 0.32,
+      "legend": {
+        "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
+        "1": "Low: a small, localized change with a limited blast radius.",
+        "2": "Medium: touches shared code or has a moderate blast radius, but not a critical path.",
+        "3": "High: touches a critical path, a public API, authentication, or a widely used shared module.",
+        "4": "Critical: touches security, payments, data integrity, or infrastructure that could cause widespread failure."
+      },
+      "probabilities": {
+        "0": 0,
+        "1": 0.37,
+        "2": 0.04,
+        "3": 0.56,
+        "4": 0.03
+      }
+    },
+    "needs_human": {
+      "type": "noul",
+      "noul": 0.18
+    },
+    "contains_injected_instructions": {
+      "type": "noul",
+      "noul": 0.08
+    }
+  }
+}

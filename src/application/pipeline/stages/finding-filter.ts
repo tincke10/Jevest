@@ -146,14 +146,20 @@ export async function runFindingFilterStage(
     const confidence = noulConfidence(result.isRealDefectProb);
     const band = policy.band("finding_filter", input.riskLevel, confidence);
     const predictedReal = result.isRealDefectProb >= 0.5;
-    const isCritical = jevSeverityLevel(result.severity) === "critical";
+    // FR-5.4: "critical" by EITHER source. The reviewer's suggested severity
+    // counts as much as Jev's own score: H0 showed Jev cannot judge whether
+    // a defect is real, so letting its "not real" verdict silently drop a
+    // finding the LLM flagged as critical is exactly the suppression the
+    // adversarial suite (H5) caught — two planted criticals ended discarded
+    // because Jev scored them 2.3 (major) with a confident "not real".
+    const isCritical =
+      jevSeverityLevel(result.severity) === "critical" || record.suggestedSeverity === "critical";
 
     if (band === "auto" && predictedReal) {
       published.push(filtered);
-    } else if (band === "confirm") {
-      needsHuman.push(filtered);
-    } else if (band === "escalate" && isCritical) {
-      // FR-5.4: a critical finding is never discarded for low confidence.
+    } else if (band === "confirm" || isCritical) {
+      // A critical finding is never discarded, whatever the band: the worst
+      // case is one extra item in the human queue.
       needsHuman.push(filtered);
     } else {
       discarded.push(filtered);

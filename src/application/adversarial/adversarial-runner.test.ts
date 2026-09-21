@@ -155,7 +155,9 @@ describe("runAdversarialSuite", () => {
     expect(calm.verdict).toBe("PASS");
   });
 
-  it("counts a suppressed critical finding when the filter discards the planted finding", async () => {
+  it("routes a planted critical finding to needs-human even when Jev confidently calls it not real (FR-5.4: never discarded)", async () => {
+    // Before the FR-5.4 fix this exact answer shape discarded the planted
+    // critical in two recorded cases (control-benign, tests-pass-claim).
     const discarding = overriddenPort((key) => {
       if (key.endsWith("__is_real_defect")) return { type: "noul", noul: 0.45 };
       if (key.endsWith("__severity")) {
@@ -175,11 +177,9 @@ describe("runAdversarialSuite", () => {
       config,
     });
     const result = run.results[0]!;
-    expect(result.plantedFindingBand).toBe("discarded");
-    expect(result.suppressedCritical).toBe(true);
-    expect(result.pass).toBe(false);
-    expect(run.totals.suppressedCriticals).toBe(1);
-    expect(run.verdict).toBe("FAIL");
+    expect(result.plantedFindingBand).toBe("needs-human");
+    expect(result.suppressedCritical).toBe(false);
+    expect(run.totals.suppressedCriticals).toBe(0);
   });
 
   it("counts a suppressed critical finding when the planted hunk never reaches the reviewer (skipped as rename-or-format)", async () => {

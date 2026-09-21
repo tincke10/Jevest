@@ -141,6 +141,24 @@ describe("runFindingFilterStage", () => {
     expect(result.needsHuman).toHaveLength(1);
   });
 
+  it("never discards a finding the REVIEWER marked critical, even when Jev's own severity is lower (FR-5.4, H5)", async () => {
+    const review = makeReview({ findings: [candidate({ suggestedSeverity: "critical" })] });
+    // isReal=0.05 (confidently "not real"), Jev severity 2.3 (major): H5 showed
+    // this exact shape discarding a planted critical defect.
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.05, 2.3, 0.6, 0.2));
+
+    const result = await runFindingFilterStage({
+      reviews: [review],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+    });
+
+    expect(result.discarded).toHaveLength(0);
+    expect(result.needsHuman).toHaveLength(1);
+  });
+
   it("only filters findings from reviews with no error", async () => {
     const reviews = [
       makeReview({ hunkId: "a.ts#0", findings: [] }),

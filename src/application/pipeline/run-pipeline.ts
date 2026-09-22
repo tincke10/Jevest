@@ -10,7 +10,19 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * finding-filter.ts), so the pipeline continues past those. FR-2.3: when
  * triage decides the LLM review is unnecessary, every later stage is
  * skipped and only the triage label/summary is published.
+ *
+ * Triage v2 (H7): the change summary is an LLM call made just before the
+ * triage request, so it is gated here like the review stage — by
+ * `config.triage.changeSummary` ("auto": only when an LLM reviewer is
+ * configured and the spend cap is not reached; "always": mandatory, cap or
+ * not; "never": off) — and its cost is booked into the ledger, the cost
+ * breakdown and `costUsd` alongside the review's. The spend cap is
+ * therefore read BEFORE triage. The product context (`.jevest/context.yml`
+ * at the base sha) arrives already parsed from the composition root, so a
+ * missing file is the empty context and an invalid one failed closed
+ * before the pipeline started.
  */
+import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
@@ -22,6 +34,7 @@ import {
   evaluateSpendCap,
   spendPeriodKey,
 } from "../../domain/spend-cap.js";
+import { EMPTY_PRODUCT_CONTEXT, type ProductContext } from "../context/product-context.js";
 import { jevCostUsd, pricingForModel } from "../findings/pricing.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
 import { type HunkProfileStageResult, runHunkProfileStage } from "./stages/hunk-profile.js";
@@ -42,6 +55,12 @@ export interface RunPipelineInput {
     /** Not required when `config.reviewer.provider` is `"none"` (Jev-only mode) — the review stage never calls it. */
     readonly reviewer?: ReviewerPort;
     /**
+     * Writes the change summary triage compares the description against
+     * (H7). Required only when `config.triage.changeSummary` is "always";
+     * under "auto" it is used when present, under "never" it is ignored.
+     */
+    readonly summarizer?: ChangeSummarizerPort;
+    /**
      * Cumulative spend ledger behind `config.spendCap` (NFR-10). Optional:
      * without it the cap is not enforced and `spendCap` in the result is
      * `null`. Read/record failures never fail the run — see `readSpendCap`
@@ -52,6 +71,8 @@ export interface RunPipelineInput {
   readonly config: JevestConfig;
   /** Optional: full-file content at a given sha, for hunk-profile's §4.3 AST context. */
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
+  /** Parsed `.jevest/context.yml` from the PR's BASE sha (see context/product-context.ts). Default: empty. */
+  readonly productContext?: ProductContext;
   /** Injectable clock for the spend cap's period key and ledger timestamps. Default: `new Date()`. */
   readonly now?: () => Date;
 }
@@ -73,6 +94,7 @@ export interface PipelineResult {
    */
   readonly check: import("../../domain/ports/vcs-port.js").ReviewPublication["check"];
   readonly findingsPublished: number;
+  /** LLM money spent on this run: the review stage plus the change summary. */
   readonly costUsd: number;
   /**
    * Cumulative spend cap state (NFR-10) AFTER this run was recorded, or the
@@ -102,12 +124,42 @@ function summaryFields(
   publication: import("../../domain/ports/vcs-port.js").ReviewPublication,
   findingFilter: FindingFilterStageResult | null,
   review: ReviewStageResult | null,
+  triage: TriageStageResult | null = null,
 ): Pick<PipelineResult, "check" | "findingsPublished" | "costUsd"> {
   return {
     check: publication.check,
     findingsPublished: findingFilter?.published.length ?? 0,
-    costUsd: review?.totalCostUsd ?? 0,
+    costUsd: (review?.totalCostUsd ?? 0) + (triage?.summaryCostUsd ?? 0),
   };
+}
+
+/**
+ * Whether the change summary runs on this PR (H7), resolved from
+ * `triage.changeSummary` and the spend cap. "auto" treats a reached cap
+ * exactly like the review stage does (a Jev-only run spends nothing on the
+ * LLM); "always" is the consumer saying the summary is worth its call
+ * regardless, and it is a config error to say so without a provider.
+ */
+function summarizerForTriage(
+  input: RunPipelineInput,
+  capReached: boolean,
+): ChangeSummarizerPort | undefined {
+  const mode = input.config.triage.changeSummary;
+  if (mode === "never") {
+    return undefined;
+  }
+  if (mode === "always") {
+    if (!input.ports.summarizer) {
+      throw new Error(
+        'internal: triage.changeSummary is "always" but no ChangeSummarizerPort was provided',
+      );
+    }
+    return input.ports.summarizer;
+  }
+  if (input.config.reviewer.provider === "none" || capReached) {
+    return undefined;
+  }
+  return input.ports.summarizer;
 }
 
 function errorMessage(error: unknown): string {
@@ -202,6 +254,25 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const { ports, config } = input;
   const pr = await ports.vcs.fetchPullRequest(input.ref);
 
+  // Cumulative spend cap (NFR-10): evaluated once here, before anything
+  // that costs LLM money — and the change summary (H7) is the first such
+  // thing, so this now precedes triage. "reached" turns this into a
+  // Jev-only run exactly like reviewer.provider "none"; otherwise the
+  // review stage gets the per-run budget clamped to what is left under
+  // the cap.
+  const now = (input.now ?? (() => new Date()))();
+  const preRun = ports.spendLedger
+    ? await readSpendCap(ports.spendLedger, config, now)
+    : { evaluation: null, error: null };
+  const reviewSkippedForSpendCap = preRun.evaluation?.status === "reached";
+  let spend: SpendFields = {
+    spendCap: preRun.evaluation,
+    reviewSkippedForSpendCap,
+    spendLedgerError: preRun.error,
+  };
+
+  const summarizer = summarizerForTriage(input, reviewSkippedForSpendCap);
+
   let triage: TriageStageResult;
   try {
     triage = await runTriageStage({
@@ -209,6 +280,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       decisionPort: ports.decision,
       sizeThresholds: config.sizeThresholds,
       policyConfig: config.thresholds,
+      productContext: input.productContext ?? EMPTY_PRODUCT_CONTEXT,
+      ...(summarizer ? { summarizer } : {}),
+      summaryPricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
     });
   } catch {
     const publication = buildFailClosedPublication("triage", null);
@@ -228,6 +302,29 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     };
   }
 
+  // The summary is LLM money already spent: book it before any path that
+  // ends the run early, so a triage-only run or a later fail-closed never
+  // loses it from the ledger. Runs that spent nothing keep the old
+  // behavior (no ledger write, `spendCap` null on a triage-only run).
+  const bookSummaryOnly = async (): Promise<SpendFields> => {
+    if (!ports.spendLedger || triage.summaryCostUsd <= 0) {
+      return triage.summaryCostUsd > 0 ? spend : NO_SPEND_INFO;
+    }
+    const recorded = await recordSpend(
+      ports.spendLedger,
+      input,
+      now,
+      preRun.evaluation,
+      triage.usage.inputTokens,
+      triage.summaryCostUsd,
+    );
+    return {
+      spendCap: recorded.evaluation,
+      reviewSkippedForSpendCap,
+      spendLedgerError: [preRun.error, recorded.error].filter((e) => e !== null).join("; ") || null,
+    };
+  };
+
   if (triage.skipLlmReview) {
     const publication = runTriageOnlyPublishStage(triage);
     await ports.vcs.publishReview(input.ref, publication);
@@ -241,25 +338,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       findingFilter: null,
       mergeGate: null,
       publication,
-      ...summaryFields(publication, null, null),
-      ...NO_SPEND_INFO,
+      ...summaryFields(publication, null, null, triage),
+      ...(await bookSummaryOnly()),
     };
   }
-
-  // Cumulative spend cap (NFR-10): evaluated once here, before anything
-  // that costs LLM money. "reached" turns this into a Jev-only run exactly
-  // like reviewer.provider "none"; otherwise the review stage gets the
-  // per-run budget clamped to what is left under the cap.
-  const now = (input.now ?? (() => new Date()))();
-  const preRun = ports.spendLedger
-    ? await readSpendCap(ports.spendLedger, config, now)
-    : { evaluation: null, error: null };
-  const reviewSkippedForSpendCap = preRun.evaluation?.status === "reached";
-  let spend: SpendFields = {
-    spendCap: preRun.evaluation,
-    reviewSkippedForSpendCap,
-    spendLedgerError: preRun.error,
-  };
 
   let hunkProfile: HunkProfileStageResult;
   try {
@@ -285,8 +367,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       findingFilter: null,
       mergeGate: null,
       publication,
-      ...summaryFields(publication, null, null),
-      ...spend,
+      ...summaryFields(publication, null, null, triage),
+      ...(triage.summaryCostUsd > 0 ? await bookSummaryOnly() : spend),
     };
   }
 
@@ -310,7 +392,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       reviewerPort: ports.reviewer,
       // config validation guarantees model is set whenever provider isn't "none".
       pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
-      budgetUsd: preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd,
+      // The change summary already spent part of this run's budget (H7).
+      budgetUsd: Math.max(
+        0,
+        (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
+      ),
     });
   }
 
@@ -321,7 +407,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       now,
       preRun.evaluation,
       triage.usage.inputTokens + hunkProfile.totalUsage.inputTokens,
-      review.totalCostUsd,
+      review.totalCostUsd + triage.summaryCostUsd,
     );
     spend = {
       spendCap: recorded.evaluation,
@@ -353,7 +439,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       findingFilter: null,
       mergeGate: null,
       publication,
-      ...summaryFields(publication, null, review),
+      ...summaryFields(publication, null, review, triage),
       ...spend,
     };
   }
@@ -373,6 +459,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       publishedCountsBySeverity: severityCounts(findingFilter.published),
       ciStatus: pr.ciStatus,
       containsInjectedInstructionsHigh,
+      descriptionMatchesChange: triage.descriptionMatchesChange,
+      productAreasTouched: triage.productContext.areas.map((a) => ({
+        name: a.name,
+        criticality: a.criticality,
+      })),
     });
   } catch {
     const publication = buildFailClosedPublication("merge-gate", triage);
@@ -387,7 +478,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       findingFilter,
       mergeGate: null,
       publication,
-      ...summaryFields(publication, findingFilter, review),
+      ...summaryFields(publication, findingFilter, review, triage),
       ...spend,
     };
   }
@@ -416,7 +507,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     findingFilter,
     mergeGate,
     publication,
-    ...summaryFields(publication, findingFilter, review),
+    ...summaryFields(publication, findingFilter, review, triage),
     ...spend,
   };
 }

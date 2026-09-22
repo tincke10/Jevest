@@ -1,0 +1,79 @@
+# Product context for Jevest (triage v2, H7). Copy this file to
+# `.jevest/context.yml` in YOUR repository (or wherever
+# `triage.productContextPath` in .jevest.yml points) and describe the
+# product, not the code: what it is, which parts matter, and the rules a
+# reviewer should hold every change to.
+#
+# Jevest ALWAYS reads this file from the pull request's BASE commit, never
+# from the PR head. A PR cannot rewrite the rules that judge it: an area
+# marked critical on main stays critical for a PR that edits this file.
+#
+# A missing file is fine (triage runs without product areas). An invalid
+# file fails the run closed, exactly like an invalid .jevest.yml, because
+# a rule set that fails to parse must not silently become "no rules".
+#
+# How it is used, all computed in code (Jev only ever sees words):
+# - the changed files are matched against every area's `paths` globs;
+# - the effective risk of the PR is raised to the highest `criticality`
+#   among the areas touched (it is never lowered);
+# - the areas, their criticality and their `rules` go into the triage
+#   state so Jev can judge the description, the product-owner question and
+#   the risk with the product in view, and into the merge gate state;
+# - the summary comment lists the areas touched and their criticality.
+
+product:
+  name: Acme Shop
+  description: >
+    Online store for widgets: catalog, cart, checkout and an admin panel
+    for merchants.
+
+# Criticality words, lowest to highest: none, low, medium, high, critical.
+# `criticality` is optional per area and falls back to `defaults.criticality`
+# (or "none" when there is no defaults block). `owners` and `rules` are
+# optional. Globs are matched against the whole repo-relative path, with
+# dotfiles included (".github/**" matches a workflow).
+areas:
+  - name: checkout
+    paths:
+      - "src/checkout/**"
+      - "src/payments/**"
+    criticality: critical
+    owners: ["@acme/payments"]
+    rules:
+      - "Prices and totals are always computed server side; the client never sends an amount."
+      - "Every change to payment providers needs a product owner sign-off."
+
+  - name: authentication
+    paths:
+      - "src/auth/**"
+      - "src/middleware/session*.ts"
+    criticality: critical
+    rules:
+      - "Session cookies stay HttpOnly and Secure."
+
+  - name: catalog
+    paths:
+      - "src/catalog/**"
+    criticality: medium
+    rules:
+      - "Search results are paginated; page sizes are capped at 100."
+
+  - name: admin
+    paths:
+      - "apps/admin/**"
+    criticality: high
+    owners: ["@acme/merchant-tools"]
+
+  - name: docs
+    paths:
+      - "docs/**"
+      - "**/*.md"
+    criticality: none
+
+  - name: ci
+    paths:
+      - ".github/**"
+    criticality: medium
+
+defaults:
+  criticality: low

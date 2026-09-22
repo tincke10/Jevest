@@ -14,10 +14,12 @@ import {
   type ActionInputs,
   buildOutputLines,
   createReviewer,
+  createSummarizer,
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
   resolveConfig,
+  resolveProductContext,
   spendCapAnnotations,
 } from "./main.js";
 
@@ -125,6 +127,7 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
     maxHunks: 50,
     skipChangeKinds: [],
     failClosed: true,
+    triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
   };
 }
 
@@ -190,6 +193,130 @@ describe("createReviewer", () => {
     const config = makeConfig({ provider: "anthropic", model: undefined });
     expect(() => createReviewer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toThrow(
       /reviewer\.model is required/,
+    );
+  });
+});
+
+describe("createSummarizer", () => {
+  function withSummary(
+    reviewer: Partial<JevestConfig["reviewer"]>,
+    changeSummary: JevestConfig["triage"]["changeSummary"] = "auto",
+  ): JevestConfig {
+    return {
+      ...makeConfig(reviewer),
+      triage: { productContextPath: ".jevest/context.yml", changeSummary },
+    };
+  }
+
+  it("returns undefined when changeSummary is never, whatever the provider", () => {
+    const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" }, "never");
+    expect(
+      createSummarizer(config, makeInputs({ anthropicApiKey: "sk-ant-test" })),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined and requires no LLM key in Jev-only mode (provider none, auto)", () => {
+    const config = withSummary({ provider: "none", model: undefined });
+    expect(createSummarizer(config, makeInputs())).toBeUndefined();
+  });
+
+  it("builds an anthropic summarizer with the reviewer's model when the anthropic key is provided", () => {
+    const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(createSummarizer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toBeDefined();
+  });
+
+  it("throws the same key error as the reviewer when the anthropic key is missing", () => {
+    const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(() => createSummarizer(config, makeInputs())).toThrow(/anthropic-api-key/);
+  });
+
+  it("builds openai, deepseek and claude-cli summarizers with their respective credentials", () => {
+    expect(
+      createSummarizer(
+        withSummary({ provider: "openai", model: "gpt-5.6-luna" }),
+        makeInputs({ openaiApiKey: "sk-oa" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createSummarizer(
+        withSummary({ provider: "deepseek", model: "deepseek-v4-pro" }),
+        makeInputs({ deepseekApiKey: "sk-ds" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createSummarizer(
+        withSummary({ provider: "claude-cli", model: "claude-opus-5" }),
+        makeInputs({ claudeCodeOauthToken: "sk-ant-oat" }),
+      ),
+    ).toBeDefined();
+  });
+
+  it("throws naming the missing credential for openai, deepseek and claude-cli", () => {
+    expect(() =>
+      createSummarizer(withSummary({ provider: "openai", model: "gpt-5.6-luna" }), makeInputs()),
+    ).toThrow(/openai-api-key/);
+    expect(() =>
+      createSummarizer(
+        withSummary({ provider: "deepseek", model: "deepseek-v4-pro" }),
+        makeInputs(),
+      ),
+    ).toThrow(/deepseek-api-key/);
+    expect(() =>
+      createSummarizer(
+        withSummary({ provider: "claude-cli", model: "claude-opus-5" }),
+        makeInputs(),
+      ),
+    ).toThrow(/claude-code-oauth-token/);
+  });
+
+  it("builds a summarizer under always with an LLM provider (config validation forbids always + none)", () => {
+    const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" }, "always");
+    expect(createSummarizer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toBeDefined();
+  });
+});
+
+describe("resolveProductContext", () => {
+  it("fetches the context file from the PR BASE sha via the API, never the head or the local checkout", async () => {
+    const fetchRepoFileContent = vi
+      .fn()
+      .mockResolvedValue("areas:\n  - name: core\n    paths: ['src/**']\n    criticality: high\n");
+    const vcs = makeFakeVcs(fetchRepoFileContent);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const context = await resolveProductContext(vcs, REF, ".jevest/context.yml");
+
+    expect(context.areas.map((a) => a.name)).toEqual(["core"]);
+    expect(fetchRepoFileContent).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest/context.yml",
+      ref: "base-sha",
+    });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("base-sha"));
+    log.mockRestore();
+  });
+
+  it("returns the empty context, logging one line, when the file does not exist at the base sha", async () => {
+    const vcs = makeFakeVcs(vi.fn().mockResolvedValue(null));
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const context = await resolveProductContext(vcs, REF, ".jevest/context.yml");
+    expect(context.areas).toEqual([]);
+    expect(context.product).toBeNull();
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("no product context"));
+    log.mockRestore();
+  });
+
+  it("throws naming the source when the file is invalid (fail closed, like a bad .jevest.yml)", async () => {
+    const vcs = makeFakeVcs(vi.fn().mockResolvedValue("areas: ["));
+    await expect(resolveProductContext(vcs, REF, ".jevest/context.yml")).rejects.toThrow(
+      /tincke10\/jevest@base-sha:\.jevest\/context\.yml/,
+    );
+  });
+
+  it("propagates a non-404 API failure (fail closed)", async () => {
+    const vcs = makeFakeVcs(vi.fn().mockRejectedValue(new Error("contents API 500")));
+    await expect(resolveProductContext(vcs, REF, ".jevest/context.yml")).rejects.toThrow(
+      "contents API 500",
     );
   });
 });

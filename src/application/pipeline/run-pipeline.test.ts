@@ -3,10 +3,15 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
 import { createFakeSpendLedger } from "../../adapters/spend-ledger/fake-spend-ledger.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { Decision } from "../../domain/decision.js";
+import type {
+  ChangeSummarizerPort,
+  ChangeSummaryOutput,
+} from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../../domain/pull-request.js";
+import { parseProductContext } from "../context/product-context.js";
 import { runPipeline } from "./run-pipeline.js";
 
 const ref: PullRequestRef = {
@@ -70,6 +75,7 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
     maxHunks: 50,
     skipChangeKinds: ["rename-or-format"],
     failClosed: true,
+    triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
     ...overrides,
   };
 }
@@ -145,6 +151,10 @@ const HIGH_RISK_TRIAGE_SCRIPT: Record<string, Decision> = {
   },
   needs_human: { type: "noul", noul: 0.05 },
   contains_injected_instructions: { type: "noul", noul: 0.02 },
+  matches_intent: { type: "noul", noul: 0.9 },
+  needs_product_owner: { type: "noul", noul: 0.1 },
+  user_facing: { type: "noul", noul: 0.2 },
+  breaking: { type: "noul", noul: 0.05 },
 };
 
 describe("runPipeline", () => {
@@ -831,5 +841,313 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
     expect(result.review).toBeNull();
     expect(spendLedger.entries).toEqual([]);
     expect(result.spendCap).toBeNull();
+  });
+});
+
+describe("runPipeline triage v2: change summary and product context (H7)", () => {
+  const NOW = new Date("2026-09-21T16:00:00.000Z");
+
+  function mediumRiskPort(overrides: Record<string, Decision> = {}): DecisionPort {
+    return scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+      ...overrides,
+    });
+  }
+
+  function trackedSummarizer(
+    output: Partial<ChangeSummaryOutput> = {},
+  ): ChangeSummarizerPort & { calls: number } {
+    const tracked = {
+      calls: 0,
+      async summarize(): Promise<ChangeSummaryOutput> {
+        tracked.calls += 1;
+        return {
+          summary: {
+            whatChanges: "Changes the loop bound.",
+            behaviorChanges: [],
+            userFacing: false,
+            breaking: false,
+            areas: ["core"],
+            risks: [],
+          },
+          model: "claude-sonnet-5",
+          usage: {
+            inputTokens: 1_000_000,
+            outputTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+          },
+          latencyMs: 10,
+          requestId: "sum1",
+          ...output,
+        };
+      },
+    };
+    return tracked;
+  }
+
+  // Medium criticality: raises a low Jev risk to medium, which every stage in
+  // `policyConfig` has thresholds for (a raise to high would fail closed at
+  // hunk-profile for lack of a `high` row — the intended NFR-13 behavior).
+  const CONTEXT = parseProductContext(
+    "product:\n  name: Widgets\nareas:\n  - name: core\n    paths: ['a.ts']\n    criticality: medium\n    rules: ['Keep it fast.']\n",
+    "ctx",
+  );
+
+  it("summarizes the change before triage when changeSummary is auto and an LLM reviewer is configured, and bills it", async () => {
+    const vcs = makeVcs(makePr());
+    const summarizer = trackedSummarizer();
+    const spendLedger = createFakeSpendLedger();
+
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer, spendLedger },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+
+    expect(summarizer.calls).toBe(1);
+    expect(result.triage?.changeSummary?.whatChanges).toBe("Changes the loop bound.");
+    // 1,000,000 input tokens at Sonnet 5's $2/MTok.
+    expect(result.triage?.summaryCostUsd).toBeCloseTo(2, 6);
+    expect(result.costUsd).toBeCloseTo(result.review!.totalCostUsd + 2, 6);
+    expect(spendLedger.entries[0]?.llmUsd).toBeCloseTo(result.review!.totalCostUsd + 2, 6);
+    expect(result.publication.summaryMarkdown).toContain("### Intent vs change");
+    expect(result.publication.summaryMarkdown).toContain("Changes the loop bound.");
+  });
+
+  it("prices the summary with the reviewer model's table (nominal cost preferred when reported)", async () => {
+    const vcs = makeVcs(makePr());
+    const nominal = trackedSummarizer({ nominalCostUsd: 0.0131 });
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer: nominal },
+      config: makeConfig({ reviewer: { provider: "claude-cli", model: "claude-opus-5" } }),
+    });
+    expect(result.triage?.summaryCostUsd).toBe(0.0131);
+
+    const priced = trackedSummarizer();
+    const opus = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer: priced },
+      config: makeConfig({ reviewer: { provider: "anthropic", model: "claude-opus-5" } }),
+    });
+    // Opus 5: $5/MTok input.
+    expect(opus.triage?.summaryCostUsd).toBeCloseTo(5, 6);
+  });
+
+  it("never calls the summarizer when changeSummary is never", async () => {
+    const vcs = makeVcs(makePr());
+    const summarizer = trackedSummarizer();
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer },
+      config: makeConfig({
+        triage: { productContextPath: ".jevest/context.yml", changeSummary: "never" },
+      }),
+    });
+    expect(summarizer.calls).toBe(0);
+    expect(result.triage?.changeSummary).toBeNull();
+    expect(result.triage?.summaryError).toBeNull();
+    expect(result.costUsd).toBe(result.review!.totalCostUsd);
+  });
+
+  it("does not summarize in Jev-only mode (provider none, auto): no summarizer needed, no new config keys", async () => {
+    const vcs = makeVcs(makePr());
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort() },
+      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+    });
+    expect(result.failedClosed).toBe(false);
+    expect(result.triage?.changeSummary).toBeNull();
+    expect(result.triage?.summaryCostUsd).toBe(0);
+    expect(result.publication.summaryMarkdown).toMatch(/no change summary/i);
+  });
+
+  it("skips the summary under auto when the spend cap is already reached, but runs it under always", async () => {
+    const reached = () =>
+      createFakeSpendLedger({
+        seed: { periodKey: "2026-09", spentUsd: 50, runs: 10, updatedAt: "2026-09-20T00:00:00Z" },
+      });
+
+    const autoSummarizer = trackedSummarizer();
+    const auto = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: mediumRiskPort(),
+        reviewer: fakeReviewer(),
+        summarizer: autoSummarizer,
+        spendLedger: reached(),
+      },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+    expect(auto.reviewSkippedForSpendCap).toBe(true);
+    expect(autoSummarizer.calls).toBe(0);
+
+    const alwaysSummarizer = trackedSummarizer();
+    const always = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: mediumRiskPort(),
+        reviewer: fakeReviewer(),
+        summarizer: alwaysSummarizer,
+        spendLedger: reached(),
+      },
+      config: makeConfig({
+        triage: { productContextPath: ".jevest/context.yml", changeSummary: "always" },
+      }),
+      now: () => NOW,
+    });
+    expect(always.reviewSkippedForSpendCap).toBe(true);
+    expect(alwaysSummarizer.calls).toBe(1);
+    expect(always.triage?.changeSummary).not.toBeNull();
+  });
+
+  it("throws an internal error when changeSummary is always but no summarizer port was wired", async () => {
+    await expect(
+      runPipeline({
+        ref,
+        ports: { vcs: makeVcs(makePr()), decision: mediumRiskPort(), reviewer: fakeReviewer() },
+        config: makeConfig({
+          triage: { productContextPath: ".jevest/context.yml", changeSummary: "always" },
+        }),
+      }),
+    ).rejects.toThrow(/changeSummary.*always.*ChangeSummarizerPort/);
+  });
+
+  it("continues without the summary when the summarizer fails, and says so in the summary comment", async () => {
+    const vcs = makeVcs(makePr());
+    const broken: ChangeSummarizerPort = {
+      async summarize() {
+        throw new Error("openai reviewer rate-limited (429); back off and retry");
+      },
+    };
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer: broken },
+      config: makeConfig(),
+    });
+    expect(result.failedClosed).toBe(false);
+    expect(result.triage?.changeSummary).toBeNull();
+    expect(result.triage?.summaryError).toContain("rate-limited");
+    expect(result.triage?.summaryCostUsd).toBe(0);
+    expect(result.publication.summaryMarkdown).toMatch(/no change summary.*rate-limited/i);
+  });
+
+  it("feeds the product context into triage (areas, rules, raised risk) and the merge gate state", async () => {
+    const vcs = makeVcs(makePr());
+    const states: unknown[] = [];
+    // Jev says low risk (HIGH_RISK_TRIAGE_SCRIPT scores 1); the product
+    // context must raise it, otherwise FR-2.3 would skip the rest of the run.
+    const inner = mediumRiskPort({ risk: HIGH_RISK_TRIAGE_SCRIPT.risk as Decision });
+    const decision: DecisionPort = {
+      async decide(state, questions) {
+        states.push(state);
+        return inner.decide(state, questions);
+      },
+    };
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision, reviewer: fakeReviewer() },
+      config: makeConfig({
+        triage: { productContextPath: ".jevest/context.yml", changeSummary: "never" },
+      }),
+      productContext: CONTEXT,
+    });
+    expect(result.triage?.productContext.areas.map((a) => a.name)).toEqual(["core"]);
+    expect(result.triage?.jevRiskLevel).toBe("low");
+    expect(result.triage?.riskLevel).toBe("medium");
+    expect(result.review).not.toBeNull();
+    const mergeGateState = states.at(-1) as Record<string, unknown>;
+    expect(mergeGateState).toMatchObject({
+      description_matches_change: "yes",
+      product_areas_touched: [{ name: "core", criticality: "medium" }],
+    });
+    expect(result.publication.summaryMarkdown).toMatch(/core.*criticality medium/);
+    expect(result.publication.summaryMarkdown).toMatch(/risk raised from low to medium/i);
+    expect(result.publication.summaryMarkdown).toContain("Keep it fast.");
+  });
+
+  it("records the summary cost in the ledger even on a triage-only run (FR-2.3 skip), and forces neutral on an auto-band mismatch", async () => {
+    const vcs = makeVcs(makePr());
+    const spendLedger = createFakeSpendLedger();
+    const summarizer = trackedSummarizer();
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs,
+        decision: scriptedPort({
+          ...HIGH_RISK_TRIAGE_SCRIPT,
+          matches_intent: { type: "noul", noul: 0.02 },
+        }),
+        reviewer: fakeReviewer(),
+        summarizer,
+        spendLedger,
+      },
+      config: makeConfig(),
+      now: () => NOW,
+    });
+    expect(result.triage?.skipLlmReview).toBe(true);
+    expect(result.review).toBeNull();
+    expect(summarizer.calls).toBe(1);
+    expect(spendLedger.entries).toHaveLength(1);
+    expect(spendLedger.entries[0]?.llmUsd).toBeCloseTo(2, 6);
+    expect(result.costUsd).toBeCloseTo(2, 6);
+    expect(result.spendCap).not.toBeNull();
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.publication.labelsToAdd).toContain("jevest:description-mismatch");
+  });
+
+  it("subtracts the summary cost from the per-run budget handed to the review stage", async () => {
+    const vcs = makeVcs(makePr());
+    // A summary costing $2 against a $2.5 budget leaves $0.50 for the review;
+    // the review stage's own per-hunk cost is far below that, so the budget holds.
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs,
+        decision: mediumRiskPort(),
+        reviewer: fakeReviewer(),
+        summarizer: trackedSummarizer(),
+      },
+      config: makeConfig({ budgetUsd: 2.5 }),
+    });
+    expect(result.review?.totalCostUsd).toBeGreaterThan(0);
+    expect(result.review?.budgetExceeded).toBe(false);
+
+    // With a $2 budget nothing is left after the summary: the first hunk's
+    // cost already exceeds the (zero) remaining budget, so the stage reports
+    // the budget as exceeded (its check is post-hoc, per hunk).
+    const starved = await runPipeline({
+      ref,
+      ports: {
+        vcs,
+        decision: mediumRiskPort(),
+        reviewer: fakeReviewer(),
+        summarizer: trackedSummarizer(),
+      },
+      config: makeConfig({ budgetUsd: 2 }),
+    });
+    expect(starved.review?.budgetExceeded).toBe(true);
   });
 });

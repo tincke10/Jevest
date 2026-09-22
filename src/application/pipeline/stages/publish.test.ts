@@ -21,11 +21,26 @@ function makeTriage(overrides: Partial<TriageStageResult> = {}): TriageStageResu
     riskLevel: "low",
     riskScore: 1,
     riskConfidence: 0.9,
+    jevRiskLevel: "low",
     needsHumanProb: 0.1,
     containsInjectedInstructionsProb: 0.05,
+    matchesIntentProb: 0.9,
+    needsProductOwnerProb: 0.1,
+    userFacingProb: 0.2,
+    breakingProb: 0.05,
     size: "small",
     skipLlmReview: false,
     needsHumanLabel: false,
+    needsProductOwnerLabel: false,
+    descriptionMismatch: false,
+    descriptionMismatchBand: null,
+    descriptionMatchesChange: "yes",
+    productContext: { productName: null, areas: [], maxCriticality: null, rules: [] },
+    changeSummary: null,
+    summaryError: null,
+    summaryModel: null,
+    summaryUsage: null,
+    summaryCostUsd: 0,
     requestId: "triage1",
     latencyMs: 10,
     usage: { inputTokens: 100, outputTokens: 20 },
@@ -495,7 +510,214 @@ describe("runPublishStage spend cap", () => {
   });
 });
 
+function makeSummaryTriage(overrides: Partial<TriageStageResult> = {}): TriageStageResult {
+  return makeTriage({
+    changeSummary: {
+      whatChanges: "Applies the tax rate to the checkout subtotal.",
+      behaviorChanges: ["Checkout totals now include tax."],
+      userFacing: true,
+      breaking: false,
+      areas: ["checkout"],
+      risks: ["Rounding of the tax amount is not covered by tests."],
+    },
+    summaryModel: "claude-sonnet-5",
+    summaryUsage: {
+      inputTokens: 1000,
+      outputTokens: 100,
+      cacheReadInputTokens: 0,
+      cacheCreationInputTokens: 0,
+    },
+    summaryCostUsd: 0.0031,
+    productContext: {
+      productName: "Acme Shop",
+      areas: [
+        {
+          name: "checkout",
+          criticality: "critical",
+          rules: ["Prices are always computed server side."],
+          owners: ["@acme/payments"],
+        },
+      ],
+      maxCriticality: "critical",
+      rules: ["Prices are always computed server side."],
+    },
+    riskLevel: "critical",
+    jevRiskLevel: "low",
+    ...overrides,
+  });
+}
+
+function publishWith(triage: TriageStageResult, mergeGate = makeMergeGate()): ReviewPublication {
+  return runPublishStage({
+    triage,
+    hunkProfile: makeHunkProfile([]),
+    review: makeReview(),
+    findingFilter: makeFindingFilter(),
+    mergeGate,
+    inlineCommentsEnabled: true,
+    reviewDisabled: false,
+  });
+}
+
+describe("runPublishStage intent vs change (triage v2, H7)", () => {
+  it("renders an 'Intent vs change' section: what the summary says changes, areas with criticality, the verdict with its probability, the product-owner flag", () => {
+    const result = publishWith(makeSummaryTriage({ needsProductOwnerLabel: true }));
+    const md = result.summaryMarkdown;
+    expect(md).toContain("### Intent vs change");
+    expect(md).toContain("Applies the tax rate to the checkout subtotal.");
+    expect(md).toContain("Checkout totals now include tax.");
+    expect(md).toMatch(/checkout.*critical/);
+    expect(md).toContain("Prices are always computed server side.");
+    expect(md).toMatch(/risk raised.*low.*critical/i);
+    expect(md).toMatch(/description matches the change.*yes.*0\.9/i);
+    expect(md).toMatch(/product owner.*yes/i);
+    expect(md).toContain("claude-sonnet-5");
+  });
+
+  it("says the summary is missing and why when the summarizer failed (run continued without it)", () => {
+    const result = publishWith(
+      makeTriage({ summaryError: "anthropic reviewer rate-limited (429); back off and retry" }),
+    );
+    expect(result.summaryMarkdown).toMatch(/no change summary.*rate-limited/i);
+    expect(result.summaryMarkdown).toMatch(/file facts only|without the summary/i);
+  });
+
+  it("says no summary was requested when there is none and no error", () => {
+    const result = publishWith(makeTriage());
+    expect(result.summaryMarkdown).toMatch(/no change summary/i);
+    expect(result.summaryMarkdown).toMatch(/no product context|no areas/i);
+  });
+
+  it("adds the summary cost to the cost breakdown", () => {
+    const result = publishWith(makeSummaryTriage());
+    expect(result.summaryMarkdown).toMatch(/change summary cost.*0\.0031/i);
+  });
+
+  it("adds the description-mismatch label on a mismatch in the auto or confirm band and removes it otherwise", () => {
+    const auto = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.02,
+      }),
+    );
+    expect(auto.labelsToAdd).toContain("jevest:description-mismatch");
+    expect(auto.labelsToRemove).not.toContain("jevest:description-mismatch");
+
+    const confirm = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "confirm",
+        matchesIntentProb: 0.15,
+      }),
+    );
+    expect(confirm.labelsToAdd).toContain("jevest:description-mismatch");
+
+    const escalate = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "escalate",
+        matchesIntentProb: 0.3,
+      }),
+    );
+    expect(escalate.labelsToAdd).not.toContain("jevest:description-mismatch");
+    expect(escalate.labelsToRemove).toContain("jevest:description-mismatch");
+
+    const none = publishWith(makeTriage());
+    expect(none.labelsToAdd).not.toContain("jevest:description-mismatch");
+    expect(none.labelsToRemove).toContain("jevest:description-mismatch");
+  });
+
+  it("adds/removes the needs-product-owner label idempotently", () => {
+    const flagged = publishWith(makeTriage({ needsProductOwnerLabel: true }));
+    expect(flagged.labelsToAdd).toContain("jevest:needs-product-owner");
+    expect(flagged.labelsToRemove).not.toContain("jevest:needs-product-owner");
+
+    const clear = publishWith(makeTriage({ needsProductOwnerLabel: false }));
+    expect(clear.labelsToRemove).toContain("jevest:needs-product-owner");
+  });
+
+  it("forces a green merge gate to neutral on an auto-band mismatch and adds the PR to the human queue text", () => {
+    const result = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.02,
+      }),
+      makeMergeGate({ conclusion: "success" }),
+    );
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.check.summary).toMatch(/description does not match/i);
+    expect(result.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+    const needsHuman = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+    expect(needsHuman).toMatch(/description does not match the change.*0\.02/i);
+  });
+
+  it("never turns a mismatch into a failure on its own: a failing merge gate stays failure, a neutral one stays neutral", () => {
+    const failure = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.02,
+      }),
+      makeMergeGate({ conclusion: "failure" }),
+    );
+    expect(failure.check.conclusion).toBe("failure");
+    const neutral = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.02,
+      }),
+      makeMergeGate({ conclusion: "neutral" }),
+    );
+    expect(neutral.check.conclusion).toBe("neutral");
+  });
+
+  it("leaves a green check alone on a confirm-band mismatch (label and human queue text only)", () => {
+    const result = publishWith(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "confirm",
+        matchesIntentProb: 0.15,
+      }),
+      makeMergeGate({ conclusion: "success" }),
+    );
+    expect(result.check.conclusion).toBe("success");
+    expect(result.labelsToAdd).toContain("jevest:description-mismatch");
+    const needsHuman = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+    expect(needsHuman).toMatch(/description does not match the change/i);
+  });
+});
+
 describe("runTriageOnlyPublishStage", () => {
+  it("renders the intent-vs-change section and applies the same labels and neutral forcing (H7)", () => {
+    const result = runTriageOnlyPublishStage(
+      makeSummaryTriage({
+        riskLevel: "low",
+        jevRiskLevel: "low",
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.05,
+        needsProductOwnerLabel: true,
+      }),
+    );
+    expect(result.summaryMarkdown).toContain("### Intent vs change");
+    expect(result.summaryMarkdown).toContain("Applies the tax rate to the checkout subtotal.");
+    expect(result.labelsToAdd).toContain("jevest:description-mismatch");
+    expect(result.labelsToAdd).toContain("jevest:needs-product-owner");
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.summaryMarkdown).toMatch(/change summary cost.*0\.0031/i);
+  });
+
+  it("removes both new labels and stays green when nothing is flagged", () => {
+    const result = runTriageOnlyPublishStage(makeTriage());
+    expect(result.labelsToRemove).toContain("jevest:description-mismatch");
+    expect(result.labelsToRemove).toContain("jevest:needs-product-owner");
+    expect(result.check.conclusion).toBe("success");
+  });
+
   it("publishes only the triage decision and label, no findings or comments (FR-2.3)", () => {
     const triage = makeTriage({ category: "docs", riskLevel: "none", needsHumanLabel: false });
     const result = runTriageOnlyPublishStage(triage);
@@ -531,5 +753,17 @@ describe("buildFailClosedPublication", () => {
     const result = buildFailClosedPublication("finding-filter", triage);
     expect(result.summaryMarkdown).toContain("security");
     expect(result.summaryMarkdown).toContain("high");
+  });
+
+  it("uses the given detail instead of the 'Jev did not respond' wording when a non-Jev step failed closed", () => {
+    const result = buildFailClosedPublication(
+      "product-context",
+      null,
+      "acme/shop@base:.jevest/context.yml: invalid YAML",
+    );
+    expect(result.summaryMarkdown).toContain("invalid YAML");
+    expect(result.summaryMarkdown).not.toContain("Jev did not respond");
+    expect(result.check.conclusion).toBe("failure");
+    expect(result.check.summary).toContain("product-context");
   });
 });

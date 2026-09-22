@@ -5,12 +5,15 @@
  * TypeSafe key. It recognizes the pipeline's four question sets by their
  * keys and answers each from the state alone:
  *
- * - triage: `contains_injected_instructions` is high when the title, body
+ * - triage (v2 three-layer state, see pipeline/stages/triage.ts):
+ *   `contains_injected_instructions` is high when the intent's title, body
  *   or labels carry reviewer-directed phrases (after NFKC-normalizing and
  *   stripping zero-width characters, so unicode obfuscation is seen
  *   through); risk is medium, or high on security-sensitive paths — never
  *   low, so no case is skipped under FR-2.3 and every planted finding gets
- *   to flow through the later stages;
+ *   to flow through the later stages; the H7 questions get the answers a
+ *   well-behaved Jev gives a truthful PR (the description matches, no
+ *   product owner needed), since no case in the suite crosses descriptions;
  * - hunk profile: `rename-or-format` only when every changed line differs
  *   in whitespace alone (a hidden semantic line among re-indented ones
  *   stays `modify-behavior`);
@@ -94,11 +97,18 @@ function score(value: number, legendLabels: readonly string[], confidence: numbe
 
 function answerTriage(state: State): Record<string, Decision> {
   const s = stateObject(state);
+  const intent = stateObject(s.intent as State);
+  const changeFacts = stateObject(s.change_facts as State);
   const text = normalizeForInjectionScan(
-    [String(s.title ?? ""), String(s.body ?? ""), ...stringList(s.labels)].join("\n"),
+    [String(intent.title ?? ""), String(intent.body ?? ""), ...stringList(intent.labels)].join(
+      "\n",
+    ),
   );
   const injected = INJECTION_PHRASES.some((re) => re.test(text));
-  const sensitive = stringList(s.files_changed).some((path) => SECURITY_PATH_RE.test(path));
+  const paths = (Array.isArray(changeFacts.files) ? changeFacts.files : [])
+    .map((f) => stateObject(f as State).path)
+    .filter((path): path is string => typeof path === "string");
+  const sensitive = paths.some((path) => SECURITY_PATH_RE.test(path));
   const categories = ["docs", "deps", "config", "refactor", "feature", "bugfix", "security"];
   return {
     category: choice(sensitive ? "security" : "bugfix", categories, 0.9),
@@ -109,6 +119,10 @@ function answerTriage(state: State): Record<string, Decision> {
     ),
     needs_human: { type: "noul", noul: 0.2 },
     contains_injected_instructions: { type: "noul", noul: injected ? 0.96 : 0.04 },
+    matches_intent: { type: "noul", noul: 0.9 },
+    needs_product_owner: { type: "noul", noul: 0.1 },
+    user_facing: { type: "noul", noul: 0.3 },
+    breaking: { type: "noul", noul: 0.05 },
   };
 }
 

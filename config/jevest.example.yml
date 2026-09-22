@@ -97,6 +97,27 @@ skipChangeKinds:
 # experiment.
 failClosed: true
 
+# Triage v2 (H7 adopted, see docs/BENCHMARK.md): the description is judged
+# against what the change actually does, and product areas raise risk.
+triage:
+  # Product context file in YOUR repo (see config/context.example.yml and
+  # docs/ACTION.md "Product context"). Always read from the PR's BASE
+  # commit, never from the PR head, so a PR cannot rewrite the rules that
+  # judge it. Missing file = no product context (still works, no error).
+  productContextPath: .jevest/context.yml
+  # Change summary: one extra LLM call per PR, written from the diff alone
+  # (it never sees the title or description), so Jev can compare the
+  # author's story with what the code does. H7: with it, description
+  # mismatch detection reaches recall 0.99 / precision 1.00; without it
+  # the result is only partial.
+  #   auto   - summarize when reviewer.provider is not "none" and the spend
+  #            cap is not reached (the summary is billed like a review call).
+  #   always - a summary is mandatory: reviewer.provider must be an LLM;
+  #            runs even when the spend cap turned this into a Jev-only run.
+  #   never  - no summary; the description is judged against file facts
+  #            only (H7 without-summary arm).
+  changeSummary: auto
+
 # FR-7 publish behavior.
 publish:
   # RECOMMENDATION: set this to false for the first weeks of a rollout on a

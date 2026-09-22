@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c5e723547b149b626763154cd4e1",
+  "requestId": "req_01a0c678f1c37396bf00b233c9523d17",
   "model": "jev-1.13.0",
-  "latencyMs": 201,
+  "latencyMs": 232,
   "usage": {
     "inputTokens": 907,
     "outputTokens": 152
@@ -9,7 +9,7 @@
   "answers": {
     "app/Http/Controllers/AdminUsersController.php#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.86
+      "noul": 0.87
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__severity": {
       "type": "score",
@@ -24,8 +24,8 @@
       "probabilities": {
         "0": 0,
         "1": 0,
-        "2": 0.01,
-        "3": 0.99
+        "2": 0,
+        "3": 1
       }
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__is_style_only": {
@@ -34,7 +34,7 @@
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.79
+      "noul": 0.75
     }
   }
 }

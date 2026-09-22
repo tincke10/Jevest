@@ -343,3 +343,59 @@ describe("loadJevestConfigFromString", () => {
     await expect(loadJevestConfigFromString("reviewer: [oops\n")).rejects.toThrow(/<config>/);
   });
 });
+
+describe("triage config (product context + change summary)", () => {
+  it("defaults triage.productContextPath to .jevest/context.yml and changeSummary to auto", async () => {
+    const config = await loadJevestConfigFromString("", "<config>");
+    expect(config.triage).toEqual({
+      productContextPath: ".jevest/context.yml",
+      changeSummary: "auto",
+    });
+  });
+
+  it("accepts an explicit triage block, deep-merged key by key", async () => {
+    const config = await loadJevestConfigFromString(
+      "triage:\n  changeSummary: never\n",
+      "<config>",
+    );
+    expect(config.triage).toEqual({
+      productContextPath: ".jevest/context.yml",
+      changeSummary: "never",
+    });
+  });
+
+  it("accepts changeSummary: always together with an LLM reviewer provider", async () => {
+    const config = await loadJevestConfigFromString(
+      "triage:\n  changeSummary: always\n  productContextPath: docs/context.yml\n",
+      "<config>",
+    );
+    expect(config.triage).toEqual({
+      productContextPath: "docs/context.yml",
+      changeSummary: "always",
+    });
+  });
+
+  it("rejects changeSummary: always when reviewer.provider is none (nothing could write the summary)", async () => {
+    await expect(
+      loadJevestConfigFromString(
+        "reviewer:\n  provider: none\ntriage:\n  changeSummary: always\n",
+        "<config>",
+      ),
+    ).rejects.toThrow(/changeSummary.*always.*reviewer\.provider/);
+  });
+
+  it("rejects an unknown changeSummary mode", async () => {
+    await expect(
+      loadJevestConfigFromString("triage:\n  changeSummary: sometimes\n", "<config>"),
+    ).rejects.toThrow(JevestConfigError);
+  });
+
+  it("still works for the self-review config (provider none, no triage block): summary auto resolves to none needed", async () => {
+    const config = await loadJevestConfigFromString(
+      "reviewer:\n  provider: none\npublish:\n  inlineComments: false\nbudgetUsd: 1\n",
+      "<config>",
+    );
+    expect(config.triage.changeSummary).toBe("auto");
+    expect(config.reviewer.provider).toBe("none");
+  });
+});

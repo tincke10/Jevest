@@ -248,6 +248,93 @@ cent-exact accounting. If the ledger issue cannot be read or written
 the full per-run `budgetUsd`, logs a `::warning::`, and the summary
 comment says "spend ledger unavailable: <reason>".
 
+### Product context (`.jevest/context.yml`)
+
+A pull request can tell Jev what changed, but not what the product *is*
+or which parts of it matter. That is the job of one file in your repo,
+`.jevest/context.yml` (path configurable via `triage.productContextPath`):
+
+```yaml
+product:
+  name: Acme Shop
+  description: Online store for widgets.
+areas:
+  - name: checkout
+    paths: ["src/checkout/**", "src/payments/**"]
+    criticality: critical
+    owners: ["@acme/payments"]
+    rules:
+      - "Prices and totals are always computed server side."
+  - name: docs
+    paths: ["docs/**"]
+    criticality: none
+defaults:
+  criticality: low
+```
+
+The full annotated example is
+[`config/context.example.yml`](../config/context.example.yml). Missing
+file: triage runs without product areas, no error. Invalid file: the run
+fails closed naming the file, exactly like a bad `.jevest.yml`, because a
+rule set that fails to parse must never silently become "no rules".
+
+**It is always read from the PR's base commit**, never from the PR head
+and never from a local checkout. A PR that could edit the context that
+judges it would just declare its own area harmless; reading from the base
+means an area marked critical on `main` stays critical for a PR that
+edits this file, and the edit only takes effect once merged.
+
+What the file does, all computed in code (Jev only ever sees words, NFR-5):
+
+- The changed paths are matched against every area's globs (picomatch,
+  whole repo-relative path, dotfiles included, so `.github/**` matches a
+  workflow).
+- **Areas raise risk.** The PR's effective risk level becomes the highest
+  `criticality` among the areas touched if that is higher than Jev's own
+  triage risk; it is never lowered. A one-line fix under `src/payments/`
+  is reviewed with the `critical` confidence bands, cannot skip the LLM
+  review (FR-2.3 needs low risk), and its merge gate needs the `critical`
+  bar.
+- The areas touched, their criticality words and their `rules` go into the
+  triage state (next to the author's description, the file facts and the
+  change summary) and into the merge gate state as
+  `product_areas_touched`, so `needs_product_owner`, `matches_intent` and
+  `safe_to_automerge` are judged with the product in view.
+- The summary comment's "Intent vs change" section lists the areas touched
+  with their criticality and rules, and says when the risk was raised.
+
+#### The change summary (`triage.changeSummary`)
+
+Triage v2 compares the author's description with what the diff actually
+does. The evidence (H7 in [`docs/BENCHMARK.md`](BENCHMARK.md)): with an LLM
+summary of the diff written **without seeing the title or body**, Jev
+detects a description that does not match its change with recall 0.99,
+precision 1.00 and ECE 0.07 over 200 pairs; on file facts alone the result
+is only partial (recall 0.88, ECE 0.10). So the summary is one extra LLM
+call per PR, and `triage.changeSummary` decides when it is made:
+
+| Mode | When the summary runs | Cost |
+|---|---|---|
+| `auto` (default) | `reviewer.provider` is an LLM and the spend cap is not reached | one summarizer call per PR, billed at the reviewer model's rate (or the CLI's nominal cost for `claude-cli`), counted in `budgetUsd`, the spend ledger and the "Cost breakdown" |
+| `always` | every run, even a Jev-only run after the spend cap is reached; a config error with `reviewer.provider: none` | same as `auto`, cap or not |
+| `never` | never; triage judges the description against file facts only (H7's without-summary arm) | none |
+
+The summarizer uses the same provider, model and secret as the reviewer.
+If the summarizer call fails (rate limit, outage, parse error) the run
+does **not** fail: triage runs without the summary, the summary comment
+says "No change summary: the summarizer failed (<reason>)", and nothing
+is billed for it. The summary is an enhancer, not a foundation.
+
+How a mismatch surfaces on the PR: the "Intent vs change" section shows
+the verdict with `P(matches_intent)`; a mismatch (`P < 0.35`, H7's
+operating point) whose confidence lands in the `auto` or `confirm` band
+adds the `jevest:description-mismatch` label and lists the PR under
+"Needs human review"; in the `auto` band it also forces a green check to
+`neutral`. It never turns a check red on its own; that stays the merge
+gate's call. `needs_product_owner` above the confirm bar adds
+`jevest:needs-product-owner`. Both labels are removed again when the
+signal clears, like every other Jevest label.
+
 ### Permissions
 
 The workflow's `permissions:` block needs:
@@ -274,11 +361,14 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 - **Inline comments** on high-band findings only, upserted in place on
   re-runs of the same commit — never duplicated (NFR-12).
 - **One summary comment**, also upserted in place, with the triage
-  decision, hunks skipped and why, findings sent to a human review queue,
-  and the run's cost.
+  decision, an "Intent vs change" section (what the diff summary says
+  changes, product areas touched with their criticality, whether the
+  description matches the change), hunks skipped and why, findings sent
+  to a human review queue, and the run's cost.
 - **Labels**, added/removed per the triage and merge-gate outcome (e.g.
-  `needs-human-review`, `jevest:auto-merge-ok`) and the spend cap state
-  (`jevest:spend-warning`, `jevest:spend-cap-reached`).
+  `jevest:needs-human`, `jevest:auto-merge-ok`,
+  `jevest:description-mismatch`, `jevest:needs-product-owner`) and the
+  spend cap state (`jevest:spend-warning`, `jevest:spend-cap-reached`).
 - **One "Jevest spend ledger" issue** per repo, holding the cumulative
   spend behind `spendCap` (see "Spend cap").
 - **A `jevest` check run** (or commit status, see above) carrying the

@@ -21,6 +21,8 @@ const baseInput = {
   publishedCountsBySeverity: { nit: 0, minor: 1, major: 0, critical: 0 },
   ciStatus: "success" as const,
   containsInjectedInstructionsHigh: false,
+  descriptionMatchesChange: "yes" as const,
+  productAreasTouched: [],
 };
 
 describe("runMergeGateStage", () => {
@@ -73,6 +75,33 @@ describe("runMergeGateStage", () => {
       published_findings_by_severity: { nit: 0, minor: 1, major: 0, critical: 0 },
       ci_status: "success",
     });
+  });
+
+  it("sends the description-vs-change word and the product areas touched with their criticality words (H7, NFR-5)", async () => {
+    let capturedState: unknown;
+    const port = {
+      decide: async (state: unknown, questions: unknown) => {
+        capturedState = state;
+        return createFakeDecisionAdapter(script(0.9)).decide(state as never, questions as never);
+      },
+    };
+    await runMergeGateStage({
+      ...baseInput,
+      decisionPort: port,
+      descriptionMatchesChange: "no",
+      productAreasTouched: [
+        { name: "checkout", criticality: "critical" },
+        { name: "docs", criticality: "none" },
+      ],
+    });
+    expect(capturedState).toMatchObject({
+      description_matches_change: "no",
+      product_areas_touched: [
+        { name: "checkout", criticality: "critical" },
+        { name: "docs", criticality: "none" },
+      ],
+    });
+    expect(JSON.stringify(capturedState)).not.toMatch(/0\.\d/);
   });
 
   it("issues exactly one Jev request for the whole PR (NFR-14)", async () => {

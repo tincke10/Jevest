@@ -15,17 +15,18 @@ import type { DecisionPort } from "../../../domain/ports/decision-port.js";
  * never merges anything itself.
  */
 import type { NoulQuestion } from "../../../domain/question.js";
-import type { RiskLevel } from "./triage.js";
+import type { Criticality } from "../../context/product-context.js";
+import type { DescriptionMatchWord, RiskLevel } from "./triage.js";
 
 function safeToAutomergeQuestion(): NoulQuestion {
   return {
     type: "noul",
     instructions:
-      "Based on the triage summary, the findings published from reviewing this pull request, and its CI status, is it safe to automatically merge this pull request without further human review?",
+      "Based on the triage summary, the findings published from reviewing this pull request, its CI status, whether its description matches the change, and the product areas it touches, is it safe to automatically merge this pull request without further human review?",
     criteria: {
-      true: "Published findings are minor or none, CI passed, and nothing here suggests risk beyond what has already been reviewed.",
+      true: "Published findings are minor or none, CI passed, the description matches the change, and nothing here suggests risk beyond what has already been reviewed.",
       false:
-        "There are unresolved major or critical findings, CI has not passed, or the risk profile calls for a human to decide.",
+        "There are unresolved major or critical findings, CI has not passed, the description does not match the change, a critical product area is touched, or the risk profile calls for a human to decide.",
     },
   };
 }
@@ -39,6 +40,13 @@ export interface MergeGateStageInput {
   readonly ciStatus: "success" | "failure" | "pending" | "unknown";
   /** FR-6.3: computed by the caller from triage's own containsInjectedInstructionsProb + threshold. */
   readonly containsInjectedInstructionsHigh: boolean;
+  /** Triage v2 (H7): the description-vs-change verdict as a word, resolved in code from P(matches_intent). */
+  readonly descriptionMatchesChange: DescriptionMatchWord;
+  /** Product areas the PR touches with their criticality words (from `.jevest/context.yml`). */
+  readonly productAreasTouched: readonly {
+    readonly name: string;
+    readonly criticality: Criticality;
+  }[];
 }
 
 export interface MergeGateStageResult {
@@ -54,6 +62,11 @@ export async function runMergeGateStage(input: MergeGateStageInput): Promise<Mer
     triage_category: input.triageCategory,
     published_findings_by_severity: input.publishedCountsBySeverity,
     ci_status: input.ciStatus,
+    description_matches_change: input.descriptionMatchesChange,
+    product_areas_touched: input.productAreasTouched.map((a) => ({
+      name: a.name,
+      criticality: a.criticality,
+    })),
   };
 
   const response = await input.decisionPort.decide(state, {

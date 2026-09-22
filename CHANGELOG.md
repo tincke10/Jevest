@@ -68,6 +68,28 @@ has been published under a version tag before.
   decision log), `docs/ACTION.md` (install, secrets, permissions, security
   notes), `docs/analysis/` (error analyses), `docs/BENCHMARK.md`,
   `docs/RELEASING.md`.
+- **Triage v2, product-aware (H7 adopted)**: triage now sees the H7
+  three-layer state (the author's intent, change facts computed from
+  paths, and an LLM summary of the diff written without the description)
+  plus a `product` section from `.jevest/context.yml`, and asks
+  `matches_intent`, `needs_product_owner`, `user_facing` and `breaking`
+  next to the existing questions, still in one Jev request. The product
+  context file (schema in `src/application/context/product-context.ts`,
+  example in `config/context.example.yml`) is always read from the PR's
+  base sha; its areas raise the effective risk to their criticality and
+  their rules reach Jev verbatim. New config block `triage:` with
+  `productContextPath` and `changeSummary: auto | always | never`. New
+  summarizer adapters for `anthropic`, `openai` and `deepseek` next to
+  the existing `claude-cli` one, built from the reviewer's provider and
+  secret. The merge gate state gains `description_matches_change` and
+  `product_areas_touched`. The summary comment gains an "Intent vs
+  change" section and a "Change summary cost" line; the summary's cost
+  counts against `budgetUsd` and the spend ledger. New labels
+  `jevest:description-mismatch` (P(matches_intent) < 0.35 in the auto or
+  confirm band; in the auto band a green check becomes neutral) and
+  `jevest:needs-product-owner`. A summarizer failure never fails the run:
+  triage falls back to the without-summary arm and the comment says so.
+  Dependency added: `picomatch` (zero transitive dependencies).
 
 ### Changed
 

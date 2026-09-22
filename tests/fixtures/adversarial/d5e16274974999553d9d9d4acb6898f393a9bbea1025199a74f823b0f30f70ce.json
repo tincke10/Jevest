@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c5e71bec74fc93b161c1a99834fd",
+  "requestId": "req_01a0c678ea2a70a8b1f6b07ec4526f63",
   "model": "jev-1.13.0",
-  "latencyMs": 246,
+  "latencyMs": 198,
   "usage": {
     "inputTokens": 961,
     "outputTokens": 136
@@ -9,7 +9,7 @@
   "answers": {
     "app/Services/ResetLinkService.php#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.92
+      "noul": 0.9
     },
     "app/Services/ResetLinkService.php#0-f0__severity": {
       "type": "score",
@@ -34,7 +34,7 @@
     },
     "app/Services/ResetLinkService.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.83
+      "noul": 0.82
     }
   }
 }

@@ -1,8 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseArgs, resolveConfig } from "./run.js";
+import { parseArgs, resolveConfig, resolveLocalProductContext } from "./run.js";
 
 describe("parseArgs (scripts/review/run.ts)", () => {
   it("throws when neither --diff nor --git is given", () => {
@@ -86,5 +86,68 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
     const { usedDefault, config } = await resolveConfig(join(dir, "missing.yml"));
     expect(usedDefault).toBe(true);
     expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+  });
+});
+
+describe("resolveLocalProductContext (scripts/review/run.ts)", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-review-ctx-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("reads the context file from the working tree in --diff mode (no base sha to read from)", async () => {
+    await mkdir(join(dir, ".jevest"), { recursive: true });
+    await writeFile(
+      join(dir, ".jevest/context.yml"),
+      "areas:\n  - name: core\n    paths: ['src/**']\n    criticality: high\n",
+      "utf8",
+    );
+    const context = await resolveLocalProductContext({
+      repoDir: dir,
+      contextPath: ".jevest/context.yml",
+      gitRange: null,
+    });
+    expect(context.areas.map((a) => a.name)).toEqual(["core"]);
+  });
+
+  it("returns the empty context when the file is missing in --diff mode", async () => {
+    const context = await resolveLocalProductContext({
+      repoDir: dir,
+      contextPath: ".jevest/context.yml",
+      gitRange: null,
+    });
+    expect(context.areas).toEqual([]);
+  });
+
+  it("reads the context file at the BASE ref via git in --git mode, never the head", async () => {
+    const calls: Array<{ path: string; sha: string }> = [];
+    const context = await resolveLocalProductContext({
+      repoDir: dir,
+      contextPath: ".jevest/context.yml",
+      gitRange: { base: "main", head: "feature" },
+      fetchFileAt: async (path, sha) => {
+        calls.push({ path, sha });
+        return "areas:\n  - name: ci\n    paths: ['.github/**']\n";
+      },
+    });
+    expect(calls).toEqual([{ path: ".jevest/context.yml", sha: "main" }]);
+    expect(context.areas.map((a) => a.name)).toEqual(["ci"]);
+  });
+
+  it("throws naming the source when the file is invalid", async () => {
+    await mkdir(join(dir, ".jevest"), { recursive: true });
+    await writeFile(join(dir, ".jevest/context.yml"), "areas: [", "utf8");
+    await expect(
+      resolveLocalProductContext({
+        repoDir: dir,
+        contextPath: ".jevest/context.yml",
+        gitRange: null,
+      }),
+    ).rejects.toThrow(/\.jevest\/context\.yml/);
   });
 });

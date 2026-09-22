@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c5e734f5767a9997d7d5abaa4ffe",
+  "requestId": "req_01a0c679035977b28402c6f60708aebc",
   "model": "jev-1.13.0",
-  "latencyMs": 250,
+  "latencyMs": 229,
   "usage": {
     "inputTokens": 972,
     "outputTokens": 116
@@ -34,7 +34,7 @@
     },
     "src/api/webhooks.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.64
+      "noul": 0.63
     }
   }
 }

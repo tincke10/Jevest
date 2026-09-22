@@ -31,12 +31,18 @@ import {
 } from "../adapters/reviewers/deepseek-reviewer.js";
 import { createOpenAiReviewer } from "../adapters/reviewers/openai-reviewer.js";
 import { createGitHubIssueSpendLedger } from "../adapters/spend-ledger/github-issue-spend-ledger.js";
+import { createAnthropicSummarizer } from "../adapters/summarizers/anthropic-summarizer.js";
+import { createClaudeCliSummarizer } from "../adapters/summarizers/claude-cli-summarizer.js";
+import { createDeepSeekSummarizer } from "../adapters/summarizers/deepseek-summarizer.js";
+import { createOpenAiSummarizer } from "../adapters/summarizers/openai-summarizer.js";
 import { createTypeSafeDecisionAdapter } from "../adapters/typesafe-decision-adapter.js";
 import {
   type GitHubVcsAdapter,
   createGitHubVcsAdapter,
 } from "../adapters/vcs/github-vcs-adapter.js";
+import { type ProductContext, loadProductContext } from "../application/context/product-context.js";
 import { type PipelineResult, runPipeline } from "../application/pipeline/run-pipeline.js";
+import type { ChangeSummarizerPort } from "../domain/ports/change-summarizer-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
 import type { PullRequestRef } from "../domain/pull-request.js";
@@ -243,6 +249,95 @@ export function createReviewer(
   return createOpenAiReviewer({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
 }
 
+/**
+ * The change summarizer for triage v2 (H7), built from the SAME provider,
+ * model and credential as the reviewer — one LLM per repo, one key to
+ * manage. `undefined` when `triage.changeSummary` is "never", or "auto"
+ * in Jev-only mode (provider "none"); config validation already rejects
+ * "always" without a provider. The credential checks are the reviewer's,
+ * repeated here so a summary-only misconfiguration names the right input.
+ */
+export function createSummarizer(
+  config: JevestConfig,
+  inputs: ActionInputs,
+): ChangeSummarizerPort | undefined {
+  const { provider, model } = config.reviewer;
+  if (config.triage.changeSummary === "never" || provider === "none") {
+    return undefined;
+  }
+  if (model === undefined) {
+    throw new ActionInputError(
+      `.jevest.yml: reviewer.model is required when reviewer.provider is "${provider}"`,
+    );
+  }
+  if (provider === "anthropic") {
+    if (inputs.anthropicApiKey === undefined) {
+      throw new ActionInputError(
+        'input "anthropic-api-key" is required because .jevest.yml selects the anthropic reviewer (the change summary uses it too)',
+      );
+    }
+    return createAnthropicSummarizer({
+      client: new Anthropic({ apiKey: inputs.anthropicApiKey }),
+      model,
+    });
+  }
+  if (provider === "deepseek") {
+    if (inputs.deepseekApiKey === undefined) {
+      throw new ActionInputError(
+        'input "deepseek-api-key" is required because .jevest.yml selects the deepseek reviewer (the change summary uses it too)',
+      );
+    }
+    return createDeepSeekSummarizer({
+      client: new OpenAI({ apiKey: inputs.deepseekApiKey, baseURL: DEEPSEEK_BASE_URL }),
+      model,
+    });
+  }
+  if (provider === "claude-cli") {
+    if (inputs.claudeCodeOauthToken === undefined) {
+      throw new ActionInputError(
+        'input "claude-code-oauth-token" is required because .jevest.yml selects the claude-cli reviewer (the change summary uses it too)',
+      );
+    }
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = inputs.claudeCodeOauthToken;
+    return createClaudeCliSummarizer({ model });
+  }
+  if (inputs.openaiApiKey === undefined) {
+    throw new ActionInputError(
+      'input "openai-api-key" is required because .jevest.yml selects the openai reviewer (the change summary uses it too)',
+    );
+  }
+  return createOpenAiSummarizer({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
+}
+
+/**
+ * Resolves `.jevest/context.yml` (see src/application/context/product-context.ts)
+ * from the PR's BASE sha via the contents API — deliberately NOT from the
+ * local checkout, unlike `resolveConfig`: a checkout is the PR head, and a
+ * PR must not be able to rewrite the rules that judge it. A missing file
+ * is the empty context; an invalid one throws, naming the source, and the
+ * run fails closed exactly like a bad `.jevest.yml`. Logs one line.
+ */
+export async function resolveProductContext(
+  vcs: GitHubVcsAdapter,
+  ref: PullRequestRef,
+  contextPath: string,
+): Promise<ProductContext> {
+  const label = `${ref.owner}/${ref.repo}@${ref.baseSha}:${contextPath}`;
+  const context = await loadProductContext({
+    fetchFile: (path, sha) =>
+      vcs.fetchRepoFileContent({ owner: ref.owner, repo: ref.repo, path, ref: sha }),
+    path: contextPath,
+    baseSha: ref.baseSha,
+    label,
+  });
+  if (context.product === null && context.areas.length === 0) {
+    console.log(`jevest: no product context at ${label}; triage runs without product areas`);
+  } else {
+    console.log(`jevest: product context fetched from ${label} (${context.areas.length} area(s))`);
+  }
+  return context;
+}
+
 function isEnoent(error: unknown): boolean {
   return (
     error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT"
@@ -378,6 +473,8 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
       client: new TypeSafeClient({ apiKey: inputs.typesafeApiKey, retry: { maxRetries: 0 } }),
     });
     const reviewer = createReviewer(config, inputs);
+    const summarizer = createSummarizer(config, inputs);
+    const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     // Same token, same `issues: write` permission the summary comment and
     // labels already need — the ledger is one issue in the consumer repo.
     const spendLedger = createGitHubIssueSpendLedger({
@@ -389,8 +486,15 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
 
     const result: PipelineResult = await runPipeline({
       ref,
-      ports: { vcs, decision, spendLedger, ...(reviewer ? { reviewer } : {}) },
+      ports: {
+        vcs,
+        decision,
+        spendLedger,
+        ...(reviewer ? { reviewer } : {}),
+        ...(summarizer ? { summarizer } : {}),
+      },
       config,
+      productContext,
     });
 
     console.log(

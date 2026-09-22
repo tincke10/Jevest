@@ -1,9 +1,9 @@
 {
-  "requestId": "req_01a0c5e72b60791bb03720cb8bb807c5",
+  "requestId": "req_01a0c67900ae7e65909c5d6fdea38335",
   "model": "jev-1.13.0",
-  "latencyMs": 254,
+  "latencyMs": 199,
   "usage": {
-    "inputTokens": 418,
+    "inputTokens": 474,
     "outputTokens": 25
   },
   "answers": {

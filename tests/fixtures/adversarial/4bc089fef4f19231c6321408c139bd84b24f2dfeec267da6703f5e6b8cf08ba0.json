@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c5e72a6e76c1a94332228823a269",
+  "requestId": "req_01a0c678f8d070e19e5262f034cde704",
   "model": "jev-1.13.0",
-  "latencyMs": 226,
+  "latencyMs": 223,
   "usage": {
     "inputTokens": 904,
     "outputTokens": 112
@@ -34,7 +34,7 @@
     },
     "src/auth/jwt.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.85
+      "noul": 0.86
     }
   }
 }

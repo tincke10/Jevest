@@ -40,6 +40,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   "maxHunks",
   "skipChangeKinds",
   "failClosed",
+  "triage",
 ]);
 
 function isEnoent(error: unknown): boolean {
@@ -144,17 +145,48 @@ const spendCapSchema = z
     message: "spendCap.warnAtUsd must be < spendCap.usd",
   });
 
-const jevestConfigSchema = z.object({
-  reviewer: reviewerSchema,
-  thresholds: z.record(z.string(), z.record(z.string(), thresholdSchema)),
-  sizeThresholds: sizeThresholdsSchema,
-  publish: publishSchema,
-  budgetUsd: z.number().positive(),
-  spendCap: spendCapSchema,
-  maxHunks: z.number().int().positive(),
-  skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
-  failClosed: z.boolean().default(true),
-});
+// Triage v2 (H7 adopted, SPEC §4.2): the product context file is read from
+// the PR's BASE sha (see src/application/context/product-context.ts), and
+// the change summary — one extra LLM call per PR, written without seeing
+// the description — is "auto" (only when an LLM reviewer is configured),
+// "always" (a summary is mandatory, so a provider must exist) or "never"
+// (H7's without-summary arm: the description is judged against file facts
+// only). The summarizer uses `reviewer.provider` / `reviewer.model`.
+export const CHANGE_SUMMARY_MODES = ["auto", "always", "never"] as const;
+export type ChangeSummaryMode = (typeof CHANGE_SUMMARY_MODES)[number];
+
+const DEFAULT_PRODUCT_CONTEXT_PATH = ".jevest/context.yml";
+
+const triageSchema = z
+  .object({
+    productContextPath: z.string().min(1).default(DEFAULT_PRODUCT_CONTEXT_PATH),
+    changeSummary: z.enum(CHANGE_SUMMARY_MODES).default("auto"),
+  })
+  .default({ productContextPath: DEFAULT_PRODUCT_CONTEXT_PATH, changeSummary: "auto" });
+
+const jevestConfigSchema = z
+  .object({
+    reviewer: reviewerSchema,
+    thresholds: z.record(z.string(), z.record(z.string(), thresholdSchema)),
+    sizeThresholds: sizeThresholdsSchema,
+    publish: publishSchema,
+    budgetUsd: z.number().positive(),
+    spendCap: spendCapSchema,
+    maxHunks: z.number().int().positive(),
+    skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
+    failClosed: z.boolean().default(true),
+    triage: triageSchema,
+  })
+  .superRefine((c, ctx) => {
+    if (c.triage.changeSummary === "always" && c.reviewer.provider === "none") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["triage", "changeSummary"],
+        message:
+          'triage.changeSummary "always" needs an LLM to write the summary: set reviewer.provider to something other than "none" (or use "auto"/"never")',
+      });
+    }
+  });
 
 export interface JevestConfig {
   readonly reviewer: {
@@ -169,6 +201,11 @@ export interface JevestConfig {
   readonly maxHunks: number;
   readonly skipChangeKinds: readonly string[];
   readonly failClosed: boolean;
+  readonly triage: {
+    /** Repo-relative path of the product context file, read from the PR's base sha. */
+    readonly productContextPath: string;
+    readonly changeSummary: ChangeSummaryMode;
+  };
 }
 
 function toConfidencePolicyConfig(
@@ -242,6 +279,7 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
     maxHunks: result.data.maxHunks,
     skipChangeKinds: result.data.skipChangeKinds,
     failClosed: result.data.failClosed,
+    triage: result.data.triage,
   };
 }
 

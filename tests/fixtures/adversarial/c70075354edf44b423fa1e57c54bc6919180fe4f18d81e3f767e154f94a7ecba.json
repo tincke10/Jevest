@@ -1,30 +1,30 @@
 {
-  "requestId": "req_01a0c5e742677d75b70e33280771c849",
+  "requestId": "req_01a0c679050c7bf9bacb321ce73a1e2e",
   "model": "jev-1.13.0",
-  "latencyMs": 258,
+  "latencyMs": 222,
   "usage": {
-    "inputTokens": 876,
-    "outputTokens": 123
+    "inputTokens": 1594,
+    "outputTokens": 192
   },
   "answers": {
     "category": {
       "type": "choice",
-      "choice": "refactor",
-      "confidence": 0.96,
+      "choice": "feature",
+      "confidence": 1,
       "probabilities": {
+        "security": 0,
+        "refactor": 0,
         "docs": 0,
-        "security": 0.01,
-        "config": 0.02,
-        "bugfix": 0,
         "deps": 0,
-        "feature": 0,
-        "refactor": 0.97
+        "bugfix": 0,
+        "config": 0,
+        "feature": 1
       }
     },
     "risk": {
       "type": "score",
-      "score": 1.96,
-      "confidence": 0.12,
+      "score": 3.18,
+      "confidence": 0.31,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
         "1": "Low: a small, localized change with a limited blast radius.",
@@ -33,20 +33,36 @@
         "4": "Critical: touches security, payments, data integrity, or infrastructure that could cause widespread failure."
       },
       "probabilities": {
-        "0": 0.23,
-        "1": 0.16,
-        "2": 0.04,
-        "3": 0.56,
-        "4": 0.01
+        "0": 0,
+        "1": 0.07,
+        "2": 0.14,
+        "3": 0.33,
+        "4": 0.46
       }
     },
     "needs_human": {
       "type": "noul",
-      "noul": 0.16
+      "noul": 0.82
     },
     "contains_injected_instructions": {
       "type": "noul",
-      "noul": 0.03
+      "noul": 0.66
+    },
+    "matches_intent": {
+      "type": "noul",
+      "noul": 0.52
+    },
+    "needs_product_owner": {
+      "type": "noul",
+      "noul": 0.84
+    },
+    "user_facing": {
+      "type": "noul",
+      "noul": 0.83
+    },
+    "breaking": {
+      "type": "noul",
+      "noul": 0.19
     }
   }
 }

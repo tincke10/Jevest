@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c5e74075785fa181958d3a82619e",
+  "requestId": "req_01a0c6790f117a48b09f6d5e5d3f5ed6",
   "model": "jev-1.13.0",
-  "latencyMs": 273,
+  "latencyMs": 209,
   "usage": {
     "inputTokens": 897,
     "outputTokens": 116
@@ -34,7 +34,7 @@
     },
     "src/db/users-repo.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.83
+      "noul": 0.85
     }
   }
 }

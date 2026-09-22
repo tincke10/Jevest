@@ -422,3 +422,162 @@ existing Jev and judge fixtures against the corrected labels. An LLM
 labeler would be circular. Full write-up and reproduction command:
 `docs/BENCHMARK.md`, "Thorough findings pass and finding filter (H1 / H6
 / H3, 2026-09-22)".
+
+## 10. Fix-aware oracle label (2026-09-22): `label.oracle`
+
+§9 closed on a problem, not a verdict: the line-overlap label does not measure
+"is this finding a real defect." Two independent systems — the Jev filter and a
+DeepSeek reasoning judge that thinks for ~30 s per finding — both land at
+chance against it (AUC 0.592 and 0.567, precision equal to the base rate at
+every threshold). When two unrelated classifiers can't separate the classes,
+the classes are the suspect.
+
+The owner's constraint was "no manual labeling." The objection to an LLM
+labeler is circularity: a model grading findings with the same information the
+filter had is just a second opinion, not ground truth. **The fix removes the
+circularity by giving the labeler information neither scored side ever had.**
+
+### 10.1 What the labeler sees that nobody else does
+
+Each hunk in `datasets/hunks.jsonl` carries the FUTURE of the code under review:
+
+| Field | Reviewer saw it? | Jev / judge saw it? | Labeler sees it |
+|---|---|---|---|
+| `before`, `diff` | yes | yes | yes |
+| **`after`** (the actual fix) | no | no | **yes** |
+| **`evidence.commit_message`** | no | no | **yes** |
+| **linked issue / PR text** (`hunk-evidence.jsonl`) | no | no | **yes** |
+| `label.defect` (commit heuristic) | no | no | yes, stated plainly |
+| `label.real` (line-overlap) | no | no | **never** |
+| Jev's or the judge's answers | — | — | **never** |
+
+That is strictly more evidence, not the same evidence re-judged. The reviewer
+was asked to predict a defect; the labeler is asked to check a prediction
+against what actually happened next. Those are different problems, and only the
+second one has an answer in the data.
+
+### 10.2 Two framings, agreement required
+
+One model, two prompts, run independently over the same evidence
+(`src/adapters/labelers/labeler-prompt.ts` — the system prompts differ, the user
+message is byte-identical so a disagreement means the readings conflict, not
+that the inputs did).
+
+- **Pass A, fix-match**: *does this finding describe the problem the fix
+  fixed?* → `real` | `not-this` | `unclear`. Pointing at the same lines for a
+  different reason is `not-this`, explicitly.
+- **Pass B, claim-verification**: *with the fix, the message and the issue in
+  hand, is the claimed problem present in the `before` code?* → `present` |
+  `absent` | `unclear`. Whether the fix addressed it is not this pass's
+  question.
+
+Combination (`combineOracleVerdicts` in
+`src/application/findings/oracle-label.ts`):
+
+| Pass A | Pass B | Oracle verdict |
+|---|---|---|
+| `real` | `present` | **`real`** (only on a defect hunk) |
+| `not-this` | `absent` | **`noise`** |
+| everything else | | **`unknown`** |
+
+The case that matters most is `not-this` + `present`: a claim that is TRUE
+about the code but describes something the fix did not touch. That is a
+plausible real issue the oracle cannot confirm, so it is `unknown` — never
+`noise`. Scoring it as noise would punish a filter for keeping a correct
+finding, which is precisely the error line-overlap already makes.
+
+`real` is downgraded to `unknown` on a benign hunk: there was no fix there for a
+finding to match, so a `real` from pass A is a labeler mistake rather than
+evidence. `noise` is still reachable on a benign hunk, and that is where the
+absence judgment carries the whole label.
+
+Both passes also return a 0..1 `confidence` and a one-sentence `reason`, and
+both are persisted. A ground-truth label nobody can audit is worse than no
+label, because it reads as fact.
+
+### 10.3 Wire format
+
+Written alongside the line-overlap label, never over it — the two disagree, and
+the cross-tab between them is itself a result:
+
+```jsonc
+"label": {
+  "real": true,                         // unchanged line-overlap label (§2)
+  "source": "line-overlap",
+  "overlap_lines": 2,
+  "fix_changed_lines": 3,
+  "oracle": {
+    "verdict": "real",                  // "real" | "noise" | "unknown"
+    "source": "fix-oracle",
+    "labeler_model": "deepseek-v4-pro",
+    "fix_match":          { "verdict": "real",    "confidence": 0.9, "reason": "..." },
+    "claim_verification": { "verdict": "present", "confidence": 0.8, "reason": "..." }
+  }
+}
+```
+
+Parser: `FindingOracleLabel` in `src/application/filter/finding-record.ts`
+(`label.oracle` is optional, so every pre-existing record still parses).
+
+### 10.4 Running it
+
+```bash
+# 1. Fetch the issue / PR text behind each fix (public repos, read-only, resumable).
+pnpm dataset:evidence
+
+# 2. Label. 2 calls per finding. Resumable: an existing fixture is served from
+#    disk and no call is made, so a re-run after a rate limit costs only the rest.
+DEEPSEEK_API_KEY=... pnpm findings:label \
+    --findings datasets/findings-thorough.jsonl \
+    --out datasets/findings-thorough-oracle.jsonl \
+    --labeler deepseek --mode record --concurrency 2
+
+# 3. Re-score H1 / H6 / H3 against the new label. ZERO new LLM calls: Jev and the
+#    judge replay from the fixtures they already have.
+pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
+    --mode replay --judge deepseek --judge-mode replay --label oracle
+
+# Prove the chain without spending anything:
+pnpm findings:label --findings datasets/findings-thorough.jsonl --out /tmp/oracle.jsonl \
+    --labeler dry-run --mode dry-run
+```
+
+Fixtures: `tests/fixtures/findings-oracle/`, keyed by sha256 of (input,
+framing) — the two passes can never share one, and re-fetching an issue body
+changes the key so a stale label is invalidated rather than silently reused.
+`--mode replay` (the default) re-derives every label from them at no cost. The
+dry-run labeler is refused in `--mode record`: it would persist seeded noise
+into a field that reads as ground truth.
+
+### 10.5 Known weaknesses
+
+Stated plainly, because this label will be quoted as ground truth:
+
+- **It cannot confirm a real issue the fix did not touch.** Those land in
+  `unknown` by design (§10.2). If the `unknown` share is large, H1 is measured
+  on a narrower, easier slice than the full dataset — the report prints the
+  share for exactly this reason, and it should be read next to every number.
+- **`unknown` is not missing-at-random.** It concentrates on findings about
+  code the fix left alone, which plausibly skews toward vaguer claims. The
+  remaining sample is therefore not a uniform subsample of the 299.
+- **Benign-hunk noise rests on absence judgments.** "The claimed problem is not
+  there" is harder to establish than "it is there," and an LLM asked to prove a
+  negative over one hunk can only speak for the code it was shown. Claims about
+  code outside the hunk should come back `unclear`, and the prompt says so, but
+  that is a prompt instruction, not a guarantee.
+- **The upstream defect label is still a commit heuristic.** `label.defect`
+  comes from commit metadata (`README.md` § hunks 5), and the oracle leans on
+  it for the benign-hunk guard. Noise there propagates here.
+- **One model, two prompts — not two models.** The two passes are independent
+  framings, not independent systems. A bias the model holds in both framings
+  (for example, agreeing too readily with a confidently-worded claim) survives
+  the agreement check. Re-running pass B on a different model would be the
+  honest strengthening move, and has not been done.
+- **The evidence is third-party text.** Issue and PR bodies come from public
+  repositories and are shown to the labeler as evidence about code. They are
+  capped at 2000 characters and never reach the reviewer, the filter or the
+  judge.
+
+`needs_manual_review: true` stays `true` on every record. This label is a
+better instrument than line-overlap, not a substitute for someone reading the
+code.

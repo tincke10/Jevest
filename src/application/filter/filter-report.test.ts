@@ -341,3 +341,53 @@ describe("renderFilterReportMarkdown", () => {
     expect(markdown).toMatch(/N = 6/);
   });
 });
+
+describe("label source (line-overlap vs. fix-aware oracle)", () => {
+  it("defaults to line-overlap so existing runs keep reproducing", () => {
+    const report = buildFilterReport(runOf(results), realByFindingId, { thresholds: [0.5] });
+    expect(report.labelSource).toBe("line-overlap");
+    expect(report.labelCounts).toBeUndefined();
+  });
+
+  it("records the oracle label source and its real / noise / unknown counts", () => {
+    const report = buildFilterReport(runOf(results), realByFindingId, {
+      thresholds: [0.5],
+      labelSource: "oracle",
+      labelCounts: { real: 3, noise: 3, unknown: 4 },
+    });
+    expect(report.labelSource).toBe("oracle");
+    expect(report.labelCounts).toEqual({ real: 3, noise: 3, unknown: 4 });
+  });
+
+  it("scores only the findings present in the ground-truth map, so unknown is excluded", () => {
+    const withoutUnknown = { f1: true, f2: false, f4: true };
+    const report = buildFilterReport(runOf(results), withoutUnknown, {
+      thresholds: [0.5],
+      labelSource: "oracle",
+      labelCounts: { real: 2, noise: 1, unknown: 3 },
+    });
+    expect(report.sampleCount).toBe(3);
+    expect(report.h3.sampleCount).toBe(3);
+  });
+
+  it("names the label in the markdown header and in the H1 and H3 verdict lines", () => {
+    const markdown = renderFilterReportMarkdown(
+      buildFilterReport(runOf(results), realByFindingId, {
+        thresholds: [0.5],
+        labelSource: "oracle",
+        labelCounts: { real: 3, noise: 3, unknown: 4 },
+      }),
+    );
+    expect(markdown).toContain("fix-oracle");
+    expect(markdown).toMatch(/4 unknown \(excluded/);
+    expect(markdown).toMatch(/H1 .*against the fix-aware oracle label/);
+  });
+
+  it("says line-overlap in the header when that is the label", () => {
+    const markdown = renderFilterReportMarkdown(
+      buildFilterReport(runOf(results), realByFindingId, { thresholds: [0.5] }),
+    );
+    expect(markdown).toContain("line-overlap");
+    expect(markdown).not.toContain("unknown (excluded)");
+  });
+});

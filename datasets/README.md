@@ -13,6 +13,7 @@ malformed line, so "it loads" is a meaningful check.
 | `hunks.jsonl` | 100 (50 defect / 50 benign) | `label.defect`, `label.category`; `touches_security` / `touches_public_api` path heuristics; every record `needs_manual_review: true` | zod, vitest, hono, tRPC (all MIT) | `HunkRecord` in `src/application/spike/hunk-record.ts` | `npx tsx scripts/dataset/collect-hunks.ts --workdir <dir> --target-defect 50 --target-benign 50 --max-scan 800` | Seed labels from commit metadata (`fix:` + issue link), not a line-by-line read; first eligible hunk per commit; `src/*.ts` only; squash-merge assumption (§ hunks 5) |
 | `profile-labels.jsonl` | 100 (one per hunk) | `change_kind`, `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io`, AST-derived on changed lines (labels v2); `needs_manual_review: true` | same hunks as above | `ProfileLabelRecord` in `src/application/profile/profile-label-record.ts` | `pnpm profile:label` | Rule blind spots documented in `docs/analysis/h0-prime-error-analysis.md` (barrel re-exports, declaration merging, `#private` fields, regex literals); 4–14 positives per rare noul |
 | `findings.jsonl` | 14 (strict reviewer pass over the 100 hunks) | `label.real` by line-overlap with the fix, `suggested_severity`; `needs_manual_review: true` | findings over the same four repos' hunks | `FindingRecord` in `src/domain/finding.ts` | `pnpm findings --provider claude-cli --record --budget-usd 15` | Far below the ≥ 200 findings SPEC §4.2 needs for H1/H3; line-overlap misses a correct finding reported a few lines off; a thorough-prompt pass is in progress (`FINDINGS.md`) |
+| `hunk-evidence.jsonl` | 100 (one per hunk; 50 with issue text, 50 pull-request only) | none — it is evidence, not labels | issue and PR text from the same four repos (all MIT, all public) | `HunkEvidenceRecord` in `src/application/findings/hunk-evidence.ts` | `pnpm dataset:evidence` | Bodies capped at 2000 characters with an explicit marker; a deleted or transferred link is silently absent; fetched once, so a later edit upstream is not reflected |
 | `prs.jsonl` | 100 merged PRs (25 per repo) | none (source records; title/body/files after template stripping and redaction) | zod, vitest, hono, tRPC (all MIT) | `PrRecord` in `src/application/coherence/pr-record.ts` | `pnpm dataset:prs` (defaults `--per-repo 25 --max-scan 400 --seed 42`) | Recency bias (`updated desc`); uneven description quality; `containsSecret` over-rejects (21 PRs dropped, all false positives) |
 | `coherence-pairs.jsonl` | 200 (100 coherent / 100 incoherent) | `label` exact by construction: own description vs. a seeded same-repo foreign description | derived from `prs.jsonl` | `CoherencePair` in `src/application/coherence/pr-record.ts` | same `pnpm dataset:prs` run (Sattolo cycle, seed 42) | Same-repo crossing only; 6 pairs leak a file basename into the foreign description; "wrong PR", never "subtly wrong" |
 | `adversarial/*.json` | 14 cases (13 attack families + 1 benign control) | `attackFamily`, `plantedFinding` (one critical defect per case), `expect.attacked`, `expect.forbiddenPublishedText` | hand-written, no external source | `AdversarialCase` in `src/application/adversarial/adversarial-case.ts` | written by hand; hunk headers and planted line numbers computed from the diff bodies | Synthetic and small; the LLM reviewer is held constant (it reports exactly the planted finding), so the suite measures the Jev-driven stages, not the reviewer |
@@ -487,3 +488,76 @@ pnpm dataset:prs --repos owner/name,owner/name --per-repo 50 --out datasets/prs.
 
 The script prints per-repo counts, rejections by reason, the distributions
 above and the basename-leak count at the end of every run.
+
+---
+
+# `hunk-evidence.jsonl` — issue and PR text behind each fix (additive)
+
+`hunks.jsonl` records `evidence.issue_url` and `evidence.pr_url` but not their
+content. The fix-aware oracle labeler (`datasets/FINDINGS.md` §10) needs the
+content, because a commit message says what was *changed* while the issue says
+what was *wrong* — and "what was wrong" is the question the oracle label turns
+on.
+
+This file is **additive and separate on purpose**. `hunks.jsonl` is the
+published phase-0 dataset and nothing in the labeling pipeline mutates it; a
+re-fetch here can never move a hunk's `label.defect` or its diff.
+
+## 1. Schema
+
+One JSON object per line; every field except `hunk_id` and `fetched_at` is
+optional, and absent means "that link did not resolve".
+
+```jsonc
+{
+  "hunk_id": "zod-9446b5c-1",          // foreign key into hunks.jsonl
+  "issue_title": "compile() crashes on nested object schemas",
+  "issue_body": "Reproduction: ...",    // capped, see below
+  "pr_title": "fix(compile): pass the inner context",
+  "pr_body": "Closes #6585.",
+  "fetched_at": "2026-09-22T16:01:12.004Z"
+}
+```
+
+Parser and serializer: `parseHunkEvidenceJsonl` / `stringifyHunkEvidenceRecord`
+in `src/application/findings/hunk-evidence.ts`, same loud-failing style as the
+other datasets here.
+
+## 2. How it is collected
+
+`pnpm dataset:evidence` reads `hunks.jsonl`, turns each `issue_url` / `pr_url`
+into `owner/repo/number` (`parseGitHubRef`) and reads it through
+`repos/{owner}/{repo}/issues/{number}`. On GitHub a pull request *is* an issue,
+so one endpoint serves both. Auth is the active `gh` account (`gh auth token`)
+or `GITHUB_TOKEN`; every source repo is public and every call is a read.
+
+- **Bodies are capped at 2000 characters** (`--max-body-chars`) with an
+  explicit `[truncated at N characters]` marker appended. Issue bodies run to
+  thousands of lines of logs, and a labeler reading a cut-off body must know it
+  is cut off rather than read silence as evidence of absence.
+- **Failures are per-link and non-fatal.** A 404 (deleted, transferred,
+  made private) is reported and skipped; the labeler falls back to the commit
+  message for that hunk.
+- **Runs are resumable.** An existing output file is read first and only
+  missing hunks are fetched; `--force` refetches everything. On a rate limit the
+  run stops cleanly and keeps what it already has.
+
+## 3. Known limitations
+
+- **A point-in-time snapshot.** `fetched_at` is the only staleness signal; an
+  issue edited upstream afterwards is not reflected until a `--force` re-fetch.
+- **Titles and bodies are untrusted text from third parties.** They are shown
+  to the labeler as evidence about the code, and nothing downstream executes or
+  follows them. They are never shown to the reviewer, the filter or the judge.
+- **50 of the 100 hunks have no linked issue** — exactly the benign half, which
+  by construction has no `fix:` marker and no issue link (see § hunks 4.2). For
+  those the labeler works from the PR title/body and the commit message.
+
+## 4. Reproducing
+
+```bash
+# Requires: gh (authenticated) or GITHUB_TOKEN, Node 20+, pnpm install.
+pnpm dataset:evidence                       # resumable; ~100 reads, under a minute
+pnpm dataset:evidence --force               # refetch everything
+pnpm dataset:evidence --max-body-chars 4000 # longer bodies (costs labeler tokens)
+```

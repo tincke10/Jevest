@@ -17,9 +17,11 @@
     "profile:label": "tsx scripts/profile/label.ts",
     "filter": "tsx scripts/filter/run.ts",
     "findings": "tsx scripts/findings/generate.ts",
+    "findings:label": "tsx scripts/findings/label.ts",
     "action": "tsx src/action/main.ts",
     "review": "tsx scripts/review/run.ts",
     "dataset:prs": "tsx scripts/dataset/collect-prs.ts",
+    "dataset:evidence": "tsx scripts/dataset/collect-evidence.ts",
     "coherence:summarize": "tsx scripts/coherence/summarize.ts",
     "coherence": "tsx scripts/coherence/run.ts",
     "adversarial": "tsx scripts/adversarial/run.ts"

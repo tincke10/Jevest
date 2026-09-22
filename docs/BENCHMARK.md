@@ -240,8 +240,8 @@ What a valid H1 verdict needs:
   severity.
 - Re-score Jev and the judge from the existing fixtures at zero cost
   (replay) once that sample exists — no new LLM calls needed.
-- An LLM labeler would be circular; the label has to come from a human
-  read.
+- An LLM labeler shown *the same information the filter had* would be
+  circular. One shown the FIX is not — see the next section.
 
 Pending product decision (not decided here): keep stage 4 (finding filter)
 discarding findings below the confidence band, or switch it to
@@ -256,6 +256,59 @@ Reproduce, zero cost:
 ```sh
 pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay
 ```
+
+### Fix-aware oracle label (second ground truth, built 2026-09-22)
+
+Rather than hand-label, the label is rebuilt from information neither Jev nor
+the judge ever had: the code AFTER the real fix, the fix's commit message, and
+the linked issue or pull-request text. Predicting a defect and checking a
+prediction against what actually happened next are different problems, and only
+the second has an answer in the data — which is what breaks the circularity.
+
+Two framings on the same model, agreement required: *does this finding describe
+what the fix fixed?* and *is the claimed problem present in the before code?*
+Agreement gives `real` or `noise`; anything else is `unknown` and is **excluded
+from H1/H3/H6**, with its share printed. Design, the combination rule and the
+weaknesses: `datasets/FINDINGS.md` §10.
+
+New artifacts: `datasets/hunk-evidence.jsonl` (issue/PR text per hunk),
+`label.oracle` on every finding record, fixtures in
+`tests/fixtures/findings-oracle/`.
+
+How to reproduce:
+
+```sh
+# 1. Issue and PR text behind each fix. Public repos, read-only, resumable.
+pnpm dataset:evidence
+
+# 2. Label: 2 calls per finding (299 findings -> 598 calls). Resumable.
+DEEPSEEK_API_KEY=... pnpm findings:label \
+    --findings datasets/findings-thorough.jsonl \
+    --out datasets/findings-thorough-oracle.jsonl \
+    --labeler deepseek --mode record --concurrency 2
+
+# 3. Re-score against the new label. ZERO new LLM calls — Jev and the judge
+#    replay from the fixtures they already have.
+pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
+    --mode replay --judge deepseek --judge-mode replay --label oracle
+
+# The old numbers stay reproducible; --label defaults to line-overlap.
+pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay
+```
+
+Prove the chain at zero cost (seeded fake labeler, meaningless verdicts):
+
+```sh
+pnpm findings:label --findings datasets/findings-thorough.jsonl \
+    --out /tmp/oracle.jsonl --labeler dry-run --mode dry-run
+pnpm filter --findings /tmp/oracle.jsonl --mode replay --judge none --label oracle
+```
+
+Cost of the labeling pass: measured prompts are ~640 system tokens (cached
+after the first call in each framing) plus ~1,312 user tokens per finding.
+Priced with the recorded judge's measured 2,456 output tokens per call
+(deepseek-v4-pro reasoning dominates the bill), 598 calls come to roughly USD 7.
+**Not yet run.**
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 

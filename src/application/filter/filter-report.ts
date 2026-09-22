@@ -110,9 +110,27 @@ export interface H3Result {
   readonly reasons: string[];
 }
 
+/**
+ * Which ground truth the numbers were computed against. "line-overlap" is the
+ * original heuristic label (datasets/FINDINGS.md §2); "oracle" is the
+ * fix-aware label (§10), under which `unknown` findings are not in the
+ * ground-truth map at all and therefore never reach the sweep.
+ */
+export type FilterLabelSource = "line-overlap" | "oracle";
+
+/** Population of the label, for the report header. `unknown` exists only for the oracle label. */
+export interface FilterLabelCounts {
+  readonly real: number;
+  readonly noise: number;
+  readonly unknown: number;
+}
+
 export interface FilterReport {
   readonly generatedAt: string;
   readonly datasetVersion: number;
+  readonly labelSource: FilterLabelSource;
+  /** Present when the caller knows the full label population, including what it excluded. */
+  readonly labelCounts?: FilterLabelCounts;
   readonly sampleCount: number;
   readonly findings: FilterFindingResult[];
   readonly sweep: FilterThresholdMetrics[];
@@ -143,6 +161,9 @@ export interface BuildFilterReportOptions {
   readonly judgeRun?: JudgeRunInput;
   readonly h6Criteria?: H6Criteria;
   readonly h3Criteria?: H3Criteria;
+  /** Default "line-overlap", so every pre-existing run reproduces byte-for-byte. */
+  readonly labelSource?: FilterLabelSource;
+  readonly labelCounts?: FilterLabelCounts;
 }
 
 interface LabeledFindingResult {
@@ -334,6 +355,8 @@ export function buildFilterReport(
   return {
     generatedAt: now().toISOString(),
     datasetVersion,
+    labelSource: options.labelSource ?? "line-overlap",
+    ...(options.labelCounts ? { labelCounts: options.labelCounts } : {}),
     sampleCount: items.length,
     findings,
     sweep,
@@ -359,12 +382,30 @@ function formatNullable(value: number | null | undefined, digits = 3): string {
   return value === null || value === undefined ? "n/a" : value.toFixed(digits);
 }
 
+/** Human name of the ground truth, used in every verdict line so no number is ever label-ambiguous. */
+function labelName(source: FilterLabelSource): string {
+  return source === "oracle"
+    ? "fix-aware oracle label (`label.oracle`, source `fix-oracle`)"
+    : "line-overlap label (`label.real`)";
+}
+
+function shortLabelName(source: FilterLabelSource): string {
+  return source === "oracle" ? "fix-aware oracle label" : "line-overlap label";
+}
+
 export function renderFilterReportMarkdown(report: FilterReport): string {
   const lines: string[] = [];
   lines.push("# Jevest phase 1a finding-filter report (H1 / H6 / H3)");
   lines.push("");
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`Dataset version: ${report.datasetVersion}`);
+  lines.push(`Ground truth: ${labelName(report.labelSource)}`);
+  if (report.labelCounts) {
+    lines.push(
+      `Label population: ${report.labelCounts.real} real, ${report.labelCounts.noise} noise, ` +
+        `${report.labelCounts.unknown} unknown (excluded from every metric below).`,
+    );
+  }
   lines.push(`Sample size: ${report.sampleCount}`);
   lines.push("");
   lines.push("| Best threshold | Precision | Recall | F1 | Noise discarded | ECE | H1 |");
@@ -373,6 +414,10 @@ export function renderFilterReportMarkdown(report: FilterReport): string {
     `| ${report.bestThreshold.toFixed(2)} | ${report.bestMetrics.precision.toFixed(3)} | ` +
       `${report.bestMetrics.recall.toFixed(3)} | ${report.bestMetrics.f1.toFixed(3)} | ` +
       `${report.bestMetrics.noiseDiscardedRate.toFixed(3)} | ${formatNullable(report.ece)} | ${report.h1.verdict} |`,
+  );
+  lines.push("");
+  lines.push(
+    `H1 (recall >= 0.95 and noise discarded >= 0.40) against the ${shortLabelName(report.labelSource)}: ${report.h1.verdict}.`,
   );
   lines.push("");
   lines.push(
@@ -389,7 +434,7 @@ export function renderFilterReportMarkdown(report: FilterReport): string {
   lines.push("## Calibration (H3)");
   lines.push("");
   lines.push(
-    `ECE of is_real_defect: ${formatNullable(report.h3.ece)} over N = ${report.h3.sampleCount} labeled findings. H3: ${report.h3.verdict}.`,
+    `ECE of is_real_defect: ${formatNullable(report.h3.ece)} over N = ${report.h3.sampleCount} findings labeled by the ${shortLabelName(report.labelSource)}. H3: ${report.h3.verdict}.`,
   );
   if (report.h3.reasons.length > 0) {
     lines.push(`H3 reasons: ${report.h3.reasons.join("; ")}`);
@@ -417,7 +462,8 @@ export function renderFilterReportMarkdown(report: FilterReport): string {
     const ratio = report.h6.costRatio === null ? "undefined" : `${report.h6.costRatio.toFixed(1)}x`;
     lines.push(
       `Judge sample: ${report.judge.sampleCount} findings (${report.judge.failures} failed). ` +
-        `Cost ratio (judge / Jev): ${ratio}. Recall gap (judge - Jev): ${report.h6.recallGap.toFixed(3)}. H6: ${report.h6.verdict}.`,
+        `Cost ratio (judge / Jev): ${ratio}. Recall gap (judge - Jev): ${report.h6.recallGap.toFixed(3)}. ` +
+        `H6 against the ${shortLabelName(report.labelSource)}: ${report.h6.verdict}.`,
     );
     if (report.h6.reasons.length > 0) {
       lines.push(`H6 reasons: ${report.h6.reasons.join("; ")}`);

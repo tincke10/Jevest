@@ -3,6 +3,7 @@ import {
   FindingRecordParseError,
   parseFindingRecordLine,
   parseFindingRecordsJsonl,
+  toOracleLabelWire,
 } from "./finding-record.js";
 
 function validFindingJson(
@@ -124,5 +125,72 @@ describe("parseFindingRecordsJsonl", () => {
 
   it("returns an empty array for empty content", () => {
     expect(parseFindingRecordsJsonl("")).toEqual([]);
+  });
+});
+
+describe("label.oracle (fix-aware oracle label, FINDINGS.md §10)", () => {
+  const ORACLE = {
+    verdict: "real",
+    source: "fix-oracle",
+    labeler_model: "deepseek-v4-pro",
+    fix_match: { verdict: "real", confidence: 0.9, reason: "the fix swaps ctx for ctx2" },
+    claim_verification: { verdict: "present", confidence: 0.8, reason: "before passes ctx" },
+  };
+
+  it("is optional: a record without it parses and has no oracle field at all", () => {
+    const record = parseFindingRecordLine(validFindingJson(), 1);
+    expect(record.label.oracle).toBeUndefined();
+  });
+
+  it("parses the three verdicts and both passes", () => {
+    for (const verdict of ["real", "noise", "unknown"]) {
+      const record = parseFindingRecordLine(
+        validFindingJson({}, { oracle: { ...ORACLE, verdict } }),
+        1,
+      );
+      expect(record.label.oracle).toEqual({
+        verdict,
+        source: "fix-oracle",
+        labelerModel: "deepseek-v4-pro",
+        fixMatch: { verdict: "real", confidence: 0.9, reason: "the fix swaps ctx for ctx2" },
+        claimVerification: { verdict: "present", confidence: 0.8, reason: "before passes ctx" },
+      });
+    }
+  });
+
+  it("keeps the line-overlap label untouched alongside it", () => {
+    const record = parseFindingRecordLine(validFindingJson({}, { oracle: ORACLE }), 1);
+    expect(record.label.real).toBe(true);
+    expect(record.label.source).toBe("line-overlap");
+  });
+
+  it("round-trips through the wire helpers", () => {
+    const parsed = parseFindingRecordLine(validFindingJson({}, { oracle: ORACLE }), 1);
+    expect(toOracleLabelWire(parsed.label.oracle as never)).toEqual(ORACLE);
+  });
+
+  it("rejects an unknown verdict rather than treating it as unknown", () => {
+    expect(() =>
+      parseFindingRecordLine(validFindingJson({}, { oracle: { ...ORACLE, verdict: "maybe" } }), 7),
+    ).toThrow(/label\.oracle\.verdict/);
+  });
+
+  it("rejects a missing pass: an oracle label without both readings is not an oracle label", () => {
+    const { fix_match: _drop, ...withoutPassA } = ORACLE;
+    expect(() => parseFindingRecordLine(validFindingJson({}, { oracle: withoutPassA }), 8)).toThrow(
+      /label\.oracle\.fix_match/,
+    );
+  });
+
+  it("rejects an out-of-range confidence", () => {
+    expect(() =>
+      parseFindingRecordLine(
+        validFindingJson(
+          {},
+          { oracle: { ...ORACLE, fix_match: { ...ORACLE.fix_match, confidence: 2 } } },
+        ),
+        9,
+      ),
+    ).toThrow(/confidence/);
   });
 });

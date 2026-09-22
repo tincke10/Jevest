@@ -8,7 +8,16 @@
  * Usage:
  *   pnpm filter [--findings <path>] [--batch-size N] [--mode live|record|replay|dry-run]
  *              [--judge none|deepseek|claude-cli|dry-run] [--judge-mode record|replay]
- *              [--judge-concurrency N]
+ *              [--judge-concurrency N] [--label line-overlap|oracle]
+ *
+ * `--label` picks the ground truth. The default, `line-overlap`, is the
+ * original heuristic (datasets/FINDINGS.md §2) and keeps every committed
+ * number reproducible. `--label oracle` scores against `label.oracle.verdict`,
+ * the fix-aware label (§10) written by `pnpm findings:label`; its `unknown`
+ * findings are excluded from H1/H3/H6 while Jev and the judge still answer for
+ * all of them, so the two label runs are directly comparable on the same
+ * fixtures at zero extra cost. A record without `label.oracle` under
+ * `--label oracle` stops the run with a message naming the labeling command.
  *
  * `--judge deepseek` (H6, SPEC FR-8.3) runs the LLM-judge baseline over
  * the same findings and scores it at Jev's best threshold; `--judge-mode
@@ -51,6 +60,8 @@ import { createTypeSafeDecisionAdapter } from "../../src/adapters/typesafe-decis
 import { generateDryRunFilterScript } from "../../src/application/filter/dry-run-filter-script.js";
 import { generateDryRunJudgeScript } from "../../src/application/filter/dry-run-judge-script.js";
 import {
+  type FilterLabelCounts,
+  type FilterLabelSource,
   buildFilterReport,
   renderFilterReportMarkdown,
 } from "../../src/application/filter/filter-report.js";
@@ -83,6 +94,7 @@ type Judge = "none" | "deepseek" | "claude-cli" | "dry-run";
 const JUDGES: readonly Judge[] = ["none", "deepseek", "claude-cli", "dry-run"];
 type JudgeMode = "record" | "replay";
 const JUDGE_MODES: readonly JudgeMode[] = ["record", "replay"];
+const LABELS: readonly FilterLabelSource[] = ["line-overlap", "oracle"];
 
 export interface CliOptions {
   readonly findingsPath: string;
@@ -91,6 +103,7 @@ export interface CliOptions {
   readonly judge: Judge;
   readonly judgeMode: JudgeMode;
   readonly judgeConcurrency: number;
+  readonly label: FilterLabelSource;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -108,6 +121,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let judge: Judge = "none";
   let judgeMode: JudgeMode = "replay";
   let judgeConcurrency = DEFAULT_JUDGE_CONCURRENCY;
+  let label: FilterLabelSource = "line-overlap";
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -155,12 +169,55 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         judgeConcurrency = value;
         break;
       }
+      case "--label": {
+        const value = requireValue(argv, ++i, "--label");
+        if (!LABELS.includes(value as FilterLabelSource)) {
+          throw new Error(`--label must be one of ${LABELS.join(", ")}, got "${value}"`);
+        }
+        label = value as FilterLabelSource;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
   }
 
-  return { findingsPath, batchSize, mode, judge, judgeMode, judgeConcurrency };
+  return { findingsPath, batchSize, mode, judge, judgeMode, judgeConcurrency, label };
+}
+
+/**
+ * Ground truth for the run, plus the full label population so the report can
+ * say what it excluded. Under `oracle`, `unknown` findings are simply not in
+ * the map: buildFilterReport skips any result without a ground-truth entry, so
+ * they never reach the sweep, the ECE or the judge scoring, while Jev and the
+ * judge still answer for every finding (their fixtures are label-independent).
+ */
+export function groundTruthFromLabel(
+  findings: readonly FindingRecord[],
+  label: FilterLabelSource,
+): { groundTruth: Record<string, boolean>; counts: FilterLabelCounts } {
+  const groundTruth: Record<string, boolean> = {};
+  const counts = { real: 0, noise: 0, unknown: 0 };
+
+  for (const finding of findings) {
+    if (label === "line-overlap") {
+      groundTruth[finding.id] = finding.label.real;
+      counts[finding.label.real ? "real" : "noise"] += 1;
+      continue;
+    }
+    const oracle = finding.label.oracle;
+    if (oracle === undefined) {
+      throw new Error(
+        `finding "${finding.id}" has no label.oracle, so --label oracle cannot score it. Run \`pnpm findings:label --findings <in> --out <out> --labeler deepseek --mode record\` first and point --findings at the output.`,
+      );
+    }
+    counts[oracle.verdict] += 1;
+    if (oracle.verdict !== "unknown") {
+      groundTruth[finding.id] = oracle.verdict === "real";
+    }
+  }
+
+  return { groundTruth, counts };
 }
 
 function buildJudge(judge: Judge, judgeMode: JudgeMode): FindingJudgePort | null {
@@ -257,11 +314,15 @@ async function main(): Promise<number> {
   const hunks = parseHunkRecordsJsonl(hunksRaw);
 
   const hunkDiffsById = new Map(hunks.map((h) => [h.id, h.diff]));
-  const realByFindingId: Record<string, boolean> = {};
-  for (const finding of findings) {
-    realByFindingId[finding.id] = finding.label.real;
-  }
+  const { groundTruth: realByFindingId, counts: labelCounts } = groundTruthFromLabel(
+    findings,
+    options.label,
+  );
   const datasetVersion = findings[0]?.datasetVersion ?? 1;
+
+  console.log(
+    `[filter] ground truth: ${options.label} (${labelCounts.real} real, ${labelCounts.noise} noise${options.label === "oracle" ? `, ${labelCounts.unknown} unknown excluded` : ""})`,
+  );
 
   const port = buildPort(mode, findings);
   const judgePort = buildJudge(options.judge, options.judgeMode);
@@ -323,6 +384,8 @@ async function main(): Promise<number> {
     realByFindingId,
     {
       datasetVersion,
+      labelSource: options.label,
+      labelCounts,
       ...(judgeRun
         ? {
             judgeRun: {

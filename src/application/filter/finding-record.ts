@@ -23,11 +23,49 @@ export interface FindingReviewer {
   readonly model: string;
 }
 
+/** The three-way verdict of the fix-aware oracle label (datasets/FINDINGS.md §10). */
+export type OracleVerdict = "real" | "noise" | "unknown";
+const ORACLE_VERDICTS: readonly OracleVerdict[] = ["real", "noise", "unknown"];
+
+export type FixMatchVerdict = "real" | "not-this" | "unclear";
+const FIX_MATCH_VERDICTS: readonly FixMatchVerdict[] = ["real", "not-this", "unclear"];
+
+export type ClaimVerificationVerdict = "present" | "absent" | "unclear";
+const CLAIM_VERIFICATION_VERDICTS: readonly ClaimVerificationVerdict[] = [
+  "present",
+  "absent",
+  "unclear",
+];
+
+/** One labeling pass, kept in the dataset so every oracle verdict can be audited. */
+export interface OraclePass<V extends string> {
+  readonly verdict: V;
+  readonly confidence: number;
+  readonly reason: string;
+}
+
+/**
+ * The fix-aware oracle label, added 2026-09-22 because the line-overlap label
+ * turned out to measure "did the reviewer point at the right lines", not "is
+ * this finding a real defect" (FINDINGS.md §9, §10). It is written ALONGSIDE
+ * `real`/`source`/`overlap_lines`/`fix_changed_lines`, never over them: the
+ * two labels disagree, and the cross-tab between them is itself a finding.
+ */
+export interface FindingOracleLabel {
+  readonly verdict: OracleVerdict;
+  readonly source: "fix-oracle";
+  readonly labelerModel: string;
+  readonly fixMatch: OraclePass<FixMatchVerdict>;
+  readonly claimVerification: OraclePass<ClaimVerificationVerdict>;
+}
+
 export interface FindingLabel {
   readonly real: boolean;
   readonly source: string;
   readonly overlapLines: number;
   readonly fixChangedLines: number;
+  /** Absent on every record written before the oracle pass ran. */
+  readonly oracle?: FindingOracleLabel;
 }
 
 export interface FindingUsage {
@@ -132,6 +170,88 @@ function expectReviewerProvider(
   return text as FindingReviewerProvider;
 }
 
+function expectEnum<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  field: string,
+  lineNumber: number,
+): T {
+  const text = expectString(value, field, lineNumber);
+  if (!allowed.includes(text as T)) {
+    throw new FindingRecordParseError(
+      lineNumber,
+      `field "${field}" must be one of ${allowed.join(", ")}, got "${text}"`,
+    );
+  }
+  return text as T;
+}
+
+function expectConfidence(value: unknown, field: string, lineNumber: number): number {
+  const num = expectNumber(value, field, lineNumber);
+  if (num < 0 || num > 1) {
+    throw new FindingRecordParseError(
+      lineNumber,
+      `field "${field}" must be a confidence between 0 and 1, got ${num}`,
+    );
+  }
+  return num;
+}
+
+function expectOraclePass<V extends string>(
+  value: unknown,
+  allowed: readonly V[],
+  field: string,
+  lineNumber: number,
+): OraclePass<V> {
+  const obj = expectObject(value, field, lineNumber);
+  return {
+    verdict: expectEnum(obj.verdict, allowed, `${field}.verdict`, lineNumber),
+    confidence: expectConfidence(obj.confidence, `${field}.confidence`, lineNumber),
+    reason: expectString(obj.reason, `${field}.reason`, lineNumber),
+  };
+}
+
+function parseOracleLabel(value: unknown, lineNumber: number): FindingOracleLabel | undefined {
+  if (value === undefined || value === null) return undefined;
+  const obj = expectObject(value, "label.oracle", lineNumber);
+  return {
+    verdict: expectEnum(obj.verdict, ORACLE_VERDICTS, "label.oracle.verdict", lineNumber),
+    source: "fix-oracle",
+    labelerModel: expectString(obj.labeler_model, "label.oracle.labeler_model", lineNumber),
+    fixMatch: expectOraclePass(
+      obj.fix_match,
+      FIX_MATCH_VERDICTS,
+      "label.oracle.fix_match",
+      lineNumber,
+    ),
+    claimVerification: expectOraclePass(
+      obj.claim_verification,
+      CLAIM_VERIFICATION_VERDICTS,
+      "label.oracle.claim_verification",
+      lineNumber,
+    ),
+  };
+}
+
+/** Serializes an oracle label back to the exact snake_case wire shape it was parsed from. */
+export function toOracleLabelWire(oracle: FindingOracleLabel): Record<string, unknown> {
+  return {
+    verdict: oracle.verdict,
+    source: oracle.source,
+    labeler_model: oracle.labelerModel,
+    fix_match: {
+      verdict: oracle.fixMatch.verdict,
+      confidence: oracle.fixMatch.confidence,
+      reason: oracle.fixMatch.reason,
+    },
+    claim_verification: {
+      verdict: oracle.claimVerification.verdict,
+      confidence: oracle.claimVerification.confidence,
+      reason: oracle.claimVerification.reason,
+    },
+  };
+}
+
 export function parseFindingRecordLine(line: string, lineNumber: number): FindingRecord {
   let raw: unknown;
   try {
@@ -144,6 +264,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
   const reviewer = expectObject(obj.reviewer, "reviewer", lineNumber);
   const label = expectObject(obj.label, "label", lineNumber);
   const usage = expectObject(obj.usage, "usage", lineNumber);
+  const oracle = parseOracleLabel(label.oracle, lineNumber);
 
   return {
     id: expectString(obj.id, "id", lineNumber),
@@ -164,6 +285,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
       source: expectString(label.source, "label.source", lineNumber),
       overlapLines: expectNumber(label.overlap_lines, "label.overlap_lines", lineNumber),
       fixChangedLines: expectNumber(label.fix_changed_lines, "label.fix_changed_lines", lineNumber),
+      ...(oracle !== undefined ? { oracle } : {}),
     },
     needsManualReview: expectBoolean(obj.needs_manual_review, "needs_manual_review", lineNumber),
     usage: {

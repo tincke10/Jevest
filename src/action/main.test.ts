@@ -378,7 +378,7 @@ describe("resolveConfig", () => {
     log.mockRestore();
   });
 
-  it("fetches config-path from the PR head sha via the API when it is not on disk", async () => {
+  it("fetches config-path from the PR BASE sha via the API when it is not on disk (never the head: a PR must not rewrite the rules that judge it)", async () => {
     const configPath = join(dir, "does-not-exist.jevest.yml");
     const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
     const vcs = makeFakeVcs(fetchRepoFileContent);
@@ -391,7 +391,7 @@ describe("resolveConfig", () => {
       owner: "tincke10",
       repo: "jevest",
       path: configPath,
-      ref: "head-sha",
+      ref: "base-sha",
     });
     expect(log).toHaveBeenCalledWith(expect.stringContaining("via the GitHub API"));
     log.mockRestore();

@@ -129,7 +129,7 @@ The install snippet above has no `actions/checkout` step, and it doesn't
 need one: `fetchPullRequest`, `.jevest.yml`, and everything else the
 pipeline reads come from the GitHub API, not from a working tree. The one
 thing that used to want a local file — `config-path` — now falls back to
-fetching it from the PR head sha via the contents API when it isn't on
+fetching it from the PR base sha via the contents API when it isn't on
 disk (`resolveConfig` in `src/action/main.ts`), so the checkout was purely
 incidental infrastructure, not a real dependency.
 
@@ -343,7 +343,7 @@ The workflow's `permissions:` block needs:
 - `checks: write` — the `jevest` check run
 - `issues: write` — labels, the summary comment and the "Jevest spend
   ledger" issue (see "Spend cap") all go through the issues API
-- `contents: read` — fetches `.jevest.yml` from the PR head sha via the
+- `contents: read` — fetches `.jevest.yml` from the PR base sha via the
   contents API when it isn't in a local checkout (see "Why no checkout"
   above); also what `actions/checkout` needs, if you add that step back
 - `statuses: read` — reads the PR head commit's combined CI status for the

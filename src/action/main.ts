@@ -369,12 +369,17 @@ export async function resolveConfig(
     }
   }
 
-  const label = `${ref.owner}/${ref.repo}@${ref.headSha}:${configPath}`;
+  // BASE sha, never head (same rule as the product context): the config
+  // holds the thresholds, provider and budget that judge the PR, so the PR
+  // itself must not be able to rewrite them. It also means a branch opened
+  // before `.jevest.yml` landed on the base branch still gets the repo's
+  // config instead of the built-in defaults.
+  const label = `${ref.owner}/${ref.repo}@${ref.baseSha}:${configPath}`;
   const remote = await vcs.fetchRepoFileContent({
     owner: ref.owner,
     repo: ref.repo,
     path: configPath,
-    ref: ref.headSha,
+    ref: ref.baseSha,
   });
   if (remote === null) {
     console.log(`jevest: config not found locally or at ${label}; using the built-in defaults`);

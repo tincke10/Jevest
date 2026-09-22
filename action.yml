@@ -14,7 +14,8 @@ inputs:
     description: >-
       Path to the pipeline config file, relative to the consumer repo's
       root: read from the checkout if present, else fetched from the PR
-      head via the API; no checkout step needed. See
+      BASE sha via the API (a PR must not rewrite the rules that judge
+      it); no checkout step needed. See
       config/jevest.example.yml for the shape.
     required: false
     default: ".jevest.yml"

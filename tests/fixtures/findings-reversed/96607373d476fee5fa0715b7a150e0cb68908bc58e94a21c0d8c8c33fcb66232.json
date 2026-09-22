@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 230,
+      "lineEnd": 239,
+      "claim": "Dropping the preserved `Content-Type` header reintroduces a bug: once any other body representation is cached, a later `formData()` call will throw because the rebuilt `Response` has no media type.",
+      "rationale": "The removed code existed specifically to carry the original `Content-Type` across the `new Response(body)` round-trip. `Response.prototype.formData()` in undici/WHATWG runtimes rejects with a TypeError (\"Could not parse content as FormData\") when the response has no `content-type` of `multipart/form-data` or `application/x-www-form-urlencoded`. So a sequence like `await c.req.text()` (or `arrayBuffer()`/`blob()`) followed by `await c.req.formData()` will now fail, even though the bytes are still available. The comment even documented this. Unless the change is paired with another mechanism for restoring the media type (none is visible in this hunk), this is a functional regression. High confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 227,
+      "lineEnd": 229,
+      "claim": "With the content-type no longer set, a cached `json` body re-serialized into a bare `Response` may also behave differently for consumers that inspect the media type (e.g. `blob()` returns a Blob with an empty `type`).",
+      "rationale": "Previously `blob()` after a cached `json()` produced a Blob whose `type` reflected `application/json`; now it will be `''`. `Response.json()` itself does not check content-type in most runtimes, so parsing still works, but any caller relying on `blob.type` or on the response media type sees a silent behavior change. Medium confidence that this matters in practice, but it is a real observable difference caused by this hunk.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1440,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1503
+  },
+  "latencyMs": 16913,
+  "nominalCostUsd": 0.05161450000000001
+}

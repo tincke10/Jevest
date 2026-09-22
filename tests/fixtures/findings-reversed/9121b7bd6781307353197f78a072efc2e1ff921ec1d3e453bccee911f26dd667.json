@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 1199,
+      "lineEnd": 1201,
+      "claim": "Dropping the `Format` type parameter from `ZodNumberFormat` erases the compile-time format information (`_zod.def.format` goes from the literal `\"safeint\"`/`\"int32\"`/... to the full `$ZodNumberFormats` union), a public API-visible type regression.",
+      "rationale": "Any consumer that relied on narrowing, e.g. `declare const s: z.ZodInt; s._zod.def.format` previously resolved to `\"safeint\"` and could be used in exhaustive switches or passed where a `$ZodNumberFormat<\"safeint\">` is expected; it now widens to the union and such code stops type-checking or silently loses narrowing. Also, `ZodNumberFormat<...>` was a generic exported type — external code writing `z.ZodNumberFormat<\"int32\">` will now fail with \"Type ... is not generic\". Additionally the hunk header shows the file lost a line above this region, suggesting the `$ZodNumberFormats` import was removed; if that identifier is still referenced elsewhere in the file the build will break. Runtime behavior is unaffected (the `format` is still set on the def), so this is type-level only. Fairly confident this is an intentional trade-off, but it is a breaking type change worth calling out.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1211,
+      "lineEnd": 1211,
+      "claim": "`ZodInt`, `ZodFloat32`, `ZodFloat64`, `ZodInt32` and `ZodUInt32` now all extend the same non-generic `ZodNumberFormat` with no extra members, making them structurally identical and mutually assignable.",
+      "rationale": "Because TypeScript is structural, `const a: z.ZodInt32 = z.uint32()` and similar mistakes will now type-check where they previously errored, and generic helpers that dispatch on these interfaces can no longer distinguish them. This silently weakens type safety for every caller of these five factories, not just `int`. Confident about the structural consequence; whether it matters depends on how strongly the library advertises these aliases.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1213,
+      "lineEnd": 1213,
+      "claim": "Removing the `as ZodInt` (and sibling) casts makes these functions depend on `core._int`'s declared return type being assignable to the local interface.",
+      "rationale": "The casts were previously needed presumably because `core._int(ZodNumberFormat, ...)` returns the class's instance type (`ZodNumberFormat`) rather than the narrowed `$ZodNumberFormat<\"safeint\">` the helper's signature may promise. If `core._int` is declared as `<T extends core.$ZodNumberFormat<\"safeint\">>(Class: util.SchemaClass<T>, ...) => T`, passing the now-unparameterized `ZodNumberFormat` constructor either fails the constraint or infers a type that no longer matches, so this may not compile. I cannot verify `core._int`'s signature from this hunk — worth confirming the package still type-checks (`tsc --noEmit`) rather than relying on the casts having been redundant.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2796,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2896
+  },
+  "latencyMs": 35039,
+  "nominalCostUsd": 0.09944449999999999
+}

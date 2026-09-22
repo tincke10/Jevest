@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 225,
+      "lineEnd": 230,
+      "claim": "Removing the `onAbort` registration drops the abort→`observer.complete()` behavior, so an aborted signal may no longer terminate the observable (and an already-aborted signal is no longer handled synchronously).",
+      "rationale": "Previously, aborting the AbortSignal completed the observer, which is what triggers teardown (and the `subscription.stop` send). With this block deleted, unless an equivalent `signal.addEventListener('abort', abort, ...)` was added elsewhere in the function (not visible in this hunk), an abort will never complete the observable: the consumer hangs, the teardown never runs, and the server-side subscription is never stopped. The `signal?.aborted` fast path is also gone, so subscribing with an already-aborted signal now starts the request instead of completing immediately. Confident this is a real behavior change unless the listener was moved above the hunk; worth verifying.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 242,
+      "lineEnd": 242,
+      "claim": "`removeEventListener('abort', abort)` references a different function than whatever was registered; if `abort` was never added as an abort listener this is a silent no-op leak.",
+      "rationale": "removeEventListener only removes a listener registered with the exact same function reference. The corresponding `addEventListener` call was deleted in this same hunk, so as written this line can only work if `abort` is registered as the 'abort' listener elsewhere in the function. If it is not, the call does nothing (harmless but misleading); if it is registered but wrapped (e.g. `() => abort()`), the listener is never removed and the signal keeps a strong reference to the closure, leaking per-subscription state on long-lived signals. Additionally, used as a listener, `abort` would be invoked with an Event argument — check that `abort`'s signature tolerates that.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1654,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1204
+  },
+  "latencyMs": 20209,
+  "nominalCostUsd": 0.05397450000000001
+}

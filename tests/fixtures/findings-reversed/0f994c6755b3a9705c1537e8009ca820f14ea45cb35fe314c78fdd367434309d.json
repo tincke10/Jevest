@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "lineStart": 428,
+      "lineEnd": 428,
+      "claim": "The effect dependency array was changed from `[subscribe]` to `[]`, so the store is never re-subscribed when `subscribe` (or `getSnapshot`) identity changes.",
+      "rationale": "`useSyncExternalStore` is specified to resubscribe when `subscribe` changes (React uses `[subscribe, getSnapshot]`). With `[]`, a component that switches to a different store instance, or whose `subscribe` closure captures new props, keeps listening to the stale store forever and silently stops receiving updates. The removed comment above the old effect shows the previous code deliberately handled the swap. High confidence this is a real regression.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 424,
+      "lineEnd": 427,
+      "claim": "The `Object.is(snapshot, getSnapshot())` re-check is now only performed when the server snapshot was used, so client-side store mutations between the initial render and the effect flush are lost.",
+      "rationale": "The new effect does `if (serverSnapshotIsUsed) setState(getSnapshot())` before subscribing. On the pure client path (`serverSnapshotIsUsed === false`) nothing re-reads the store, so any change that happens after `useState`'s lazy initializer ran but before `subscribe` was called is missed, and the component stays stale until the next unrelated store event. The old code covered this case unconditionally. Fairly confident.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 411,
+      "lineEnd": 412,
+      "claim": "The snapshot is no longer re-read on every render; the component now returns a `useState` value that only advances via the subscription callback, which can tear on renders triggered by other sources.",
+      "rationale": "Previously `getSnapshot()` was invoked each render, so any parent-triggered re-render produced a fresh, consistent snapshot. Now a re-render caused by props/other state returns the cached `state`, which may be older than the store's current value until a subscription notification arrives. This is exactly the tearing that `useSyncExternalStore` exists to prevent. Medium-high confidence depending on how Hono schedules subscription updates.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 421,
+      "lineEnd": 423,
+      "claim": "`setState(getSnapshot())` will be misinterpreted as a functional updater if the snapshot value is itself a function.",
+      "rationale": "Hono's `useState` setter, like React's, treats a function argument as `(prev) => next`. A store whose snapshot is a function (e.g. a selector or callback store) would have the function invoked with the previous snapshot instead of being stored. The old code used a `setVersion((v) => v + 1)` counter and read the snapshot during render, so it was immune. Niche but concrete edge case; the fix is `setState(() => getSnapshot())`.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 414,
+      "lineEnd": 416,
+      "claim": "The subscription callback closes over the first-render `getSnapshot`, which is never refreshed, so updates can read from a stale snapshot getter.",
+      "rationale": "Because the effect runs only once (`[]` deps), the `getSnapshot` captured in `subscribe(() => setState(getSnapshot()))` is permanently the one from the initial render. `getSnapshot` is very often an inline closure over props, so later notifications would produce values derived from stale props. Related to but distinct from the missing `subscribe` dep: even re-subscribing on `subscribe` alone would not fix it. Confident this is a latent bug.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 413,
+      "lineEnd": 413,
+      "claim": "`serverSnapshotIsUsed` is stored via `useState` with a non-lazy initializer, so `buildData[0][4] && getServerSnapshot` is evaluated on every render even though only the first value is kept.",
+      "rationale": "Functionally harmless for the boolean itself, but it means `getServerSnapshot`'s presence/absence on later renders is ignored, and the expression cost is paid each render. Worth a second look mainly because the frozen-on-mount semantics differ from the previous per-render check of `buildData[0][4]`; if a component can be rendered once on the server and then hydrated through the same hook state, the frozen value could be wrong. Low-medium confidence that this matters in practice.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3392,
+    "cacheReadInputTokens": 2996,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 39689,
+  "nominalCostUsd": 0.086308
+}

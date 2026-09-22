@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 31,
+      "lineEnd": 31,
+      "claim": "The documented default for `options.allowMethods` now advertises `'QUERY'`, which must match the actual default array in the `cors()` implementation; if the runtime default was not also updated, the docs describe behavior that does not exist.",
+      "rationale": "This hunk only touches the JSDoc block, not the code that builds the default `allowMethods`. I cannot see the implementation body in the provided context, so I cannot confirm the runtime default includes 'QUERY'. If it does not, callers reading the docs will assume preflight requests for the QUERY method are permitted by default and will hit an unexpected CORS failure. Conversely, if the implementation was updated in another hunk, adding 'QUERY' to the default `Access-Control-Allow-Methods` is a behavior change for existing callers relying on the previous narrower default and should be called out in release notes. Low-to-moderate confidence that an actual mismatch exists; flagged for verification.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1320,
+    "cacheReadInputTokens": 4096,
+    "cacheCreationInputTokens": 2802
+  },
+  "latencyMs": 16494,
+  "nominalCostUsd": 0.06308799999999999
+}

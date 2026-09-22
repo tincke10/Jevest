@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 27,
+      "lineEnd": 28,
+      "claim": "The new `@param {string} [options.realm]` doc claims the default is \"the request URL\" — this must be verified against the actual implementation (and against the sibling `jwt` middleware, whose `WWW-Authenticate` realm defaults to `ctx.req.url`). If the implementation instead defaults to an empty string or omits the parameter when unset, the documentation is misleading for callers relying on the documented fallback.",
+      "rationale": "The hunk only adds documentation; the corresponding option type and the code emitting the `WWW-Authenticate` header are not shown, so the documented default cannot be confirmed here. Moderate confidence this needs cross-checking; documentation drift on an auth-related header is easy for callers to trip over.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 28,
+      "claim": "A caller-supplied `realm` string is interpolated into the `WWW-Authenticate: Bearer realm=\"...\"` challenge; if the implementation does not escape/validate double quotes, backslashes, CR/LF or non-ASCII characters, a realm value can break out of the quoted-string or inject additional auth-param/header content.",
+      "rationale": "RFC 7235 quoted-string values require escaping of `\"` and `\\`, and header values must not contain CR/LF. Since this option is newly exposed to users, the sanitization path should be checked. Low-to-moderate confidence because the implementation is outside this hunk, but the risk is concrete if unhandled.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 28,
+      "claim": "Unlike `keys` and `jwks_uri`, `realm` is documented as only `string` rather than also accepting a `(ctx: Context) => string | Promise<string>` resolver.",
+      "rationale": "Callers commonly want a per-request/per-tenant realm; the inconsistency with the other options may be intentional, but it is worth confirming that the declared type matches the option type actually accepted, otherwise the docs and the type will disagree. Low confidence — this may simply be a deliberate API choice.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1695,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1907
+  },
+  "latencyMs": 21886,
+  "nominalCostUsd": 0.0620295
+}

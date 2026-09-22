@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 1273,
+      "lineEnd": 1275,
+      "claim": "Swapping `mayOmitUndefined` for `mayOutputUndefined` drops the invariant the deleted comment encoded (\"defaulted required outputs keep their keys even when undefined\"), so a required key whose output is undefined but whose input key was absent can now be omitted from the result object.",
+      "rationale": "The removed comment explicitly stated that defaulted required outputs must retain their key even when the value is undefined. The replacement comment states the new rule: \"included iff present on the input, else iff its output is not undefined\". For schemas like `z.number().catch(() => undefined)` or a default/transform that yields `undefined` for an absent key, the key is absent on input and the output is undefined, so under the new rule the key is dropped — a user-visible behavior change (`'a' in result` becomes false). Moderate confidence: the exact emission logic is downstream of this hunk, but the comment rewrite itself signals the semantic change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1275,
+      "lineEnd": 1275,
+      "claim": "`mayOutputUndefined` is a strictly broader predicate than `mayOmitUndefined`, so `hasConditionalKeys` will now be true for many objects that previously took the fast, non-conditional output path (e.g. any shape containing a plain `.optional()` or `z.undefined()` field).",
+      "rationale": "`hasConditionalKeys` gates the cheap object-literal construction versus per-key conditional emission. Widening the predicate is safe only if the per-key emission code uses the *same* predicate; otherwise the aggregate flag and the per-key branch disagree. Even when correct, this is a codegen/perf regression on a hot path that deserves a check. Moderate confidence — I cannot see the per-key emission site in this hunk.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1275,
+      "lineEnd": 1275,
+      "claim": "Verify `mayOutputUndefined` is actually defined/imported in this module, and that `mayOmitUndefined` is not left as an unused symbol.",
+      "rationale": "This hunk is the only call site shown. If `mayOmitUndefined` had no other callers, it becomes dead code and will fail under `noUnusedLocals`/lint; conversely if `mayOutputUndefined` does not exist here the file won't compile. Low confidence (mechanical check), but cheap to confirm.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2969,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 2657
+  },
+  "latencyMs": 37222,
+  "nominalCostUsd": 0.10080499999999999
+}

@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 153,
+      "lineEnd": 156,
+      "claim": "Dropping the `uncheckedKey.startsWith(testName)` guard lets keys belonging to *other* tests be deleted from `_uncheckedKeys`, silently hiding obsolete snapshots.",
+      "rationale": "`slice(testName.length)` is only meaningful when `testName` is a prefix of the key. Without the prefix check the slice happens at an arbitrary offset of an unrelated key, and since the regex is now unanchored, almost any key ending in ` <digits>` (i.e. every snapshot key) matches. E.g. testName=\"foo\", key=\"bar baz 1\" -> slice(3)=\" baz 1\" -> matches ` \\d+$` -> deleted. This defeats obsolete-snapshot detection entirely. High confidence this is a real regression unless there is an external guarantee (not visible here) that every unchecked key is prefixed by testName — and even then the original code asserted it explicitly.",
+      "suggestedSeverity": "critical"
+    },
+    {
+      "lineStart": 155,
+      "lineEnd": 155,
+      "claim": "Removing the `^` anchors changes `^ \\d+$|^ > ` to a substring match, so the suffix after the test name no longer has to *begin* with ` ` + digits or ` > `.",
+      "rationale": "Even assuming the prefix relationship holds, the unanchored form matches sibling/nested tests whose name merely starts with `testName`: e.g. testName=\"login\", key=\"login with 2FA 1\" -> remainder \" with 2FA 1\" contains \" 1\" at the end and matches, so another test's snapshot is marked as checked. The original anchored form deliberately excluded that case. Reasonably confident this is unintended.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 154,
+      "lineEnd": 155,
+      "claim": "`slice(testName.length)` on a key shorter than `testName` yields `\"\"`, and on a non-prefix key yields a mid-string fragment; neither case is now guarded.",
+      "rationale": "The empty-string case is harmless (no match), but the mid-string fragment case means the regex is evaluated against text that has no relationship to the snapshot key structure, producing effectively random matches. Flagging as a distinct edge case the new condition no longer handles; moderate confidence it matters in practice given long/duplicate test names.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2127,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1226
+  },
+  "latencyMs": 26025,
+  "nominalCostUsd": 0.06601950000000001
+}

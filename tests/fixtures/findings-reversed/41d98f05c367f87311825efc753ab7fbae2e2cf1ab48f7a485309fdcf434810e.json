@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 107,
+      "lineEnd": 110,
+      "claim": "Adding `QUERY` only to the `If-None-Match: *` branch leaves the two branches inconsistent: the non-`*` branch (`etagMatches`) applies to any method, so the method gate is only ever enforced for `*`.",
+      "rationale": "Per RFC 9110 §13.1.2 an `If-None-Match` that evaluates to false should yield 304 only for GET/HEAD (and now arguably QUERY, which is defined as safe/cacheable) and 412 otherwise. This middleware already ignores the method in the `etagMatches` path, and the change widens only the `*` path, so a POST/PUT with a matching concrete ETag still gets a 304 while `*` does not. Medium confidence this is intentional-but-incomplete rather than an outright bug, but worth a look while the method list is being touched.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 109,
+      "lineEnd": 109,
+      "claim": "Method is compared against hardcoded, case-sensitive literals and the \"safe/cacheable method\" list is duplicated inline rather than shared, so other method-gated logic may not have been updated for QUERY.",
+      "rationale": "`c.req.method` comes verbatim from the incoming Request, so a lowercase `query` would not match (same pre-existing limitation as GET/HEAD, so low risk). The bigger concern is that if other places (cache middleware, conditional-request helpers, body-handling for 304) also gate on `GET || HEAD`, they were not updated here, leaving QUERY handled inconsistently. Low-to-medium confidence since only this hunk is visible.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 112,
+      "lineEnd": 114,
+      "claim": "Returning a bodyless 304 for a QUERY request may not be handled by all clients/intermediaries, since QUERY carries a request body and its caching semantics are still draft-stage.",
+      "rationale": "The QUERY method spec is not yet a finalized RFC; treating it as cache-revalidatable by default changes behavior for any existing caller that sends `If-None-Match: *` with QUERY and currently receives a full 200 response. Low confidence this is a real problem, but it is a user-visible behavior change that is not gated by any option.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2893,
+    "cacheReadInputTokens": 3443,
+    "cacheCreationInputTokens": 3280
+  },
+  "latencyMs": 33321,
+  "nominalCostUsd": 0.1068665
+}

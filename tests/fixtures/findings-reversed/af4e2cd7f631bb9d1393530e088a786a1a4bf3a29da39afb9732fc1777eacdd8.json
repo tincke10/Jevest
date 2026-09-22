@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 115,
+      "lineEnd": 117,
+      "claim": "The `invalid_union` branch reads `issue.options`, a property that does not exist on Zod v4's `$ZodIssueInvalidUnion` (which carries `errors`), so this discriminator-specific branch is likely dead code and the reworded string is never emitted.",
+      "rationale": "In zod v4 the union issue shape is `{ code: 'invalid_union', errors: $ZodIssue[][] }`; discriminator value lists are reported via `invalid_value`/`values`. If `options` is never populated, the guard always fails and the function falls through to the generic \"Вуруди нодуруст\", meaning this translation fix has no observable effect. Medium confidence — worth verifying against the actual issue type and against how other locales (e.g. en.ts) format union errors; the fact that the code needs `Array.isArray` plus a truthiness guard suggests the author was unsure of the shape too.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 116,
+      "lineEnd": 116,
+      "claim": "`${o}` interpolation of union option values will render objects as `[object Object]` and lose quoting fidelity for non-string primitives.",
+      "rationale": "If `options` ever does contain non-string values (numbers, `null`, objects, symbols would even throw on implicit string conversion), the produced message is unhelpful or, for symbols, a TypeError. Using `JSON.stringify`/`util.inspect`-style formatting as other locales do would be safer. Low-to-medium confidence since it depends on the actual runtime shape of `options`.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1188,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1224
+  },
+  "latencyMs": 16141,
+  "nominalCostUsd": 0.0425245
+}

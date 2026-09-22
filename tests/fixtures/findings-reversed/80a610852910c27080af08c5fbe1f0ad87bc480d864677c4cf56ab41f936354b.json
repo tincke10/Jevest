@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 714,
+      "lineEnd": 726,
+      "claim": "The change removes all handling of `minProperties` / `maxProperties`, so those JSON Schema keywords are now silently ignored during conversion (a validation regression, not just a refactor).",
+      "rationale": "Before the change, `minProperties`/`maxProperties` were read and passed into `checkObjectGuards`, which layered a size guard on top of the object schema. After the change only `propertyNames` is handled via `checkPropertyNames`, and the two size keywords are dropped with no replacement and no TODO/warning. A schema like `{type:\"object\", minProperties: 1}` would now accept `{}`, i.e. the generated Zod schema is strictly more permissive than the input JSON Schema. Note the `array` branch in the same diff explicitly adds a TODO for unsupported keywords, which suggests dropping support is intentional elsewhere — but here it is undocumented, and if there is an \"unsupported keyword\" error/warning path in this converter, these keywords should probably route into it rather than be ignored. High confidence this is a behavior change; medium confidence it is unintended.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 720,
+      "lineEnd": 723,
+      "claim": "`{ type: \"string\", ...schema.propertyNames }` re-overrides `type` back to `undefined` when `propertyNames` has an explicit `type: undefined` key.",
+      "rationale": "The guard is `schema.propertyNames.type === undefined`, which is also true when the property exists with value `undefined` (e.g. built by spreading another object). Because the spread comes after `type: \"string\"`, the explicit `type: undefined` wins and the injected default is lost, defeating the stated purpose of the comment and yielding `z.any()` for the key schema. Pre-existing logic that was carried over, but the line is touched by this hunk. Safer: `{ ...schema.propertyNames, type: schema.propertyNames.type ?? \"string\" }`. Low-to-medium confidence this occurs in practice (requires an explicit undefined key), low risk to fix.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 726,
+      "lineEnd": 726,
+      "claim": "`checkPropertyNames` replaces `checkObjectGuards` — verify the new helper preserves the previous wrapper semantics (e.g. it must not collapse the underlying object schema's `properties`/`catchall` behavior or change the inferred output type).",
+      "rationale": "The old helper received `{ keySchema, minProperties, maxProperties }` and returned a composed schema; the new one takes only the key schema positionally. If `checkPropertyNames` is implemented with a different mechanism (e.g. `superRefine` vs a `pipe`/`check`), the resulting type inference or the ordering of key-name errors relative to value errors could differ for existing callers. I cannot see the helper definition in this hunk, so this is a flag to confirm rather than a confirmed defect; also worth confirming the import/definition of `checkPropertyNames` exists and that `checkObjectGuards` has no remaining references.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2199,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2287
+  },
+  "latencyMs": 27287,
+  "nominalCostUsd": 0.07842950000000001
+}

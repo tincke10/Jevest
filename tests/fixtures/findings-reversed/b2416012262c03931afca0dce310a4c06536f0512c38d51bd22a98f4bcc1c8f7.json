@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "`util.cached` is swapped for `util.cachedInternal`, but nothing in this hunk shows that helper exists/is exported with the same signature and return shape (`{ value: T }`).",
+      "rationale": "If `cachedInternal` is not exported from `./util` (or returns a different shape, e.g. a getter function instead of an object with `.value`), every downstream `_normalized.value` read in `$ZodObject` breaks at compile time or at runtime. I could not verify util.ts in this session, so confidence is moderate — but the rename is the entire change, so its target must be confirmed to exist and to be a drop-in replacement.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "If `cachedInternal` differs from `cached` in *when* the getter runs (eager evaluation, or caching onto instance internals) it will force `normalizeDef(def)` — and therefore the lazy `shape` getter defined just above — during construction.",
+      "rationale": "The immediately preceding code installs a lazy `shape` getter (`return newSh`). `util.cached` is fully lazy: `normalizeDef(def)` only runs on first `.value` access, which is what makes recursive/self-referencing object schemas and `z.lazy` shapes work. Any variant that evaluates earlier (or that memoizes on a shared/internal slot) would eagerly resolve the shape and can cause infinite recursion or stale normalization after `.extend()`/`catchall()` replace the shape. Worth confirming the two helpers have identical laziness semantics; moderate confidence since I could not inspect the helper.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "The `Internal` variants typically make the cached property non-enumerable; that is an observable behavior change for anything that spreads, `Object.keys`es, or `JSON.stringify`s the returned cache object.",
+      "rationale": "`util.cached` returns an object whose `value` is an ordinary enumerable accessor that gets redefined on first read. If `cachedInternal` redefines it as `enumerable: false`, any code doing `{ ..._normalized }` or structural comparison/serialization of the normalized holder silently changes result. Low-to-moderate confidence — it depends on the helper's implementation — but it is the most likely intended semantic delta and should be checked against all consumers of `_normalized`.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "Only this one call site is migrated; other `util.cached(() => normalizeDef(...))` call sites in this file (e.g. other object-like schemas) would now use different caching semantics.",
+      "rationale": "Mixed use of `cached` and `cachedInternal` for the same kind of normalized-def cache leads to inconsistent enumerability/laziness across schema types, which can surface as behavior differences between, say, object and looseObject/interface schemas. Flagging for a grep of remaining `util.cached(` usages; confidence low since the diff shows only one hunk.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3782,
+    "cacheReadInputTokens": 3402,
+    "cacheCreationInputTokens": 1544
+  },
+  "latencyMs": 50365,
+  "nominalCostUsd": 0.111711
+}

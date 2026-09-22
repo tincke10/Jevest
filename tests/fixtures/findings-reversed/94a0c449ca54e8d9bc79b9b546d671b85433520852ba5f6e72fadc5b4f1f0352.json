@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 804,
+      "lineEnd": 806,
+      "claim": "Removing the `hasFailed` check means collection/parse failures during static parsing no longer set `process.exitCode = 1`, so `vitest list`/collect runs that fail to parse test files will now exit with status 0.",
+      "rationale": "This is a user-visible behavior change: CI pipelines relying on a non-zero exit code when a test file fails to be statically parsed would now silently pass. If the intent is to move the exit-code handling to the caller, that must be verified; otherwise failures are swallowed. Confidence: moderate-high that this changes exit status for the failure path, lower on whether an equivalent check exists downstream.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 804,
+      "lineEnd": 806,
+      "claim": "Static-parse path and the `collectTests(files)` fallback path may now behave inconsistently with respect to setting the process exit code on failed modules.",
+      "rationale": "If `collectTests` (or its callers) still marks failures via `process.exitCode`, the two code paths of the same public API return the same shape but yield different exit statuses depending on `options.staticParse`, which is surprising for callers. Confidence: medium — depends on what `collectTests` does internally.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 804,
+      "lineEnd": 804,
+      "claim": "`hasFailed` may now be an unused import in this file, which can break the build under `noUnusedLocals`/lint rules.",
+      "rationale": "This was possibly the only use of `hasFailed` in core.ts; if so the import must be removed. Confidence: low-medium, since the import may still be used elsewhere in the file (I can only see this hunk).",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1254,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1063
+  },
+  "latencyMs": 15891,
+  "nominalCostUsd": 0.0425645
+}

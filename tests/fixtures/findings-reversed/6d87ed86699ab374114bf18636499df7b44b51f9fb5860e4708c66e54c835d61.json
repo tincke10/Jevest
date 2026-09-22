@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 82,
+      "lineEnd": 85,
+      "claim": "Removing the `type Unwrap as TRPCUnwrap` re-export drops a publicly reachable type from the package entrypoint, which is a breaking change for any consumer (or sibling package such as @trpc/client / @trpc/react-query / generated .d.ts files) that imports `TRPCUnwrap` from `@trpc/server`.",
+      "rationale": "Even though the export is annotated `@internal`, it was part of the emitted public type surface of `packages/server/src/@trpc/server/index.ts`. Deleting it will cause `TS2305: Module '@trpc/server' has no exported member 'TRPCUnwrap'` for downstream imports, and can also break declaration emit in other packages whose inferred types referenced this alias. I could not verify remaining references from the hunk alone, so this is a suspicion rather than a confirmed break — worth grepping for `TRPCUnwrap` across the monorepo, docs, and any API-report/`.api.md` snapshot before landing, and if it truly is going away it likely belongs in a semver-major/changeset note.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 977,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1021
+  },
+  "latencyMs": 12578,
+  "nominalCostUsd": 0.0352195
+}

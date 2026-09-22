@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 487,
+      "lineEnd": 487,
+      "claim": "Removing `input: arg1` from the `trpcSubscriptionOptions` call likely drops the user-supplied input from the actual subscription request",
+      "rationale": "The `input` is only retained inside `getQueryKeyInternal({ ... input: arg1 ... })`, which is used solely to build the cache/query key. Unless `trpcSubscriptionOptions` derives the input from `queryKey` (e.g. `queryKey[0][1].input`), the subscription will be invoked with `undefined` input while still being keyed by the input — producing a silently wrong request (and possibly an input-validation error server-side). This is a behavior change for every existing caller of `subscriptionOptions(input)`. Moderately confident this is a bug; it is only safe if `trpcSubscriptionOptions` was simultaneously changed to read the input out of `queryKey`, and even then the two sources could diverge.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 459,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1004
+  },
+  "latencyMs": 7724,
+  "nominalCostUsd": 0.022099499999999998
+}

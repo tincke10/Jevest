@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 471,
+      "lineEnd": 471,
+      "claim": "Dropping `prefix` from the `trpcMutationOptions` call changes the generated mutation key, which can break existing callers that match mutation keys (e.g. `useIsMutating`, `queryClient.getMutationCache().find(...)`, or `trpc.x.y.mutationKey()`).",
+      "rationale": "In this package `prefix` is used to namespace the generated TanStack keys (that is why every sibling builder in the same proxy still passes it). Removing it here means mutation keys produced through the proxy no longer carry the prefix, while keys produced elsewhere (and any helper such as `getMutationKeyInternal`/`mutationKey()` that still applies the prefix) do. Two proxies created with different prefixes over the same router would then produce colliding mutation keys, and any existing key-based filtering/matching silently stops matching. Fairly confident this is a real behavior change unless `prefix` was already unused inside `trpcMutationOptions`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 468,
+      "lineEnd": 474,
+      "claim": "If the `prefix` property is still declared (and non-optional) in the options type accepted by `trpcMutationOptions`, removing it here is a type error.",
+      "rationale": "The diff only changes the call site; it does not touch the callee's parameter type. If `trpcMutationOptions`'s argument interface still requires `prefix`, this fails to compile. If it was made optional/removed in a companion change, this is fine — but the leftover `prefix` variable in the enclosing scope should then be checked for becoming unused/mis-scoped. Medium confidence; depends on a file not shown in this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 467,
+      "lineEnd": 476,
+      "claim": "Inconsistent prefix handling between mutations and queries can break override/invalidation logic that assumes all keys share the same prefix root.",
+      "rationale": "`opts.overrides?.mutations` and any caller that walks the cache by prefix root now see mutation entries at a different key root than query entries. Even if the intent was to stop prefixing mutations, this is an observable cross-cutting behavior change that deserves a test and a changeset note. Moderate confidence.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1544,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1010
+  },
+  "latencyMs": 19802,
+  "nominalCostUsd": 0.04928450000000001
+}

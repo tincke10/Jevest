@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 1638,
+      "lineEnd": 1639,
+      "claim": "Replacing `util.mergeDefs` with an object spread re-introduces eager evaluation of the object def's lazy `shape` getter (and drops any non-enumerable/accessor descriptors on the def). This is exactly what the removed comment warned about, and the same regression applies to `passthrough`/`loose`/`strict`/`strip` immediately below.",
+      "rationale": "In Zod v4 `ZodObject`'s def `shape` is commonly installed as a lazy getter (e.g. when the shape is supplied as a thunk or participates in a recursive/self-referential schema). `{ ...this._zod.def }` invokes every enumerable getter, so calling `.catchall()`/`.strict()`/`.passthrough()` now forces the whole shape subtree to be materialized at call time — a perf regression and, for mutually recursive schemas, a possible infinite recursion/stack overflow. It also converts the getter into a snapshot value, so later resolution of the lazy shape is no longer reflected in the cloned schema. Worse, if `shape` is defined as a non-enumerable property, the spread drops it entirely and the clone ends up with `def.shape === undefined`. `mergeDefs` exists specifically to copy descriptors without triggering them; the explicit comment on the removed line strongly suggests this was a deliberate prior fix being undone. Confidence: high that this is a real behavioral regression, moderate on which failure mode (perf vs. recursion) bites first.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1651,
+      "lineEnd": 1651,
+      "claim": "`strip()` now spreads an explicit `catchall: undefined` onto the def instead of going through `mergeDefs`, which may leave an own `catchall` key present rather than removing it.",
+      "rationale": "`util.mergeDefs` typically skips/deletes keys whose value is `undefined`, whereas the spread form always creates an own `catchall` property with value `undefined`. Any consumer that uses `\"catchall\" in def`, `Object.keys(def)`, JSON serialization of the def, or descriptor-based cloning will now see a difference (e.g. `strip()` output no longer structurally equal to a freshly constructed strip object). Most internal checks are truthiness-based so this may be benign, but it is a real shape change worth confirming. Confidence: moderate, depends on `mergeDefs`' undefined handling.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2045,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1687
+  },
+  "latencyMs": 24125,
+  "nominalCostUsd": 0.0685795
+}

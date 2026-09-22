@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 80,
+      "lineEnd": 81,
+      "claim": "Removing the subset-equality tester filter lets subset semantics leak into asymmetric matchers, changing nested matching behavior",
+      "rationale": "The removed filter existed specifically so that `subsetEquality`-style custom testers are not forwarded into `asymmetricMatch`. Asymmetric matchers such as `objectContaining`/`arrayContaining` implement their own subset semantics and then call `equals` recursively for the *values*; if a subset tester is still in the tester list, nested plain objects/arrays inside the expectation will also be compared subset-wise (e.g. `expect({a:{b:1,c:2}}).toEqual(expect.objectContaining({a:{b:1}}))` would start passing). This is a real behavior change for existing callers, and the comment removed alongside the code documented exactly that intent. Confidence: fairly high that this is the regression, though it may be intentional if jest parity is the goal.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "`isSubsetEqualityTester` import/helper may now be unused, breaking the build under noUnusedLocals/lint",
+      "rationale": "This was likely the only usage of `isSubsetEqualityTester` in the file. If it is an import (or a local helper) and no other call site remains, TypeScript with `noUnusedLocals` or the lint config will flag/fail it. Worth verifying and removing the now-dead import/definition. Confidence: medium, depends on other usages in the file.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 84,
+      "lineEnd": 84,
+      "claim": "Passing the full `customTesters` array to `a.asymmetricMatch` may also forward testers the matcher isn't expected to honor",
+      "rationale": "Beyond the subset tester, any user-registered custom tester is now handed to third-party/user-defined asymmetric matchers whose `asymmetricMatch(other, customTesters)` signature may not be prepared to receive an unfiltered list (and may forward it to `equals` unconditionally). Previously the list was sanitized. Low-to-medium confidence that this matters in practice, but it is the same call path as the main regression and worth a second look.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1222,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1374
+  },
+  "latencyMs": 15185,
+  "nominalCostUsd": 0.0448745
+}

@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 5,
+      "lineEnd": 8,
+      "claim": "`@default true` for `staticParse` may not match the actual resolved default, and dropping `@experimental` implies an API stability guarantee",
+      "rationale": "Documentation-only change, so no runtime effect, but the claim should be verified against where `staticParse` is resolved (config resolution / CLI defaults). If the effective default is `false`, or only `true` in certain modes (e.g. list/`--filesOnly`), this JSDoc misleads consumers and generated docs. Removing `@experimental` also signals semver stability, which should be intentional. Low confidence, since the resolution code is not visible in this hunk.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 9,
+      "lineEnd": 13,
+      "claim": "`@default os.availableParallelism()` documents a Node API unavailable on older Node versions and may not reflect the real fallback",
+      "rationale": "`os.availableParallelism()` exists only in Node 18.14/19.4+. If the implementation actually uses something like `os.availableParallelism?.() ?? os.cpus().length`, or clamps the value, this documented default is inaccurate. Worth confirming the runtime default matches and that the call is guarded for the minimum supported Node version. Doc-only here, so no direct behavioral impact; moderate confidence this is a doc imprecision.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1525,
+    "cacheReadInputTokens": 3394,
+    "cacheCreationInputTokens": 2181
+  },
+  "latencyMs": 20926,
+  "nominalCostUsd": 0.061652
+}

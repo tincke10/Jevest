@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 656,
+      "lineEnd": 657,
+      "claim": "Dropping the `mockPrototype !== parent` clause removes a self-reference guard, so `Object.setPrototypeOf(mockPrototype, mockPrototype)` can now be attempted and throw a `TypeError: Cyclic __proto__ value`.",
+      "rationale": "The two clauses guarded different things. `Object.getPrototypeOf(mockPrototype) !== parent` only checks that the parent isn't already installed; it is still true when `parent === mockPrototype` (a prototype is never its own direct prototype), so with the first clause gone the code proceeds to `Object.setPrototypeOf(mockPrototype, mockPrototype)`, which the spec rejects as a cyclic prototype chain and throws. `parent` comes from `implementation.prototype`, so this is reachable whenever the implementation's `prototype` is the mock's own prototype object — e.g. self-referential wiring like `spy.mockImplementation(spy)`, re-applying a mock as its own implementation, or an implementation function that was assigned `fn.prototype = mockPrototype` (including by a previous reparenting pass). Previously such cases were silently no-ops; now they throw from inside mock setup. Confidence is moderate: I can't rule out that callers never produce `implementation.prototype === mockPrototype`, but if that were guaranteed the original clause would have been dead code, which suggests it was added deliberately. Recommend keeping the `mockPrototype !== parent` check (or wrapping the assignment defensively).",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1539,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1222
+  },
+  "latencyMs": 20265,
+  "nominalCostUsd": 0.051279500000000006
+}

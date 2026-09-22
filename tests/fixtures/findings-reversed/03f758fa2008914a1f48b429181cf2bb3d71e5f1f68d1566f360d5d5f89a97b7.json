@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 19,
+      "lineEnd": 20,
+      "claim": "`Accept-Query` is added only to the `RequestHeader` type union; if the module has a parallel runtime list (e.g. an exported `const requestHeaders = [...] as const`, a validation Set, or a matching `ResponseHeader` union), those will now be out of sync with the type.",
+      "rationale": "Only this one hunk is shown, so I cannot verify whether a runtime array or a sibling union exists in the same file. Hand-maintained header lists in TS very often have both a type union and a runtime `as const` array (or a separate ResponseHeader union), and adding to one without the other silently breaks lookups/validation at runtime while type-checking passes. Worth confirming the rest of headers.ts. Low-to-moderate confidence since the file content outside the hunk is unknown.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 19,
+      "lineEnd": 20,
+      "claim": "`Accept-Query` (RFC 9727) is defined as a *response* header advertising the query formats a resource accepts for the QUERY method, not a request header, so listing it under `RequestHeader` may be semantically wrong.",
+      "rationale": "Per RFC 9727, `Accept-Query` is sent by the server in a response (typically to OPTIONS) to indicate supported QUERY content types. The surrounding union does already mix in response-only names such as `Accept-Patch`, `Accept-Post`, `Accept-Ranges`, and `Access-Control-Allow-Credentials`, so this file may intentionally be a combined list — in which case this is a non-issue. Flagging so the author can confirm the union's intended semantics; moderate confidence about the RFC, low confidence that it matters here.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1088,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1074
+  },
+  "latencyMs": 14436,
+  "nominalCostUsd": 0.038524499999999996
+}

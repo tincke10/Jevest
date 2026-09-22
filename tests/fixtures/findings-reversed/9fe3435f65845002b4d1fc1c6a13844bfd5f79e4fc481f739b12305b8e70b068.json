@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 172,
+      "lineEnd": 179,
+      "claim": "Removing this branch means that when a user configures only `toNotFake` (leaving `toFake` undefined), `nextTick` and `queueMicrotask` are now faked, since `@sinonjs/fake-timers` fakes every supported method by default and only `toNotFake` is excluded.",
+      "rationale": "The first branch only sets the safe default when BOTH options are undefined. Previously the deleted `else if` preserved the same \"don't mock Node internals\" guarantee for users who passed `toNotFake`. After this change, `fakeTimers: { toNotFake: ['setTimeout'] }` silently starts mocking `process.nextTick`/`queueMicrotask`, which is exactly what the surrounding comment warns against and can deadlock/​break Vitest's own async internals. This is a real behavior change for existing callers; if intentional it deserves a changelog/docs note, otherwise it is a regression. Fairly confident about the mechanism (it follows directly from sinon's default-fake-everything semantics), less sure whether it was deliberate.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 180,
+      "lineEnd": 182,
+      "claim": "The child-process guard only re-adds `nextTick` and only when `toNotFake` is already truthy, so with the previous branch gone the child-process path can still end up faking `queueMicrotask` (and faking `nextTick` when the user passes only `toFake`).",
+      "rationale": "`toNotFake && !toNotFake.includes('nextTick')` is a no-op when `toNotFake` is undefined, and it never protects `queueMicrotask`. Before the change the deleted branch covered `queueMicrotask` for the `toNotFake`-only case; now that safety net is gone in child processes too. Worth double-checking whether this guard should be broadened to `toNotFake = [...(toNotFake ?? []), 'nextTick', 'queueMicrotask']`. Moderate confidence — part of this (the `toFake`-only case) is pre-existing, but the change widens the exposure.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1618,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1462
+  },
+  "latencyMs": 19620,
+  "nominalCostUsd": 0.0556545
+}

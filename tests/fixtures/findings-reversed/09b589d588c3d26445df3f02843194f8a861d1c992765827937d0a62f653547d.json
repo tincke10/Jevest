@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 117,
+      "lineEnd": 120,
+      "claim": "Removing the `jwt?` member drops typed support for API Gateway HTTP API (payload v2) JWT authorizers, a breaking change for any caller reading `requestContext.authorizer.jwt.claims` / `.scopes`.",
+      "rationale": "The runtime event from API Gateway still contains `authorizer.jwt` when a JWT authorizer is configured; only the type declaration is being deleted. Existing user code (and any internal helper that reads JWT claims) will now fail to compile or be forced into `as any` casts, and there is no replacement member or index signature added in this hunk. Unless the property was moved to a v2-specific interface elsewhere in the file (which this hunk does not show), this is a functional regression for JWT-authorizer users. Fairly confident this deserves a second look; severity depends on whether a replacement exists outside the hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 121,
+      "lineEnd": 125,
+      "claim": "Removing `lambda?: Record<string, unknown> | null` removes the only typed path to a REQUEST (Lambda) authorizer's context object for payload format 2.0, so authorizer context becomes inaccessible without casts.",
+      "rationale": "In payload format 2.0 a Lambda authorizer's returned `context` is nested under `requestContext.authorizer.lambda` (and can legitimately be `null`). With the member gone, callers that relied on `authorizer.lambda` — the documented way to read custom authorizer data — lose type-checked access, and code doing `authorizer.lambda?.userId` will error. The deleted doc comment explicitly described the `null` case, suggesting this was intentional, well-understood behavior that consumers depend on. Moderately confident this is an unintended breaking removal rather than a cleanup of a duplicate declaration.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1547,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1179
+  },
+  "latencyMs": 21174,
+  "nominalCostUsd": 0.0510495
+}

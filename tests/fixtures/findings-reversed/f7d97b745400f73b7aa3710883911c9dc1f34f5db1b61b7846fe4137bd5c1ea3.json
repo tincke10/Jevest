@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "Removing `_properties as properties` deletes a public named export, a breaking change for any consumer importing `properties` from this module.",
+      "rationale": "This file is part of zod's published `v4/classic` surface; dropping a named export silently breaks `import { properties }` / `z.properties(...)` callers. The adjacent singular `property` is kept, so this looks like an unintentional deletion rather than a deliberate API redesign, and no replacement export is added in the hunk. Fairly confident this is at least worth confirming against a changelog/deprecation plan.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "`_properties` may now be an unused import (or dead code in core/checks.ts) after losing its only re-export.",
+      "rationale": "If this block is `export { ... }` over symbols imported at the top of the file rather than an `export ... from` re-export, `_properties` becomes unused and would fail `noUnusedLocals`/lint; likewise the underlying `_properties` implementation may become unreachable. Low-to-moderate confidence since the import lines aren't shown in the hunk.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "Downstream re-exports (external.ts, the `mini` variant) may still reference `properties`, causing a compile error or classic/mini API asymmetry.",
+      "rationale": "zod mirrors its check exports across `classic` and `mini` and aggregates them in `external.ts`; removing the export from only one place typically breaks the aggregate re-export or leaves the two entrypoints inconsistent. Moderate confidence, contingent on the rest of the repo which isn't visible in this hunk.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1642,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1023
+  },
+  "latencyMs": 19640,
+  "nominalCostUsd": 0.05186450000000001
+}

@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "The help text now advertises a `--server-url` flag, but this hunk shows no corresponding entry in the `nodeParseArgs` options config; if the option isn't registered, `parseArgs` (strict by default) will throw `ERR_PARSE_ARGS_UNKNOWN_OPTION` when a user passes the documented flag.",
+      "rationale": "Doc/implementation drift is a real behavior risk: `node:util` `parseArgs` defaults to `strict: true`, so an undeclared long option causes a hard throw rather than being ignored. I cannot see the options object in this hunk, so this is low-to-moderate confidence — it should be verified that `'server-url': { type: 'string' }` was added alongside this doc line and threaded into the generated `servers` array. Note also that, unlike every other documented flag, no `(default: ...)` is stated, which suggests the omitted case (no `servers` key vs. a default URL) may not have been decided.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1340,
+    "cacheReadInputTokens": 3466,
+    "cacheCreationInputTokens": 2279
+  },
+  "latencyMs": 17342,
+  "nominalCostUsd": 0.05804299999999999
+}

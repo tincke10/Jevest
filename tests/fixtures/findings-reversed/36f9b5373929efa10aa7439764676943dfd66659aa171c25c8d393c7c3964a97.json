@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 1,
+      "lineEnd": 3,
+      "claim": "Removing `export` from `LABEL_REG_EXP_STR`, `ONLY_WILDCARD_REG_EXP_STR`, and `TAIL_WILDCARD_REG_EXP_STR` is a breaking change for any other module (e.g. `trie.ts`, `router.ts`, tests) or external consumer that imports them from this file.",
+      "rationale": "These were previously part of the module's public surface. Sibling modules in a reg-exp router commonly reuse these regex fragments (for example when building trie/ regexp sources), and tests frequently assert against them. If any such import exists, the build will fail with TS2459/TS2305; if only external consumers rely on them, this is a silent semver-breaking API removal. I could not verify importers from the shown hunk alone, so confidence is moderate — worth a repo-wide grep for these identifiers before merging.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 3,
+      "claim": "If any of these now-local constants is not actually referenced elsewhere in this file, it becomes an unused local and will fail compilation under `noUnusedLocals` / lint rules.",
+      "rationale": "Previously the `export` kept them 'used' regardless of local references. After de-exporting, each constant must be referenced within `node.ts` or it triggers TS6133 (with `noUnusedLocals`) or an ESLint no-unused-vars error. Unverified from this hunk — depends on the rest of the file and tsconfig — but it is a common fallout of exactly this kind of change.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1102,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1142
+  },
+  "latencyMs": 14308,
+  "nominalCostUsd": 0.03955449999999999
+}

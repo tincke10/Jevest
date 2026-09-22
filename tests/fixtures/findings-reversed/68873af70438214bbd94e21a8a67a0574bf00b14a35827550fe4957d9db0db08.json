@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 90,
+      "lineEnd": 90,
+      "claim": "Removing the HTTP method restriction makes the middleware generate ETags and honor `If-None-Match` for unsafe methods (POST/PUT/PATCH/DELETE), which can turn a mutating request's response into a `304 Not Modified`.",
+      "rationale": "Previously only GET/HEAD/QUERY reached the ETag logic. With the guard gone, a client that sends `If-None-Match` on a POST whose response body hashes to the same ETag gets a 304 with the body stripped, losing the mutation result. RFC 7232 also says `If-None-Match` on methods other than GET/HEAD should yield 412, not 304. Fairly confident this is a real regression unless a replacement guard exists further down the function (not visible in this hunk).",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 91,
+      "lineEnd": 91,
+      "claim": "Removing `!c.res.ok` means error responses (4xx/5xx) and bodyless responses (204/205/304) now get ETags computed and can be converted to 304.",
+      "rationale": "An error body will now be hashed and an ETag attached; a client repeating the request with that `If-None-Match` receives a 304, which callers interpret as 'unchanged cached success' rather than a repeated error, silently swallowing error semantics. A response that is already 304/204 has no body, so hashing yields an ETag for empty content and may conflict with upstream cache headers. High confidence an explicit status check is still needed.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 96,
+      "lineEnd": 97,
+      "claim": "With both guards gone, every response — including streaming/SSE and very large bodies — now flows into ETag generation, which must buffer the body to hash it.",
+      "rationale": "ETag generation requires consuming the response body (typically via clone().arrayBuffer() downstream). Previously non-GET and non-ok responses short-circuited; now streamed responses (e.g. SSE from a POST endpoint) and large downloads would be fully buffered, breaking streaming and increasing memory use. Medium confidence — depends on how the code below handles bodyless/stream responses, which isn't shown in this hunk.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2415,
+    "cacheReadInputTokens": 3456,
+    "cacheCreationInputTokens": 2868
+  },
+  "latencyMs": 27075,
+  "nominalCostUsd": 0.090803
+}

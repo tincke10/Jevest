@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 51,
+      "lineEnd": 66,
+      "claim": "Removing the exported `BrowserTraceEntryKind` and `MarkOptions` types from the public `vitest/browser` entrypoint is a breaking change for downstream consumers that import them.",
+      "rationale": "This file lives under `src/public/`, i.e. a published entrypoint, so `export type BrowserTraceEntryKind` and `export interface MarkOptions` are part of the package's public type surface. Deleting them without a deprecation or a re-export from another module makes `import type { MarkOptions } from 'vitest/browser'` fail to compile for existing users. If the types were intentionally moved (e.g. to `@vitest/browser/context`), a re-export should stay here. Moderate confidence since I cannot see the rest of the tree, but the risk is concrete.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 53,
+      "lineEnd": 65,
+      "claim": "`MarkOptions` (with its `stack` and `kind` fields) likely typed a public `mark()` API; deleting it may leave dangling references or silently drop support for forwarding a caller stack / marker kind.",
+      "rationale": "The doc comments describe runtime behavior (\"stack string used to resolve marker location\", \"marker kind used to categorize the marker in the trace viewer\"), which strongly implies a `mark(name, options?: MarkOptions)` signature consumes this type somewhere. If that declaration still exists, this deletion breaks the type build; if the signature was changed elsewhere in the PR, the `stack` forwarding for wrapper libraries and the `kind` categorization are behavioral regressions for callers. Verify all references to `MarkOptions`/`BrowserTraceEntryKind` across the repo before merging.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2328,
+    "cacheReadInputTokens": 3624,
+    "cacheCreationInputTokens": 3343
+  },
+  "latencyMs": 26284,
+  "nominalCostUsd": 0.093462
+}

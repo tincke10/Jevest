@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 28,
+      "lineEnd": 29,
+      "claim": "New required `title: string` member added to `JobSummaryOptions` — every place that constructs a full `JobSummaryOptions` value (the defaults/merge object) must now supply a default, otherwise `title` is `undefined` at runtime despite its non-optional type.",
+      "rationale": "The public option is `Partial<JobSummaryOptions>`, so users may omit `title`. The documented `@default 'Vitest Test Report'` only takes effect if the reporter actually merges a default in. If the resolution code does something like `{ ...defaults, ...options.jobSummary }` where `defaults` is typed loosely (or is cast), a missing default would silently yield `undefined` and render an empty/`undefined` heading in the job summary. Cannot verify from this hunk alone; medium confidence that the default wiring needs checking.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 28,
+      "lineEnd": 28,
+      "claim": "User-supplied `title` is interpolated into GitHub job-summary Markdown without any stated escaping/sanitization constraints.",
+      "rationale": "A title containing newlines, `#`, backticks or HTML could break out of the intended heading and corrupt the rest of the generated summary. Worth confirming the render site escapes or at least strips newlines. Low-to-medium confidence since the render code is not shown here.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1018,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 998
+  },
+  "latencyMs": 13149,
+  "nominalCostUsd": 0.0360145
+}

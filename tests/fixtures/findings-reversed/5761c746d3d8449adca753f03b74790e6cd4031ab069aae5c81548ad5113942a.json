@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 4,
+      "lineEnd": 4,
+      "claim": "New namespace import `* as regexes` from `../core/regexes.js` — verify it is actually used in this file and that it does not introduce a circular import or defeat tree-shaking.",
+      "rationale": "The hunk only shows the import addition, so I cannot confirm usage. A namespace import pulls in the whole module (all regex definitions) rather than just the needed symbols, which can hurt tree-shaking in a library like zod; and `core/regexes.js` being pulled in from `classic/schemas.ts` could create a cycle if regexes (or its transitive deps) reference back into classic. Low confidence without the rest of the file, but worth a second look.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 507,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1182
+  },
+  "latencyMs": 7605,
+  "nominalCostUsd": 0.025079499999999998
+}

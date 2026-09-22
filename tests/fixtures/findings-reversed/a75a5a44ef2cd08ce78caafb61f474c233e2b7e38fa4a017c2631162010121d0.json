@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 52,
+      "lineEnd": 53,
+      "claim": "Replacing the denylist `ENVIRONMENTS_WITHOUT_VM_UPSIDE` ('node', 'edge-runtime') with the allowlist `DOM_ENVIRONMENTS` ('jsdom', 'happy-dom') inverts the default for every environment name that is not explicitly listed, silently dropping custom environments from the VM-candidate set.",
+      "rationale": "The deleted comment explicitly documented the old intent (\"custom environments are measured too: the run fails if they lack setupVM\"). With an allowlist, any custom/third-party environment (e.g. `vitest-environment-foo`, a forked jsdom env, or the resolved package name form) now falls outside the set and will be treated as a non-DOM environment, so the VM candidate is no longer offered even when the environment does implement `setupVM`. Unless the call site was deliberately re-written to preserve behaviour for custom envs, this is a user-visible behaviour change for a whole class of configs. I can't see the consumer in this hunk, so confidence is moderate, but the semantics of the two sets are not equivalent.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 53,
+      "lineEnd": 53,
+      "claim": "The new set matches environment names by exact string, so aliases/variants of the supported DOM environments ('jsdom'/'happy-dom' referenced via package name, different casing, or per-file `environmentMatchGlobs`/`// @vitest-environment` overrides) will not be recognised as DOM environments.",
+      "rationale": "The previous denylist was tolerant of unknown spellings (anything not 'node'/'edge-runtime' was measured), so exact-match misses were harmless. With an allowlist an exact-match miss now changes the produced candidate list. Worth confirming the value being tested is the normalised environment name and that per-file environment overrides are accounted for. Lower confidence since normalisation may happen upstream.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1491,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1186
+  },
+  "latencyMs": 19187,
+  "nominalCostUsd": 0.0497195
+}

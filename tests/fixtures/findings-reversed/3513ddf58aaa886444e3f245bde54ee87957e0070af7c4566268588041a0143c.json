@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 8,
+      "lineEnd": 8,
+      "claim": "`CONFIG_NAMES` is no longer exported, which breaks any importer of this symbol (including the public `vitest/node` surface if it re-exports it)",
+      "rationale": "`constants.ts` is a shared module in the vitest package and `CONFIG_NAMES` was part of its exported surface. Other modules (e.g. config-file resolution in `vitest/node`, the CLI, or `@vitest/ui`) commonly import it, and it may be re-exported from a public entry point. Dropping `export` turns those into compile errors and is a semver-major API removal for downstream consumers. I could not grep the repo from here, so I'm moderately confident rather than certain — worth verifying with a repo-wide search for `CONFIG_NAMES` and checking the package's public exports before landing.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "`CONFIG_EXTENSIONS` is no longer exported; consumers relying on the list of supported config extensions will fail to resolve the import",
+      "rationale": "Same class of concern as `CONFIG_NAMES` but a distinct symbol/location. `CONFIG_EXTENSIONS` is especially likely to be consumed elsewhere (workspace/project config resolution, watcher glob construction, tests asserting supported extensions), since the remaining `configFiles` export only exposes pre-joined name+ext combinations and not the extension list on its own — so there is now no replacement export for that use. Medium confidence without a repo-wide grep.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1955,
+    "cacheReadInputTokens": 3585,
+    "cacheCreationInputTokens": 3010
+  },
+  "latencyMs": 22880,
+  "nominalCostUsd": 0.0807875
+}

@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 154,
+      "lineEnd": 154,
+      "claim": "Renaming the call from `ctx.experimental_clearCache()` to `ctx.clearCache()` will throw `TypeError: ctx.clearCache is not a function` unless the `Vitest` class method was renamed/added in the same change, and dropping the `experimental_` name is a breaking change for external callers of the public API.",
+      "rationale": "This hunk only changes the call site. Two things need verification: (1) that `Vitest` actually exposes a `clearCache` method now (and that it isn't shadowing/colliding with some other existing cache-clearing member with different semantics, e.g. one that clears the module/Vite cache rather than the on-disk results cache) — if the class still only defines `experimental_clearCache`, TypeScript would normally catch this, but if the class has an index signature or the call goes through a loosely typed context it would only fail at runtime; (2) `experimental_clearCache` was a documented public method, so if it was removed rather than kept as a deprecated alias, downstream programmatic users break without a deprecation cycle. Medium confidence — I cannot see the `Vitest` class definition in this hunk to confirm either point.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1070,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1042
+  },
+  "latencyMs": 14689,
+  "nominalCostUsd": 0.037754499999999996
+}

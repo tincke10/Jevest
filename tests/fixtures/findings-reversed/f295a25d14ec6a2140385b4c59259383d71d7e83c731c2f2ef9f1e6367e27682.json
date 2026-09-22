@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "The new constraint makes every shape entry optional (`?:`), so `Shape`'s value type is `core.$ZodType<...> | undefined`, which most likely no longer satisfies the `core.$ZodShape` constraint required by `core.$InferObjectInput<Shape, {}>` on the return type.",
+      "rationale": "`$ZodShape` is normally `Record<string, $ZodType>`; a type parameter whose constraint has optional (hence possibly-`undefined`) members does not satisfy it, so line 2847 can fail to compile (`Type 'Shape' does not satisfy the constraint '$ZodShape'`). It also permits `properties({})` and `properties({ x: undefined })` at the call site. I could not compile it here, so medium confidence, but this is the most likely breakage of the change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2843,
+      "lineEnd": 2844,
+      "claim": "With the default `T = unknown` (which is what the exported `ZodInstanceOf` const and any un-parameterized usage resolve to), `keyof T` is `never`, so `Shape` degenerates to `{}` and no shape validation whatsoever is performed — any value, including non-schema junk, is accepted.",
+      "rationale": "`{ [k in never as ...]?: ... }` is `{}`, and `{}` accepts any non-nullish value. The previous `core.$ZodShape` constraint at least required the values to be schemas. So for the common `z.instanceof(Foo)` path where `T` isn't statically known, the change is a strict loss of type safety rather than a gain. High confidence on the `keyof unknown = never` mechanics.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2847,
+      "lineEnd": 2847,
+      "claim": "Because shape keys are now restricted to `keyof T` and each value's input is pinned to `T[k]`, `T & core.$InferObjectInput<Shape, {}>` collapses to (approximately) `T`; the method can no longer augment the instance type with properties that are not already declared on `T`.",
+      "rationale": "The whole point of returning an intersection is to add refined/extra property types to an otherwise opaque instance type. Callers that previously did `z.instanceof(Element).properties({ dataset: ... })` or added ad-hoc/dynamic properties not present in the declared type will now get a compile error and lose the narrowing. This is a behavior/API break for existing users.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "The `T[k] extends Function ? never : k` key remap excludes *all* function-valued properties, not just prototype methods, so legitimate function-typed data properties (callbacks, handlers, `onX` fields) can no longer be validated via `properties`.",
+      "rationale": "Type-level there is no way to distinguish an inherited prototype method from a declared function-typed field; this filter throws out both. The accompanying comment's stated motivation (`Object.prototype.toString` colliding) is also dubious, since an object literal shape without a declared `toString` member satisfies an optional `toString?: ...` constraint just fine. Medium-high confidence that this over-filters.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "Pinning the value type to `core.$ZodType<unknown, T[k]>` constrains the schema's *input* to exactly `T[k]`, which will reject common schemas whose input is wider or narrower than the declared property type (e.g. coercing schemas with `unknown`/`string` input, or a `z.literal(\"a\")` for a `string` property if the `Input` parameter is invariant).",
+      "rationale": "Whether this bites depends on the declared variance of `$ZodType`'s second parameter in core; if it is invariant (the common case when it appears in both positions of the internals), any schema whose input is not identical to `T[k]` errors. Also, readonly and optional-property nuances (`T[k]` including `undefined`) are not handled. Moderate confidence — worth verifying against real call sites/tests.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 4661,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1416
+  },
+  "latencyMs": 56367,
+  "nominalCostUsd": 0.1312695
+}

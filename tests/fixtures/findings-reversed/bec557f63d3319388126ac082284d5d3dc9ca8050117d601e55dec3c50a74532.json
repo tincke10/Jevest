@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 28,
+      "lineEnd": 29,
+      "claim": "`INVALID` is newly re-exported from `../core/index.js`; if that module does not actually export a value named `INVALID` (it is commonly an internal parse sentinel living in a non-index module such as `core/parse.ts`/`core/util.ts`), this is a compile error, and if it does exist it leaks an internal sentinel into the public `z.*` surface.",
+      "rationale": "I cannot see core/index.ts in this hunk, so I can't confirm the symbol is exported there. Two concrete risks: (a) TS2305 'has no exported member INVALID' at build time, (b) a deliberate-looking but surprising public API addition — `INVALID` is an internal failure sentinel whose identity/semantics users could start depending on, making it hard to change later. Worth verifying the re-export chain and whether this should be namespaced under `core`/`util` instead of top-level. Medium confidence on (a), high confidence that (b) deserves a second look.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 30,
+      "lineEnd": 31,
+      "claim": "`withParser` is newly re-exported at the top level; verify it exists in `../core/index.js` and that no other `export *` in this file (e.g. from `./schemas.js`, `./parse.js`, or `./compat.js`) already exports a binding with the same name, which would create an ambiguous/duplicate export.",
+      "rationale": "`external.ts` in zod classic typically combines several `export *` statements with this explicit named list. An explicit named re-export silently shadows star exports in some bundlers while TypeScript reports a duplicate-identifier/ambiguity error in others, so a name clash here would be an easy-to-miss breakage. Also, unlike `compile`/`toZod` next to it, `withParser` sounds like a lower-level extension hook; exporting it publicly commits to its signature. Low-to-medium confidence since I can't see the rest of the file or core's exports.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1557,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1040
+  },
+  "latencyMs": 19950,
+  "nominalCostUsd": 0.0499095
+}

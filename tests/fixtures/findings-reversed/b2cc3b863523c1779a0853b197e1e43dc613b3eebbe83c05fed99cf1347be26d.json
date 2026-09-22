@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 794,
+      "lineEnd": 796,
+      "claim": "The call site was switched from `this.experimental_parseSpecifications(...)` to `this.parseSpecifications(...)`; if the method on `Vitest` was not renamed/aliased in the same change, this is a runtime `TypeError: this.parseSpecifications is not a function` whenever `options.staticParse` is set. Conversely, if the method was renamed, the old `experimental_parseSpecifications` name is part of the public `Vitest` API surface and dropping it silently breaks external callers.",
+      "rationale": "Only this hunk is visible, so I cannot confirm the declaration was renamed too. Moderate confidence there is something to verify: either the definition is missing (hard runtime failure) or a public experimental API was removed without a deprecated alias/shim. Also worth checking that the new `parseSpecifications` isn't an already-existing member with different semantics (e.g. returning `TestSpecification[]` rather than `TestModule[]`), which would silently change the returned `testModules` shape here since the result flows straight into `return { testModules, unhandledErrors: [] }`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 795,
+      "lineEnd": 795,
+      "claim": "`concurrency: options.staticParseConcurrency` can be `undefined` and is passed through unconditionally.",
+      "rationale": "Pre-existing and unchanged by this diff, but if the renamed `parseSpecifications` has a different default-handling contract than the experimental one (e.g. it reads `options.concurrency` with `??` vs. `||`, or destructures with a default that an explicit `undefined` key still satisfies), the concurrency default could change. Low confidence, just worth a glance while the signature is in flux.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1464,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1041
+  },
+  "latencyMs": 18562,
+  "nominalCostUsd": 0.047594500000000005
+}

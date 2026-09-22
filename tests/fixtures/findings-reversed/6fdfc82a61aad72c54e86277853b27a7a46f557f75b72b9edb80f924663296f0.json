@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 21,
+      "lineEnd": 22,
+      "claim": "Exporting `HTTPBatchStreamLinkOptions` widens the package's public type surface; if the module is re-exported via `export *` from a barrel (e.g. `links/index.ts`), a name collision with another link module's option type would become a compile error, and the type becomes a semver-relevant API that must be kept stable.",
+      "rationale": "Low confidence that this is an actual problem — the name looks unique among the link modules — but worth a quick check that (a) the barrel re-export doesn't now conflict, and (b) the type is intentionally meant to be consumed externally, since making it public means future changes to it become breaking changes for downstream users. No runtime behavior changes here.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 737,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1373
+  },
+  "latencyMs": 9970,
+  "nominalCostUsd": 0.0327395
+}

@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 577,
+      "lineEnd": 582,
+      "claim": "The new head fast-path duplicates the matching predicate but is not exactly equivalent to it: it adds a `!isNodeString(first)` guard that the `findIndex` predicate does not have.",
+      "rationale": "In the original, for a non-string `child` with no key the predicate is `(c) => c.tag === (child as Node).tag`, which would also match a `NodeString` element whose `tag` is `undefined` if `child.tag` were ever `undefined` (e.g. a node with an undefined/falsy tag). The fast path short-circuits those cases to `false` and falls through to the scan, which will re-test index 0 and reach the same result, so in practice behaviour is probably identical — my main concern is that the same matching rule now exists in two textual copies that can silently drift apart on a future edit (and the fast path is the one that wins). Medium confidence that this is only a maintainability/perf redundancy rather than a live bug.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 586,
+      "lineEnd": 587,
+      "claim": "`oldVChildren.shift()` (like the previous `splice`) removes the node from the array but not from `oldChildrenByKey`, so once the index has been built a node can be consumed twice.",
+      "rationale": "The keyed branch above (`oldChildrenByKey.delete(key)`) consumes nodes from the map without removing them from `oldVChildren`, and this branch consumes from `oldVChildren` without deleting from the map. After `indexChildrenByKey(oldVChildren)` has run, an unkeyed child hitting this branch can now claim the head node even if it was already reused via the key map (and vice versa), which would reuse the same DOM node for two children. This desync is pre-existing, but the new `shift()` fast path makes claiming the stale head the cheapest/most likely outcome, so it is worth re-checking whether the two consumption paths stay in sync. Moderate confidence — depends on the exact condition of the `if` branch above, which is not fully visible here.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 589,
+      "lineEnd": 593,
+      "claim": "The `scanBudget < 0` / indexing fallback is now nested inside the `else` branch, so it is skipped whenever the head matches.",
+      "rationale": "This is likely intentional (a head match costs zero scan, so the budget cannot newly go negative there), and `scanBudget` is set to `Infinity` as soon as indexing happens, so it cannot be left negative across iterations. Flagging only so the author confirms there is no path where `scanBudget` is already negative on entry and the head happens to match, which would defer index construction indefinitely. Low confidence that this is an actual defect.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 6652,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2036
+  },
+  "latencyMs": 80992,
+  "nominalCostUsd": 0.1872445
+}

@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 6,
+      "lineEnd": 7,
+      "claim": "Removal of the `istanbulDefaults` import (`@istanbuljs/schema`) may break remaining usages in this file",
+      "rationale": "The diff deletes `import { defaults as istanbulDefaults } from '@istanbuljs/schema'` but the hunk shows no replacement source for those defaults. In the current provider, `istanbulDefaults` is used to seed instrumenter/report options (e.g. `coverageVariable`, `excludes`). If any reference remains below the hunk, this is a compile error; if it was inlined elsewhere, the default values could silently differ. Worth verifying the rest of the file compiles and that defaults are preserved. Moderate confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 15,
+      "lineEnd": 15,
+      "claim": "Removal of the `reports` import from `istanbul-reports` with no replacement",
+      "rationale": "`import reports from 'istanbul-reports'` is deleted, but unlike the other istanbul packages it is not re-imported from a `@vitest/`-scoped fork in this hunk. The provider's `reportCoverage`/`generateReports` path calls `reports.create(reporter, options)`. Unless the report creation was moved into `@vitest/istanbul-lib-report` or another module outside this hunk, this leaves an unresolved identifier. Fairly confident this deserves verification.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 10,
+      "lineEnd": 14,
+      "claim": "Switching from default imports to namespace imports (`import * as libCoverage`) can change runtime shape for CJS interop",
+      "rationale": "`libCoverage`/`libReport`/`libSourceMaps` were default imports and are now namespace imports. If the `@vitest/*` forks are CJS or publish a default export, `libCoverage.createCoverageMap(...)` will be `undefined` (the members would live under `libCoverage.default`). This depends on how the forks are built/bundled; behaviour differs between the bundled dist and direct source consumption. Worth confirming the forks are true ESM with named exports.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 2,
+      "claim": "Type-only imports now come from forked packages while consumers may still use upstream istanbul types",
+      "rationale": "`CoverageMap` and `Instrumenter` types are now sourced from `@vitest/istanbul-lib-coverage`/`-instrument`. Any public API of this package that exposes these types (e.g. custom providers or reporters typed against `istanbul-lib-coverage`) will now see nominally different declarations, which can produce type incompatibilities for existing callers even though the runtime shape is identical. Low-to-moderate confidence, but it is a real breaking-change risk for downstream typings.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1090,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1852
+  },
+  "latencyMs": 15340,
+  "nominalCostUsd": 0.04635449999999999
+}

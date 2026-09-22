@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 152,
+      "lineEnd": 158,
+      "claim": "Reordering the branches so `sharedServer` is checked before `isBrowserEnabled` changes behavior for browser mode when a shared server exists: browser runs now receive `sharedServer.defines` and `sharedServer._scriptDefines` for runtime injection instead of `{}`.",
+      "rationale": "The comment directly above says defines are injected at runtime only in non-browser tests and that browser mode should \"keep the original behaviour\". With this reorder, a browser-enabled project that also has a shared server will take the shared-server path and get runtime define injection plus `_scriptDefines`, which the previous code deliberately avoided. If Vite still applies the same defines during transform in browser mode, values could be substituted twice (or substituted in places browser mode never intended, e.g. inline scripts). Fairly confident this is a semantic change worth double-checking; whether it is a bug depends on whether the shared server already stripped `config.define`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 152,
+      "lineEnd": 154,
+      "claim": "In the browser branch, `resolvedTestConfig.defines = config.define || {}` now exposes the live `config.define` object (by reference, and without removing it from the Vite config), instead of the previous empty object.",
+      "rationale": "Two concerns: (1) `config.define` is not deleted on this path (unlike the `deleteDefineConfig(config)` path), so Vite will still perform compile-time replacement while the same defines are also handed to the runtime as `resolvedTestConfig.defines` — a likely double-application/inconsistency; (2) the object is assigned by reference rather than copied, so any later mutation of `config.define` (this file already does `delete config.define['import.meta.vitest']` nearby) will silently mutate the resolved test config, and vice versa. Also, if that `delete` of `import.meta.vitest` is guarded by a condition that doesn't always hold, the `import.meta.vitest` define could leak into `resolvedTestConfig.defines`. Moderately confident this needs a copy and/or explicit filtering.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 153,
+      "lineEnd": 153,
+      "claim": "The browser branch still leaves `resolvedTestConfig._scriptDefines` unset while now populating `defines` with real values.",
+      "rationale": "Previously both were effectively empty/unset, which was self-consistent. Now `defines` is non-empty but `_scriptDefines` is `undefined`, so any consumer that assumes the two fields are populated together (as the other two branches do) may hit `undefined` or apply defines inconsistently between module code and script tags. Low-to-medium confidence since I can't see the consumers.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2290,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1388
+  },
+  "latencyMs": 27761,
+  "nominalCostUsd": 0.0717145
+}

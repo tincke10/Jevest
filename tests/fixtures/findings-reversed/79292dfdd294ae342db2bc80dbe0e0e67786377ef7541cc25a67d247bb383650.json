@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 37,
+      "lineEnd": 37,
+      "claim": "`definite?: boolean | undefined` is a tri-state flag whose absence must be interpreted as `true` (\"definite\"), which is the opposite of the natural `if (!fn.definite)` / falsy check most consumers will write.",
+      "rationale": "The doc comment says the field is \"False when this function's INVALID does not strictly mean 'the runtime would reject'\", i.e. the safe/normal case is `true` and the special case is `false`. But the property is optional, so every compiled function produced before/outside the new code path (and any wrapper that forgets to set it) will have `definite === undefined`. Any call site using a falsy test (`if (!fn.definite)`, `fn.definite ?? false`, `definite: a.definite && b.definite`) will then silently classify definite functions as indefinite, changing behavior for existing callers. Making it required, or defaulting explicitly via `fn.definite !== false`, would remove the ambiguity. I can't see the call sites in this hunk, so this is a suspected rather than confirmed bug — worth checking every read of `.definite`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 37,
+      "lineEnd": 37,
+      "claim": "`definite` is an optional mutable property bolted onto the function object, so it is easy to drop when compiled functions are wrapped/re-created (the same hazard the existing `code` property has).",
+      "rationale": "Anywhere the compiler composes or re-wraps a `CompiledFn` (e.g. building a new closure and copying `code` onto it), the new `definite` flag must be propagated too; the optional type gives no compile-time signal when it is forgotten, and the loss is silent because `undefined` is a legal value. Confidence is moderate — it depends on how many wrapping sites exist in this file, which is not visible here.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1570,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1299
+  },
+  "latencyMs": 21579,
+  "nominalCostUsd": 0.0528245
+}

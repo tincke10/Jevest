@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "lineStart": 61,
+      "lineEnd": 62,
+      "claim": "`snapshotChecks` mutates its argument in place (`def.checks = [...def.checks]`) instead of returning a new object, which is a footgun and conflicts with the `@__NO_SIDE_EFFECTS__` annotation on its callers.",
+      "rationale": "The helper reassigns a property on the object it is handed. At the two current call sites the argument is a freshly-created literal so it is harmless, but the signature accepts any `{ checks?: ... }` object, so a future caller passing a user-supplied params/def object would have that object silently mutated. A non-mutating `return { ...def, checks: def.checks ? [...def.checks] : def.checks }` would be safer. High confidence this is a real (if currently latent) hazard.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 61,
+      "lineEnd": 61,
+      "claim": "The generic constraint `T extends { checks?: readonly checks.$ZodCheck<never>[] }` only works if `$ZodCheck<T>` is contravariant in its type parameter; if it is invariant, `$ZodCheck<string>[]` will not satisfy the constraint and the calls will fail to type-check.",
+      "rationale": "Using `never` as the type argument relies on the check type being contravariant (parameter-position only). Zod's `$ZodCheck` exposes `_zod.def` / `_zod.issc`, which usually puts the type parameter in both input and output positions, making it invariant. I can't verify from the hunk alone, so medium confidence — worth confirming that passing a `$ZodCheck<string>[]` actually compiles.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 61,
+      "lineEnd": 61,
+      "claim": "`$ZodStringParams` now re-adds a `checks` property that `TypeParams` deliberately omits, and types it `readonly` while the schema `def` expects a mutable array — the mismatch is only papered over by the unchecked `as` cast inside `snapshotChecks`.",
+      "rationale": "`Params<...>` explicitly omits `\"checks\"`; re-introducing it via intersection reverses that decision for strings only and exposes `checks` on the public `z.string(params)` surface. The return type `T & { checks?: NonNullable<T[\"checks\"]>[number][] }` is an assertion rather than a proven conversion, so any readonly/mutable or element-type mismatch is silently suppressed. Medium-high confidence this is a risky widening worth a second look.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 67,
+      "lineEnd": 70,
+      "claim": "The snapshot is shallow: the individual `$ZodCheck` instances are still shared with the caller, so mutating a check after schema construction still affects the schema.",
+      "rationale": "Only the array container is copied. If the goal is to isolate the schema from later caller mutations, aliasing of the check objects themselves remains, which is easy to misread as full isolation. Medium confidence this matters in practice.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 73,
+      "lineEnd": 83,
+      "claim": "Only `_string`/`_coercedString` snapshot their checks array; the other factories in this file still store the caller's array by reference, leaving the same aliasing behavior unfixed elsewhere.",
+      "rationale": "If sharing the caller's `checks` array is the bug being fixed, fixing it for one type produces inconsistent behavior across the API: `z.string({checks})` would be isolated while `z.number({checks})` would not. High confidence the inconsistency exists given the hunk touches only the string factories.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 67,
+      "lineEnd": 70,
+      "claim": "Routing the def through a generic helper removes contextual typing / excess-property checking of the object literal against `SchemaClass<T>`'s constructor parameter.",
+      "rationale": "Previously the literal was checked directly against the constructor parameter type, so misspelled or unknown keys were caught at the literal. Now the argument is a generic `T & {...}` value, which disables excess-property checking and leaves the assertion as the only bridge between the two types. Medium confidence — required-field checks still apply, but typo protection is weakened.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 7085,
+    "cacheReadInputTokens": 4364,
+    "cacheCreationInputTokens": 7664
+  },
+  "latencyMs": 83489,
+  "nominalCostUsd": 0.255967
+}

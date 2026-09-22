@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 487,
+      "lineEnd": 489,
+      "claim": "Removing the `omittableOnInput` guard makes input JSON Schemas mark enum/literal record keys as `required` even when the shared value schema is optional-in, so valid inputs like `{}` for `z.record(z.enum([\"a\",\"b\"]), z.string().optional())` (or `.default(...)`) will be rejected by the generated schema although `parse` accepts them.",
+      "rationale": "In a record all keys share one value schema; if that schema is optional on input, every key becomes omittable on input. The deleted comment documents precisely this and notes the output side is intentionally different (the exhaustive branch assigns every key). The removal therefore introduces a schema/runtime divergence on the input side only. High confidence this is a behavioral regression unless the optional-in handling was moved elsewhere in the same change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 488,
+      "lineEnd": 488,
+      "claim": "`inputOptin` may become an unused import after this deletion, which would break builds under `noUnusedLocals`/lint.",
+      "rationale": "This was a call site of `inputOptin`; if it was the only one in the file the import is now dead. Low confidence because `inputOptin` is plausibly used by other processors (e.g. the object processor) in the same module.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1804,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1384
+  },
+  "latencyMs": 24136,
+  "nominalCostUsd": 0.0595245
+}

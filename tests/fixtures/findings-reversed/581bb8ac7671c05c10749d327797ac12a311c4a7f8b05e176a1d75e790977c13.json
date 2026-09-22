@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 19,
+      "lineEnd": 20,
+      "claim": "Changing `buckets` from `WeakMap<$ZodType, WeakMap<object, Entry>>` to `Map<$ZodType, Map<object, Entry>>` turns the memo cache into a strong-reference cache and is a likely unbounded memory leak.",
+      "rationale": "The comment removed in this same diff explicitly states the invariant: \"Weak throughout because `attach` caches a bucket on the schema instance, which outlives the parse.\" If the inner bucket is retained on the schema object (which typically lives for the lifetime of the module/app), a strong `Map<object, Entry>` will permanently retain every parsed input object and its `Entry` (including the `issues` arrays) for every parse ever performed against that schema. With `WeakMap` those entries were collectable as soon as the parsed value became unreachable. The outer `Map<$ZodType, ...>` likewise now strongly retains schema instances for as long as the state object lives. I can't see `attach` in this hunk, so I can't be 100% certain the bucket still outlives the parse, but the deleted comment is strong evidence it does — this needs verification before merging.",
+      "suggestedSeverity": "critical"
+    },
+    {
+      "lineStart": 22,
+      "lineEnd": 22,
+      "claim": "`backEdges: WeakSet<object>` → `Set<object>` strongly retains every node that a back-edge resolved to.",
+      "rationale": "Same class of problem as `buckets`, but worth flagging separately since it is a distinct field: the set holds arbitrary user-supplied parsed objects. It is only safe if the `State` object itself is guaranteed to die with the parse call. Given that the sibling field's bucket is documented as being cached on the schema (i.e. outliving the parse), the lifetime of `State` is not obviously parse-scoped, so this should be re-checked too. Medium confidence — it depends on whether `State` is ever reachable from a schema.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 20,
+      "lineEnd": 22,
+      "claim": "The type change is a breaking API/shape change for any code that constructs or consumes `State`.",
+      "rationale": "Every construction site must switch from `new WeakMap()`/`new WeakSet()` to `new Map()`/`new Set()`, and any code that relied on weak semantics (e.g. assuming entries disappear, or catching `TypeError` when a non-object key is used — `Map`/`Set` silently accept primitives where `WeakMap`/`WeakSet` throw) will now behave differently. In particular, a bug that previously surfaced as a loud `TypeError: Invalid value used as weak map key` will now be silently accepted and memoized under a primitive key. Low-to-medium confidence that such a call path exists, but it is a real behavior change worth checking across call sites.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1944,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1267
+  },
+  "latencyMs": 26540,
+  "nominalCostUsd": 0.0618545
+}

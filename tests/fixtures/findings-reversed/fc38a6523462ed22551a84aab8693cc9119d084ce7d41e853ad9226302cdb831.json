@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 26,
+      "lineEnd": 26,
+      "claim": "The newly accepted `streamHeader` option is not consumed anywhere in this hunk — `resolveHTTPLinkOptions(opts)` is a shared helper that (before this change) knows nothing about `streamHeader`, so unless a later hunk explicitly reads `opts.streamHeader` when building request headers, the option is silently accepted and ignored.",
+      "rationale": "Adding a public option to the type surface without a visible consumer is a common way a feature ships as a no-op. I can't see the rest of the file, so confidence is moderate, but it's the most important thing to verify: check that the request-building path (which currently hardcodes `trpc-accept: application/jsonl`) branches on `opts.streamHeader`, and that the default `'trpc-accept'` branch preserves today's behavior exactly.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 18,
+      "lineEnd": 19,
+      "claim": "`HTTPBatchStreamLinkOptions` is declared as a non-exported local type, so consumers cannot name the options object (e.g. to build a typed wrapper/factory around `httpBatchStreamLink`).",
+      "rationale": "Callers who previously wrote `const o: HTTPBatchLinkOptions<...> = {...}` can no longer express the new `streamHeader` field in a typed variable and must inline it at the call site. Moderate confidence that exporting is intended here; it is a type-surface consequence rather than a naming preference.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 18,
+      "lineEnd": 18,
+      "claim": "The new type references `AnyClientTypes`, which must be imported as a type; that import is not visible in this hunk.",
+      "rationale": "If `AnyClientTypes` is not imported, or is imported as a value instead of via `import type`, this either fails to compile or adds an unnecessary runtime import. Low confidence — the hunk header's +1 offset strongly implies an import line was added just above — but cheap to confirm.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 23,
+      "lineEnd": 24,
+      "claim": "Only `httpBatchStreamLink` had its options type widened; any sibling or alias export that forwards to this implementation (e.g. a deprecated `unstable_httpBatchStreamLink`) would still be typed with `HTTPBatchLinkOptions` and reject `streamHeader`.",
+      "rationale": "An alias keeping the old parameter type creates a confusing split where the option type-checks through one export but not another. Speculative since the rest of the file isn't shown, but worth checking all exports that delegate here.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3125,
+    "cacheReadInputTokens": 3904,
+    "cacheCreationInputTokens": 3884
+  },
+  "latencyMs": 36401,
+  "nominalCostUsd": 0.118937
+}

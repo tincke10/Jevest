@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "New `sharedViteServer` CLI option has no `boolean` coercion metadata, so `--shared-vite-server=false` would be parsed by cac as the string \"false\" (truthy) and silently enable the feature instead of disabling it.",
+      "rationale": "In this options table, entries only get correct value handling when the declared shape matches the config type; boolean flags documented as `default: true` are usually only disableable via `--no-...`. Users are likely to write `--shared-vite-server=false`, which yields a truthy string. Medium confidence — this is a pattern shared with neighbouring options (e.g. `strictTags`), so it may be handled centrally, but it is worth verifying for a default-true flag whose only real use is turning it off.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "The `sharedViteServer` key must exist on the user config type (and be honoured by config resolution) for this CLI flag to have any effect; if the option lives elsewhere (e.g. nested under `experimental` or a server-level option) this top-level entry either fails to type-check or is accepted on the CLI and silently ignored.",
+      "rationale": "`cliOptionsConfig` is typed against the public config interface, and each entry is mapped onto that config key. Adding a key here without the corresponding config field/handling produces a flag that parses but does nothing. Cannot verify the type definition from this hunk alone; flagging for confirmation. Also note the generated CLI docs/snapshot tests usually need regeneration when this table changes.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "A flag controlling whether inline projects reuse the root Vite server is a root-level-only concern, but this entry makes it settable per-project via CLI/project config where it would be meaningless or inconsistent.",
+      "rationale": "Options that only make sense at the root are typically excluded from project-level config (and from the CLI surface exposed to `--project` configs). If no such exclusion exists, a project setting `sharedViteServer: false` could be ignored or, worse, partially applied. Low-to-medium confidence without seeing the resolution code.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2024,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1081
+  },
+  "latencyMs": 28239,
+  "nominalCostUsd": 0.06199450000000001
+}

@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 6,
+      "lineEnd": 7,
+      "claim": "`cloneRawRequest` is a new *value* import from `../../request` inside a middleware module, turning what was a type-only dependency graph into a runtime one and risking a circular import (`request` → `context`/`types` → middleware barrels).",
+      "rationale": "Previously this file imported only `type`-level symbols, so it had zero runtime coupling to the core. A runtime import of `../../request` can create an import cycle (and, in bundlers/ESM, a temporarily-undefined binding at module-evaluation time) depending on what `request.ts` pulls in. Medium-low confidence without seeing the full module graph, but it is a real hazard worth verifying, e.g. by checking that `src/request.ts` does not transitively import this middleware and that the helper is actually exported there.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 7,
+      "lineEnd": 8,
+      "claim": "`sha256` from `../../utils/crypto` resolves to `Promise<string | null>` in Hono, but the new `CacheKeyRequest` type declares `digest: string` — the null/unavailable-WebCrypto case appears unhandled.",
+      "rationale": "Hono's `sha256` returns `null` when `crypto.subtle` is missing or digesting fails. If that value is assigned into `digest: string` (via a non-null assertion or implicit cast) every request in such a runtime collapses to the same digest, so different QUERY bodies would share one cache key — a correctness/cache-poisoning bug, not just a type nit. Also note `sha256` is async, so any code path building the cache key must be awaited. High confidence that the type is too narrow; medium confidence about how the call site handles it since it is outside this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "The reserved cache-key query parameters (`__hono_cache_key`, `__hono_cache_method`, `__hono_query_digest`, `__hono_cache_vary`) are not namespaced against client-supplied query strings, so a request whose own URL already contains one of these names can collide with or forge another entry's cache key.",
+      "rationale": "If the synthetic key URL is built by appending these parameters to (or embedding) the original URL/query, a client sending `?__hono_query_digest=<x>` or `?__hono_cache_vary=...` can make two semantically different requests map to the same key, or make a GET request masquerade as a QUERY entry. That is cache poisoning / cross-response leakage. The fix is to strip or reject these parameters from the incoming URL before constructing the key, or to encode the original URL opaquely (e.g. as a single digested value) rather than concatenating. Medium confidence — depends on the construction code not shown — but the naming convention alone gives no protection.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "`defaultMaxQueryBodySize = 64 * 1024` introduces a hard-coded body-size cutoff; behavior at the boundary (truncate-and-digest vs. bypass cache) is safety-critical and the constant gives no indication which is intended.",
+      "rationale": "If oversized bodies are truncated before digesting, two different large QUERY bodies sharing their first 64 KiB would produce identical cache keys and serve each other's responses. The only safe behavior is to skip caching entirely once the limit is exceeded. Also worth confirming the comparison uses `>` on the actual byte length (not `>=`, and not `Content-Length`, which can be absent or lie for streamed bodies). Low-to-medium confidence since the usage is outside this hunk, but the failure mode is severe enough to verify.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "`queryRepresentationMetadataHeaders` omits `content-length`, and the fixed lowercase list is only safe if lookups go through `Headers.get`.",
+      "rationale": "Per RFC 9110 the representation metadata for a QUERY payload also includes `Content-Length`; excluding it is probably harmless because the digest covers the body bytes, but if the digest is computed over a *stream* rather than the full buffer, a length mismatch could go undetected. Additionally, if these names are ever matched against raw header keys (e.g. iterating a plain object of headers) instead of `Headers.get`, the lowercase-only list will silently miss `Content-Type`. Low confidence — mostly a prompt to double-check the consumer of this list.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3323,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1619
+  },
+  "latencyMs": 45281,
+  "nominalCostUsd": 0.0998495
+}

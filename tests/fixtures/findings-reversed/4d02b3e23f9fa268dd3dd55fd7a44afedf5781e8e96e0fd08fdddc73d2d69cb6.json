@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 132,
+      "lineEnd": 132,
+      "claim": "Backpressure is no longer respected: the return value of `writer.write()` is ignored and the loop never waits for a `drain` event",
+      "rationale": "`pipeline()` (removed here) handled backpressure automatically. With the manual loop, the web stream is drained as fast as `reader.read()` resolves and every chunk is pushed into the Node writable regardless of its high-water mark. For large or slow-consuming Lambda response streams this buffers the whole body in memory. Fix: await a `drain` promise when `write()` returns `false`. High confidence this is a real regression.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 133,
+      "lineEnd": 134,
+      "claim": "No error handling: if `reader.read()` rejects or the writer emits `error`, the reader is never cancelled and `writer.end()` is never called",
+      "rationale": "`pipeline()` previously guaranteed cleanup — destroying the destination and cancelling the source on failure, and propagating writer errors as a rejection. Now an exception from `reader.read()` propagates out with `writer.end()` skipped, leaving the Lambda response stream open (invocation can hang until timeout) and the web-stream reader un-cancelled. Also, no `error` listener is attached to `writer`, so a writer error becomes an unhandled 'error' event that can crash the process instead of rejecting this promise. High confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 135,
+      "lineEnd": 135,
+      "claim": "The returned promise resolves immediately after `writer.end()` instead of waiting for the stream to finish flushing",
+      "rationale": "`pipeline()` resolved only after the destination emitted `finish`. Now `end()` is fire-and-forget, so `streamToNodeStream()` resolves while data may still be buffered. A caller awaiting this before completing the Lambda handler may terminate the response early or miss a late write error. Should await `finished(writer)` or the `end()` callback. Fairly high confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 140,
+      "lineEnd": 140,
+      "claim": "The `pipeline` import may now be unused after removing the only call site",
+      "rationale": "This hunk removes the sole `pipeline(...)` usage shown. The hunk header implies one line was already removed earlier (likely the import), but if the `stream/promises` import remains it will fail builds with `noUnusedLocals`/lint. Low confidence — worth verifying.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3092,
+    "cacheReadInputTokens": 3745,
+    "cacheCreationInputTokens": 3720
+  },
+  "latencyMs": 34925,
+  "nominalCostUsd": 0.11639250000000001
+}

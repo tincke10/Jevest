@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 29,
+      "lineEnd": 33,
+      "claim": "The new branch returns a non-zero result when `a` and `b` are the same wildcard string, making the comparator non-reflexive/asymmetric (compareKey(TAIL, TAIL) === -1 and compareKey(ONLY, ONLY) === 1).",
+      "rationale": "With `a === TAIL_WILDCARD_REG_EXP_STR` and `b === TAIL_WILDCARD_REG_EXP_STR`, the ternary yields -1; symmetrically the reversed call also yields -1, which violates the contract that equal elements compare to 0. Likewise two `ONLY_WILDCARD` keys both yield 1. In practice this may be harmless if the caller only sorts unique object keys or short-circuits on `a === b` earlier in the function (the top of the function isn't shown), but if that guard doesn't exist the sort order becomes implementation-defined/unstable. Medium-low confidence that it is reachable; worth a guard such as `if (a === b) return 0` before the wildcard block.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 29,
+      "lineEnd": 30,
+      "claim": "Behavior change: the only-wildcard (`.*`) no longer always sorts last, which reorders route matching priority relative to the tail wildcard.",
+      "rationale": "Previously any wildcard key compared as greater than everything else, so `.*` and the tail wildcard were ordered only by the fallback/stable-sort behavior. Now `.*` is explicitly placed before the tail wildcard. This changes the generated RegExp alternation order and therefore which route wins for paths matched by both `/foo/*` style and tail-wildcard patterns. Assuming this is the intent of the change, but existing callers relying on the old precedence (e.g. `/:x/*` vs `/:x` tail behavior) could see different matches; worth covering with a test for a route set containing both wildcard forms at the same node.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2147,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1181
+  },
+  "latencyMs": 27682,
+  "nominalCostUsd": 0.0660695
+}

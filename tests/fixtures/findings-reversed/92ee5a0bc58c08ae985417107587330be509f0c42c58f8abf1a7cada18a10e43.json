@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 45,
+      "lineEnd": 45,
+      "claim": "The two capturing groups in the exported `email` regex were converted to non-capturing groups, silently changing the shape of `exec()`/`match()` results for any consumer that reads capture groups or composes this pattern's `source` with numbered backreferences.",
+      "rationale": "Before: `([A-Za-z0-9_'+\\-\\.]*)` and `([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+` were group 1 and group 2. After: both are `(?:...)`, so `email.exec(x)` now returns an array of length 1 instead of 3. Zod itself only uses `.test()` as far as I know, so this is likely harmless internally, but `email` is a publicly exported RegExp and `regexes.ts` patterns are also stitched into other patterns via `.source` in some places; any external code doing `zod/v4/core/regexes.email.exec(v)[1]` breaks. Medium confidence that it matters in practice, high confidence the behavior difference is real.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 45,
+      "lineEnd": 45,
+      "claim": "The new local-part pattern introduces overlapping quantifiers — `(?:[A-Za-z0-9_'+\\-]+\\.)*` followed by `[A-Za-z0-9_'+\\-]*` and then `[A-Za-z0-9_+-]` (a subset of the preceding class) — which adds backtracking ambiguity on non-matching inputs that the old lookahead-based pattern did not have.",
+      "rationale": "Low confidence this is exploitable: the literal `\\.` separator makes the outer star's split points deterministic (the class excludes `.`), and the trailing subset-class only costs one extra retry per stop position, so I believe worst-case work stays roughly linear/polynomial rather than exponential. Still worth a second look with a ReDoS checker since this regex is applied to untrusted user input by default, and the change removes the `(?!.*\\.\\.)` fast-fail guard that previously rejected many malformed inputs up front.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 7393,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1742
+  },
+  "latencyMs": 95532,
+  "nominalCostUsd": 0.20282950000000002
+}

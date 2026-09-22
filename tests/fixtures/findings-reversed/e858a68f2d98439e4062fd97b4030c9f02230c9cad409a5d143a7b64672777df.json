@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 557,
+      "lineEnd": 557,
+      "claim": "Narrowing `set`'s key parameter from `PropertyKey` to `string` is a source-breaking change for callers that use symbol or numeric keys.",
+      "rationale": "`PropertyKey` is `string | number | symbol`. Using unique symbols as context-variable keys is a common pattern for third-party middleware to avoid name collisions, and numeric keys are also legal. After this change `c.set(MY_SYMBOL, v)` / `c.set(1, v)` fail to compile even though the underlying `Map` still stores them fine at runtime. If the intent is only to tighten the `IsAny` fallback, the concrete parameter type probably should stay `PropertyKey` (or the change needs a semver-major note). Reasonably confident this is at least worth an explicit decision; it is a public API signature.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 554,
+      "lineEnd": 554,
+      "claim": "`Record<PropertyKey, any>` -> `Record<string, any>` in the `IsAny<E>` fallback may desynchronize `set` from the corresponding `get`/`var` types.",
+      "rationale": "This fallback exists so that when `E` is `any` every key is accepted. Restricting it to `Record<string, any>` means symbol/number keys are rejected in the untyped-env case too. If the sibling `get` overload (and the `var` getter) still use `PropertyKey`/`Record<PropertyKey, any>`, the two sides now disagree: a value could be readable by a key shape that is no longer writable. Worth checking that `get`, `var`, and the internal `#var` map declaration were updated consistently in the same change; if only `set` was touched, this is an inconsistency bug.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 558,
+      "lineEnd": 559,
+      "claim": "Runtime still accepts non-string keys while the type says `string`, so the narrowing is unenforced at runtime.",
+      "rationale": "`this.#var.set(key, value)` stores whatever is passed, so JS callers (or `as any` casts) can still insert symbol/number keys, and `get` will still return them. This makes the type narrowing purely cosmetic and can hide the breakage from tests that go through untyped paths — low confidence that action is needed, but it means the change buys no actual safety.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1408,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1104
+  },
+  "latencyMs": 18220,
+  "nominalCostUsd": 0.046824500000000005
+}

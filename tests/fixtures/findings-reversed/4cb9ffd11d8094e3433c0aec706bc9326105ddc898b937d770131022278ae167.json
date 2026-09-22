@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 324,
+      "lineEnd": 326,
+      "claim": "Removing the `_bytes ?? _buffer` fallback breaks Blob conversion on jsdom 28+, where the impl field was renamed to `_bytes`",
+      "rationale": "The deleted comment explicitly documented that jsdom 28 renamed `_buffer` to `_bytes`. After this change, on jsdom >= 28 `impl._buffer` is `undefined`, so `new NodeBlob_([undefined], ...)` silently produces a Blob whose content is the string \"undefined\" instead of the original bytes (the Blob constructor stringifies non-BufferSource parts rather than throwing). That is a silent data-corruption regression for any path converting a jsdom Blob (FormData file parts, fetch bodies). If the intent was to drop jsdom 28 support, the code should at least assert the field exists rather than fail silently. High confidence this is a functional regression unless the supported jsdom range was simultaneously pinned below 28.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 323,
+      "lineEnd": 323,
+      "claim": "No guard for a missing impl object before reading `._buffer`",
+      "rationale": "`(blob as any)[implSymbol]` is dereferenced inline; if `blob` is not a jsdom-backed Blob (e.g. a native Node Blob or one crossing a realm boundary), the symbol lookup yields `undefined` and this throws a confusing `Cannot read properties of undefined (reading '_buffer')`. The previous form had the same hazard, so this is pre-existing rather than newly introduced, but the line is being touched and a fallback would be cheap. Medium confidence on real-world impact.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1999,
+    "cacheReadInputTokens": 3441,
+    "cacheCreationInputTokens": 2818
+  },
+  "latencyMs": 21320,
+  "nominalCostUsd": 0.07989550000000001
+}

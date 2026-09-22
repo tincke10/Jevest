@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "`const log = console;` is deleted, but the rest of the file (not shown in this hunk) very likely still calls `log.warn`/`log.error`; if so this is a compile/runtime break.",
+      "rationale": "The hunk only covers lines 1-54 of a much larger generator file. A module-scope logging alias is almost never declared and never used, so removing it without a visible replacement (no new `log` definition or import appears in the diff) strongly suggests dangling references further down. Worth verifying with a grep for `log.` in the file. Fairly confident this deserves a check; if no other reference exists the concern is moot.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 15,
+      "lineEnd": 36,
+      "claim": "`export interface JsonSchema` is removed entirely rather than re-exported, which is a breaking change for any consumer importing `JsonSchema` from this module.",
+      "rationale": "The interface was explicitly `export`ed, so it is part of the package's public type surface. The replacement `SchemaObject` is imported with `import type ... from './types'` and is not re-exported here, so `import { JsonSchema } from '.../generate'` now fails. If backwards compatibility matters, add `export type { SchemaObject as JsonSchema }` or a deprecated alias. High confidence this changes the exported API; severity depends on whether the package is published.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 41,
+      "lineEnd": 49,
+      "claim": "Swapping `JsonSchema` for OpenAPI `SchemaObject` may silently drop support for the JSON-Schema-only keywords the old type carried (`$defs`, `$schema`, `prefixItems`, `items: false`).",
+      "rationale": "The old local interface explicitly modelled `$defs`, `$schema`, `prefixItems`, and `items?: JsonSchema | false` — all things a Zod/JSON-Schema converter emits. If `SchemaObject` in `./types` is a stricter OpenAPI 3.1 shape without these, code downstream that reads/writes `schema.$defs` or assigns `items: false` will now fail to type-check, or (worse) be force-cast and lose data at runtime. Medium confidence — depends on the definition in `./types`, which is not visible in this hunk.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 1,
+      "claim": "Newly added `import * as fs from 'node:fs'` has no corresponding use within this hunk; if it is unused it will trip `noUnusedLocals`/lint, and if it is used it introduces synchronous filesystem I/O into a previously pure module.",
+      "rationale": "The diff adds the import but shows no consumer. Either it is dead (lint/compile noise) or the rest of the change makes this module touch the filesystem, which is a notable behavior change for callers that previously only got an in-memory document back. Low-to-medium confidence; needs the rest of the file to confirm which case applies.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 3,
+      "lineEnd": 8,
+      "claim": "The new `import type { Document, OperationObject, PathItemObject, PathsObject, SchemaObject } from './types'` pulls in several names that are not referenced anywhere in this hunk; if `./types` also re-exports runtime values this could introduce an import cycle with `schemaExtraction`.",
+      "rationale": "Only `SchemaObject` is used in the visible portion. The others are presumably used later in the file, which is fine, but it is worth confirming none are unused, and that `./types` does not import back from `generate.ts` (the removed `JsonSchema` may have been moved there, making a cycle plausible). Low confidence without the rest of the file.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3330,
+    "cacheReadInputTokens": 4467,
+    "cacheCreationInputTokens": 4252
+  },
+  "latencyMs": 36867,
+  "nominalCostUsd": 0.1280235
+}

@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 15,
+      "lineEnd": 15,
+      "claim": "Removing the `toRollupError` import will break compilation if any remaining code in this file still calls it, and if the corresponding call site was also removed, parse failures will now surface as raw acorn/rollup errors instead of the normalized Vite/Rollup error (losing `id`, `loc`, `frame` and friendly formatting).",
+      "rationale": "Only the import line is shown in this hunk; the rest of the file (which previously wrapped `parseAst` failures in `toRollupError`) is not visible. Two risks follow: (a) a dangling reference causing a TS/build error, and (b) a user-visible behavior change where collect/parse errors for test files are reported without the file path, source position and code frame that `toRollupError` attaches, which callers and error-reporting tests may depend on. Confidence is moderate — this may be a legitimate cleanup if the only usage was deleted in another hunk, but it is worth verifying that no `toRollupError(` reference remains and that parse-error output is still formatted.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 849,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1168
+  },
+  "latencyMs": 11778,
+  "nominalCostUsd": 0.0334895
+}

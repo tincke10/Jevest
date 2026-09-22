@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 23,
+      "lineEnd": 24,
+      "claim": "The newly added `chUaHighEntropyValues` does not correspond to any known Permissions-Policy / Client Hints feature token; the camelCase-to-kebab serialization would emit `ch-ua-high-entropy-values`, which browsers will ignore as an unrecognized policy.",
+      "rationale": "The standardized client-hint policy-controlled features are `ch-ua`, `ch-ua-arch`, `ch-ua-bitness`, `ch-ua-form-factors`, `ch-ua-full-version`, `ch-ua-full-version-list`, `ch-ua-mobile`, `ch-ua-model`, `ch-ua-platform`, `ch-ua-platform-version`, `ch-ua-wow64`. \"High entropy values\" is the name of the `navigator.userAgentData.getHighEntropyValues()` API, not a delegatable hint token — there is no `Sec-CH-UA-High-Entropy-Values` header. Exposing this in the public `StandardizedFeatures` type invites callers to emit a directive that silently does nothing. Medium confidence; if a feature really was missing from this list, `chUaFormFactors` is the likely intended one.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 23,
+      "lineEnd": 24,
+      "claim": "Adding a member to `StandardizedFeatures` may require a matching entry in any runtime mapping/allow-list (and its tests/docs) that consumes this type.",
+      "rationale": "Only the type declaration is visible in this hunk. If the header is built via a generic camelCase→kebab transform this is fine, but if there is a non-exhaustive lookup object (e.g. `Partial<Record<StandardizedFeatures, string>>` or a plain object literal), the new key would serialize to `undefined` or be dropped at runtime with no compile error. Low-to-medium confidence since the implementation isn't shown.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2253,
+    "cacheReadInputTokens": 3362,
+    "cacheCreationInputTokens": 2672
+  },
+  "latencyMs": 26046,
+  "nominalCostUsd": 0.08474600000000002
+}

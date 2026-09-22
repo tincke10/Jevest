@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 14,
+      "lineEnd": 20,
+      "claim": "`HeyAPIResolvers` loses the `Exclude<..., undefined>` wrapper, so the type may now include `undefined`",
+      "rationale": "The old definition explicitly stripped `undefined` from the plugin's `~resolvers` property (which is optional). The new alias `Plugins.HeyApiTypeScript.Resolvers` is taken at face value; if that exported type is itself optional/nullable, any function declared to return `HeyAPIResolvers` (e.g. the `~resolvers` factory documented right below) will now accept/return `undefined` silently, and consumers that spread or index it could hit a runtime `undefined`. Worth verifying the upstream type is non-optional. Medium confidence — depends on the upstream declaration.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 33,
+      "lineEnd": 33,
+      "claim": "`HeyApiConfig` is re-based on `Plugins.HeyApiClientFetch.Client` instead of the `FetchClient` export; shape may differ",
+      "rationale": "`Required<Pick<HeyApiConfig, 'querySerializer'>>` and `Pick<HeyApiConfig, 'bodySerializer' | 'responseTransformer'>` below assume those exact keys exist on the config returned by `getConfig()`. If the plugin-namespaced client type differs (renamed keys, different generic defaults, or a `getConfig` overload returning a narrower type), these `Pick`s will either fail to compile or silently resolve to different property types, changing the public `TRPCHeyApiClientConfig` contract for existing callers. Moderate confidence — needs a check against the installed `@hey-api/openapi-ts` version.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 4,
+      "claim": "`import type { Plugins }` used as a value-like namespace qualifier (`Plugins.HeyApiTypeScript.Resolvers`) requires `Plugins` to be exported as a namespace, not just a type",
+      "rationale": "Dotted access on a type-only import only works if the upstream package exports `Plugins` as a namespace (or a type with nested namespace declarations). If it is exported as an interface/type alias, `Plugins.HeyApiTypeScript.Resolvers` will not resolve and the module fails to typecheck; it can also break under `isolatedDeclarations`/bundler resolution. Low-to-medium confidence — please confirm the upstream export kind.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 14,
+      "claim": "`HeyAPIResolvers` changes from an internal type to an exported one",
+      "rationale": "The type was previously module-private and is now part of the package's public surface. That is intentional-looking, but it means the shape of a third-party library type (`Plugins.HeyApiTypeScript.Resolvers`) is now re-exported, so upstream changes become breaking changes for this package's consumers. Flagging as a deliberate-API-surface concern, low severity.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2053,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2159
+  },
+  "latencyMs": 22315,
+  "nominalCostUsd": 0.0734995
+}

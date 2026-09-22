@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 80,
+      "lineEnd": 81,
+      "claim": "`validate` is declared as a type predicate narrowing to `core.input<this>`, which is the wrong (or at least surprising) side of the schema for many schemas and can silently mis-narrow.",
+      "rationale": "For schemas where input != output the predicate can be useless or misleading: `z.coerce.number()` has `input = unknown`, so `validate` narrows to `unknown` (a no-op, and effectively a widening in union-narrowing contexts); `z.string().default(\"a\")` narrows to `string | undefined` even though callers likely expect `string`. If the intent is 'this value is acceptable to parse', `input` is defensible, but users coming from `is`/`safeParse` habits will expect output narrowing. Moderately confident this at least needs an explicit decision/docs.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 80,
+      "lineEnd": 80,
+      "claim": "Declaring a type-predicate signature on the interface forces every implementer to also declare the predicate; a plain `boolean`-returning implementation will not satisfy this member.",
+      "rationale": "TypeScript does not treat `(): boolean` as assignable to `(): data is T`. If the runtime `ZodType` implementation, or any user class / declaration-merged augmentation implementing `ZodType`, defines `validate` returning `boolean`, it will fail to type-check. This hunk also adds no implementation, so it is worth confirming the runtime method actually exists elsewhere in the change; otherwise `schema.validate(...)` is a TypeError at call time. Confident about the assignability rule, unsure whether the implementation lands in another file of the same change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "`validateAsync` returns `Promise<boolean>` with no narrowing, making the sync/async pair asymmetric and the async variant far less useful.",
+      "rationale": "TypeScript cannot express an async type predicate, so this is a forced limitation, but the asymmetry means users must fall back to `safeParseAsync` or a manual cast to get typing. Consider returning richer result info or documenting the gap. Low confidence this is actionable, but the mismatch with the sync overload is real and will surprise callers.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 80,
+      "lineEnd": 80,
+      "claim": "The sync `validate` signature gives no indication of its failure mode for schemas containing async refinements.",
+      "rationale": "Elsewhere in zod, calling a sync entry point on a schema with async checks throws ('Encountered async ... in synchronous parse'). A method named `validate` returning a plain predicate reads as total and never-throwing, so callers are likely to omit try/catch and get an unexpected throw instead of `false`. Worth confirming the implementation's behavior and documenting it. Moderate confidence.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3985,
+    "cacheReadInputTokens": 3674,
+    "cacheCreationInputTokens": 5045
+  },
+  "latencyMs": 45386,
+  "nominalCostUsd": 0.151932
+}

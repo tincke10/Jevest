@@ -1,0 +1,69 @@
+{
+  "findings": [
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "The `_Err ?? errors.$ZodError` fallback is dropped: `failure()` calls `new Err(...)` unconditionally, so a nullish `_Err` now produces a TypeError instead of a default `$ZodError`.",
+      "rationale": "The old expression explicitly guarded against `_Err` being undefined (`new (_Err ?? errors.$ZodError)(...)`). The new helper takes `Err: $ZodErrorClass` and does `new Err(...)` with no fallback. `_safeParse` is an exported factory, so any internal/external caller that passes `undefined` (or a build where the const initialization order leaves `errors.$ZodRealError` undefined at module-eval time — a real hazard with circular imports between parse.ts and errors.ts) previously degraded gracefully and now throws a raw TypeError, and it throws lazily at `.error` access rather than at parse time. Fairly confident this is an unintended behavior change; at minimum the guard removal should be deliberate.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "Making `error` lazy moves `util.finalizeIssue` and `core.config()` evaluation from parse time to first property read, so a global config change (or locale/error-map swap) between the two points silently changes the produced messages.",
+      "rationale": "`core.config()` reads global state and `finalizeIssue` resolves error maps/messages. Previously that snapshot was taken synchronously inside `safeParse`; now it is taken whenever the caller first touches `.error`, which may be much later (or in a different `config()` scope, e.g. after `z.config({ localeError })` or inside a test that resets config in `afterEach`). This is an observable behavior change for existing callers. Moderately confident it matters in practice given zod's global config/locale API.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "Errors thrown while finalizing issues now escape from a property getter instead of from `safeParse`, breaking the \"safeParse never throws\" contract at an unexpected call site.",
+      "rationale": "A custom `error` map or a `Err` constructor that throws used to surface inside the `safeParse` call. Now `const r = safeParse(...); if (!r.success) log(r.error)` throws from the property read — code that wrapped only the parse call in try/catch, or that reads `.error` inside a `finally`/logger/serializer, will see an unhandled throw. Also relevant for `JSON.stringify(result)`, which now invokes the getter and can throw. Confident this is a genuine, if narrow, behavioral difference.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "`error` becomes an accessor property rather than a data property, which changes reflection/serialization behavior for existing consumers.",
+      "rationale": "`Object.getOwnPropertyDescriptor(res, 'error').value` is now `undefined`, `structuredClone(res)` throws on the accessor-backed result only after invoking the getter (and fails on the `$ZodError` instance anyway), `Object.freeze(res)` no longer prevents the lazy build, and any code doing descriptor-based copying (some deep-clone/immer-style helpers) will not carry the error across. Low-to-moderate confidence that a real consumer depends on this, but it is a public result shape change worth noting.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 84,
+      "lineEnd": 84,
+      "claim": "The closure retains `issues`, `ctx`, and transitively the parsed input value for the lifetime of the result object, even after `.error` has been read.",
+      "rationale": "`failure` captures `issues` (raw issues each holding `input`) and `ctx` in the closure; nothing clears them after the error is materialized. Previously the raw issues and ctx were dropped as soon as `safeParse` returned. For callers that retain failed results (caches, aggregated validation results over large payloads) this increases retained heap, and the raw `issues` array is aliased from `result.issues`, so any later mutation of that array by the caller would change the lazily-built error. Low confidence this bites, but it is a real difference from the eager version.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 84,
+      "lineEnd": 84,
+      "claim": "The `set error` accessor lets a caller assign `undefined`/null, after which the getter silently rebuilds the error from the captured issues instead of returning what was assigned.",
+      "rationale": "The memo flag is the value itself (`if (!error)`), so `res.error = undefined as any` (or any falsy assignment) is not sticky — the next read re-finalizes. With a plain data property the assignment stuck. A separate `built` boolean would avoid this. Edge case, but it is a concrete logic gap in the memoization.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 84,
+      "lineEnd": 84,
+      "claim": "`failure` is declared to return `any`, so TypeScript no longer checks the returned object against `util.SafeParseResult`'s failure shape.",
+      "rationale": "The old inline object literal was at least contextually checked against the function's declared return type before the `as any` on the success branch. Routing the failure branch through an `any`-returning helper removes that check, so a future typo (e.g. `succes: false`) compiles. Returning `util.SafeParseResult<never>` or an explicit failure type would preserve the safety. Confident about the type-checking loss; impact is low today.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 87,
+      "lineEnd": 91,
+      "claim": "The async path (`safeParseAsync`) is not updated, leaving sync and async results with different `error` property semantics.",
+      "rationale": "If `_safeParseAsync` below still constructs the error eagerly as a data property, sync failures now have a lazy accessor while async failures do not — the divergence matters for the reflection/config-timing concerns above and for any shared helper that handles both. I cannot see that code in this hunk, so this is a flag to verify rather than a confirmed defect.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3679,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1820
+  },
+  "latencyMs": 47387,
+  "nominalCostUsd": 0.11075950000000001
+}

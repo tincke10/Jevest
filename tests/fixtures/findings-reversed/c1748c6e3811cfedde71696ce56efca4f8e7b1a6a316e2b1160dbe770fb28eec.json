@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 15,
+      "lineEnd": 15,
+      "claim": "The newly re-exported `inferSubscriptionInput` / `inferSubscriptionOutput` must actually be exported (as types) from the underlying `unstable-core-do-not-import` module this `export { ... } from` block pulls from; otherwise this is a compile error or a broken public entrypoint.",
+      "rationale": "The hunk only shows the re-export list, not the source module, so I cannot verify the symbols exist upstream. Low-to-moderate confidence, but it is the main failure mode for this kind of change and is cheap to verify (grep for `inferSubscriptionInput` in the core module's index).",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "Possible duplicate/conflicting export: if `inferSubscriptionInput`/`inferSubscriptionOutput` are already re-exported later in this barrel file or via an `export * from`, this addition introduces a duplicate or ambiguous export name.",
+      "rationale": "Only a small window of the file is visible, so later `export *` / `export type { ... }` statements in the same barrel cannot be ruled out. Barrel files commonly mix named and star re-exports, making this a realistic if unconfirmed collision risk. Low confidence.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 15,
+      "lineEnd": 15,
+      "claim": "Adding these inference helpers to the package's public root `index.ts` widens the stable public API surface with types sourced from a module explicitly named `unstable-core-do-not-import`, committing the package to semver stability for helpers that may still be in flux.",
+      "rationale": "API-contract observation rather than style: once exported from the root entrypoint, consumers depend on the exact shape of these conditional types and later refactors become breaking changes. Worth confirming the subscription typings are considered stable.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2139,
+    "cacheReadInputTokens": 3406,
+    "cacheCreationInputTokens": 2620
+  },
+  "latencyMs": 25734,
+  "nominalCostUsd": 0.081398
+}

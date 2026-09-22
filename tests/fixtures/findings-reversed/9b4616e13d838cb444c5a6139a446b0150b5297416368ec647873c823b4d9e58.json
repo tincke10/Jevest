@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 2112,
+      "lineEnd": 2112,
+      "claim": "Swapping `util.cachedInternal` for `util.cached` changes how the memoized `_normalized` value is exposed/stored, which can re-trigger eager evaluation of `normalizeDef(def)` and regress recursive/lazy object schemas.",
+      "rationale": "The `*Internal` helpers in this file (`defineLazyInternal` is used two lines below) exist specifically to define the backing property non-enumerably / on the internals object so that enumeration, spreading (`{...inst._zod}`), cloning, or inspection does not invoke the lazy getter. `util.cached` defines a plain (enumerable) `value` accessor, so anything that enumerates or copies the holder will now force `normalizeDef(def)` to run. For object schemas whose `shape` is a lazy getter (see the `shape` setter immediately above), forcing normalization early can evaluate a self-referential shape and cause stale/partial normalization or infinite recursion for recursive schemas. Additionally, if `cachedInternal` was the only exported variant after a refactor, `util.cached` may no longer exist, which would be a runtime TypeError. I cannot see util.ts in this hunk, so confidence is moderate, but the deliberate `Internal` naming used elsewhere in the same block strongly suggests this is a meaningful semantic difference rather than a rename.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2242,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1108
+  },
+  "latencyMs": 27908,
+  "nominalCostUsd": 0.06771450000000001
+}

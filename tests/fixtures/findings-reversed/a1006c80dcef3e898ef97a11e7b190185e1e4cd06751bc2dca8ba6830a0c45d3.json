@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 28,
+      "lineEnd": 28,
+      "claim": "Removing the `addDirtyMock` bound alias will break any remaining reference to it, and any place where it was passed as a detached callback must now pass a properly bound function.",
+      "rationale": "`addDirtyMock` was a `.bind`-ed alias precisely because `Set.prototype.add` throws `TypeError: Method Set.prototype.add called on incompatible receiver undefined` when invoked without its receiver. If the rest of the file (not shown in this hunk) still references `addDirtyMock`, this is a compile error; if callers were converted to something like `onDirty: DIRTY_MOCK_STATES.add` (unbound) rather than `mock => DIRTY_MOCK_STATES.add(mock)`, it becomes a runtime TypeError on the first dirty-state notification. I can't see the call sites in this hunk, so confidence is moderate — worth verifying every former usage was rewritten to a bound/arrow form.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 27,
+      "claim": "If the removal also dropped the only writer to `DIRTY_MOCK_STATES`, the set becomes dead code while still being a strong-reference container.",
+      "rationale": "The surrounding design deliberately uses `WeakRef`/`FinalizationRegistry` for `REGISTERED_MOCKS` to avoid retaining mocks, but `DIRTY_MOCK_STATES` is a plain `Set` holding strong references. After removing the convenience adder, please confirm the set is still populated and, more importantly, still cleared; otherwise it is either unused dead state or a place where mocks are retained for the lifetime of the module. Low-to-moderate confidence since the mutation sites aren't in this hunk.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1394,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1477
+  },
+  "latencyMs": 16862,
+  "nominalCostUsd": 0.0502045
+}

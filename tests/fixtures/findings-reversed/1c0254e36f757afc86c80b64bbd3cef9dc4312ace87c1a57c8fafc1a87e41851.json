@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 190,
+      "lineEnd": 190,
+      "claim": "Removing `refCleanupMap.get(container)?.()` means a previously registered ref cleanup is never invoked when the `ref` prop changes or is removed, leaking the old ref/cleanup.",
+      "rationale": "In the `key === 'ref'` branch, the code proceeds to compute a new `cleanup` and (further down) store it in `refCleanupMap`, overwriting the prior entry. With the invocation removed, the old callback ref never gets called with `null` and its cleanup function becomes unreachable, so listeners/observers registered in the old callback ref leak and stale DOM references are retained. The `value == null` case now performs no cleanup at all. Confidence is moderate-high that this is a regression; it would only be correct if an equivalent cleanup call was added on the caller/unmount path, which is not visible in this hunk.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1502,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1065
+  },
+  "latencyMs": 19155,
+  "nominalCostUsd": 0.0487845
+}

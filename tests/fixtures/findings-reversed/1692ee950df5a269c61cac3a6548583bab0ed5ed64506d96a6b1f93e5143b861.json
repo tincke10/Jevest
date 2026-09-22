@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 41,
+      "lineEnd": 41,
+      "claim": "Bumping the cache `version` invalidates every previously written on-disk cache, but nothing in this change appears to purge the now-orphaned cache directories/metadata from the old version.",
+      "rationale": "This field is almost certainly part of the cache key/path (that is the usual reason for such a bump). If old version-scoped directories are not garbage-collected elsewhere, each bump leaves a stale copy of the entire module cache on disk, growing unboundedly across releases. Medium confidence — cleanup may well exist in code outside this hunk (e.g. driven by `metadataFilePath`), so this is worth a quick check rather than a definite bug.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 41,
+      "lineEnd": 41,
+      "claim": "The version is a hardcoded literal that must be manually kept in sync with any change to the cache format/serialization; a forgotten bump silently yields corrupt or mis-typed cache hits.",
+      "rationale": "Hardcoded invalidation tokens are fragile: the correctness of the whole cache depends on a human remembering to edit this line whenever the persisted shape or key-generation logic changes. Low-to-medium confidence that this is actionable here (the bump itself looks correct and intentional), but it is a real behavioral hazard worth flagging — deriving it from the package version or a hash of the serializer would be safer.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 802,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1266
+  },
+  "latencyMs": 10467,
+  "nominalCostUsd": 0.0332945
+}

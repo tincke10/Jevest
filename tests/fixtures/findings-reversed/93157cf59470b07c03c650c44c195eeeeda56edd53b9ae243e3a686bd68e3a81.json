@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 3,
+      "lineEnd": 3,
+      "claim": "Removing the `regexes` namespace import may break remaining references to `regexes.*` elsewhere in this file (e.g. format/pattern emission for string checks).",
+      "rationale": "This file previously used `regexes` to emit `pattern`/`format` values for string JSON Schema output. The hunk only shows the import removal; if any `regexes.` usage survives further down the file this is a compile error, and if the usages were deleted too, generated schemas silently lose `pattern` constraints — a behavior change for existing callers. Low-to-moderate confidence without seeing the rest of the file, but worth verifying no `regexes.` reference remains and that any dropped patterns were intentional.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "Removing the `Seen` type import may break remaining type annotations referencing `Seen` in this file.",
+      "rationale": "`Seen` is a core type of the JSON Schema conversion pipeline (per-schema state tracking). If any signature or local in this file still annotates `Seen`, dropping the import fails to compile; if annotations were instead relaxed to inference/`any`, type safety at call sites weakens. Low confidence without the full file, but cheap to verify.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1412,
+    "cacheReadInputTokens": 3477,
+    "cacheCreationInputTokens": 2456
+  },
+  "latencyMs": 15548,
+  "nominalCostUsd": 0.0616185
+}

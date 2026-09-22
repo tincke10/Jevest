@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 8,
+      "lineEnd": 9,
+      "claim": "Module-level `const log = console;` hard-wires all logging in this library package to the global console, with no level filtering or injectable logger.",
+      "rationale": "`packages/openapi` is a library consumed by other code. Aliasing `console` at module scope means any `log.warn`/`log.error`/`log.debug` calls added alongside this change will write unconditionally to the host process's stdout/stderr, which callers cannot silence or redirect. It also captures whatever `globalThis.console` is at module-evaluation time, so test harnesses or runtimes that swap `console` afterwards (a common spy pattern) will not intercept these calls. If this is a placeholder for a real logger, it is worth flagging before it ships; confidence that this is intentional-but-undesirable is moderate, since the hunk shows no consumer of `log`.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 773,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1003
+  },
+  "latencyMs": 11303,
+  "nominalCostUsd": 0.0299395
+}

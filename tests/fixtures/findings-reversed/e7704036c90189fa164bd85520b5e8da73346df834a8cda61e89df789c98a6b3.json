@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 63,
+      "lineEnd": 64,
+      "claim": "Removing the `(?=[\\s\\S]*[\\p{Extended_Pictographic}\\p{Regional_Indicator}⃣])` lookahead makes the emoji regex accept strings containing no emoji at all, e.g. \"123\", \"#\", \"*\", a lone ZWJ (U+200D), a lone variation selector (U+FE0F), or a bare skin-tone modifier.",
+      "rationale": "`\\p{Emoji_Component}` includes ASCII digits, `#`, `*`, U+200D, U+FE0F, U+20E3 and the skin-tone/hair modifiers. With the anchor lookahead gone, `^[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$` matches inputs made entirely of these components, so `z.string().emoji()` silently starts validating non-emoji strings — a loosening of validation for all existing callers. High confidence this is a real behavior regression; the retained comment's stated motivation (exponential backtracking from `(A|B)+`) is addressed by the single character class alone and did not require dropping the lookahead.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2165,
+    "cacheReadInputTokens": 4194,
+    "cacheCreationInputTokens": 3676
+  },
+  "latencyMs": 23944,
+  "nominalCostUsd": 0.093002
+}

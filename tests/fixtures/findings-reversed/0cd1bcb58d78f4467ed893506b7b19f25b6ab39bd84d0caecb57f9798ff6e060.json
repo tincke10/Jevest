@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 408,
+      "lineEnd": 409,
+      "claim": "Removing `clientSubscriptions.delete(id)` from the subscription error handler leaves the failed subscription registered in the map forever, while the success path (line 407) still deletes it — an asymmetric cleanup that leaks entries and can break reuse of the same request id.",
+      "rationale": "In the tRPC ws adapter, `clientSubscriptions` maps a JSON-RPC request id to the subscription's abort controller and is used (a) to reject/ignore a new `subscription` message that reuses an already-registered id, (b) to handle `subscription.stop`, and (c) to abort everything on socket close. If the entry is never removed when the subscription errors, then: the client can never re-subscribe with that id (it will be treated as a duplicate), a later `subscription.stop` for that id acts on an already-dead subscription, and the controller stays reachable until the connection closes — a per-connection memory leak that grows with every failed subscription. The delete is still performed on the normal completion path just above, so the two paths are now inconsistent. This is only safe if the same deletion was moved into a `.finally()`, an abort/close listener, or the `catch` block further down (outside this hunk); if so, this is a no-op refactor. Since I can't see the surrounding code, I'd verify that an equivalent cleanup exists on the error path before accepting the removal. Confidence that this is a real regression: moderate.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1154,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1076
+  },
+  "latencyMs": 15145,
+  "nominalCostUsd": 0.040194499999999994
+}

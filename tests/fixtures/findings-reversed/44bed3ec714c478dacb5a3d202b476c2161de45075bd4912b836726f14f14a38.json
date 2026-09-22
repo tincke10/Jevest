@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 551,
+      "lineEnd": 557,
+      "claim": "Removing the `done` check means a prematurely closed/ended stream no longer produces the explicit `Stream closed unexpectedly` error; instead `value` is `undefined` and the array destructuring throws an opaque `TypeError: undefined is not iterable`.",
+      "rationale": "`ReadableStreamDefaultReader.read()` resolves with `{ done: true, value: undefined }` when the stream ends. Line 557 destructures `value` unconditionally, so when the producer closes the stream (network drop, aborted request, malformed payload) the consumer now surfaces a confusing TypeError instead of the intentional domain error, and any caller matching on that message will break. Also, if the reject branch relied on the guaranteed-present chunk, downstream promise rejection semantics change. High confidence this is a real behavior regression unless the caller guarantees the stream can never close here — which is exactly what the removed guard was defending against.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 557,
+      "lineEnd": 557,
+      "claim": "`value as PromiseChunk` is now an unsound cast: without the `done` guard, `value`'s actual type includes `undefined`.",
+      "rationale": "Previously the `if (done) throw` narrowed `value` to the non-undefined branch before the cast, so the assertion was safe. After the change the cast silently launders `undefined` into `PromiseChunk`, defeating the type checker at the exact spot where the runtime failure occurs. Medium-high confidence; depends on how the reader's read() result is typed in this codebase.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1294,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1224
+  },
+  "latencyMs": 16490,
+  "nominalCostUsd": 0.045174500000000006
+}

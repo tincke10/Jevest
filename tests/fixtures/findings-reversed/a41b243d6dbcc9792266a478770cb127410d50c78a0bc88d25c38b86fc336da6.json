@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 156,
+      "lineEnd": 156,
+      "claim": "Forcing `abortEarly: true` silently overrides a caller-supplied `abortEarly: false` in `_ctx`, changing how many user callbacks (refinements, `superRefine`, custom `check` implementations, error-map/`error` functions) actually run during `validate`.",
+      "rationale": "The spread `{ ..._ctx, async: false, abortEarly: true }` puts `abortEarly` after the spread, so any user value is discarded. For the boolean return value this is harmless, but user checks are arbitrary functions that may have observable side effects (logging, counters, async kickoff, collecting diagnostics). Callers who passed a context explicitly asking for full issue collection will now see fewer of their callbacks invoked. Medium confidence that this is intentional-but-underspecified; at minimum it is a behavior change worth calling out, and it deserves a comment explaining why the caller's preference is ignored.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 156,
+      "lineEnd": 161,
+      "claim": "The forced `abortEarly` makes the fallback path's side-effect profile diverge from the compiled fast path, which may undermine the documented \"at-most-twice\" user-callback bound invariant.",
+      "rationale": "The adjacent comment states the `COMPILE_FALLBACK` symbol exists so that \"user callbacks keep the at-most-twice bound\". Adding `abortEarly: true` only to the fallback means a schema that runs the compiled path once and then the fallback will execute a *different, truncated* set of checks the second time, rather than the same set. If any test or user contract relies on the fallback reproducing the same callback sequence (e.g. to detect non-deterministic/stateful refinements), this change breaks that symmetry. Low-to-medium confidence without seeing the compiled path, but the interaction with the neighboring invariant comment should be verified.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 157,
+      "lineEnd": 158,
+      "claim": "If `fallbackRun` (the compiled fallback stored on `schema._zod.bag`) specializes or memoizes based on the first context it observes, running it with `abortEarly: true` here could truncate issues for later full `parse()` calls on the same schema.",
+      "rationale": "`fallbackRun` is pulled off a shared, per-schema `CompiledBag`, so it is reused across calls and across entry points. Whether `abortEarly` leaks depends on whether the compiler bakes ctx flags into the generated function or reads them per invocation. Low confidence — this is a question to confirm rather than a demonstrated bug — but a shared compiled artifact being invoked with a newly forced flag is worth verifying, since a leak would silently drop issues from user-facing `parse` errors.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2909,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1336
+  },
+  "latencyMs": 38658,
+  "nominalCostUsd": 0.0866695
+}

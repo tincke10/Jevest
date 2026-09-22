@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 611,
+      "lineEnd": 616,
+      "claim": "Deferring `utils.getMessage` into the failure branch changes observable behavior for passing assertions whose arguments are expensive or hostile to serialize (throwing getters, very large or circular structures): previously the formatting cost/throw happened on every call, now only on failure.",
+      "rationale": "This is almost certainly the intent of the change (a perf win, and arguably a fix since a passing assertion should not throw while building a message it never uses). Flagging only because it is an observable change for anything relying on the eager objDisplay path. Chai's getMessage/getActual are read-only with respect to assertion flags, and the array indices ([pass, posMsg, negMsg, args]) are preserved, so the message text itself is unchanged. Low confidence this matters in practice.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2326,
+    "cacheReadInputTokens": 3772,
+    "cacheCreationInputTokens": 3731
+  },
+  "latencyMs": 29912,
+  "nominalCostUsd": 0.09736600000000001
+}

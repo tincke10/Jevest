@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 291,
+      "lineEnd": 295,
+      "claim": "Replacing the narrowing logic with unconditional `bag.minimum = minimum; bag.maximum = maximum;` lets a number-format check clobber tighter bounds recorded by an earlier `.min()`/`.max()`, producing incorrect introspection metadata (e.g. JSON Schema output).",
+      "rationale": "`onattach` handlers run in the order checks are added. For `z.number().min(5).max(10).int32()`, the `.min`/`.max` handlers store 5/10 into `bag.minimum`/`bag.maximum`, then the format handler overwrites them with the much wider int32 range (-2147483648 / 2147483647). Runtime validation is unaffected (each check still runs its own comparison), but anything consuming `_zod.bag` — notably JSON Schema conversion and metadata readers — will now report bounds that are strictly weaker than what is actually enforced. The removed code guarded exactly this case (`if (minimum > curMin)` / `if (maximum < curMax)`). The result is also order-dependent: `z.int32().min(5)` keeps 5, while `z.number().min(5).int32()` loses it, which is a surprising asymmetry. I'm fairly confident this is a real behavioral regression unless the revert is deliberate (e.g. the narrowing broke bigint/number type mixing in `bag.minimum`, or a different layer now handles the intersection).",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 976,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1472
+  },
+  "latencyMs": 12401,
+  "nominalCostUsd": 0.0397045
+}

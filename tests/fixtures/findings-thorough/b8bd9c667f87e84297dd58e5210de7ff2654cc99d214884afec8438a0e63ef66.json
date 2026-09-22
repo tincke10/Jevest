@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 1,
+      "lineEnd": 3,
+      "claim": "Exporting these three regex-fragment constants widens the module's public surface; if this file is re-exported from the package entry point they become part of the published API and subsequent changes to the strings become breaking changes.",
+      "rationale": "Purely an API-surface concern, not a logic bug — the values are unchanged so runtime behavior is identical. Flagging with low-to-moderate confidence that it matters: if `node.ts` is internal-only (not listed in package exports), this is harmless; if it is re-exported, consumers can start depending on these literals. Worth confirming the export map / index barrel. Also worth checking that the new importer actually needs all three constants rather than just one, since unused exports here can no longer be dropped as dead code by the bundler within this module.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 557,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1141
+  },
+  "latencyMs": 11451,
+  "nominalCostUsd": 0.025919499999999998
+}

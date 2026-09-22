@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 116,
+      "lineEnd": 116,
+      "claim": "`scopes` is declared as a required property (`string[] | null`) inside the optional `jwt` object, but API Gateway omits `scopes` entirely for non-OAuth JWTs",
+      "rationale": "In the real HTTP API v2 payload, `authorizer.jwt` frequently contains only `claims`; `scopes` is absent rather than `null`. Declaring it required means anyone constructing this type (tests, mocks, adapters) must supply `scopes: null`, and consumers reading `ctx.authorizer.jwt.scopes` will be told it is always present when at runtime it can be `undefined`. `scopes?: string[]` (matching @types/aws-lambda's `APIGatewayEventRequestContextJWTAuthorizer`) would be safer. Moderately confident this is a mismatch with the actual event shape.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 116,
+      "lineEnd": 117,
+      "claim": "`jwt`, `lambda` and the existing `iam` are all independently optional instead of a discriminated union, so mutually exclusive shapes type-check",
+      "rationale": "An API Gateway authorizer context carries exactly one of `jwt`, `lambda`, or `iam`. With three optional members, code like `ctx.authorizer.jwt.claims` is only guarded by an optional-chain hint, and a consumer can write `if (ctx.authorizer.lambda) ... ctx.authorizer.jwt` without any compile error, producing `undefined` at runtime. A union (`{ jwt: ... } | { lambda: ... } | { iam: ... }`) would force correct narrowing. Confident this weakens the safety the type is meant to provide, though it may be a deliberate simplification.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 115,
+      "lineEnd": 116,
+      "claim": "`lambda?: Record<string, unknown> | null` combines optional, nullable and `unknown` values, forcing unsafe casts at every read site and giving two distinct representations of \"absent\"",
+      "rationale": "A Lambda REQUEST authorizer's `context` can only contain string/number/boolean values (API Gateway stringifies them), so `Record<string, string | number | boolean>` would be both accurate and usable. With `unknown`, callers doing `ctx.authorizer.lambda?.userId` and passing it to a string parameter need an `as string` cast, which hides shape bugs. Additionally the doc comment says it is `null` when there is no context, yet the property is also optional, so callers must handle both `undefined` and `null`. Medium confidence this will bite consumers.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 112,
+      "lineEnd": 119,
+      "claim": "`jwt`/`lambda` are added to the shared `Authorizer` interface, which appears to back the v1 (REST) request context as well as v2",
+      "rationale": "The members visible just above (`iam.cognitoIdentity`, `principalOrgId`, `userArn`, `userId`) are the REST/IAM shape, and `ApiGatewayRequestContextV2` is declared immediately after, suggesting this one interface is reused by both context types. `jwt` and `lambda` only exist in the HTTP API v2 payload format, so attaching them here advertises fields that will always be `undefined` on v1 events and lets v1 handlers branch on them. Worth confirming whether a separate `AuthorizerV2` is needed; I cannot see the usage sites in this hunk, so this is a suspicion rather than a certainty.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3882,
+    "cacheReadInputTokens": 3363,
+    "cacheCreationInputTokens": 4359
+  },
+  "latencyMs": 40822,
+  "nominalCostUsd": 0.1423415
+}

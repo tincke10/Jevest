@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 2,
+      "lineEnd": 3,
+      "claim": "`import * as regexes from \"./regexes.js\"` is a runtime (value) import, unlike every other import in this file's header, which is type-only. This introduces a real module dependency from json-schema-processors into regexes and could create a circular import or unexpected bundle growth.",
+      "rationale": "All neighboring imports are `import type`, so this file previously had (almost) no runtime deps on the sibling modules. Adding a value import means regexes.js is now evaluated whenever this module loads. If regexes.js (or anything it transitively pulls in) imports back into the core schema graph, this can produce a TDZ/undefined-at-module-init problem that only manifests at runtime in certain bundlers. Worth confirming regexes.js is dependency-free and that the imported regex objects are only read lazily inside functions, not at module top level. Confidence: low-to-moderate — regexes.js is typically leaf-level in zod, so this is likely fine, but the asymmetry with the other imports is worth a second look.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 6,
+      "lineEnd": 13,
+      "claim": "Newly imported `type Seen` may be unused or may indicate the file now depends on internal to-JSON-Schema traversal state that it previously did not.",
+      "rationale": "The hunk only shows the import being added; if `Seen` is not actually referenced in the rest of the file, it is dead (harmless but noise under `noUnusedLocals`, which would fail the build). More importantly, if it *is* used, it means processors now reach into per-node traversal/cycle-tracking state — a behavior-relevant coupling worth verifying that callers pass a consistent `Seen` and that mutation of it doesn't leak across separate `toJSONSchema` invocations. Confidence: low, since the hunk doesn't show the usage site.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 888,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1158
+  },
+  "latencyMs": 11324,
+  "nominalCostUsd": 0.0343645
+}

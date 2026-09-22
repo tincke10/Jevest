@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 470,
+      "lineEnd": 470,
+      "claim": "`prefix` is newly passed into `trpcMutationOptions` here; it must actually be in lexical scope at this point in `createTRPCOptionsProxy` (and be the same value used by the query/infinite-query/subscription branches), otherwise this is either a compile error or silently forwards an unrelated binding.",
+      "rationale": "The hunk does not show where `prefix` is declared. In this factory the path/prefix are usually derived in the proxy's `createRecursiveProxy` callback, so it is plausible but not visible here. Low-to-medium confidence; worth verifying that `prefix` is the same variable the sibling `queryOptions`/`infiniteQueryOptions` builders use rather than an outer-scope shadowed value.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 468,
+      "lineEnd": 468,
+      "claim": "Adding `prefix` to the mutation key/options construction changes the generated mutation key shape, which can break existing callers that match mutations by key.",
+      "rationale": "`trpcMutationOptions` derives the `mutationKey` from `path` (and now `prefix`). Any consumer calling `queryClient.isMutating({ mutationKey })`, `getMutationCache().find(...)`, or `setMutationDefaults(...)` with a key built the old way (or by a helper that was not updated to include `prefix`) will no longer match. This is a silent runtime behavior change rather than a type error. Medium confidence — it depends on whether every other mutation-key producer in the package was updated in the same change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 469,
+      "lineEnd": 472,
+      "claim": "Possible inconsistency: `prefix` is added to `mutationOptions` but the surrounding `queryOptions`/`infiniteQueryOptions`/`subscriptionOptions` branches may not have been updated identically.",
+      "rationale": "If only the mutation branch gains the prefix, query keys and mutation keys become namespaced differently, so utilities that strip/compare prefixes (e.g. invalidation helpers keyed off a shared root) will disagree. Low-to-medium confidence since only the mutation hunk is shown; please confirm the other option builders in this same file pass `prefix` too.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1351,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1006
+  },
+  "latencyMs": 18509,
+  "nominalCostUsd": 0.0444195
+}

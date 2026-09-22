@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 803,
+      "lineEnd": 804,
+      "claim": "The newly added block mutates global `process.exitCode` from inside a library/Node-API method, a surprising side effect for programmatic callers.",
+      "rationale": "`Vitest#collect`-style APIs are used programmatically (editor integrations, the public Node API, tests of Vitest itself). Setting `process.exitCode = 1` here makes the *host* process exit non-zero even though the caller may have handled the failed modules itself, and there is no code path that ever resets it back to 0 (e.g. on a subsequent successful watch-mode collection). Normally exit-code decisions belong to the CLI entry point, which already inspects the returned state. Moderately confident this is a behavior change worth a second look.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 804,
+      "lineEnd": 804,
+      "claim": "Failures are signalled only through `process.exitCode`; the returned object still reports `unhandledErrors: []`, so programmatic callers get no indication of the failure.",
+      "rationale": "If static parsing produced failed tasks (e.g. a syntax/collection error recorded on the module task), the return value is indistinguishable from a fully successful collection. Any caller that checks `unhandledErrors` (or just the returned `testModules`) to decide success will silently treat this as a pass. Either the errors should be surfaced in the return value, or the exit-code mutation should be moved to the caller that can inspect `testModules`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 807,
+      "lineEnd": 807,
+      "claim": "Only the `staticParse` branch sets `process.exitCode`; the `collectTests` fallback branch does not, creating inconsistent exit-code behavior between the two collection modes.",
+      "rationale": "Users toggling `staticParse` (or hitting the fallback path) will get a zero exit code for the same failing collection. If setting the exit code is the desired contract for this method, it should be applied uniformly after both branches. Fairly confident this asymmetry is unintended, unless `collectTests` already sets it internally — worth verifying.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 803,
+      "lineEnd": 804,
+      "claim": "`hasFailed` must be imported in this module; verify the import exists and that it accepts a `Task[]` (not a suite/file tree) in the current runner-utils signature.",
+      "rationale": "The diff only shows the usage, not an import addition. If `hasFailed` is not already imported in `core.ts`, this is a compile error. Additionally, `hasFailed` in @vitest/runner/utils traverses suite `tasks` recursively; passing the top-level module tasks is likely correct, but a static-parse module whose *own* `result` was never set while a child task carries the error state (or vice versa) could be missed. Low-to-medium confidence; needs a quick check of the import list and of how parse errors are recorded on the task.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1856,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1023
+  },
+  "latencyMs": 23215,
+  "nominalCostUsd": 0.0572145
+}

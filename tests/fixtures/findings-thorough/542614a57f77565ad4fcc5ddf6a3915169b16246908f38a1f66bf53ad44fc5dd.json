@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 154,
+      "lineEnd": 154,
+      "claim": "`ctx.clearCache()` may not exist on the Vitest instance, causing a runtime `TypeError: ctx.clearCache is not a function` when `--clearCache` is passed.",
+      "rationale": "The diff only shows the call site being renamed from `experimental_clearCache` to `clearCache`. If the corresponding method on the `Vitest` class (and its public type declarations / `.d.ts`) was not renamed or aliased in the same change, this call resolves to `undefined` and throws at runtime on the exact CLI path it is meant to serve. Worth confirming the class-side rename landed; I cannot see the class definition in this hunk, so confidence is moderate.",
+      "suggestedSeverity": "critical"
+    },
+    {
+      "lineStart": 154,
+      "lineEnd": 154,
+      "claim": "Dropping the `experimental_` prefix is a public API break for external callers that still invoke `experimental_clearCache()`.",
+      "rationale": "`experimental_clearCache` was an exported/public method on the Vitest node API, not internal-only. If the old name was removed rather than kept as a deprecated alias, any programmatic consumer calling it breaks without a deprecation cycle. Also, promoting an experimental API to stable implies the behavior/signature is now committed to; that should be intentional and documented. Confidence moderate — the removal itself is outside this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 153,
+      "lineEnd": 153,
+      "claim": "Potential name collision: `clearCache` is also the name of the config flag (`ctx.config.clearCache`) and may shadow or conflict with an existing differently-behaving method of the same name.",
+      "rationale": "Renaming to a generic `clearCache` increases the chance of colliding with a pre-existing member (e.g. an internal cache-clearing helper used during watch-mode reruns) that has different semantics. If such a member exists, the rename silently overrides it and `--clearCache` would perform the wrong operation. Low-to-moderate confidence; needs a grep of the Vitest class for an existing `clearCache` member.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1173,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1044
+  },
+  "latencyMs": 15062,
+  "nominalCostUsd": 0.040349499999999996
+}

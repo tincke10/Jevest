@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 391,
+      "lineEnd": 391,
+      "claim": "`ctx.intersections.push(allOf)` assumes `intersections` is always present and initialized on the processor context; if it is optional or omitted by any context-construction path, this throws a TypeError during schema conversion.",
+      "rationale": "Only the hunk is visible, so I cannot confirm the context type. If `intersections` is declared optional (`intersections?: ...[]`) or any ctx literal (nested conversion, tests, alternate `toJSONSchema` entry points) omits it, the new unguarded `push` is a hard runtime failure on any intersection schema. Moderate confidence this deserves verification.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 387,
+      "lineEnd": 391,
+      "claim": "When a child intersection is flattened via `...(a.allOf as any[])`, that child's array was already pushed onto `ctx.intersections` but is now detached from the output, so `finalize` will fold it a second time over element references shared with the new `allOf`.",
+      "rationale": "The spread copies element references, not the array, so both the parent array and the orphaned child array contain the same member schema objects. If folding mutates members in place (implied by 'finalize folds every object holding it'), the same members get merged twice, which can produce a wrong schema or duplicated keys. Reasonably confident this is at least redundant work and plausibly a correctness bug.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 391,
+      "lineEnd": 391,
+      "claim": "Registering the array (rather than the owning schema object) leaves a stale entry if `json.allOf` is later replaced by an `override` callback, a `$ref`/`$defs` extraction, or an io-specific rewrite: the orphaned array is folded and the live one is not.",
+      "rationale": "The added comment explicitly relies on the array identity being shared with every wrapper, which makes replacement of `json.allOf` anywhere downstream silently skip folding. Lower confidence since it depends on whether overrides can replace `allOf`, but the failure mode would be silent.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3024,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1327
+  },
+  "latencyMs": 43761,
+  "nominalCostUsd": 0.0894545
+}

@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 189,
+      "lineEnd": 190,
+      "claim": "The previous ref cleanup is invoked but its entry is never removed from `refCleanupMap`, so a stale cleanup can be invoked a second time when the new ref produces no cleanup.",
+      "rationale": "`refCleanupMap.get(container)?.()` only reads the map. If the code below this hunk stores the new cleanup conditionally (e.g. `cleanup && refCleanupMap.set(...)`), then for a null/object-style ref the old closure remains registered and will run again on the next applyProps or at unmount, double-detaching. Adding `refCleanupMap.delete(container)` (or setting unconditionally) would close this. Medium confidence - depends on the not-shown lines that write to the map.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 189,
+      "lineEnd": 194,
+      "claim": "The old cleanup now runs on every applyProps for the `ref` key, even when the ref value is identical to the previous render, causing a spurious detach/re-attach.",
+      "rationale": "Unless applyProps short-circuits on unchanged attribute values, a stable function ref will now observe ref(null) followed by ref(el) on each re-render, which is a visible behavior change for callers doing imperative setup/teardown. Moderate confidence - hinges on whether the enclosing loop skips unchanged props.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 189,
+      "lineEnd": 190,
+      "claim": "A throwing user-supplied cleanup will propagate out of applyProps, aborting the remaining prop application and leaving the ref map inconsistent.",
+      "rationale": "The cleanup is user code invoked with no try/catch; previously it was only invoked at teardown time. Now an exception escapes mid-update, leaving the element partially rendered and the stale entry still in the map. Lower severity but a genuine error-handling gap.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2763,
+    "cacheReadInputTokens": 3348,
+    "cacheCreationInputTokens": 3430
+  },
+  "latencyMs": 32475,
+  "nominalCostUsd": 0.105069
+}

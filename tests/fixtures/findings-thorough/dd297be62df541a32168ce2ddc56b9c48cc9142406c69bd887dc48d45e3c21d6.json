@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 487,
+      "lineEnd": 487,
+      "claim": "The new `!omittableOnInput` guard is placed on the outer `if`, so it skips the entire block, not just the `required` assignment.",
+      "rationale": "The stated intent (and the comment above) is only that the key set should not be *required* on input. If the body of `if (keyValues && !def.partial) { ... if (validKeyValues.length > 0) { ... } }` does anything besides `json.required = ...` — e.g. emits per-key `properties`, `propertyNames`, or tightens `additionalProperties` — that schema tightening is now silently dropped for input schemas whose value type is optional-in, which would let arbitrary/invalid keys through on input. If the block only assigns `required`, this is a non-issue. Medium confidence; depends on code below line 492 that isn't shown.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 486,
+      "lineEnd": 487,
+      "claim": "`inputOptin(...) !== undefined` assumes the helper returns `undefined` for non-optional inputs; if it can return a non-optional sentinel (e.g. `\"required\"`), the condition is inverted-ish and would suppress `required` for every record.",
+      "rationale": "In zod core `_zod.optin` is typed `\"optional\" | undefined`, so `!== undefined` is probably right, but a resolver helper could normalize to a string union including a non-optional value. Comparing explicitly against `\"optional\"` would be safer and self-documenting. Low-to-medium confidence — worth a quick check of `inputOptin`'s signature. Also note this call is evaluated unconditionally, even when `keyValues` is undefined or `def.partial` is true, which is wasted work and, for lazy/recursive value types, could trigger resolution (or recursion) that previously never happened on this path.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 487,
+      "lineEnd": 487,
+      "claim": "Unsafe cast `def.valueType as schemas.$ZodType` may be hiding a real type mismatch.",
+      "rationale": "`$ZodRecord`'s `valueType` should already be a `$ZodType`; needing a cast suggests either the def is typed loosely (e.g. `unknown`/`SomeType`) or `inputOptin` expects a narrower shape. If `valueType` can be undefined for some record variants, `inputOptin` would receive `undefined` and could throw at runtime. Low confidence without the surrounding type declarations, but casts in this position are a common source of latent nullability bugs.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 487,
+      "lineEnd": 487,
+      "claim": "Gating on `ctx.io === \"input\"` only considers the global/current IO direction, not a direction flip introduced by an enclosing pipe/transform.",
+      "rationale": "If `ctx.io` is mutated/threaded as the walker descends (as is typical when a `$ZodPipe` swaps input/output perspectives), reading it here is correct; if it is a fixed top-level option while the effective direction for this subtree differs, the `required` list will be wrong in nested pipe cases. Low confidence — depends on how `ctx.io` is maintained elsewhere in this file; worth confirming against how other processors consume it.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3442,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1263
+  },
+  "latencyMs": 42182,
+  "nominalCostUsd": 0.0992645
+}

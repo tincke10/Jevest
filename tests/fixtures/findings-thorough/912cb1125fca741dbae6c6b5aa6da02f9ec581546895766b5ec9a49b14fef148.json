@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 61,
+      "lineEnd": 61,
+      "claim": "`snapshotChecks` mutates the object it is handed (`def.checks = [...def.checks]`) instead of returning a new object, making it an impure helper that will silently rewrite a caller-owned params/def object if it is ever called with something other than a fresh literal.",
+      "rationale": "Today both call sites pass a freshly spread literal, so behavior is correct, but the helper's signature (`<T extends {checks?: ...}>(def: T)`) invites reuse with an existing def object, in which case it would clobber the caller's array — the exact class of aliasing bug this change is trying to prevent. Returning `{ ...def, checks: def.checks ? [...def.checks] : def.checks }` would be safe for all callers. Medium confidence this matters in practice; high confidence it is a latent footgun.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 61,
+      "lineEnd": 61,
+      "claim": "`def.checks = [...def.checks]` assigns a concrete array to a property whose type is the generic indexed type `T[\"checks\"]`, which TypeScript normally rejects ('Type X[] is not assignable to type T[\"checks\"]').",
+      "rationale": "When `def` is of unresolved generic type `T`, the write type of `def.checks` is `T[\"checks\"]`; the spread produces `NonNullable<T[\"checks\"]>[number][]`, which is not assignable to an arbitrary subtype `T[\"checks\"]`. Unless a cast is added (e.g. `(def as any).checks = ...` or making the parameter a non-generic supertype), this likely fails to compile under the repo's strict settings. Fairly confident, though it depends on how `$ZodCheck`'s variance annotations resolve the indexed access.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 61,
+      "lineEnd": 61,
+      "claim": "`$ZodStringParams` is widened to accept a `checks` property even though `TypeParams`/`Params` deliberately omit `\"checks\"`, so string params now diverge from every other schema's params type.",
+      "rationale": "Previously passing `checks` to `z.string({...})` was an excess-property error; now it is accepted and spread straight into the def, bypassing whatever normalization/validation `util.normalizeParams` does for other keys. This is an observable API surface change and an asymmetry with `$ZodNumberParams`, `$ZodStringFormatParams`, etc. Moderate confidence it's intentional, but it deserves a second look for consistency.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 82,
+      "claim": "Only `_string`/`_coercedString` snapshot the incoming `checks` array; every other factory in this file that forwards `...util.normalizeParams(params)` into `new Class({...})` still stores the caller's array by reference.",
+      "rationale": "If the defect being fixed is that a schema later mutates `def.checks` (e.g. when `.min()`/`.refine()` appends) and thereby mutates the user's array, the same hazard exists for the number/array/object/format factories immediately below this hunk. The partial fix leaves inconsistent behavior between string and other types. Confident this is incomplete if the motivation is aliasing.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 67,
+      "lineEnd": 70,
+      "claim": "The snapshot is shallow: the array is copied but the `$ZodCheck` instances inside are still shared with the caller, so mutations to a check's `_zod.def` still leak across schemas.",
+      "rationale": "Depending on the bug being fixed, sharing check instances (which zod mutates during `_zod.onattach`/`_zod.check` bookkeeping) may still cause cross-schema interference. Low-to-medium confidence this is a problem, but worth confirming the intended isolation level.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 6593,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2068
+  },
+  "latencyMs": 75968,
+  "nominalCostUsd": 0.18608950000000002
+}

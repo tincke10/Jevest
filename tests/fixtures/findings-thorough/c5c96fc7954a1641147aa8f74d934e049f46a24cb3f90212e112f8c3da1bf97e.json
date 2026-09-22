@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 80,
+      "lineEnd": 81,
+      "claim": "`validate` narrows to `core.input<this>` while the rest of the interface (`parse`/`safeParse`/`spa`) is expressed in terms of `core.output<this>`; for `z.any()`/`z.coerce.*` schemas `input` is `any`/`unknown`, so the predicate either does nothing or de-narrows `data` from `unknown` to `any`.",
+      "rationale": "Inconsistent with the surrounding API and produces a guard that is useless or actively harmful for `any`-input schemas. Fairly confident this deserves a second look, though narrowing to `input` may be intentional for pre-parse data.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 80,
+      "lineEnd": 80,
+      "claim": "`validateAsync` returns `Promise<boolean>` and cannot act as a type predicate, making it asymmetric with the sync `validate` type guard; `if (await s.validateAsync(x))` leaves `x` unnarrowed.",
+      "rationale": "TypeScript cannot express async type predicates, so this is partly unavoidable, but the mismatch will surprise callers expecting parity between the two methods. Confident about the type behavior.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 79,
+      "lineEnd": 80,
+      "claim": "Adding non-optional members to the exported `ZodType` interface is a breaking change for external code that structurally implements or mocks `ZodType`, and the implementation must be written/cast as an explicit type predicate since a plain `boolean`-returning function is not assignable to a `data is T` signature.",
+      "rationale": "Standard TypeScript assignability rule; because this library assigns methods dynamically via `$constructor`, the predicate signature will need an explicit annotation or cast. Confident on the TS rule, less sure how the implementation is written since it is not in this hunk.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "The signature gives no indication of sync/async behavior: if `validate` is implemented over `safeParse`, it will throw (\"Encountered Promise during synchronous parse\") for schemas with async refinements instead of returning `false`, contradicting the boolean-returning contract the signature implies.",
+      "rationale": "Matches existing zod behavior for sync parse paths; the declaration alone cannot confirm it, so this is a suspicion worth verifying against the implementation.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3939,
+    "cacheReadInputTokens": 3676,
+    "cacheCreationInputTokens": 4651
+  },
+  "latencyMs": 46944,
+  "nominalCostUsd": 0.146843
+}

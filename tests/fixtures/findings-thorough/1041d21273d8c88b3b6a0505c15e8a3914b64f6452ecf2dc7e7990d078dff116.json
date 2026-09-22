@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 167,
+      "lineEnd": 171,
+      "claim": "The new `else if` branch silently forces `nextTick`/`queueMicrotask` into `toNotFake`, removing the only way a user could fake those two timers without enumerating every method in `toFake`.",
+      "rationale": "Previously, `toNotFake: ['setTimeout']` (with `toFake` unset) meant everything except `setTimeout` was faked, including `nextTick` and `queueMicrotask`. After this change those two are always unfaked whenever `toFake` is undefined, so a user who deliberately wanted `process.nextTick` mocked via the `toNotFake` style config can no longer express that — they must switch to an explicit exhaustive `toFake` list. This may be the intended default-safety change, but it is a silent behavior change for existing callers and deserves a doc/changelog note. Confidence: high that behavior changes, medium on whether it's intentional.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 172,
+      "lineEnd": 174,
+      "claim": "The `isChildProcess()` guard below is now dead code for the `toFake === undefined` path, and remains inconsistent for the `toFake !== undefined` path.",
+      "rationale": "When `toFake` is undefined, `nextTick` is already appended to `toNotFake` by the new branch (or `toFake` excludes it), so the `!toNotFake.includes('nextTick')` check can never be true. The guard only still matters when the user supplied an explicit `toFake` *and* a `toNotFake`, i.e. the one case neither branch above handles — worth confirming that combination is still handled as intended. Low-to-medium confidence this matters functionally; mostly redundancy plus an untouched edge case.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 171,
+      "lineEnd": 171,
+      "claim": "The `else if (toFake === undefined && toNotFake !== undefined)` condition contains a redundant second clause, and the loop reallocates the array on each iteration.",
+      "rationale": "Inside the `else` of `toFake === undefined && toNotFake === undefined`, if `toFake === undefined` then `toNotFake` must be defined, so the extra check is dead (harmless, but may hide the intent). Additionally, `toNotFake = [...toNotFake, timer]` inside the loop copies the array up to twice; building a single new array would be clearer and avoids the transient allocation. Both are non-functional nits, reported only because they touch the changed control flow.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2047,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1339
+  },
+  "latencyMs": 26034,
+  "nominalCostUsd": 0.0651495
+}

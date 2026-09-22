@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 156,
+      "lineEnd": 158,
+      "claim": "Browser mode now receives an empty `defines` object instead of `config.define`, silently dropping all user-configured defines for browser tests.",
+      "rationale": "Previously `resolvedTestConfig.defines = config.define || {}` propagated Vite's `define` entries to the resolved test config for browser mode; the new branch assigns `{}`. Any consumer that reads `config.defines` at runtime (e.g. to stringify/serialize defines, or to expose them to the browser runner) will now see nothing. If the intent is that Vite itself already applies defines via transform in browser mode, this may be deliberate, but it is an observable behavior change for existing browser users and directly contradicts the adjacent comment \"keep the original behaviour in the browser mode\". Medium confidence that this is unintended; at minimum it deserves confirmation and a comment update.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 152,
+      "lineEnd": 155,
+      "claim": "Reordering the conditions makes `isBrowserEnabled` shadow the `sharedServer` branch, so `_scriptDefines` is never populated when both are true.",
+      "rationale": "Before, `sharedServer` took precedence and set both `defines` and `_scriptDefines` from the shared server even in browser mode. Now, when a shared server exists and browser mode is enabled, the first branch wins and `_scriptDefines` is left `undefined` (and the shared server's defines are discarded). Any downstream code that iterates or spreads `config._scriptDefines` without a null check will break, and defines shared across projects will be lost for browser projects. Worth verifying whether `_scriptDefines` consumers handle `undefined`.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1473,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1394
+  },
+  "latencyMs": 17253,
+  "nominalCostUsd": 0.0513495
+}

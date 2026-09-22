@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "Switching `util.cached` → `util.cachedInternal` silently changes the caching/visibility contract of `_normalized`; downstream `_normalized.value` reads may recompute `normalizeDef(def)` on every access (or expose a different shape) if `cachedInternal` only defines a non-enumerable/one-shot getter rather than a memoizing one.",
+      "rationale": "I can only see the call site, not the util implementations. In this codebase the `*Internal` variants (cf. `defineLazyInternal` used two lines below) typically differ from their non-Internal counterparts in enumerability and in whether the computed value is re-derived after clone/extend. `normalizeDef` is on the object-parse hot path, so if `cachedInternal` does not memoize identically to `cached`, this is a real performance regression; if it returns a different wrapper shape, every `_normalized.value` consumer breaks at runtime. Worth confirming `cachedInternal` exists, is exported from `util`, and returns the same `{ value }` accessor with the same one-time-evaluation semantics. Medium confidence that something here needs checking, low confidence it is actually broken.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 2111,
+      "lineEnd": 2111,
+      "claim": "If `cachedInternal` (unlike `cached`) drops or re-runs its memo when the instance's `def` is mutated/cloned, the normalized def can go stale or be inconsistent with lazily-defined props such as `propValues` defined via `defineLazyInternal` just below.",
+      "rationale": "`_normalized` closes over the `def` captured at construction time, while `defineLazyInternal(inst, \"propValues\", (zod) => ...)` reads `zod.def.shape` at access time. Making the two use different caching strategies (`cachedInternal` vs the previous `cached`) can desynchronize them for schemas whose shape is patched after construction (a supported pattern elsewhere in this file, given the `newSh` shape-rebuild code above). Low-to-medium confidence — depends entirely on `cachedInternal`'s invalidation behavior.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1704,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1106
+  },
+  "latencyMs": 21877,
+  "nominalCostUsd": 0.0542445
+}

@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 45,
+      "lineEnd": 45,
+      "claim": "Both capturing groups in the exported `email` regex were converted to non-capturing groups, which is an observable API change for consumers that use `exec`/`match`/`replace` on this exported regex.",
+      "rationale": "`email` is a public export from zod's core regexes module. Previously `email.exec(str)` returned `[full, localPart, lastDomainLabelWithDot]` and `str.replace(email, '$1')` worked; after the change those groups are gone (`$1` becomes literal/undefined). Internal `.test()` usage is unaffected, so the risk is limited to external consumers, but it is a silent breaking change that is easy to miss. Confidence: high that the behavior differs, moderate that anyone depends on it.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 45,
+      "lineEnd": 45,
+      "claim": "The rewrite introduces a nested quantifier `(?:[A-Za-z0-9_'+\\-]+\\.)*` immediately followed by another quantified run of the same character class (`[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]`), which is the classic shape for catastrophic/polynomial backtracking and deserves an explicit ReDoS check.",
+      "rationale": "My analysis suggests it is not exponential, because the literal `.` separator makes the partition of each iteration unique and the trailing `X*` cannot cross a dot, so a non-matching input like a long local part with no `@` degrades to roughly linear backtracking. But this regex is user-input-facing and the old form had no nested quantifier at all, so if the motivation for this change was ReDoS hardening it should be validated with a checker (e.g. recheck/safe-regex) plus a timing test on inputs such as `'a'.repeat(50000)` and `'a.'.repeat(25000)` before shipping. Confidence: low that a real ReDoS exists, high that it warrants verification.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 45,
+      "lineEnd": 45,
+      "claim": "The apostrophe is still permitted inside the local part but excluded from the final character class `[A-Za-z0-9_+-]`, so addresses whose local part ends in `'` (and, likewise, ones ending in `.`-adjacent apostrophes) are rejected.",
+      "rationale": "Pre-existing behavior that the rewrite faithfully preserves, so it is not a regression — but since this line is being rewritten anyway it's worth confirming the asymmetry is intentional (e.g. `o'neill@example.com` passes, `oneill'@example.com` fails). Confidence: high on the behavior, uncertain whether it is deliberate.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 5298,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1744
+  },
+  "latencyMs": 68821,
+  "nominalCostUsd": 0.1504745
+}

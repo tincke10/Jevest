@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "Removing `_properties as properties` from this public export barrel is a breaking API change for existing callers.",
+      "rationale": "`packages/zod/src/v4/classic/checks.ts` is a public surface re-exported as `z.<check>` (and/or `zod/v4/core` checks). Any consumer currently doing `import { properties } from \"zod\"` / `z.properties(...)` will now fail to compile or get `undefined` at runtime, and the type-only export disappears too. Unless `properties` was never released or is being intentionally removed in a major version with a changeset/migration note, this deletion should be a deprecation (keep the export, mark `@deprecated`) rather than an outright removal. I'm fairly confident this is a compatibility concern; the only thing I can't verify from the hunk alone is whether `properties` was ever part of a shipped release.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "The corresponding `_properties` import (or its definition in the source module) may now be unused/dangling after this removal.",
+      "rationale": "If this block is an `export { ... }` list over names imported earlier in the file (rather than an `export { ... } from \"...\"` re-export), dropping the only reference to `_properties` leaves an unused import, which breaks builds under `noUnusedLocals`/lint rules. Conversely, if `_properties` still exists in the core checks module but is no longer surfaced anywhere, it becomes dead code. Worth checking the import block above line 19 and the core definition; moderate confidence since the import statement isn't visible in this hunk.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1339,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1025
+  },
+  "latencyMs": 18802,
+  "nominalCostUsd": 0.0443095
+}

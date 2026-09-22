@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 24,
+      "lineEnd": 32,
+      "claim": "The fix turns a previously near-no-op validator into a strict one, so inputs that used to pass silently (notably `undefined`, booleans, objects/arrays) now throw — a potentially breaking behavior change for existing callers/clients.",
+      "rationale": "The old condition `obj !== null && typeof obj === 'number' && isNaN(obj) && typeof obj !== 'string'` is only satisfiable for `NaN` (the `number`/`!== 'string'` pair is redundant, everything non-number short-circuits), so effectively only NaN ids were rejected. The new condition rejects anything that isn't null, a string, or a finite-ish number. That is almost certainly the intended semantics, but messages that arrived with a missing `id` (i.e. `undefined`, e.g. JSON-RPC notification-style payloads or older/loose clients) previously flowed through and will now be rejected with `Invalid request id`. Worth confirming that no message shape in the codebase relies on `id === undefined` (and if `undefined` should be allowed, it needs to be in both the assertion type and the condition). High confidence about the semantic change; medium confidence that it actually breaks a real caller.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 28,
+      "lineEnd": 28,
+      "claim": "Only `NaN` is filtered out of the number branch; `Infinity`, `-Infinity`, and non-integer/unsafe-integer ids are still accepted as valid request ids.",
+      "rationale": "`typeof obj !== 'number' || isNaN(obj)` passes `Infinity` and `1e400`-style values. If ids are used as map keys / correlated across the wire after JSON round-trips, `Infinity` serializes to `null` in JSON and can silently collide with the `null` id case. A `Number.isSafeInteger(obj) || typeof obj === 'string'` style check would be tighter. Low-to-medium confidence this matters in practice, but it is a real gap in the validation this hunk is fixing.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1289,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1123
+  },
+  "latencyMs": 18758,
+  "nominalCostUsd": 0.044039499999999995
+}

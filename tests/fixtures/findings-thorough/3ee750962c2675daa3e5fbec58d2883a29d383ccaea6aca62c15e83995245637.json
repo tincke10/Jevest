@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 15,
+      "lineEnd": 16,
+      "claim": "The new `--server-url` option is documented in the file header, but this hunk contains no corresponding change to the `parseArgs` option map, the runtime `--help` output, or the OpenAPI document generation, so the flag may be undocumented-in-help or outright unsupported at runtime.",
+      "rationale": "`node:util` `parseArgs` throws `ERR_PARSE_ARGS_UNKNOWN_OPTION` for options not declared in its `options` config (unless `strict: false`), so documenting a flag without registering it would make `--server-url` a hard CLI error rather than a no-op. The header comment is also typically duplicated by a printed help string; if only the comment was updated, `--help` will not mention the flag. I cannot see the rest of the file in this hunk, so this is a low-to-medium confidence flag for verification rather than a confirmed defect.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 706,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1170
+  },
+  "latencyMs": 11654,
+  "nominalCostUsd": 0.029934499999999996
+}

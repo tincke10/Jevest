@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 1093,
+      "lineEnd": 1093,
+      "claim": "Dropping `workspaceRoot` removes the workspace-relative guard, so the \"external node_modules\" classification now depends only on the path shape — declarations under a workspace-local `node_modules` (e.g. symlinked monorepo packages, pnpm store links) will now be classified as external and their JSDoc silently discarded (or the inverse, if the guard was negated).",
+      "rationale": "The removed `workspaceRoot` was the only input distinguishing in-workspace from out-of-workspace declaration files; the remaining `declarations.every(...)` predicate can no longer make that distinction, so the set of symbols whose JSDoc is suppressed changes. Whether this is a widening or narrowing depends on the predicate body, which is outside the hunk, but either way generated OpenAPI descriptions can change for local packages resolved through node_modules. Medium confidence — the exact predicate is not visible.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1087,
+      "lineEnd": 1090,
+      "claim": "If any code further down in `getJsDocComment` (below the hunk) still calls `isWithinPath`, this deletion leaves a dangling reference and the file will not compile.",
+      "rationale": "The helper was a local closure used somewhere later in the same function; the diff only shows the removal, not the corresponding update to its call site. Low-to-medium confidence, but a cheap thing to verify since it is a hard build break if missed.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1087,
+      "lineEnd": 1090,
+      "claim": "`path.relative` / `path.isAbsolute` were likely the only uses of the `path` import in this file; after this removal the `path` import may be unused and fail `noUnusedLocals`/lint.",
+      "rationale": "Both `path` usages visible in this function are deleted here, and the surviving `normalize` uses a plain regex replace rather than `path`. If no other site in the module imports/uses `path`, the build or lint step breaks. Low confidence since the rest of the file isn't shown.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2277,
+    "cacheReadInputTokens": 3688,
+    "cacheCreationInputTokens": 1883
+  },
+  "latencyMs": 33021,
+  "nominalCostUsd": 0.077619
+}

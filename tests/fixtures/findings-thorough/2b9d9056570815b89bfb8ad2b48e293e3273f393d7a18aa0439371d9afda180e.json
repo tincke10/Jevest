@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 1198,
+      "lineEnd": 1198,
+      "claim": "`$ZodNumberFormats` is referenced unqualified while every other core type in this block uses the `core.` namespace prefix; if the corresponding import was not added, this is a compile error.",
+      "rationale": "The surrounding code consistently uses `core.$ZodNumberFormatInternals`, `core.$ZodNumberParams`, etc. The hunk header (1193 -> 1194) suggests a line was added above, likely the import, but the import is not visible in this hunk, so I can't confirm. Medium confidence that it is fine, but worth verifying that `$ZodNumberFormats` is actually imported (and exported from core) rather than silently resolving to something else.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1201,
+      "lineEnd": 1207,
+      "claim": "The runtime `ZodNumberFormat` constructor is still typed as the non-generic/default `core.$constructor<ZodNumberFormat>` (i.e. `Format = $ZodNumberFormats`), so it cannot preserve the concrete format of the value it constructs.",
+      "rationale": "Because the constructor value's type always widens to the full format union, every factory below now needs an unchecked assertion. Making the declared constructor type generic (or having `core._int`/`_float32`/... be typed to return the narrow format) would let the compiler verify the mapping instead of trusting the casts. Confident this is why the casts were needed; severity is design/maintainability, not a runtime bug.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1212,
+      "lineEnd": 1212,
+      "claim": "The newly added `as ZodInt` / `as ZodFloat32` / ... assertions silence the only check that the declared literal format matches what the core `_int`/`_float32`/... helpers actually set at runtime.",
+      "rationale": "`int()` is now declared as `ZodNumberFormat<\"safeint\">`, but the assertion means nothing verifies that `core._int` really sets `format: \"safeint\"` (zod core has both `\"safeint\"` and `\"int32\"`). If any of the five helpers set a different format string, the declared type silently lies and downstream narrowing on `_zod.def.format` breaks with no compile error. Please double-check each literal against the corresponding `core._*` implementation. Reported once here; the same concern applies identically to the float32/float64/int32/uint32 casts.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1210,
+      "lineEnd": 1235,
+      "claim": "Parameterizing `ZodNumberFormat` makes `ZodInt`, `ZodFloat32`, `ZodInt32`, etc. mutually non-assignable, which is a breaking type change for existing callers.",
+      "rationale": "Previously all five interfaces were structurally identical (`extends ZodNumberFormat {}`), so user code such as `const s: ZodFloat32 = z.float64()`, or arrays/ternaries mixing them, type-checked. With distinct `Format` arguments those now error or infer unions. This is likely the intended improvement, but it is a semver-visible type break worth calling out in release notes. Moderate confidence on the assignability consequence, depending on whether `Format` actually appears in `$ZodNumberFormatInternals`.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3498,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2793
+  },
+  "latencyMs": 41286,
+  "nominalCostUsd": 0.1159645
+}

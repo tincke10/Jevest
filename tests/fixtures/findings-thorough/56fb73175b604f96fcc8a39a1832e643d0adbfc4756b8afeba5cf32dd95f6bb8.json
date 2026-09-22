@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 128,
+      "lineEnd": 129,
+      "claim": "The new `fs.mkdirSync(path.dirname(outputPath), { recursive: true })` sits outside the try/catch used elsewhere in `main`, so any filesystem failure surfaces as a raw unhandled promise rejection instead of the CLI's `Error: <message>` + `process.exit(1)` path.",
+      "rationale": "The surrounding code deliberately catches errors and prints a friendly message before exiting with code 1. `mkdirSync` can realistically throw: EACCES/EPERM on a read-only or protected parent, ENOTDIR/EEXIST when a regular file already occupies a path segment of the output directory, or ENAMETOOLONG. Because `main` is async and invoked as `void main()`, a throw here becomes an unhandled rejection with a full stack trace rather than the consistent CLI error output (exit code also depends on the Node version's unhandled-rejection policy). Wrapping the mkdir (and ideally the writeFileSync) in the same error handling would keep behavior consistent. Reasonably confident this is a real, if minor, gap; the mkdir itself is otherwise a sensible addition.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1080,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1074
+  },
+  "latencyMs": 15597,
+  "nominalCostUsd": 0.0383245
+}

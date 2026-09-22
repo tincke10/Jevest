@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 14,
+      "lineEnd": 20,
+      "claim": "`HeyAPIResolvers` loses the explicit `Exclude<..., undefined>` and is now exported, so it may now include `undefined` and becomes public API",
+      "rationale": "The old definition deliberately stripped `undefined` from the optional `~resolvers` property. `Plugins.HeyApiTypeScript.Resolvers` is a named alias whose definition we cannot see here; if it is declared as `Resolvers | undefined` (or the plugin's property type), any function annotated to return `HeyAPIResolvers` (e.g. the resolver factory documented just below) would now be allowed to return `undefined`, and consumers assigning it into a plugin config would need extra narrowing. Additionally, the type is now `export`ed, permanently widening the package's public API surface. Medium confidence — depends on the upstream alias definition, but worth verifying the resulting type is still non-nullable.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 35,
+      "lineEnd": 39,
+      "claim": "`HeyApiConfig` is re-derived from `Plugins.HeyApiClientFetch.Client` instead of the top-level `FetchClient`, which may resolve to a different config shape",
+      "rationale": "The plugin-namespaced `Client` type is not guaranteed to be the same type as the previously imported `FetchClient`; its `getConfig()` return may omit or re-type `querySerializer`, `bodySerializer`, or `responseTransformer`. `Required<Pick<HeyApiConfig, 'querySerializer'>>` and `Pick<HeyApiConfig, 'bodySerializer' | 'responseTransformer'>` would either fail to compile or silently change `TRPCHeyApiClientConfig`'s field types for existing callers. Moderate confidence — needs a check that the derived type is structurally identical to before.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 4,
+      "claim": "Switching to a `Plugins` namespace type import adds an undeclared dependency on a newer `@hey-api/openapi-ts` version",
+      "rationale": "`Plugins` (and the nested `HeyApiTypeScript` / `HeyApiClientFetch` namespaces) only exists in recent releases of `@hey-api/openapi-ts`. The previous `UserConfig`/`FetchClient` derivation worked across a wider version range. If package.json's dependency range still permits older versions, consumers hitting an older resolution will get a compile error on this import. Low-to-moderate confidence — worth confirming the peer/dependency range was bumped alongside this change.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2408,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2161
+  },
+  "latencyMs": 26995,
+  "nominalCostUsd": 0.0823945
+}

@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 70,
+      "lineEnd": 71,
+      "claim": "Hoisting `allowHeadersStr` out of the request handler risks dropping the per-request fallback to the `Access-Control-Request-Headers` request header (and its `Vary: Access-Control-Request-Headers` append) in the preflight path.",
+      "rationale": "In the original CORS logic the allowed-headers value is normally computed per request as `opts.allowHeaders?.length ? opts.allowHeaders : c.req.header('Access-Control-Request-Headers')?.split(...)`, and the `Vary` header is appended only when that fallback applies. A precomputed constant string can only represent the configured case; if the call site was changed to use `allowHeadersStr` unconditionally, reflected request headers and the `Vary` entry would silently disappear, breaking preflights for clients that send custom headers. I cannot see the consumer in this hunk, so this is a suspicion worth verifying rather than a confirmed bug.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 70,
+      "lineEnd": 71,
+      "claim": "The header strings are now snapshotted at middleware-construction time, so mutations to the caller-supplied `allowHeaders`/`exposeHeaders` arrays after `cors(...)` is called no longer take effect.",
+      "rationale": "Previously the arrays were joined on each request, so a caller pushing into the array they passed in would see the change. Now the join happens once. This is an unlikely but real behavior change for existing callers; low confidence that anyone depends on it, but it is a genuine semantic difference introduced by the hoist.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 70,
+      "lineEnd": 71,
+      "claim": "Empty arrays are mapped to `undefined` rather than an empty string; make sure downstream code distinguishes `undefined` (omit header) from `''` the same way the previous inline check did.",
+      "rationale": "`opts.exposeHeaders?.length ? ... : undefined` means a configured-but-empty list produces `undefined`. If the consumer previously wrote the header whenever `exposeHeaders` was truthy (an empty array is truthy) or used a `!== undefined` vs truthiness check inconsistently, the emitted headers could change. Moderate confidence this is fine, but the truthiness semantics changed shape and deserve a check at the use site.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1801,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1149
+  },
+  "latencyMs": 21273,
+  "nominalCostUsd": 0.057099500000000004
+}

@@ -1,0 +1,17 @@
+{
+  "judgment": {
+    "isRealDefectProb": 0.13,
+    "severity": "major",
+    "isStyleOnly": false,
+    "actionable": false
+  },
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 375,
+    "cacheReadInputTokens": 1137,
+    "cacheCreationInputTokens": 1294
+  },
+  "latencyMs": 4680,
+  "nominalCostUsd": 0.022893499999999997
+}

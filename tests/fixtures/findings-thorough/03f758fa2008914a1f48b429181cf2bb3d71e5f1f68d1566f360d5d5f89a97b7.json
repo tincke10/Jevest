@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 19,
+      "lineEnd": 20,
+      "claim": "Adding 'Accept-Query' only to the `RequestHeader` type union may leave a companion runtime list (or a parallel `ResponseHeader` union) out of sync.",
+      "rationale": "Header-name modules like this commonly pair the literal union with a runtime array/Set used for validation or completion, and often split request vs response header unions. The diff only touches this one union; if a sibling constant or the response-header union exists, it will no longer cover 'Accept-Query'. Note also that Accept-Query (like the neighboring Accept-Patch/Accept-Post) is defined as a *response* header advertising QUERY support, so placing it in `RequestHeader` may be semantically wrong depending on how this type is consumed. Low confidence — I can only see this hunk, so this needs verification against the rest of the file/module.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 901,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1076
+  },
+  "latencyMs": 12289,
+  "nominalCostUsd": 0.0338695
+}

@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 794,
+      "lineEnd": 796,
+      "claim": "The call was renamed to `this.parseSpecifications(...)`, but it's not shown that a method with that name exists on `Vitest`. If only `experimental_parseSpecifications` is declared (and the rename wasn't applied to the method declaration in the same commit), this path throws `TypeError: this.parseSpecifications is not a function` at runtime whenever `options.staticParse` is set.",
+      "rationale": "The hunk only touches the call site; the declaration is not visible here. Renaming a call without the corresponding declaration is a common partial-rename mistake, and this particular branch is only reached with `staticParse`, so it may not be covered by default test runs. Medium confidence — needs a grep for `parseSpecifications` across the package.",
+      "suggestedSeverity": "critical"
+    },
+    {
+      "lineStart": 794,
+      "lineEnd": 794,
+      "claim": "Dropping the `experimental_` prefix changes a public API surface of the `Vitest` class. Any external caller (or other internal call sites / re-exports / type declarations) still using `experimental_parseSpecifications` will break unless a deprecated alias is kept.",
+      "rationale": "The `experimental_` prefix is Vitest's convention for opt-in unstable APIs, and graduating one is a documented breaking change. If no back-compat alias is added, consumers on the old name break silently at runtime. Reasonably confident this is worth checking, though it may be intentional for a major release.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 812,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1043
+  },
+  "latencyMs": 10974,
+  "nominalCostUsd": 0.031314499999999995
+}

@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "`const log = console;` is deleted; any remaining `log.warn(...)`/`log.error(...)` call sites further down the file will now fail to compile (or resolve to a different `log` binding).",
+      "rationale": "The alias existed to be used elsewhere in the file. The hunk removes it without showing replacement call sites, so unless every usage was removed in another hunk this is a build break. Medium confidence — the rest of the file isn't visible.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 12,
+      "lineEnd": 36,
+      "claim": "`export interface JsonSchema` is removed from the module's public surface; consumers doing `import type { JsonSchema } from '.../generate'` will break.",
+      "rationale": "It was an exported type, so deleting it rather than aliasing (`export type JsonSchema = SchemaObject`) is a source-breaking API change. High confidence it is breaking; actual impact depends on whether it was re-exported from the package index.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 21,
+      "lineEnd": 21,
+      "claim": "Substituting `SchemaObject` for `JsonSchema` may drop shapes the generator relies on, notably `items?: JsonSchema | false`, `additionalProperties?: JsonSchema | boolean`, `$defs`, and `$schema`.",
+      "rationale": "The old local type explicitly allowed `items: false` (2020-12 tuple closing) and `$defs`. If `./types`' `SchemaObject` is a stricter OpenAPI 3.1 model, code emitting those keys will now need unsafe casts or will silently emit different documents. Moderate confidence without seeing `./types`.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 1,
+      "claim": "`import * as fs from 'node:fs'` is added but no filesystem usage appears in this hunk.",
+      "rationale": "Likely used in a later hunk, but if not it's an unused import (fails `noUnusedLocals`/lint). Also worth confirming sync fs is intended over `node:fs/promises` given the async-ish generator. Low-to-medium confidence.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 3,
+      "lineEnd": 8,
+      "claim": "`Document`, `OperationObject`, `PathItemObject`, `PathsObject` are imported but unreferenced within this hunk.",
+      "rationale": "Presumably consumed later in the file, but a partial conversion would leave unused type imports. Flagged so all four are verified as used. Low confidence.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2920,
+    "cacheReadInputTokens": 4469,
+    "cacheCreationInputTokens": 4239
+  },
+  "latencyMs": 34398,
+  "nominalCostUsd": 0.11764450000000001
+}

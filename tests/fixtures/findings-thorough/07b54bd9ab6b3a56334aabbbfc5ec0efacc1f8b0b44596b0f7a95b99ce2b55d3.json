@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "New CLI option `sharedViteServer` must exist as a key in the user config type that `VitestCLIOptions` is derived from, and must actually be read by the config resolver",
+      "rationale": "`cliOptionsConfig` is a mapped type over the public config interface, so adding a key that isn't declared in `UserConfig`/`TestProjectInlineConfiguration` will either fail to typecheck or (if the type is loose) silently produce a flag that is parsed into the config object and then ignored at runtime. The hunk only adds the CLI entry - nothing here shows the corresponding config-type declaration or the resolution logic that honors it. Medium confidence; worth verifying both ends exist in this change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "Option documents a default of `true` but provides no `default`/negation metadata, so `--no-shared-vite-server` (the only way to actually turn it off) may not be generated",
+      "rationale": "The description advertises `(default: true)`, which means the only useful CLI invocation is the negated form. Vitest's CLI builder derives `--no-*` flags for boolean options; if that derivation depends on the entry being recognized as boolean (no `argument`, no `subcommands`), this matches the neighboring `strictTags` entry and is fine. Still worth confirming that `--no-shared-vite-server` is emitted in help output and parses to `false` rather than being rejected as an unknown option. Moderate confidence; consistency with `strictTags` suggests it probably works.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "Adding a CLI option without regenerating the generated CLI docs will break the docs-generation check",
+      "rationale": "This repo generates `docs/guide/cli-generated.md` (and related test snapshots) from `cliOptionsConfig`; adding an entry without re-running the generator typically fails CI. Not a runtime bug, but a concrete consequence of this line. Medium confidence.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 889,
+      "lineEnd": 890,
+      "claim": "A root-only/server-lifecycle option exposed as a plain CLI flag may be silently ignored when set on a project config",
+      "rationale": "\"Let inline projects ... reuse the Vite server of the config that declares them\" is inherently a parent/root-level concern. If `sharedViteServer` is only honored on the root config, users setting it inside a project config (or CLI values propagated into project configs) will see no effect and no warning. Other root-only options in this file are usually excluded from project config or validated with an explicit error. Low-to-medium confidence - depends on how the option is resolved.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3445,
+    "cacheReadInputTokens": 3381,
+    "cacheCreationInputTokens": 4215
+  },
+  "latencyMs": 40045,
+  "nominalCostUsd": 0.1299855
+}

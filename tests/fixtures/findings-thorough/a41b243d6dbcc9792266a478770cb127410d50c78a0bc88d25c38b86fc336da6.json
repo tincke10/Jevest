@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 156,
+      "lineEnd": 156,
+      "claim": "Forcing `abortEarly: true` can make `validate()` diverge from `parse()`/`safeParse()` for schemas that internally tolerate or aggregate issues (unions, `.catch()`, pipes, coercion fallbacks).",
+      "rationale": "`validate()` is supposed to answer the same question as `safeParse(...).success`. Abort-early semantics propagate into nested runs; for constructs like `$ZodUnion` (which deliberately runs every option and inspects each option's issues) or `$ZodCatch` (which swallows inner issues), an early abort at the first issue can surface a failure to the outer payload before the recovering logic gets a chance to run, producing a false `false`. I have not traced every schema implementation, so confidence is moderate — but this is the kind of change that needs a test over union/catch/default/pipe schemas to confirm result parity with `safeParse`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 156,
+      "lineEnd": 156,
+      "claim": "`abortEarly` may not be a member of `ParseContextInternal` / may not be honored at runtime, making this either a TS excess-property error or a silent no-op.",
+      "rationale": "In zod v4 core, the public `ParseContext` exposes `error`, `reportInput`, `jitless`, and the internal one adds `async`; abort semantics are normally driven per-payload (`continue`/`aborted` flags) rather than by a context flag. The second branch is an object literal assigned to an annotated type, so an unknown property would be an excess-property error; if the property does type-check but nothing reads `ctx.abortEarly`, the change does nothing at all. Worth verifying the flag is actually plumbed through `_zod.run`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 156,
+      "lineEnd": 156,
+      "claim": "Caller-supplied `abortEarly: false` (and the expectation that all user refinements run) is silently overridden.",
+      "rationale": "The spread of `_ctx` is immediately overwritten, so a caller who configured full issue collection gets abort-early behavior instead. More importantly for side effects: user `.refine`/`.superRefine`/`.check` callbacks that previously all executed on the fallback path will now stop at the first issue, while the compiled fast path (when taken) may still run them all — so the observable number of user-callback invocations becomes dependent on whether JIT compilation kicked in. That also interacts with the adjacent comment about keeping user callbacks to an 'at-most-twice bound'.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3718,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1338
+  },
+  "latencyMs": 50362,
+  "nominalCostUsd": 0.10691450000000001
+}

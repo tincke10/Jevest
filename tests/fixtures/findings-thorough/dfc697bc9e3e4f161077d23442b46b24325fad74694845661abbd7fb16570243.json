@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 291,
+      "lineEnd": 292,
+      "claim": "Exclusive bounds (`bag.exclusiveMinimum` / `bag.exclusiveMaximum`) are ignored by the new narrowing logic, so a tighter exclusive bound set by `.gt()`/`.lt()` does not prevent the format range from being written.",
+      "rationale": "The sibling `$ZodCheckGreaterThan`/`$ZodCheckLessThan` attach handlers distinguish inclusive vs exclusive and store into separate bag fields. Here only `bag.minimum`/`bag.maximum` are consulted, so `z.number().gt(-5).int()` still ends up with `minimum = -9007199254740991` alongside `exclusiveMinimum = -5`, i.e. the stated goal (\"don't overwrite bounds an earlier check stored\") is only half-implemented. Downstream consumers that take only one of the two fields (e.g. JSON Schema emission) can report a looser bound than intended. Moderate confidence — the exact bag field names depend on the version of the gt/lt checks in this file.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 291,
+      "lineEnd": 292,
+      "claim": "NaN bounds silently discard the format range: if a prior check stored `NaN` in `bag.minimum`/`bag.maximum`, both comparisons are false and the format's real bound is never recorded.",
+      "rationale": "`minimum > NaN` and `maximum < NaN` are both `false`, so `bag.minimum` stays `NaN` and the int32/safeint range is lost from the bag entirely (previously it was always written). Reachable via `z.number().min(NaN).int()`. Low-impact edge case but it is a behavior regression versus the unconditional assignment, and the bag is what schema-introspection/JSON-Schema code reads.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 291,
+      "lineEnd": 292,
+      "claim": "The `as number` casts hide a possible `number | bigint` bag value, and mixed-type comparison would silently change which bound wins.",
+      "rationale": "`bag.minimum`/`bag.maximum` are typed to accept `bigint` as well (shared with the bigint-format/length checks). Casting to `number` suppresses the type error rather than handling it; at runtime a `bigint` compares fine with `>`/`<` but the written value type then becomes inconsistent (mixed number/bigint bounds on one bag). For a pure number-format check this is probably unreachable, so confidence that it bites in practice is low, but the unchecked cast is worth a second look.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 291,
+      "lineEnd": 292,
+      "claim": "Behavior change: `bag.minimum`/`bag.maximum` no longer reliably describe the numeric format's representable range, which may surprise consumers that read them to learn the format bounds.",
+      "rationale": "Before, these fields always equaled `util.NUMBER_FORMAT_RANGES[def.format]`. After the change they can hold an arbitrary user-supplied bound, so any code that introspects the bag to recover the format's width (mock/faker generation, range-based optimizations, tests asserting `int32().._zod.bag.minimum === -2147483648`) will now see different values depending on check ordering. Likely intentional for JSON Schema output, but it is an observable API-surface change worth calling out; existing snapshot tests on `_zod.bag` are the most likely breakage.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 6304,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1339
+  },
+  "latencyMs": 74069,
+  "nominalCostUsd": 0.17157450000000002
+}

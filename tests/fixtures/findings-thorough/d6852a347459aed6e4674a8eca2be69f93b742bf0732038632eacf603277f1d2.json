@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 521,
+      "lineEnd": 528,
+      "claim": "min/maxProperties are enforced via a post-parse check on the Zod object's *output*, so keys stripped by the object schema are not counted",
+      "rationale": "`checkObjectGuards` is layered on top of `zodSchema`, which at this point is usually a `ZodObject`. Unless `additionalProperties` forced `.passthrough()`, Zod strips unknown keys before the check runs, so `{a:1, b:2, c:3}` against `{type:'object', properties:{a}, maxProperties:1}` would see only `{a:1}` and pass, and `minProperties` would likewise under-count. JSON Schema counts properties on the raw instance. Unless `checkObjectGuards` internally uses the raw input (can't tell from this hunk), this is a correctness bug. Medium confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 522,
+      "lineEnd": 522,
+      "claim": "`typeof x === \"number\"` accepts NaN, Infinity, negative and non-integer values for min/maxProperties",
+      "rationale": "A malformed schema with `minProperties: NaN` or `-1` (or `1.5`) yields `!== undefined`, so the guard is installed with a nonsensical bound — `NaN` comparisons make every object fail (or every object pass, depending on the comparison direction) silently. Consider validating `Number.isInteger(v) && v >= 0`. Also `minProperties: 0` is a no-op that now needlessly wraps the schema in a check.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 528,
+      "lineEnd": 528,
+      "claim": "Schemas with only min/maxProperties are now wrapped, losing ZodObject-specific methods and possibly surprising existing callers",
+      "rationale": "Previously a `type: 'object'` schema with `minProperties`/`maxProperties` converted to a plain `ZodObject` (the constraints were ignored); now it returns whatever `checkObjectGuards` produces. If that wrapper is not a `ZodObject` (e.g. a `ZodType` with `.check()`/`.superRefine()` or a pipe), downstream users who call `.extend()`, `.shape`, `.partial()`, or who rely on `instanceof ZodObject`, will break. Worth confirming `checkObjectGuards` preserves the object instance (e.g. via `.check()` which returns the same class) rather than widening the type.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 522,
+      "lineEnd": 528,
+      "claim": "No sanity check for `minProperties > maxProperties`, producing a silently unsatisfiable schema",
+      "rationale": "Both bounds are forwarded verbatim; a contradictory pair yields a schema that rejects everything with a confusing error instead of surfacing a conversion-time problem. Low severity, but the converter elsewhere tends to report unsupported/invalid constructs.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 534,
+      "lineEnd": 534,
+      "claim": "The TODO noting that `uniqueItems` and `contains`/`minContains`/`maxContains` are unsupported is deleted, but the array branch in this hunk is otherwise unchanged",
+      "rationale": "If those keywords were implemented elsewhere in this change the removal is fine; if not, the deletion hides a known gap where those constraints are silently dropped (validation becomes more permissive than the source schema). Worth verifying the array conversion actually handles them now.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2682,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 2143
+  },
+  "latencyMs": 32359,
+  "nominalCostUsd": 0.08906449999999999
+}

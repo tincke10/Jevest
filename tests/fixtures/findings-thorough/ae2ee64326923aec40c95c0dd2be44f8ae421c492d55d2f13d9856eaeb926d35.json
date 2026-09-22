@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 27,
+      "lineEnd": 27,
+      "claim": "The new `jsonContentTypeRegex` only accepts the `application/...` tree, so common JSON content types such as `text/json` (and `text/x-json`) that the middleware may previously have pretty-printed (or that callers expect to be pretty-printed) will now be skipped silently.",
+      "rationale": "Regex is anchored with `^application\\/`. If the prior implementation used something like `startsWith('application/json')` this is not a regression, but if it checked `includes('json')` or `text/json` it is. Medium confidence that this is an intentional narrowing, but worth confirming against the tests.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 27,
+      "claim": "The structured-suffix prefix class `[a-z0-9._-]+` is narrower than the RFC 6838 subtype token set and does not allow `+`, so valid types like `application/vnd.foo+bar+json` or subtypes containing `!`/`#`/`$`/`^` etc. will not be recognized as JSON.",
+      "rationale": "RFC 6838 restricted-name characters include `!#$&^_+.-` and digits/letters; nested structured suffixes exist in the wild. Low-to-medium confidence this matters in practice, but it is a real coverage gap of the matcher.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 27,
+      "claim": "The regex requires the media type to start at index 0 with no tolerance for leading whitespace, and the lookahead `(?=$|[;\\s])` does not accept `,`. A header value such as ` application/json` (leading space, which some proxies/frameworks produce) or a comma-separated value list will not match.",
+      "rationale": "Header values are usually trimmed by the runtime's Headers implementation, so this is likely harmless, but if the value is read from a raw object/init it can retain whitespace. Low confidence, but cheap to guard with a `\\s*` prefix or a `.trim()` before testing.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 27,
+      "lineEnd": 27,
+      "claim": "The constant is declared at module scope but is not exported and no usage appears in this hunk; if the accompanying call site was not updated, this is dead code and will trip `noUnusedLocals`/lint.",
+      "rationale": "Cannot see the rest of the file in this hunk, so confidence is low — flagged only so the reviewer verifies the regex is actually wired into the content-type check that replaced the previous string comparison.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1895,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1008
+  },
+  "latencyMs": 24069,
+  "nominalCostUsd": 0.0580395
+}

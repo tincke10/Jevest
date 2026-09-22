@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 1649,
+      "lineEnd": 1651,
+      "claim": "`strip()` relies on the key `catchall` being present-with-value-`undefined` to clear an existing catchall; if `util.mergeDefs` skips `undefined` values (a very common merge-helper behavior) `strip()` silently becomes a no-op on a schema that already has a catchall (e.g. `z.object({}).strict().strip()` would stay strict).",
+      "rationale": "The old spread `{ ...def, catchall: undefined }` always defines the own property `catchall` with value `undefined`, which overrides the inherited/previous value. Whether `mergeDefs` preserves that depends entirely on its implementation: if it copies property descriptors (Object.getOwnPropertyDescriptors + defineProperties) the behavior is preserved, but if it filters `undefined` or uses a `value ?? existing` style merge, the semantics change. This is the only call site in the hunk whose correctness hinges on undefined-preservation, so it deserves an explicit check/test. Moderate confidence that this is at least worth verifying; low-to-moderate that it is an actual bug.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1637,
+      "lineEnd": 1651,
+      "claim": "Copying a lazily-defined `shape` accessor onto a fresh def object can defeat the lazy cache: the lazy getter typically caches by assigning back to the *original* def object it closed over, so the copied accessor on the merged def re-invokes the resolver on every access instead of once.",
+      "rationale": "If `mergeDefs` works by transplanting property descriptors, an accessor created by a `defineLazy`-style helper closes over the original object; writing the cached value there does not replace the accessor on the new object. The stated goal of the change (avoid minting a fresh subtree) could then be inverted — resolution happens on every read of `newDef.shape` rather than once. I'm not fully certain of the helper's implementation, but this is the classic failure mode of descriptor-copying merges over lazy props and is worth confirming with a test that reads `.shape` twice on a `.catchall()`-derived schema and asserts referential equality.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1638,
+      "lineEnd": 1638,
+      "claim": "Replacing the object-literal spread with `util.mergeDefs(...)` likely loses compile-time checking of the def shape, so typos or wrong-typed fields in the second argument would no longer be caught.",
+      "rationale": "Generic merge helpers commonly return `Record<string, any>` or a loosely inferred intersection, and `this.clone()` then accepts it without validating keys. The previous literal was structurally checked against the def type. Low severity but a real reduction in type safety across all five call sites; flagged once here.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1638,
+      "lineEnd": 1638,
+      "claim": "`mergeDefs` returns a new object whose prototype/own-property flags may differ from the plain object produced by a spread (e.g. properties defined via `Object.defineProperties` default to non-enumerable/non-writable when descriptors are constructed manually), which could break downstream code that enumerates or mutates `def`.",
+      "rationale": "Spread always yields enumerable, writable, configurable own data properties. Any descriptor-based construction risks differing attributes, which matters for code that does `{...def}`, `JSON.stringify(def)`, `Object.keys(def)`, or reassigns `def.catchall` later. I have not read the helper, so this is speculative, but it is a plausible source of subtle behavior change for existing callers.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3725,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1604
+  },
+  "latencyMs": 45721,
+  "nominalCostUsd": 0.1097495
+}

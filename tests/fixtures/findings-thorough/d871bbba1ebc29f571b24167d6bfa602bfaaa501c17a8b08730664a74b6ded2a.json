@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 126,
+      "lineEnd": 127,
+      "claim": "The new cache-hit fast path skips the Content-Type handling done by bufferToFormData(arrayBuffer, headers.get('Content-Type') || ''), so parseBody can now succeed (or return different data) for requests whose Content-Type the slow path would have rejected.",
+      "rationale": "Previously every call went through bufferToFormData with the request's Content-Type, which branches on multipart vs urlencoded and throws for unsupported/malformed types. With a pre-populated bodyCache.formData (set by a prior c.req.formData() call or middleware) that validation is bypassed. Medium confidence this is an intended trade-off, but it is a visible behavior change for existing callers.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 126,
+      "lineEnd": 127,
+      "claim": "A cached bodyCache.formData that is a rejecting promise is awaited here with no try/catch, so parseBody now re-throws that cached parse error, and awaiting a shared promise can leave an unhandled rejection path.",
+      "rationale": "bodyCache.formData may hold an in-flight Promise<FormData> stored by HonoRequest.formData() or by the tail of this same function; if parsing fails it rejects. Before this change parseBody produced its own error from arrayBuffer()/bufferToFormData. Moderate confidence; depends on how the cache is populated elsewhere.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 126,
+      "lineEnd": 127,
+      "claim": "The cast `await (request.bodyCache.formData as FormData | Promise<FormData>)` is an unchecked assertion; if bodyCache.formData holds anything other than a FormData/Promise<FormData> (e.g. a rejected placeholder or a non-FormData value set by user code), convertFormDataToBodyData will receive an unexpected shape instead of failing loudly.",
+      "rationale": "The truthiness check plus the cast performs no runtime validation. Low-to-medium confidence that this matters in practice, but the assertion hides a potential type mismatch that the previous code path could not hit.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 126,
+      "lineEnd": 127,
+      "claim": "On a cache hit the converted BodyData is not memoized and aliases values (e.g. File entries) from the shared cached FormData, so repeated parseBody calls re-do the conversion and callers can observe/mutate objects shared with c.req.formData().",
+      "rationale": "Minor efficiency and aliasing concern introduced by reusing the cached FormData instead of re-parsing a fresh buffer; low confidence this is problematic, but worth a second look if callers mutate the returned body data.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3805,
+    "cacheReadInputTokens": 3577,
+    "cacheCreationInputTokens": 4104
+  },
+  "latencyMs": 49053,
+  "nominalCostUsd": 0.13797349999999997
+}

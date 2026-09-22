@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 230,
+      "lineEnd": 230,
+      "claim": "Copying the request's `Content-Type` onto the rebuilt `Response` changes the `type` of blobs returned by `blob()` (and the effective media type for other representations) from `''` to the original media type, a silent behavior change for existing callers.",
+      "rationale": "Previously `new Response(body)` with a string/ArrayBuffer body produced a blob with an empty (or defaulted `text/plain;charset=UTF-8`) type; now `c.req.blob()` after another body accessor will return a Blob whose `type` is the full original header value including parameters (e.g. `multipart/form-data; boundary=...`). This is arguably more correct, but it is an observable change not limited to the `formData()` case the comment describes. Confidence: high that the behavior changes, medium that it matters to callers.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 227,
+      "lineEnd": 230,
+      "claim": "With the content type now preserved, `formData()` rebuilt from a `text`-cached body can silently produce corrupted/incorrect parts instead of failing fast.",
+      "rationale": "When the cached key is `text`, the original bytes were already decoded to a JS string; re-encoding that string as the body of a multipart/form-data response is lossy for binary file parts (and for any non-UTF-8 payload). Before this change such a call threw immediately because no content type was present; now it will parse and hand back plausible-looking but potentially corrupted `File` contents. Same concern applies when the cached key is `json`, where `JSON.stringify` produces bytes that differ from the original body while the original `Content-Type` is still advertised. Confidence: medium-high.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 230,
+      "lineEnd": 230,
+      "claim": "The truthiness check on `contentType` conflates an absent header with an empty-string header value.",
+      "rationale": "`raw.headers.get('content-type')` returns `null` when absent but `''` if the header is present and empty; both fall into the `undefined` branch. Functionally close to harmless, but an explicit `!== null` check would be more precise, and an empty string would otherwise be an invalid header value anyway. Low confidence that this has practical impact.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3349,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1314
+  },
+  "latencyMs": 42253,
+  "nominalCostUsd": 0.0974495
+}

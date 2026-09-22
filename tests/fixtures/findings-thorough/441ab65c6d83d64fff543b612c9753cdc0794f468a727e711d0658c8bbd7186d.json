@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 36,
+      "lineEnd": 38,
+      "claim": "Intercepting `valueOf`/`toString`/`toJSON` in the apply trap silently breaks any real procedure with one of those names when the proxy is invoked directly (e.g. server `createCaller().toString()` or any `createRecursiveProxy` consumer whose last path segment is the procedure name)",
+      "rationale": "This file's proxy is shared by the client (`trpc.foo.query()` — last segment is the method, so unaffected) *and* by direct-call consumers such as `createCallerFactory`/`createRecursiveProxy`, where the last path segment *is* the procedure name. For those, `caller.toJSON()` now returns the string `\"tRPC.proxy(...)\"` instead of invoking the callback — no error, no network/handler call, and code doing `await caller.toString().then(...)` will throw `TypeError: ... .then is not a function` because a string, not a Promise, is returned. The comment claims route-naming freedom is preserved, which is only true for the `.query()`/`.mutate()` chained style. Fairly confident this is a real, silent behavior regression; consider restricting the bail-out to when `path.length === 1` (root coercion) or gating on `args.length === 0`, or handling coercion in the `get` trap via `Symbol.toPrimitive` instead.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 37,
+      "lineEnd": 38,
+      "claim": "`path.slice(0, -1).join('.')` yields an empty string for a root-level coercion, producing the uninformative `\"tRPC.proxy()\"`",
+      "rationale": "When the proxy is coerced at the root (`` `${trpc}` `` → path is `['toString']`), `debugPath` is `''`, so the debug string is `tRPC.proxy()` with no indication of what was coerced. Low impact but defeats the stated debugging purpose; a fallback like `'<root>'` would be clearer. Confident about the behavior, low severity.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 36,
+      "lineEnd": 38,
+      "claim": "Only string-named coercion hooks are handled; `Symbol.toPrimitive` and `Symbol.for('nodejs.util.inspect.custom')` paths are not, so coercion behavior is inconsistent depending on how the consumer coerces",
+      "rationale": "The `get` trap returns `undefined` for symbol keys, so `Symbol.toPrimitive` falls back to `valueOf`/`toString` and this fix happens to work today; but if any code path ever makes symbol keys return a proxy, the recursion this guard is meant to prevent returns. Also note `valueOf` returning a *string* means `+trpc` now produces `NaN` rather than throwing/hitting the callback — a behavior change for numeric coercion. Medium confidence that this matters in practice; worth a second look.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3713,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1371
+  },
+  "latencyMs": 46236,
+  "nominalCostUsd": 0.1071195
+}

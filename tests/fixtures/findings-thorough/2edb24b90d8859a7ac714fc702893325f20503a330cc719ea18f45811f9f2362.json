@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 408,
+      "lineEnd": 409,
+      "claim": "The new `clientSubscriptions.delete(id)` in the `.catch` handler removes the map entry but never tears down the stored handle (abort controller / unsubscribe function), so a subscription that fails mid-stream can leak: once the entry is gone, a later `subscription.stop` message for that id can no longer abort it.",
+      "rationale": "The success path deletes the entry only after the iterable/observable has finished, so no teardown is needed there. The error path can be reached while the underlying source is still live (e.g. an error thrown while formatting/sending a value, or an error propagated from the tracked-iterable wrapper), and deleting the only reference to the abort handle makes cancellation impossible. Aborting (or unsubscribing) alongside the delete would be safer. Medium confidence - depends on whether every rejection path here is guaranteed to have already run the source's teardown.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 408,
+      "lineEnd": 409,
+      "claim": "The delete is unconditional and not identity-checked, so if the client reused the same subscription `id` for a new subscription before this rejection settled, the catch handler will delete the *new* subscription's entry.",
+      "rationale": "Promise rejections are delivered asynchronously; between the failure and the handler running, the client could send `subscription.stop` for `id` and then start a fresh subscription with the same client-supplied `id`. Guarding with `if (clientSubscriptions.get(id) === <this handle>) clientSubscriptions.delete(id)` avoids clobbering the live entry. Lower confidence - requires id reuse, and the success path has the same shape, but this change widens the window.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 408,
+      "lineEnd": 408,
+      "claim": "Because `.catch` is chained after the `.then` block, an error thrown inside the success handler (e.g. from `respond({... type: 'stopped' })`) now reaches this handler and will send an additional error response for an id that was already reported as `stopped`, after the entry was already deleted.",
+      "rationale": "Pre-existing chaining issue rather than introduced by this line, but the added delete makes the double-cleanup path explicit; the duplicate `stopped`-then-`error` response could surprise clients. Low confidence that this path is reachable in practice.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2801,
+    "cacheReadInputTokens": 3360,
+    "cacheCreationInputTokens": 3112
+  },
+  "latencyMs": 36095,
+  "nominalCostUsd": 0.102845
+}

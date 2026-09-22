@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 2844,
+      "lineEnd": 2847,
+      "claim": "The new constraint no longer guarantees `Shape extends core.$ZodShape`, so `core.$InferObjectInput<Shape, {}>` on line 2847 may no longer satisfy its own type-parameter constraint (and can see `undefined` values).",
+      "rationale": "The mapped type `{ [k in keyof T as ...]?: core.$ZodType<unknown, T[k]> }` produces *optional* members, whose type is `core.$ZodType<unknown, T[k]> | undefined`, and its keys can be `symbol`/`number` (anything in `keyof T`). `$ZodShape` is (in zod v4 core) `Record<string, $ZodType>`. A `Shape` inferred under the new constraint therefore does not necessarily extend `$ZodShape`, which will either be a hard compile error at the `$InferObjectInput<Shape, {}>` usage or silently infer `undefined`-valued properties into the result type. Fairly confident this needs an explicit `& core.$ZodShape` intersection on the constraint.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2847,
+      "claim": "Restricting shape keys to `keyof T` makes the `T & core.$InferObjectInput<Shape, {}>` return type pointless and breaks callers that used `.properties()` to declare properties not statically present on `T`.",
+      "rationale": "The return type intersects `T` with the inferred shape, which only has meaning if the shape can introduce keys `T` does not already have (the common use case: `z.instanceof(SomeOpaqueClass).properties({ extra: z.string() })`). With a mapped-type constraint keyed on `keyof T`, object-literal excess-property checking rejects any key outside `keyof T`, so that usage is now a compile error. This is a behavior/API regression for existing callers; confident about the excess-property rejection, less so about how widely it was used.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "Excluding `Function`-typed members via `T[k] extends Function ? never : k` makes it impossible to validate any method/function-valued property at all, not merely absent from autocomplete.",
+      "rationale": "The key remapping removes those keys from the constraint entirely, so passing e.g. `{ callback: z.custom<Function>() }` for a class whose `callback` is a function becomes an excess-property error. If the intent was only to avoid the `Object.prototype.toString` collision described in the comment, a narrower fix (e.g. only excluding keys that come from `Object.prototype`, or intersecting with `Partial<core.$ZodShape>`) would keep function props usable. Also note the exclusion misses union types like `(() => void) | undefined`, which do not extend `Function`, so the collision guard is inconsistent.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 2843,
+      "lineEnd": 2844,
+      "claim": "For the default `T = unknown` (and the `core.$constructor<ZodInstanceOf>` declaration below), `keyof T` is `never`, so the shape constraint collapses to `{}` and accepts literally any argument, including non-schema values.",
+      "rationale": "`{ [k in never as ...]?: ... }` is `{}`, which every non-null value is assignable to, so `properties({ foo: 123 })` type-checks on a `ZodInstanceOf<unknown>`. The previous `core.$ZodShape` constraint at least required schema values. Confident about the type-level behavior; severity depends on how often `T` is left unknown.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 2844,
+      "lineEnd": 2844,
+      "claim": "Constraining the property schema by its *Input* parameter (`core.$ZodType<unknown, T[k]>`) rather than its Output checks the wrong side for transforming/coercing schemas.",
+      "rationale": "`$ZodType<Output, Input>` — placing `T[k]` in the Input slot means a schema like `z.coerce.number()` (Input `unknown`) or `z.string().transform(Number)` (Input `string`) is matched against the declared property type rather than the value the check actually produces/validates. Given the stated goal (\"a schema that can't accept the property's type is an error\") Input may be intentional, but combined with the declared `out Input` variance this rejects wider-input schemas (e.g. `z.string()` for a prop typed `\"a\" | \"b\"`), which callers may find surprising. Moderate confidence — depends on the exact variance annotations in `$ZodType`.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 4797,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1418
+  },
+  "latencyMs": 55676,
+  "nominalCostUsd": 0.13468950000000002
+}

@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 19,
+      "lineEnd": 19,
+      "claim": "Switching `buckets` from `Map` to `WeakMap` drops `size`, `clear()`, `forEach()` and iteration; any existing code in this module that inspects or resets the bucket map will break.",
+      "rationale": "`WeakMap` is not a structural superset of `Map`. Memoizer implementations commonly do `state.buckets.clear()` at the end of a parse, read `.size`, or iterate buckets to flush pending issues. I cannot see the rest of the file, so this is a suspicion rather than a confirmed break, but it is the most likely fallout of this type change and deserves verification.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 19,
+      "lineEnd": 19,
+      "claim": "Making the per-node bucket weak allows memo entries to be garbage collected mid-parse, so memoization becomes non-deterministic; an `Entry` whose `issues` is still `null` (children not yet parsed) can disappear if the only strong reference to its key object was the map itself.",
+      "rationale": "With a strong `Map` the entry was guaranteed to survive the whole parse. With a `WeakMap` the entry's lifetime is tied to the key object's reachability. If keys are transient wrapper/marker objects created per visit rather than caller-owned data, a GC-triggered miss changes behavior (recomputation, duplicated issues, or an undetected cycle). Moderate confidence: safe only if every key stays strongly reachable for the whole parse.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 19,
+      "lineEnd": 19,
+      "claim": "The new comment states the bucket is cached on the schema instance and \"outlives the parse\", which means memo entries keyed by a data object are now reused across separate parse calls with different contexts.",
+      "rationale": "An `Entry` carries `issues` produced under one parse's context (error map, path prefix, config). If the same object graph is parsed twice against the same schema, a cross-parse memo hit could return issues computed under the previous context. The strong `Map` was presumably per-parse state, so this is a behavior change callers could be surprised by. Confidence moderate — depends on how `attach` scopes the bucket, which is not visible in this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 21,
+      "lineEnd": 21,
+      "claim": "`backEdges` as a `WeakSet` can no longer be iterated, sized, or cleared, and its membership can silently shrink under GC.",
+      "rationale": "Back-edge tracking usually needs a drain/clear step once a cycle resolves (e.g., walking recorded nodes to propagate issues). `WeakSet` supports only `add`/`has`/`delete`, so such logic breaks. A node dropped by GC would also silently stop being reported as a back-edge. Same caveat: consuming code is not visible here.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 19,
+      "lineEnd": 21,
+      "claim": "`WeakMap`/`WeakSet` throw `TypeError` on non-object keys, whereas `Map`/`Set` accepted anything; if any key reaching this state is a primitive (or a registered symbol) at runtime, the memoizer now throws instead of just memoizing.",
+      "rationale": "The declared key type is `object`, so this only bites if a cast or `any` lets a primitive through — plausible in a parser walking arbitrary input. Low confidence, but the failure mode changes from benign to a thrown exception, so it is cheap to check the call sites that write into `buckets`/`backEdges`.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 4323,
+    "cacheReadInputTokens": 3521,
+    "cacheCreationInputTokens": 4394
+  },
+  "latencyMs": 52549,
+  "nominalCostUsd": 0.1537955
+}

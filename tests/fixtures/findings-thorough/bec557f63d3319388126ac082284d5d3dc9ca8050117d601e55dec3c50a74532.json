@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 28,
+      "lineEnd": 29,
+      "claim": "Newly re-exported `INVALID` leaks an internal parse sentinel into the public `zod` (classic) API surface, and may not actually be exported by `../core/index.js`.",
+      "rationale": "In the zod codebase `INVALID` is the internal sentinel used by parse/check implementations to signal a failed value; it is normally not part of the user-facing API (unlike `NEVER`). Two risks here: (1) if `../core/index.js` does not re-export a value named `INVALID`, this is a compile error / undefined at runtime for the barrel; (2) if it does, every downstream consumer can now depend on `z.INVALID`, which pins an implementation detail (its identity/type is compared by reference inside the parser) as public API and is hard to remove later. I cannot see core/index.ts here, so this is a suspicion rather than a confirmed break — worth verifying the symbol exists and is intended to be public.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 30,
+      "lineEnd": 30,
+      "claim": "Newly re-exported `withParser` may not exist in `../core/index.js` and is added only to the classic barrel, creating an API asymmetry with zod/mini.",
+      "rationale": "`withParser` is not an established public export of zod core; if it is only exported from a submodule (e.g. `../core/parse.js`) rather than the core index, this re-export will fail to resolve. Also, `compile`/`toZod` style helpers are typically mirrored in `packages/zod/src/v4/mini/external.ts`; adding `withParser` (and `INVALID`) only to classic means `zod/mini` users cannot access it, which is likely unintended. Medium confidence — depends on core/index.ts and mini/external.ts, neither of which is shown.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 24,
+      "lineEnd": 34,
+      "claim": "Added names could collide with other `export *` / `export {}` statements in this barrel, silently shadowing or producing ambiguous re-exports.",
+      "rationale": "`external.ts` typically combines several `export * from ...` statements (schemas, checks, api, etc.). If any of those modules also export a binding named `INVALID` or `withParser`, TypeScript/ESM resolves duplicate star-exports by dropping the ambiguous name entirely (no error at the barrel, but the symbol disappears from `zod`'s public surface) — an easy-to-miss behavior change. Low-to-medium confidence; worth a grep for these identifiers across the classic and core modules.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1890,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1042
+  },
+  "latencyMs": 24078,
+  "nominalCostUsd": 0.0582545
+}

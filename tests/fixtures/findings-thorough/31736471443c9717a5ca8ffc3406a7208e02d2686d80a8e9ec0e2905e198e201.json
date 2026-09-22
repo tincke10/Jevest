@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 115,
+      "lineEnd": 115,
+      "claim": "`issue.options` is not a property of the `invalid_union` issue type in Zod v4 (union issues carry `errors`, a nested array of issue arrays; `options` belongs to `invalid_value`/enum-style issues). This guard therefore likely never passes, making the discriminator message — the very string being edited in this diff — dead code.",
+      "rationale": "If the runtime issue object has no `options`, the reworded branch can never be reached and the locale silently falls through to the generic \"Вуруди нодуруст\". It also implies an unsafe/implicit access on a union-typed issue. Medium confidence — depends on the exact `$ZodIssueInvalidUnion` shape in this version, but other locales in this package do not key off `issue.options` for `invalid_union`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 116,
+      "lineEnd": 116,
+      "claim": "`${o}` interpolates each option with default string conversion; non-primitive options (objects, or nested issue arrays if `options` ever is populated) render as `'[object Object]'`.",
+      "rationale": "Produces a useless user-facing message for any non-string/number option. Other locales typically use `util.joinValues` / `util.stringifyPrimitive` for this reason. Medium-high confidence that raw interpolation is wrong here.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 117,
+      "lineEnd": 117,
+      "claim": "The message is hardcoded to talk about a \"discriminator\" even though the branch is reached for any `invalid_union` issue, not just discriminated unions.",
+      "rationale": "A plain (non-discriminated) union failure would produce a message referring to a discriminator that does not exist, which is misleading to end users. The diff rewords this string without addressing the mismatch. Low-medium confidence, since it depends on whether `options` is ever populated for plain unions.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1911,
+    "cacheReadInputTokens": 3524,
+    "cacheCreationInputTokens": 2513
+  },
+  "latencyMs": 21179,
+  "nominalCostUsd": 0.074687
+}

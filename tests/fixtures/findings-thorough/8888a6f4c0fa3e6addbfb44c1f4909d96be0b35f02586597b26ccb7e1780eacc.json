@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 29,
+      "lineEnd": 30,
+      "claim": "`getConfig()` is used here while the rest of the constructor reads configuration via `getBrowserState().config` — this may be an un-imported symbol or a config source that is not populated in the orchestrator frame.",
+      "rationale": "The orchestrator runs in the top-level page, not inside a test iframe. `getConfig()` in Vitest browser code typically resolves the per-test/runner config (often derived from the current worker/test context), whereas the orchestrator deliberately uses `getBrowserState().config` two lines below. If `getConfig()` is not imported in this file, this is a compile error; if it is imported but returns an uninitialised/default config at orchestrator construction time, the `traceView.enabled` check will silently evaluate to false and the dynamic import will never run. Medium confidence — I cannot see the imports of this file in the provided context, but the inconsistency with the adjacent `getBrowserState().config` access is a strong smell.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 30,
+      "lineEnd": 30,
+      "claim": "`getConfig().browser.traceView.enabled` will throw a TypeError if `browser` or `traceView` is undefined; no optional chaining is used, unlike the `otelConfig?.` pattern right below.",
+      "rationale": "The very next lines guard with `otelConfig?.enabled && otelConfig.browserSdkPath`, implying experimental/optional config sections can be absent. `traceView` is likely an optional (possibly new) config section, and an older or partially-resolved config object would make this an unguarded property access that throws inside the constructor, breaking orchestrator initialisation entirely rather than just disabling trace view. Suggest `getConfig().browser?.traceView?.enabled`. Moderate-to-high confidence.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 29,
+      "lineEnd": 29,
+      "claim": "`browserTraceDomSnapshotPromise` is only assigned when trace view is enabled at construction time, leaving it `undefined` for consumers and making the check non-reactive to later config changes.",
+      "rationale": "Any code that does `await getBrowserState().browserTraceDomSnapshotPromise` then gets `undefined` (awaiting `undefined` resolves to `undefined`), so a consumer doing `(await promise).snapshot(...)` would throw an opaque 'cannot read property of undefined' instead of a clear 'trace view disabled' error. Additionally the constructor runs once per orchestrator, so if the config is re-resolved (watch mode / re-run with trace view turned on) the import is never kicked off. Consider always assigning, or having consumers guard explicitly. Moderate confidence — depends on how consumers read the field.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 30,
+      "lineEnd": 31,
+      "claim": "The `.catch(() => {})` swallows the import failure on the attached handler only; the comment's assumption that 'a load failure surfaces in the tester that awaits this' holds only if a tester actually awaits the stored promise.",
+      "rationale": "Attaching a no-op catch to `domSnapshot` correctly prevents an unhandled rejection while keeping the original (still rejected) promise in browser state, so the stated intent works when someone awaits it. However, if trace view is enabled but no snapshot is ever requested (e.g. no test triggers it), a broken/missing `rrweb-snapshot` dependency is completely silent with no diagnostic logging. Low-to-moderate confidence that this matters, but a `debug()` log in the catch would make failures diagnosable.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2281,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1220
+  },
+  "latencyMs": 28649,
+  "nominalCostUsd": 0.0698095
+}

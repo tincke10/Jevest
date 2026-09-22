@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "lineStart": 18,
+      "lineEnd": 19,
+      "claim": "The new option type references `AnyClientTypes`, which must be added to the imports in this file; the hunk itself does not add it.",
+      "rationale": "The hunk header offset (`-15,15 +16,26`) suggests one line was added above (probably the import), but that is not visible in this hunk. If `AnyClientTypes` is not imported (or imported as a value rather than `import type`), this will fail to compile. Low-to-moderate confidence — flagging so the import can be verified.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 23,
+      "lineEnd": 25,
+      "claim": "`streamHeader` is declared in the options type but nothing in this hunk reads it; if the rest of the function never consumes `opts.streamHeader`, the option is silently a no-op.",
+      "rationale": "Adding a public, documented option that is not wired into the request-header construction is a common half-applied-change bug. The signature change alone makes the option type-check and appear supported to users. I cannot see the header-building code, so this is a request to confirm the option is actually threaded through to where `trpc-accept: application/jsonl` is set.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 26,
+      "lineEnd": 26,
+      "claim": "`resolveHTTPLinkOptions(opts)` likely strips/ignores the new `streamHeader` field, so downstream code reading `resolvedOpts.streamHeader` would get `undefined`.",
+      "rationale": "`resolveHTTPLinkOptions` is typed against the base HTTP link options and typically returns a narrowed object (url, transformer, fetch, etc.). If the consumer of the new option reads it off `resolvedOpts` instead of the raw `opts`, the default `'trpc-accept'` branch would always be taken. Moderate confidence — worth verifying which object the option is read from.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 24,
+      "lineEnd": 24,
+      "claim": "Choosing `streamHeader: 'accept'` can collide with a user-supplied `Accept` header from `opts.headers`, and the precedence is unspecified.",
+      "rationale": "`HTTPBatchLinkOptions` allows arbitrary `headers` (static or per-operation function). If the link sets `Accept: application/jsonl` while the user also sets `Accept`, one silently wins depending on merge order, producing surprising behavior. The doc comment does not state precedence. Confidence moderate; worth an explicit merge rule or documentation.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 25,
+      "lineEnd": 25,
+      "claim": "Using the standard `Accept` header for a non-standard MIME type risks intermediaries/servers responding 406 or returning plain JSON, and the client may not handle the non-JSONL fallback.",
+      "rationale": "Unlike the custom `trpc-accept` header, `Accept` participates in real content negotiation: proxies, CDNs and frameworks may reject `application/jsonl` or negotiate a different type. If the server then returns a normal JSON batch response, the streaming parser needs a fallback path. The doc comment warns users to test their infrastructure, but the code should still degrade safely. Low-to-moderate confidence about the actual runtime handling.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 19,
+      "lineEnd": 19,
+      "claim": "`HTTPBatchStreamLinkOptions` is declared without `export`, so consumers cannot name the options type of this public link.",
+      "rationale": "The previous public option type (`HTTPBatchLinkOptions`) was importable; introducing a local non-exported alias makes it impossible for users to type a variable holding these options (including the new `streamHeader` field), which is a practical regression for library consumers rather than a style concern.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3723,
+    "cacheReadInputTokens": 3906,
+    "cacheCreationInputTokens": 4071
+  },
+  "latencyMs": 40208,
+  "nominalCostUsd": 0.135758
+}

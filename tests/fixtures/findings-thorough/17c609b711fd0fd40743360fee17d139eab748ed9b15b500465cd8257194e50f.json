@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 6,
+      "lineEnd": 6,
+      "claim": "New `raceAbortSignals` import in the batch link risks aborting a whole batch when a single batched request is cancelled (semantics differ from `allAbortSignals`).",
+      "rationale": "`httpBatchLink` deliberately uses `allAbortSignals`, which only aborts the combined signal once *every* batched caller has aborted — otherwise one consumer unsubscribing would kill the in-flight request for all other procedures sharing the batch. `raceAbortSignals` (abort as soon as *any* signal aborts) has the opposite semantics. The import alone is not a bug, but wherever it is used in the rest of this file it must be for a per-request/timeout signal (e.g. combining the batch signal with an abort-on-timeout signal), not for combining the per-caller signals. Please confirm the call site; if it replaced `allAbortSignals` for the batched callers, this is a behavior regression that will surface as spurious `AbortError`s for unrelated queries in the same batch. Medium confidence — I can only see the import in this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 6,
+      "lineEnd": 6,
+      "claim": "`raceAbortSignals` must be exported from `../internals/signals`, and unused-import lint/`noUnusedLocals` will fail if it is not referenced.",
+      "rationale": "The hunk only adds the named import; if `raceAbortSignals` is not (yet) exported from `internals/signals` this is a compile error, and if the corresponding usage was not included in the change the TS `noUnusedLocals`/eslint no-unused-vars rules typically enabled in this repo will fail the build. Low confidence without seeing the rest of the file, but worth verifying since this is the only visible change.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 992,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1293
+  },
+  "latencyMs": 14779,
+  "nominalCostUsd": 0.0383145
+}

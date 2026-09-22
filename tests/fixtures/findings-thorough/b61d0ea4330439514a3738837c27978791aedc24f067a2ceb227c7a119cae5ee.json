@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 611,
+      "lineEnd": 616,
+      "claim": "Deferring `utils.getMessage(...)` into the failure branch changes when message serialization runs, so any side effect or throw during message/`objDisplay` formatting of `args` no longer happens on the passing path.",
+      "rationale": "Chai's `getMessage` stringifies the expected value (`args`) via `objDisplay`/inspection. Previously that ran on every assertion, including passing ones; now it only runs when the assertion fails. In practice this is almost certainly the intent (avoid formatting cost on the hot passing path) and an improvement, but it is a real behavior change: an argument whose `toString`/`inspect`/getters throw or mutate state would previously have surfaced on passing assertions and now will not. Low confidence that this matters to any real caller, but flagging since it is the only semantic delta in the hunk. Note also that `spyName` (`spy.getMockName()`) is still computed eagerly, so the optimization is only partial, and the sibling assertions such as `toHaveBeenCalledExactlyOnceWith` below retain the eager pattern, leaving the codebase inconsistent.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1417,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1476
+  },
+  "latencyMs": 18549,
+  "nominalCostUsd": 0.05076950000000001
+}

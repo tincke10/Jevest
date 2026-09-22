@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 87,
+      "lineEnd": 89,
+      "claim": "The new `!c.res.ok` guard silently disables 304 negotiation for responses that already carry an ETag but have a non-2xx status (e.g. a handler returning 404/410 with an ETag, or an ETag on a 3xx redirect). Previously those responses were compared against `If-None-Match` and could be answered with 304.",
+      "rationale": "The early return happens before `res.headers.get('ETag')` is read, so any upstream-provided ETag on a non-ok response is now ignored entirely. RFC 9110 allows ETag/If-None-Match on error and redirect responses, so this is a real behavior change for existing callers; confidence moderate-high that it is intentional but worth confirming it is documented/tested.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 88,
+      "lineEnd": 89,
+      "claim": "Restricting to GET/HEAD/QUERY means ETags are no longer emitted for POST/PUT/PATCH/DELETE responses, which is a breaking change for callers that relied on the middleware hashing every response body.",
+      "rationale": "The middleware previously generated an ETag unconditionally after `next()`. Clients doing optimistic concurrency (reading the ETag returned from a POST/PUT to use in a later `If-Match`) will now get no ETag header at all. This may be the intent of the change, but it is a silent breaking change and deserves a documented note or an opt-out option.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 89,
+      "lineEnd": 90,
+      "claim": "`c.res.ok` is true for 206 Partial Content (and 204 No Content), so the middleware will still compute an ETag over a partial/empty body and attach it as the entity tag for the full resource.",
+      "rationale": "Range responses carry only a slice of the representation; hashing that slice produces an ETag that disagrees with the ETag of the full resource and can corrupt client-side range resumption/caching. If the guard's goal is to limit ETag generation to full cacheable representations, 206 should be excluded explicitly. Confidence moderate — depends on whether range handling exists elsewhere in the stack.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 84,
+      "lineEnd": 85,
+      "claim": "The method comparison is exact-case and will fall through (skipping ETag handling entirely) for a lowercase or mixed-case method string.",
+      "rationale": "Hono normally surfaces the raw method from the incoming request, which is uppercase for conformant clients, but some runtimes/adapters or manually constructed `Request` objects can carry e.g. `get`. Using `c.req.method.toUpperCase()` would make the guard robust. Low confidence this occurs in practice, but the failure mode is silent.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3287,
+    "cacheReadInputTokens": 3389,
+    "cacheCreationInputTokens": 3462
+  },
+  "latencyMs": 37977,
+  "nominalCostUsd": 0.11850949999999999
+}

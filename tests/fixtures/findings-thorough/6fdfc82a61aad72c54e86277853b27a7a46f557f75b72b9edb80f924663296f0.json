@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 21,
+      "lineEnd": 22,
+      "claim": "Exporting `HTTPBatchStreamLinkOptions` widens the public API surface; verify it is actually re-exported from the package entrypoint and does not collide with an existing exported name.",
+      "rationale": "The change itself is type-only and cannot alter runtime behavior. Two things worth a second look, though I cannot confirm either from this hunk alone: (1) if the module's symbols are re-exported via a barrel (`export * from './links/httpBatchStreamLink'`), a name clash with a similarly named type from `httpBatchLink`/`unstable_httpBatchStreamLink` would cause a TS ambiguity/duplicate-export error; (2) if the barrel only re-exports an explicit list, adding `export` here has no effect for consumers and the type still won't be importable from the package root. Low confidence — both are just verification items.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 595,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1375
+  },
+  "latencyMs": 11354,
+  "nominalCostUsd": 0.0292095
+}

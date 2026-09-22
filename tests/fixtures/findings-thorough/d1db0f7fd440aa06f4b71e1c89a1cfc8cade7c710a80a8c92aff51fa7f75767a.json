@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 31,
+      "lineEnd": 31,
+      "claim": "The documented default for `options.allowMethods` now includes `'QUERY'`; if the actual `defaults`/`opts` object in this file still initializes `allowMethods` to `['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH']`, the JSDoc is now misleading and will surface a wrong default in editor tooltips and generated docs.",
+      "rationale": "The hunk only shows the comment, not the implementation, so I cannot verify the runtime default from the diff. Doc/implementation drift on a default value is a plausible issue worth confirming: the corresponding literal in the middleware body (and the Preflight `Access-Control-Allow-Methods` header it produces) should be updated in the same change. Moderate confidence — this is likely part of a larger PR that also changes the default, but if the default array was not touched the documentation is simply wrong.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 31,
+      "lineEnd": 31,
+      "claim": "Adding `QUERY` to the default `Access-Control-Allow-Methods` broadens the advertised method set for every existing caller that does not pass `allowMethods` explicitly.",
+      "rationale": "If the implementation default really changed, preflight responses for all existing users will now advertise the (still-draft) HTTP QUERY method without opt-in. That is a silent behavior change for existing callers and may trip strict security scanners or proxies that reject unknown methods. Low-to-moderate confidence that this matters in practice, but it is worth an explicit note in the changelog/release notes.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 994,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1800
+  },
+  "latencyMs": 12893,
+  "nominalCostUsd": 0.0434345
+}

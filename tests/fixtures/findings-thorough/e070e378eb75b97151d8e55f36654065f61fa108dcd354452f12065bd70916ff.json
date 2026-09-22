@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 80,
+      "lineEnd": 80,
+      "claim": "Adding `preventAbort: true` silently swallows source-stream errors into the response: the destination WritableStream is no longer errored/aborted when `body` errors mid-stream, so a truncated response can be finalized as if it completed successfully.",
+      "rationale": "Previously, if `body` errored, `pipeTo` aborted `this.writable`, which normally propagates the failure to the underlying response/socket so the client sees a broken/aborted transfer rather than a valid-looking truncated body. With `preventAbort`, the destination is left open and healthy; the rejection still surfaces from `pipe()`, but whether the caller turns that into an abort of the response is now entirely up to the caller. If callers just log or ignore the rejection (common for streaming handlers), clients will receive silently truncated data. Reasonably confident this is a real semantic change worth an explicit decision/comment; it may be intentional if the goal is to keep writing after a failed pipe.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "`this.writable.getWriter()` inside `finally` can throw and mask the original `pipeTo` rejection.",
+      "rationale": "If the writable is still locked (e.g. a pathological/custom stream implementation, or an implementation where the lock release is not yet observable) or otherwise unusable, `getWriter()` throws a TypeError from the `finally` block, which replaces the real pipe error and makes debugging much harder. Wrapping the reacquire in its own try/catch, or reacquiring only when the lock is actually free, would preserve the original error. Moderate confidence — in a spec-compliant implementation pipeTo releases the lock before settling, so this is mainly defensive.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "After a failed pipe the newly acquired writer may be attached to an already-errored writable, so subsequent `write`/`close` calls will reject and can become unhandled rejections.",
+      "rationale": "`getWriter()` succeeds on an errored (but unlocked) stream; the failure only appears on the next `write()`/`close()`/`ready`. With `preventAbort` the destination survives source errors, but a destination-side error (the other failure mode of `pipeTo`) still leaves `this.writable` errored. Re-assigning `this.writer` unconditionally means later `write()` calls in this class (which are often not awaited/caught) will produce rejected promises. Consider tracking an `aborted`/`closed` flag and skipping the reacquire when the stream is errored. Medium confidence.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 82,
+      "claim": "The failure path does not notify `abortSubscribers` or mark the stream as aborted.",
+      "rationale": "The class maintains `abortSubscribers`/`onAbort`, presumably fired when the stream is torn down. Now that `pipe()` deliberately keeps the destination alive on error, a failed pipe leaves the object in a 'still writable' state with no abort notification, so consumers relying on `onAbort` for cleanup never run. Low-to-medium confidence since I can't see the rest of the class, but worth checking against how `abort()`/`close()` handle this.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2225,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1100
+  },
+  "latencyMs": 30533,
+  "nominalCostUsd": 0.0672095
+}

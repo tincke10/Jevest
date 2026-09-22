@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 153,
+      "lineEnd": 153,
+      "claim": "Adding `uncheckedKey.startsWith(testName)` now requires the caller to pass the *full* snapshot key prefix (including any parent `describe` path), otherwise previously-cleaned keys will be reported as obsolete.",
+      "rationale": "Snapshot keys are built as `<full test path> <n>` or `<full test path> > <hint> <n>`. Previously the regex was applied to `slice(testName.length)` without verifying the prefix, so it happened to match loosely even when `testName` was not the actual prefix. If any caller passes only the leaf test name (or a name normalized/trimmed differently from how the key was generated — e.g. different whitespace or a `>`-joined path), the `startsWith` guard now fails and those snapshots will be marked unchecked/obsolete and potentially removed on `--update`. Worth verifying every call site passes the exact key prefix. Moderate confidence — the change is likely intentional and a bug fix for the false-positive direction, but it introduces a new false-negative direction.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 153,
+      "lineEnd": 153,
+      "claim": "Empty `testName` makes `startsWith` vacuously true and `slice(0)` return the whole key, so the anchored regex is evaluated against the full key.",
+      "rationale": "With `testName === ''`, `uncheckedKey.startsWith('')` is always true and the regex is tested against the entire key; a key that literally begins with a space and digits (or ` > `) would be deleted for an unrelated test. This existed before too, but the added guard gives a false impression of safety. Low severity / low likelihood, but an explicit empty-name early return would be clearer.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 153,
+      "lineEnd": 153,
+      "claim": "`^ > ` alternative is unanchored at the end and still matches keys lacking a trailing counter, while `^ \\d+$` requires an exact single-space-plus-digits remainder — the two branches are inconsistent.",
+      "rationale": "For a hinted snapshot the remainder is ` > hint 1`; `^ > ` matches regardless of what follows, so a key such as `testName > something else entirely` (no counter) is also cleared. The non-hinted branch, by contrast, is strictly anchored. If the intent is to match only well-formed keys, the hint branch should be `^ > .* \\d+$`. Low-to-moderate confidence that this matters in practice, but the asymmetry looks unintentional.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2683,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1201
+  },
+  "latencyMs": 33776,
+  "nominalCostUsd": 0.0796695
+}

@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 81,
+      "lineEnd": 81,
+      "claim": "The `_Err ?? errors.$ZodError` fallback is silently dropped; `failure` calls `new Err(...)` unconditionally, so a nullish `_Err` now throws `TypeError: Err is not a constructor` instead of falling back to `$ZodError`.",
+      "rationale": "The original code explicitly guarded against a missing constructor. `_safeParse` is exported (public-ish `_`-prefixed API) and can be invoked by adapters/tests with `undefined`. Even if the declared type is non-nullable, the defensive default existed for a reason and its removal is an unannounced behavior change — and it now fails lazily at `.error` access rather than at parse time, making it much harder to diagnose. High confidence this is an unintended regression.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 78,
+      "lineEnd": 83,
+      "claim": "Issue finalization is deferred, so `ctx`, `core.config()` and the raw `issues` array are now read at first `.error` access rather than at parse time, which can produce different messages/locales and retains references to the parsed input.",
+      "rationale": "`util.finalizeIssue(iss, ctx, core.config())` previously ran synchronously inside `safeParse`. Now it runs whenever the caller first touches `error`. If global config (locale, `customError`, `jitless`, etc.) is changed between the parse and the error read — a common pattern in tests and in apps that configure locale lazily — the error messages will differ from the pre-change behavior. Additionally the closure keeps `issues` (which typically hold `input` references) and `ctx` alive for the lifetime of the result object, so long-lived failure results now retain the parsed payload. Confident about the timing change; severity depends on how often config mutates after parse.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 83,
+      "lineEnd": 84,
+      "claim": "`error` changes from a plain data property to an enumerable accessor, which alters the observable shape of the result for spreads, cloning, `Object.getOwnPropertyDescriptor`, `Object.freeze`, and `JSON.stringify`.",
+      "rationale": "Callers doing `{...result}`, `JSON.stringify(result)` or `structuredClone(result)` will now eagerly trigger the getter (defeating the optimization) and, in the case of `structuredClone`/worker postMessage, still fail. Code that inspects descriptors (e.g. deep-equality helpers, some serializers, or `Object.defineProperty` overrides) can behave differently. Also, any consumer that assigned `result.error = undefined` would now cause the getter to silently rebuild the error on next read instead of returning `undefined`. Moderately confident these are real but low-frequency impacts.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 74,
+      "lineEnd": 76,
+      "claim": "Errors thrown inside `finalizeIssue`/the error constructor now escape at the property-access site instead of from `safeParse`, breaking the `safeParse` contract of never throwing for validation failures.",
+      "rationale": "`safeParse` is documented/expected not to throw on invalid input. A custom `error` message function or a faulty `Err` subclass that throws would previously surface the exception from the `safeParse` call (where callers may have a try/catch); it now throws from an innocuous-looking `result.error` read, possibly in a different stack/tick (e.g. inside a React render or a logger). Also note the getter does not memoize failures, so a throwing finalizer re-runs on every access. Medium confidence this matters in practice.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 87,
+      "lineEnd": 91,
+      "claim": "Only the synchronous path is made lazy; `safeParseAsync` (and the `_safeParse`-adjacent async variant below) still finalizes eagerly, leaving sync and async results with divergent timing semantics.",
+      "rationale": "Anything that depends on when issues are finalized (config reads, side-effecting custom error functions, memory retention) will now behave differently between `safeParse` and `safeParseAsync`. If the laziness is intentional, the async counterpart should use the same `failure()` helper for consistency. Flagging based on the unchanged async declaration visible in the hunk; I cannot see the async implementation body, so confidence is moderate.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3290,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1822
+  },
+  "latencyMs": 41910,
+  "nominalCostUsd": 0.1010545
+}

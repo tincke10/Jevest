@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 41,
+      "lineEnd": 41,
+      "claim": "Bumping the hardcoded cache `version` invalidates every existing on-disk module cache; unless pruning exists elsewhere, the previous version's cache directory/files are orphaned rather than removed, leaking disk space on each bump.",
+      "rationale": "The version string appears to participate in the cache key/path (the class tracks rootCache, metadataFilePath and fsCacheRoots). Changing it makes prior entries unreachable. The pruning logic is not visible in this hunk, so I am only moderately confident — if the class already deletes cache roots whose version differs, this is a non-issue. Worth confirming a cleanup path for stale versions exists.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 41,
+      "lineEnd": 41,
+      "claim": "The cache version is a manually maintained literal, so any change to cached-module serialization or semantics that lands without a matching bump will silently serve stale cached output.",
+      "rationale": "Inherent fragility of the pattern rather than a defect introduced here; flagged only because this change is exactly a manual bump, meaning correctness depends on developers remembering. Low confidence that action is needed in this PR — mainly worth verifying the bump corresponds to a real semantics change in the same change set.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1186,
+    "cacheReadInputTokens": 3566,
+    "cacheCreationInputTokens": 2064
+  },
+  "latencyMs": 15118,
+  "nominalCostUsd": 0.052092999999999993
+}

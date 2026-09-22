@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 48,
+      "lineEnd": 48,
+      "claim": "Filtering out q === 0 entries discards the negation information, so an explicitly rejected type can still be served via a surviving wildcard entry.",
+      "rationale": "RFC 9110 12.5.1 uses q=0 not just to demote an entry but to exclude that media range. With `Accept: */*, text/html;q=0` the `text/html;q=0` entry is removed by the filter, leaving only `*/*`, which matchType will match against a supported `text/html`, returning exactly the type the client rejected. Correct handling requires keeping zero-q entries as an exclusion list checked against each candidate in `supports`, not filtering them away. Fairly confident this is a real gap, assuming matchType treats wildcards as matching (which getSpecificity implies).",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 48,
+      "lineEnd": 49,
+      "claim": "`accept.q > 0` silently discards entries whose q is NaN or undefined, potentially emptying the whole candidate list.",
+      "rationale": "The declared type is `q: number`, but header parsers commonly yield NaN for malformed values like `q=abc`, and an entry with no q parameter may be left undefined depending on the parser. Both `NaN > 0` and `undefined > 0` are false, so such entries are dropped and the function falls through to defaultSupport, whereas previously they were still considered for matching. A defensive form such as `(accept.q ?? 1) > 0` or `!(accept.q <= 0)` would preserve prior behavior. Medium confidence; depends on the parser feeding this function.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 55,
+      "lineEnd": 58,
+      "claim": "When every accept entry has q=0, the loop now matches nothing and the function returns defaultSupport, serving content the client explicitly declared unacceptable.",
+      "rationale": "`Accept: */*;q=0` previously matched and returned a supported type; after this change sortedAccepts is empty and control falls through to the default return. Returning the default contradicts the stated intent that zero-q entries must never match - a 406 would arguably be required. Even if defaulting is the deliberate contract of this helper, callers relying on the previous match result see a silent behavior change worth covering in tests. Moderate confidence this is an unintended edge case.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3134,
+    "cacheReadInputTokens": 3676,
+    "cacheCreationInputTokens": 4303
+  },
+  "latencyMs": 36198,
+  "nominalCostUsd": 0.12323800000000001
+}

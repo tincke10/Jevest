@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 28,
+      "lineEnd": 29,
+      "claim": "The new `title` property is declared as required (non-optional) on `JobSummaryOptions`; every place that constructs or resolves a full `JobSummaryOptions` value must now supply it, or the field will be `undefined` at runtime despite the documented default.",
+      "rationale": "The public option is `Partial<JobSummaryOptions>`, so users are unaffected, but internal code that builds the resolved options object (e.g. `{ enabled: true, ... }`) now fails to type-check unless a default `'Vitest Test Report'` was added there. If a cast/spread is used instead, `title` silently becomes `undefined` and the rendered heading would be empty/`undefined`. I can't see the resolution code in this hunk, so this is a suspicion worth verifying, but it is the most likely breakage from this change.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 28,
+      "lineEnd": 29,
+      "claim": "An empty-string title will likely bypass a `??`-style default and render an empty heading; and an arbitrary user-supplied title injected into the GitHub job summary markdown/HTML is not escaped.",
+      "rationale": "Two edge cases introduced by making the heading configurable: (1) `options.title ?? 'Vitest Test Report'` keeps `''` whereas `||` would fall back — worth deciding intentionally; (2) job summaries render HTML, so a title containing `<`, backticks, or newlines can break the generated summary layout unless escaped by the summary helper. Medium confidence since the rendering code isn't shown here.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1076,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1000
+  },
+  "latencyMs": 14232,
+  "nominalCostUsd": 0.0374845
+}

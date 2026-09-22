@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 17,
+      "lineEnd": 18,
+      "claim": "try/finally restores `indent` but does not roll back content already written by the throwing callback, so the doc can still be left in a half-written/inconsistent state",
+      "rationale": "The fix addresses only one half of the failure mode described in the comment: if `fn` calls `doc.write(...)` several times and then throws, those lines stay in `this.content` at the deeper indentation while the caller continues writing at the outer indent. If the intent is that the compiler can keep using this doc after a child throws, the emitted output may contain a truncated/partial block (e.g. an opened `if (` with no closing brace). Medium confidence — depends on whether callers tolerate partial output; if they do not, an additional content checkpoint/rollback (record `this.content.length` before `fn` and truncate in the `finally` on failure) would be needed.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 16,
+      "lineEnd": 18,
+      "claim": "`indented` is synchronous-only; a callback returning a promise would decrement the indent before the async work runs",
+      "rationale": "`fn` is typed `(doc: Doc) => void`, so an `async` callback still type-checks (its `Promise<void>` return is assignable to `void`). With the new `finally`, the indent is restored as soon as the synchronous part returns, and any writes performed after the first `await` land at the wrong indentation with the rejection unhandled. This was equally true before the change, but the `try/finally` makes it look exception-safe. Low confidence that any caller does this — worth a quick check of usages.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 938,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1142
+  },
+  "latencyMs": 12739,
+  "nominalCostUsd": 0.0354545
+}

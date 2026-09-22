@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 235,
+      "lineEnd": 235,
+      "claim": "The teardown no longer removes the `abort` listener, so if `abort` is still registered on the signal elsewhere it now leaks",
+      "rationale": "The pre-change code had `signal?.removeEventListener('abort', abort)`, which strongly implies a matching `signal?.addEventListener('abort', abort)` exists earlier in this function (outside the shown hunk). The diff replaces that removal with one for the new `onAbort` handler but does not show the corresponding `addEventListener('abort', abort)` being deleted. If that registration still exists, every request permanently attaches an `abort` listener to a potentially long-lived signal (memory leak) and `abort()` can fire after the observable was torn down. Medium confidence — depends on code above the hunk that I cannot see.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 223,
+      "lineEnd": 225,
+      "claim": "When `signal.aborted` is already true, the request has already been dispatched and `observer.complete()` is called synchronously during subscribe, before the teardown is returned",
+      "rationale": "The `onAbort()` fast path runs after `this.request(...)` (the call ending at line 223) has already sent the message to the server, so an already-aborted signal still incurs a round trip and, for subscriptions, may leave a server-side subscription open. Also, completing synchronously inside the subscriber function happens before the teardown is returned/registered; depending on the observable implementation the teardown may be invoked right after (fine) or skipped entirely, leaking the pending request and never sending `subscription.stop`. Safer to check `signal.aborted` before issuing the request. Fairly confident about the wasted request; the teardown behavior depends on the observable implementation.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 224,
+      "lineEnd": 224,
+      "claim": "Aborting now completes the observable instead of erroring, which changes behavior for query/mutation callers awaiting a value",
+      "rationale": "`observer.complete()` signals a normal end of stream. For non-subscription operations the caller typically awaits a single value, so a complete-without-emit will either reject with a generic 'observable completed without emitting' error or resolve with `undefined`, rather than the `AbortError` consumers of an `AbortSignal` normally expect. This can silently swallow cancellation in consumers that distinguish aborts from successful completion. Moderate confidence — plausibly intentional for subscriptions, but worth confirming for queries/mutations.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3043,
+    "cacheReadInputTokens": 3433,
+    "cacheCreationInputTokens": 3358
+  },
+  "latencyMs": 35217,
+  "nominalCostUsd": 0.1113915
+}

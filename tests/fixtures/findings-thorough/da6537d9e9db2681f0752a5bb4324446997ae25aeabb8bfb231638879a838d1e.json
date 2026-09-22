@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 487,
+      "lineEnd": 488,
+      "claim": "Passing `input: arg1` directly forwards a `skipToken` sentinel into `trpcSubscriptionOptions` as the subscription input, which the previous queryKey-derived path filtered out",
+      "rationale": "`getQueryKeyInternal` deliberately excludes `skipToken` (and `undefined`) from the serialized key, so before this change the subscription helper could never observe a raw `skipToken` as input. Now the raw first argument is handed through unchanged. If `trpcSubscriptionOptions` does not explicitly special-case `skipToken` (e.g. to disable the subscription rather than send it over the wire), a `skipToken` value would be serialized and sent to the server. Worth verifying the downstream handler branches on `input === skipToken`. Medium confidence — this may well be exactly the bug the change intends to fix, but it is the main behavioral risk introduced.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 488,
+      "lineEnd": 490,
+      "claim": "The input is now supplied twice (as `input` and inside `queryKey`), creating two sources of truth that can silently diverge",
+      "rationale": "`input: arg1` and `getQueryKeyInternal({ input: arg1 })` both encode the same value, but the key path normalizes/strips values (undefined, skipToken) while the direct field does not. If `trpcSubscriptionOptions` internally still reads the input off `queryKey[1]?.input` in some code paths, the two can disagree and produce a subscription whose cache key does not match the data actually requested. Low-to-medium confidence without seeing `trpcSubscriptionOptions`; suggest deriving one from the other.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2128,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 998
+  },
+  "latencyMs": 26238,
+  "nominalCostUsd": 0.0637645
+}

@@ -1,0 +1,48 @@
+{
+  "findings": [
+    {
+      "lineStart": 411,
+      "lineEnd": 411,
+      "claim": "`buildData[0][4] && getServerSnapshot` is now evaluated on every render instead of being latched once in `useState`, so the server-snapshot branch is no longer sticky/one-shot and `getServerSnapshot()` may be re-invoked on every render.",
+      "rationale": "Previously the decision was frozen at mount (`const [serverSnapshotIsUsed] = useState(...)`) and the client snapshot was adopted in the effect. Now, if `buildData[0][4]` (the SSR/hydration flag) stays truthy for the lifetime of the node, `snapshot` will be the *server* snapshot forever and the component will never reflect store updates (the `update()` bump re-renders but re-reads the server snapshot again). Conversely, if the flag flips mid-lifecycle the returned value changes without any state transition. Also, `getServerSnapshot` is now called on each render rather than once, which is a behavior change for non-trivial implementations. I'm not certain of the exact semantics of `buildData[0][4]`, but the loss of the latched state is a real semantic change worth verifying.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 412,
+      "lineEnd": 414,
+      "claim": "`useRef<() => void>(null)` passes `null` for a ref typed as non-nullable `() => void`; the type argument should include `null` (`useRef<(() => void) | null>(null)`).",
+      "rationale": "With hono/jsx's `useRef<T>(initialValue: T): RefObject<T>` signature this is a type error (or, if it compiles via an overload, `unsubscribeRef.current` is typed as non-nullable while actually being `null` until the first effect flush — the `?.()` calls show the author knows it can be null). Unsafe typing rather than a runtime bug, but it can hide a real null deref if someone later drops the optional chaining.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 419,
+      "lineEnd": 421,
+      "claim": "The subscription callback now unconditionally bumps a version counter instead of comparing snapshots, so every store notification forces a re-render even when `getSnapshot()` returns the same value.",
+      "rationale": "The old `setState(getSnapshot())` bailed out when the snapshot was `Object.is`-equal. `setVersion(v => v + 1)` always changes state, so a store that notifies broadly (a common pattern, e.g. a single global emitter with per-selector snapshots) will now re-render every subscriber on every notification. Correctness is preserved but this is a noticeable perf/behavior regression; a `Object.is(latestSnapshot.current[0], latestSnapshot.current[1]())` guard inside `update` would restore the bail-out.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 422,
+      "lineEnd": 422,
+      "claim": "Changing the effect deps from `[]` to `[subscribe]` introduces a render-loop risk when callers pass an inline `subscribe` together with a `getSnapshot` that returns a fresh value each call.",
+      "rationale": "With `[subscribe]` deps and an inline arrow `subscribe`, the effect re-runs after every render; if `getSnapshot()` is not referentially stable (returns a new object/array), `!Object.is(snapshot, getSnapshot())` is always true, so `update()` fires, which re-renders, which re-runs the effect — an infinite loop. The previous `[]` deps made this impossible. React guards against this with a dev-time warning; here there is none. Callers that were previously (accidentally) fine will now spin.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 415,
+      "lineEnd": 418,
+      "claim": "`unsubscribeRef.current?.()` at the top of the effect replaces a returned cleanup, so unsubscription is no longer tied to the effect lifecycle; if the second (`[]`) effect's cleanup is not guaranteed to run on unmount in all paths, the subscription leaks.",
+      "rationale": "The subscription teardown now depends entirely on a separate `useEffect(..., [])` cleanup. Any code path that tears down the component without flushing that effect's cleanup (e.g. unmount before the effects for that commit are flushed, or error during render/effect after `subscribe` returned) leaves the store subscribed with a callback holding the dead component's `setVersion`. The old code's returned cleanup was tied to the same effect that created the subscription. Worth confirming hono/jsx always runs `[]`-effect cleanups on unmount even when the component unmounts in the same pass it mounted.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 6869,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1658
+  },
+  "latencyMs": 86299,
+  "nominalCostUsd": 0.18888950000000004
+}

@@ -1,0 +1,55 @@
+{
+  "findings": [
+    {
+      "lineStart": 7,
+      "lineEnd": 8,
+      "claim": "`sha256` from `../../utils/crypto` resolves to `string | null` (it returns null when `crypto.subtle` is unavailable or digesting fails); if the new code uses its result directly as the query digest cache key, a null digest can collapse distinct request bodies onto one cache entry or produce the literal key \"null\".",
+      "rationale": "Hono's `utils/crypto` `sha256`/`createHash` helpers are declared as `Promise<string | null>` and silently return null on unsupported runtimes. Any consumer must null-check and fall back to bypassing the cache. I can't see the usage site in this hunk, so this is a flag to verify, but it is a common bug with this helper.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 6,
+      "lineEnd": 7,
+      "claim": "`cloneRawRequest` is a runtime (value) import from `../../request` into a middleware module that previously only had type-only imports; this adds a hard runtime dependency and a potential circular-import / bundle-size regression.",
+      "rationale": "All prior imports here are `import type`, so this file previously compiled away to zero runtime deps. `src/request` is a core module that may transitively import context/types, so a cycle is plausible and would surface as an undefined binding at module init. Moderate confidence — worth checking the import graph.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 13,
+      "lineEnd": 14,
+      "claim": "`defaultMaxQueryBodySize = 64 * 1024` is a byte threshold, but if it is enforced against `content-length` only (or against a decoded string length), chunked requests without `content-length` and multi-byte unicode bodies can bypass the guard and be fully buffered.",
+      "rationale": "A size cap is only effective if enforced on actual consumed byte length while streaming. Requests without `content-length` are the classic hole. Low-to-moderate confidence since the enforcement site isn't in this hunk, but the constant's introduction makes it worth verifying.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 13,
+      "lineEnd": 14,
+      "claim": "The synthetic cache key path `'/.hono/cache'` plus fixed query parameters can collide with real application routes sharing the same Cache Storage namespace, and the user-supplied cache key must be URL-encoded when embedded as a query value.",
+      "rationale": "If the app itself serves `/.hono/cache`, or a user cache key contains `&`/`#`/non-ASCII and is concatenated rather than set via `URLSearchParams`, keys can be forged or mis-parsed, causing cross-entry cache poisoning. Moderate confidence — depends on how the URL is assembled below this hunk.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 13,
+      "lineEnd": 14,
+      "claim": "The `CacheKeyRequest` union allows `method: 'QUERY'`, but the Web Cache API rejects non-GET requests for `cache.put`/`match` (without `ignoreMethod`); constructing a real `Request` with method `QUERY` for storage would throw a TypeError at runtime.",
+      "rationale": "`cache.put()`/`match()` throw for non-GET request objects. The design presumably rewrites to a GET on the synthetic path, which would be correct, but the union hints the method may be carried onto the real Request. Low confidence, but a runtime throw here is a hard failure and cheap to verify.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 13,
+      "lineEnd": 14,
+      "claim": "`queryRepresentationMetadataHeaders` omits `content-length`/`content-digest` while including `content-location`; if this list defines which request headers feed the body digest, semantically different QUERY bodies with identical listed headers could share a cache entry.",
+      "rationale": "Representation metadata affecting body interpretation should be hashed with the body; `content-location` does not affect interpretation while length does. Low confidence — may be intentional per the QUERY draft, but the selection deserves a second look.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3997,
+    "cacheReadInputTokens": 3919,
+    "cacheCreationInputTokens": 4275
+  },
+  "latencyMs": 45872,
+  "nominalCostUsd": 0.14465450000000002
+}

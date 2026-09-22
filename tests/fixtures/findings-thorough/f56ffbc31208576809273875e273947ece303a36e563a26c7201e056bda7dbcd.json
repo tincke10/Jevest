@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 79,
+      "lineEnd": 80,
+      "claim": "The `testers` array is computed unconditionally on every `asymmetricMatch` call, even when neither operand is an asymmetric matcher (the common case), adding an allocation + O(n) filter to a very hot deep-equality path.",
+      "rationale": "`asymmetricMatch` is invoked for every pair of values during recursive `equals`. Both `asymmetricA`/`asymmetricB` false is by far the most frequent outcome, and in that case the filter result is discarded. Moving the `filter` inside the two `if` branches (or memoizing it) would avoid the per-node cost. Fairly confident this is a real, if minor, performance regression on large object comparisons.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 80,
+      "lineEnd": 81,
+      "claim": "Filtering relies on `isSubsetEqualityTester(tester)` recognizing the subset-equality tester; if that check is identity-based it will silently fail for wrapped/bound/re-exported copies of the tester.",
+      "rationale": "The helper is not shown in this hunk, so I cannot verify it. If it is implemented as `tester === subsetEquality` (or a name check), any tester that has been bound, wrapped for arity/`this` handling, or imported from a duplicated copy of the package will not be filtered, and the fix will be a no-op in those cases while appearing to work in tests. Worth confirming how the predicate identifies the tester; also confirm it is imported/defined in this module.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 81,
+      "lineEnd": 85,
+      "claim": "Stripping the subset-equality tester from the testers forwarded to nested asymmetric matchers is a behavior change for existing callers and diverges from upstream Jest, which forwards `customTesters` unchanged.",
+      "rationale": "Composite matchers like `expect.objectContaining` / `expect.arrayContaining` re-enter `equals` with the testers they receive. Under `toMatchObject`, previously-passing assertions such as `expect(x).toMatchObject({ a: expect.arrayContaining([{ b: 1 }]) })` (where the array element has extra keys) will now fail because the inner comparison becomes strict. That may be the intended semantics, but it is a breaking change for users and a deliberate deviation from the linked Jest implementation; it deserves an explicit note/changelog entry and test coverage for the nested-matcher case.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1763,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1326
+  },
+  "latencyMs": 20699,
+  "nominalCostUsd": 0.057919500000000006
+}

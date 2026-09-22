@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 1275,
+      "lineEnd": 1275,
+      "claim": "Swapping `mayOutputUndefined` for `mayOmitUndefined` in the `hasConditionalKeys` predicate can desynchronize this gate from the per-key emission logic further down, silently dropping the conditional-inclusion code path for keys that still need it.",
+      "rationale": "`hasConditionalKeys` is a summary flag that decides whether the generated object literal needs the slower per-key conditional construction. Its predicate must be a superset of (or exactly match) whatever condition each individual key's emission code uses to decide 'include only if present / only if not undefined'. If any downstream site still tests `mayOutputUndefined(...)` (or `!== undefined`) per key while this gate now tests the narrower `mayOmitUndefined(...)`, the fast path will be selected for a schema that actually contains a conditional key, producing wrong output (e.g. an `undefined` key emitted that should have been omitted, or vice versa). I could not inspect the rest of the file to confirm both predicates were updated together, so this is a medium-confidence concern that is worth verifying at every other use of `mayOutputUndefined` in this function.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1275,
+      "lineEnd": 1275,
+      "claim": "The narrower predicate is an observable behavior change for defaulted/required keys whose output is `undefined`: such keys will now always be written into the result object instead of being conditionally omitted.",
+      "rationale": "The replacement comment states 'defaulted required outputs keep their keys even when undefined', which implies `mayOmitUndefined` returns false for keys that previously made `mayOutputUndefined` return true. Any schema consisting solely of such keys flips from the conditional-construction path to the unconditional one, so the parsed result gains own properties with value `undefined` where it previously had none. That is visible to callers via `Object.keys`, `in`, spread, and deep-equality assertions, and it also changes JSON serialization. If intentional it should be matched by tests; if not, it is a regression. Medium confidence — it depends entirely on the exact semantics of the two helpers.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 1273,
+      "lineEnd": 1273,
+      "claim": "The removed comment documented the key-ordering contract (shape keys in declared order, then unknown keys in for...in order) and the middle-rung inclusion rule; replacing it with a one-line note about defaults loses the invariant that the surrounding code still depends on.",
+      "rationale": "Strictly a comment change and therefore low priority, but flagged because the deleted text described the precise inclusion rule that the modified predicate implements. If the rule itself changed, the new comment is incomplete; if it did not change, useful documentation of a subtle invariant was dropped. Low confidence that this affects behavior at all.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1954,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 2690
+  },
+  "latencyMs": 24527,
+  "nominalCostUsd": 0.07576
+}

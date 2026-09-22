@@ -1,0 +1,34 @@
+{
+  "findings": [
+    {
+      "lineStart": 324,
+      "lineEnd": 325,
+      "claim": "The `impl._bytes ?? impl._buffer` fallback silently degrades to `undefined` when neither internal field exists (e.g. a future jsdom rename), producing a Blob whose content is the literal string \"undefined\" instead of failing loudly.",
+      "rationale": "`new NodeBlob_([undefined])` does not throw — Node's Blob constructor stringifies non-BufferSource parts, so the result is a 9-byte blob containing \"undefined\". Because the code now explicitly tolerates one of the two names being missing, a third rename would no longer produce a clear `TypeError` (as the old `undefined._buffer` access did for a missing impl); it would instead yield silently corrupted upload/fetch bodies that are very hard to trace. A guard such as `const bytes = impl?._bytes ?? impl?._buffer; if (bytes == null) throw new Error('Unsupported jsdom Blob internals')` would keep the failure explicit. High confidence on the mechanics; medium on whether the project considers this worth handling.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 324,
+      "lineEnd": 324,
+      "claim": "`impl` is still dereferenced without a null check, so a Blob not backed by a jsdom impl (cross-realm or subclassed Blob) throws a raw `TypeError` from inside the compat helper.",
+      "rationale": "`(blob as any)[implSymbol]` is `undefined` for any Blob that did not come from this jsdom window; `impl._bytes` then throws \"Cannot read properties of undefined\". This is pre-existing behavior, but the change touched exactly this expression and introduced an `impl` local, so it is a cheap place to add `impl?.` plus a descriptive error. Low-to-medium confidence that such blobs actually reach this helper.",
+      "suggestedSeverity": "nit"
+    },
+    {
+      "lineStart": 324,
+      "lineEnd": 325,
+      "claim": "Assumes jsdom 28's `_bytes` is a BufferSource with the same semantics as the old `_buffer`; if it is a `Uint8Array` view into a larger pooled ArrayBuffer, correctness depends on Node's Blob honoring byteOffset/byteLength.",
+      "rationale": "Node's Blob constructor does respect the view's byteOffset/byteLength, so this is most likely fine, but the rename from `_buffer` (Node Buffer) to `_bytes` (likely Uint8Array) is a type change, not just a name change — worth confirming against the jsdom 28 implementation, and worth a test asserting blob byte equality for a non-trivial payload. Low confidence that this is an actual bug.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2419,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1112
+  },
+  "latencyMs": 29626,
+  "nominalCostUsd": 0.07217950000000001
+}

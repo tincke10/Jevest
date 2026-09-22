@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 126,
+      "lineEnd": 136,
+      "claim": "`pipeline()` destroys the writable on error, which can break existing error-handling in the caller that still writes to / ends the response stream",
+      "rationale": "The old implementation only rejected on a read error and left `writer` untouched (never ended, never destroyed), so callers of `streamToNodeStream` could still `responseStream.write(...)`/`.end()` in a catch block to emit an error body. `stream/promises.pipeline` destroys both source and destination when either side errors, so any subsequent `write`/`end` on the Lambda response stream will throw `ERR_STREAM_DESTROYED` or emit an unhandled 'error'. Fairly confident this is a real behavior change; worth checking the catch block in `streamHandle`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 130,
+      "lineEnd": 135,
+      "claim": "The async generator never cancels/releases the web `ReadableStreamDefaultReader` when the pipeline is torn down early",
+      "rationale": "When the destination errors or is destroyed, `pipeline` calls `.return()` on the generator, which resumes at the `yield`. Without a `try { ... } finally { reader.cancel() }` (or `releaseLock()`), the underlying web stream is left un-cancelled and its resources/body are leaked, and the upstream producer is never told to stop. The previous code had the same gap, but the new generator form makes early termination much more likely, so adding the finally is worthwhile. Medium confidence on impact, high confidence on the missing cleanup.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 127,
+      "lineEnd": 129,
+      "claim": "`writer` is typed as the minimal `NodeJS.WritableStream` interface; if the actual Lambda response stream isn't a real Node stream, `pipeline` will reject with ERR_INVALID_ARG_TYPE",
+      "rationale": "`NodeJS.WritableStream` only guarantees `write`/`end`/`on`, whereas the old code only ever needed `write`/`end`. `stream/promises.pipeline` duck-types its destination (requires `on`, `once`, `emit`, `destroy`/`_writableState` handling via `isNodeStream`/`Writable.toWeb` paths) and throws `ERR_INVALID_ARG_TYPE` for objects that don't qualify. AWS's `awslambda.HttpResponseStream.from(...)` normally returns a real Writable so this probably works, but the declared parameter type no longer matches what the implementation requires — consider narrowing it to `NodeJS.WritableStream & Writable`/`Writable`. Moderate confidence.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 126,
+      "lineEnd": 126,
+      "claim": "Verify `pipeline` is imported from `node:stream/promises`, not `node:stream`",
+      "rationale": "The new body returns `pipeline(...)` directly as a `Promise<void>`. The callback-based `stream.pipeline` returns the destination stream and requires a callback, so an import from `node:stream` would both fail to typecheck and silently never resolve/report errors. The import line isn't in this hunk, so I can't confirm it; flagging for verification.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 2759,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1390
+  },
+  "latencyMs": 32579,
+  "nominalCostUsd": 0.0834595
+}

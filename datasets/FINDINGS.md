@@ -279,3 +279,77 @@ claude-cli reviewer pipeline end-to-end (schema-validated structured output,
 line-overlap labeling, cost/billing accounting) at low nominal cost; it is
 not the dataset SPEC §5 step 5 needs for a hypothesis verdict. Anthropic and
 OpenAI runs (or a larger claude-cli run) are still needed for that.
+
+## 7. Thorough pass (2026-09-21/22): `findings-thorough.jsonl`
+
+The strict pass above left 5 noise findings: nothing to measure a "discard
+40% of the noise" bar against. SPEC §13 (2026-09-21) adds a second reviewer
+prompt, `REVIEW_SYSTEM_PROMPT_THOROUGH` (`pnpm findings --prompt thorough`,
+same output schema and line-number rules, deliberately low bar: report every
+plausible or suspected issue, one finding per location). It exists to
+produce a labeled real/noise mix for H1/H6/H3; it is **not** the production
+reviewer. Records carry `reviewer.prompt_mode: "thorough"` (absent means
+strict, so `findings.jsonl` is unchanged); fixtures live in
+`tests/fixtures/findings-thorough/` because the fixture key hashes the
+ReviewInput, not the prompt. One prompt, no revisions.
+
+Command, run for real with claude-cli:
+
+```
+pnpm findings --provider claude-cli --prompt thorough --record --concurrency 2 \
+              --budget-usd 15 --out datasets/findings-thorough.jsonl
+```
+
+| Metric | Value |
+|---|---|
+| Hunks attempted | 100 / 100 |
+| Total findings | 299 (2.99 per hunk; strict was 0.14) |
+| Real / noise | 137 real, 162 noise |
+| By severity | nit 54, minor 157, major 85, critical 3 |
+| % of findings on a benign hunk | 46.2% |
+| Total run cost | $8.28 nominal (Claude Max subscription quota, not cash) |
+| Wall time | 1454 s first attempt + 327 s resume (concurrency 2) |
+| Latency ms p50/p95/p99 (per hunk) | 29570 / 68821 / 86299 |
+| Cache hit share | 47.1% |
+
+The first attempt reached all 100 hunks but 24 (mostly consecutive trpc
+hunks near the end) failed with a claude-cli exit code 1 and a zero-usage
+envelope; a fresh call worked minutes later, so it was a transient window.
+The recorded reviewer's record mode is resumable (an existing fixture is
+served from disk, the CLI is only called for what is missing), so the same
+command re-run recovered the 24 hunks for $1.52 more. Two fixes came out of
+it: the seam now surfaces the envelope's `result` text on a non-zero exit
+instead of a 500-char stdout excerpt that cut it off, and a usage-limit
+message there is classified as a rate limit and retried with backoff.
+
+**Read as an evaluation set, not as reviewer quality.** 162 noise findings
+out of 299 is exactly the point: enough noise for H1's "≥ 40% discarded"
+bar and N = 299 ≥ 200 for H3's ECE. The label is still line-overlap (§2, §3
+weaknesses apply, `needs_manual_review: true` everywhere).
+
+## 8. LLM-judge baseline (H6)
+
+`FindingJudgePort` (`src/domain/ports/finding-judge-port.ts`) answers the
+same four filter questions about one finding with the same state Jev sees
+(hunk diff + claim + rationale + file + lines, no label). `pnpm filter
+--judge <judge> --judge-mode record|replay` runs it over the same findings
+and the report scores it at Jev's best threshold: recall, precision, noise
+discarded, cost, latency p50/p95, and the H6 verdict (judge cost / Jev cost
+≥ 100 and judge recall − Jev recall ≤ 0.05).
+
+- **claude-cli judge** (`tests/fixtures/filter-judge/`, 223 of 299 findings
+  recorded, ~9 s and ~$0.044 nominal per call): stopped on 2026-09-22 by the
+  rule that the Claude subscription is reserved for reviews. Kept for
+  replay only; **do not extend it**.
+- **DeepSeek judge** (`src/adapters/judges/deepseek-finding-judge.ts`,
+  `tests/fixtures/filter-judge-deepseek/`, per-token billed via
+  `pricingForModel`): the judge for the H6 numbers. Not yet run (no
+  `DEEPSEEK_API_KEY` at the time of writing). The H1/H6/H3 command:
+
+```
+DEEPSEEK_API_KEY=... pnpm filter --findings datasets/findings-thorough.jsonl \
+    --mode replay --judge deepseek --judge-mode record
+```
+
+(`--mode replay` reads the Jev fixtures under `tests/fixtures/filter/` once
+the Jev side has been recorded with `--mode record`.)

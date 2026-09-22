@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "New import of `toRollupError` from `./environments/fetchModule` may introduce a circular import / pull server-only code into `ast-collect.ts`.",
+      "rationale": "`ast-collect.ts` is a fairly low-level collection helper, while `environments/fetchModule` is a Vite/module-runner server concern that typically imports other node-side modules (project/vite server types, error helpers). If that chain imports back into the collector or into modules that import `ast-collect`, the ESM cycle can yield `toRollupError` being `undefined` at call time (a TypeError only at runtime, not build time). Even without a cycle, this adds module-load side effects/heavier deps to a file that is imported during test collection. Worth verifying the dependency direction and, if in doubt, moving `toRollupError` into a leaf util module. Low-to-moderate confidence since I can only see the import line, not the module graph.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 14,
+      "lineEnd": 15,
+      "claim": "Verify `toRollupError` is actually exported from `./environments/fetchModule` and is actually used in this file.",
+      "rationale": "The hunk only shows the added import; if the usage lives in another (unshown) hunk this is fine, but if the call site was removed/renamed during the change this leaves an unused import that still forces evaluation of `fetchModule` at load time. Also, if `toRollupError` is only a type-level helper or is exported under a different name, this would be a build error. Low confidence — cannot verify from the shown context alone.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1079,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1150
+  },
+  "latencyMs": 15000,
+  "nominalCostUsd": 0.0390595
+}

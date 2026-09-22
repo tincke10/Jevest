@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 8,
+      "lineEnd": 8,
+      "claim": "`CONFIG_NAMES` is no longer exported, which breaks any in-repo or external importer of this constant.",
+      "rationale": "This was a public module export; `constants.ts` is typically re-exported via Vitest's node/config entry points and consumed by the CLI, UI, and editor integrations for config-file discovery. Removing the `export` is a source-breaking change that won't surface when compiling this file alone (only `configFiles` uses it locally), so any remaining importer fails elsewhere. Medium-high confidence this needs a repo-wide grep before merging; it is safe only if no other module imports it.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "`CONFIG_EXTENSIONS` is no longer exported, potentially breaking importers that enumerate supported config extensions independently of `configFiles`.",
+      "rationale": "Separate symbol from CONFIG_NAMES with its own likely consumers (e.g. code that validates/resolves a user-supplied `--config` path by extension rather than using the precomputed `configFiles` list). Those call sites cannot be satisfied by `configFiles` alone, so this de-export may leave them without a replacement. Confidence is moderate — depends on actual usage in the tree.",
+      "suggestedSeverity": "major"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1711,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1289
+  },
+  "latencyMs": 22153,
+  "nominalCostUsd": 0.0562495
+}

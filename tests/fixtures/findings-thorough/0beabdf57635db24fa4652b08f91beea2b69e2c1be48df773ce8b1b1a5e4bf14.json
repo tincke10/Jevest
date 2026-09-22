@@ -1,0 +1,27 @@
+{
+  "findings": [
+    {
+      "lineStart": 23,
+      "lineEnd": 24,
+      "claim": "The newly added `chUaHighEntropyValues` does not appear to correspond to a real Permissions-Policy feature; the client-hint policy tokens are `ch-ua`, `ch-ua-arch`, `ch-ua-bitness`, `ch-ua-full-version`, `ch-ua-full-version-list`, `ch-ua-form-factor(s)`, `ch-ua-mobile`, `ch-ua-model`, `ch-ua-platform`, `ch-ua-platform-version`, `ch-ua-wow64`. `getHighEntropyValues()` is a JS API, not a policy-controlled feature.",
+      "rationale": "If the token is not registered, the middleware will serialize `ch-ua-high-entropy-values=(...)` into the Permissions-Policy header. Browsers ignore unknown directives, but it silently gives users a false sense that they have restricted high-entropy client hints, and some strict header validators/linters flag unknown tokens. Medium confidence — worth verifying against the spec registry before shipping, and if a name was intended here it may be `chUaFormFactors`.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 23,
+      "lineEnd": 24,
+      "claim": "This adds the key only to the type union; the camelCase→kebab-case mapping and any runtime feature list/docs/tests must be updated in lockstep or the new option will be accepted by the type checker but produce no (or wrong) output.",
+      "rationale": "Many implementations derive the header token from the key via a generic camelCase-to-kebab regex, in which case this is fine, but some keep an explicit lookup table or a documented feature list. Since this hunk touches only the type, the change is incomplete if a runtime table exists. Low-to-medium confidence without seeing the serialization code — please confirm `chUaHighEntropyValues` actually serializes to `ch-ua-high-entropy-values` and that docs/tests were updated.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1647,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1066
+  },
+  "latencyMs": 19514,
+  "nominalCostUsd": 0.05241950000000001
+}

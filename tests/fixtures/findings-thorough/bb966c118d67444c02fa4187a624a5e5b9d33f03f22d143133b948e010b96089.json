@@ -1,0 +1,41 @@
+{
+  "findings": [
+    {
+      "lineStart": 14,
+      "lineEnd": 14,
+      "claim": "The `reports` import from `istanbul-reports` is deleted without any replacement import (no `@vitest/istanbul-reports` line is added), so any remaining `reports.create(...)` call in this file will be an unresolved reference / TS compile error.",
+      "rationale": "Every other istanbul package in the hunk gets a `@vitest/*` replacement, but `istanbul-reports` is simply dropped. `istanbul-lib-report` (the report context builder) is replaced and is normally paired with `istanbul-reports` for `reports.create('html')`. Unless a later hunk removes all report creation or re-exports `reports` from `@vitest/istanbul-lib-report`, this breaks report generation. I can't see the rest of the file, so medium confidence — worth verifying no `reports.` usage remains.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 6,
+      "lineEnd": 7,
+      "claim": "`istanbulDefaults` from `@istanbuljs/schema` is removed with no replacement; remaining uses (e.g. default instrumenter/coverage options) would become undefined references.",
+      "rationale": "Same concern as the `reports` removal: the import is dropped but nothing in this hunk supplies the defaults. `istanbulDefaults` is typically used for `createInstrumenter` options or default excludes in this provider. If those usages remain elsewhere in the file this is a hard break; if the fork inlines the defaults, it's fine. Medium confidence, flagged for verification.",
+      "suggestedSeverity": "major"
+    },
+    {
+      "lineStart": 10,
+      "lineEnd": 10,
+      "claim": "Switching `import libCoverage from 'istanbul-lib-coverage'` to `import * as libCoverage from '@vitest/istanbul-lib-coverage'` changes interop shape; if the new package still ships CJS with `module.exports = {...}`, `libCoverage.createCoverageMap` may resolve to `undefined` (members would live under `libCoverage.default`).",
+      "rationale": "Default-import vs namespace-import over CJS behaves differently depending on `esModuleInterop`/`allowSyntheticDefaultImports` and whether Node's cjs-module-lexer detects the named exports. Since the package is presumably an ESM fork with real named exports this is likely intentional, but it is the classic failure mode for this migration. Low-to-medium confidence; the same concern applies to `libReport` (line 12) and `libSourceMaps` (line 13) but I report it once here.",
+      "suggestedSeverity": "minor"
+    },
+    {
+      "lineStart": 1,
+      "lineEnd": 2,
+      "claim": "Type-only imports now come from `@vitest/istanbul-lib-coverage` / `@vitest/istanbul-lib-instrument` while other code (and `vitest/node`'s `CoverageProvider` surface) may still reference the original `istanbul-lib-coverage` types, yielding two nominally distinct `CoverageMap`/`Instrumenter` declarations.",
+      "rationale": "If both the original and forked packages remain in the dependency graph, TS treats the declarations as separate types wherever private/branded members exist, causing assignability errors at the provider boundary. Depends on whether the fork is a type-identical republish and whether all consumers were migrated in the same change. Low confidence, but worth a monorepo-wide type-check.",
+      "suggestedSeverity": "minor"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 3240,
+    "cacheReadInputTokens": 4152,
+    "cacheCreationInputTokens": 3977
+  },
+  "latencyMs": 35251,
+  "nominalCostUsd": 0.122866
+}

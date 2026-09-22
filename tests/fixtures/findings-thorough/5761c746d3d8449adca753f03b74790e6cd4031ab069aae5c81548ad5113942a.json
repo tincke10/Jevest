@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "lineStart": 4,
+      "lineEnd": 4,
+      "claim": "New namespace import `* as regexes from \"../core/regexes.js\"` may be unused, duplicate an existing `core.regexes` access path, or shadow/collide with a local identifier named `regexes` later in this large file.",
+      "rationale": "The hunk only adds the import; the usage site is not shown. Zod's core index typically re-exports regexes (accessible as `core.regexes`), so importing the module directly can create a second module specifier for the same code and, under bundler/circular-import conditions in the v4 core graph, a different initialization order. It also risks a name collision if `schemas.ts` already defines or destructures a `regexes` binding. Low confidence without the rest of the file — worth verifying that `regexes.` is actually referenced, that no other `regexes` identifier exists in scope, and that `core.regexes` wouldn't be the consistent access pattern. If unused, most lint/TS `noUnusedLocals` configs would flag it and it would still be emitted as a side-effectful import by some bundlers.",
+      "suggestedSeverity": "nit"
+    }
+  ],
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 660,
+    "cacheReadInputTokens": 1149,
+    "cacheCreationInputTokens": 1184
+  },
+  "latencyMs": 9834,
+  "nominalCostUsd": 0.0289245
+}

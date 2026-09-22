@@ -153,7 +153,7 @@ metrics over these 14 findings: **not measured** in a committed report.
 ## Runtime of the Action (2026-09-20)
 
 Source: `docs/ACTION.md`, "Why no checkout"; one real run on
-InvisibleGeeks/prolicht (a 9.7 GB tree), Jev-only mode.
+a private PHP + Vue monorepo (a 9.7 GB tree), Jev-only mode.
 
 | Step | Time |
 |---|---|

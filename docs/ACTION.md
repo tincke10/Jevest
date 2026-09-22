@@ -134,7 +134,7 @@ disk (`resolveConfig` in `src/action/main.ts`), so the checkout was purely
 incidental infrastructure, not a real dependency.
 
 This matters because checkout is not free. Measured on a real consumer
-repo (InvisibleGeeks/prolicht, a 9.7 GB tree): `actions/checkout@v4` took
+repo (a private PHP + Vue monorepo, 9.7 GB tree): `actions/checkout@v4` took
 **2m43s** of a 3m09s run, versus **22s** for Jevest's own work. Dropping
 the checkout step turns a ~3-minute job into a ~25-second one on a repo
 that size, for zero loss of functionality.

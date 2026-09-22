@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JevestConfig } from "../adapters/config/jevest-config.js";
 import type { GitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
+import { ZERO_WALL_TIMES } from "../application/pipeline/run-metrics.js";
 import type { PipelineResult } from "../application/pipeline/run-pipeline.js";
 import type { ReviewPublication } from "../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../domain/pull-request.js";
@@ -452,6 +453,42 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     spendCap: null,
     reviewSkippedForSpendCap: false,
     spendLedgerError: null,
+    metrics: {
+      jev: {
+        requests: { triage: 1, hunkProfile: 3, findingFilter: 1, mergeGate: 1, total: 6 },
+        latency: { sumMs: 1400, p50Ms: 200, p95Ms: 400, maxMs: 400 },
+        usage: { inputTokens: 1540, outputTokens: 83 },
+        costUsd: 0.00006468,
+      },
+      llm: {
+        hunks: {
+          total: 5,
+          eligible: 3,
+          reviewed: 2,
+          skipped: {
+            triageSkip: 0,
+            skipChangeKind: 1,
+            secret: 1,
+            budget: 1,
+            spendCap: 0,
+            reviewerDisabled: 0,
+            total: 3,
+          },
+          truncatedByMaxHunks: 0,
+        },
+        tokens: {
+          reviewInput: 2000,
+          reviewOutput: 200,
+          summaryInput: 500,
+          summaryOutput: 80,
+          spent: 2780,
+        },
+        tokensWithoutJev: 4000,
+        tokensSavedPct: 30.5,
+        method: "estimate",
+      },
+      wallTime: ZERO_WALL_TIMES,
+    },
     ...overrides,
   };
 }
@@ -471,9 +508,10 @@ function evaluation(overrides: Partial<SpendCapEvaluation> = {}): SpendCapEvalua
 }
 
 describe("buildOutputLines", () => {
-  it("emits the four outputs, with spend-usd as the cumulative total after this run", () => {
+  it("emits the seven outputs, with spend-usd as the cumulative total after this run and the H2 / H4 numbers", () => {
     expect(buildOutputLines(makeResult({ spendCap: evaluation() }))).toBe(
-      "check-conclusion=success\nfindings-published=2\ncost-usd=0.1234\nspend-usd=12.5\n",
+      "check-conclusion=success\nfindings-published=2\ncost-usd=0.1234\nspend-usd=12.5\n" +
+        "jev-latency-p95-ms=400\njev-requests=6\nllm-tokens-saved-pct=30.5\n",
     );
   });
 

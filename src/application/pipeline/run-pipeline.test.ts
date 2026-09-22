@@ -1211,3 +1211,184 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(starved.review?.budgetExceeded).toBe(true);
   });
 });
+
+describe("runPipeline efficiency metrics (H2 / H4)", () => {
+  /** Advances by `stepMs` on every call, so each stage boundary is exactly one tick apart. */
+  function tickingClock(stepMs = 10): () => Date {
+    let t = Date.parse("2026-09-21T16:00:00.000Z");
+    return () => {
+      const at = new Date(t);
+      t += stepMs;
+      return at;
+    };
+  }
+
+  /** Medium risk, one finding on the single hunk, so every stage issues at least one Jev request. */
+  function fullPort(): DecisionPort {
+    return scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
+      "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
+      "a.ts#0-f0__severity": {
+        type: "score",
+        score: 2,
+        confidence: 0.8,
+        legend: { 0: "nit", 1: "minor", 2: "major", 3: "critical" },
+        probabilities: { 0: 0.1, 1: 0.1, 2: 0.7, 3: 0.1 },
+      },
+      "a.ts#0-f0__is_style_only": { type: "noul", noul: 0.05 },
+      "a.ts#0-f0__actionable": { type: "noul", noul: 0.9 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+  }
+
+  const oneFinding = [
+    {
+      lineStart: 1,
+      lineEnd: 1,
+      claim: "off-by-one",
+      rationale: "uses <= instead of <",
+      suggestedSeverity: "major" as const,
+    },
+  ];
+
+  it("counts every Jev request of a full run, its latency percentiles, the LLM tokens and per-stage wall time", async () => {
+    const pr = makePr();
+    const result = await runPipeline({
+      ref,
+      ports: { vcs: makeVcs(pr), decision: fullPort(), reviewer: fakeReviewer(oneFinding) },
+      config: makeConfig(),
+      now: tickingClock(),
+    });
+
+    const { metrics } = result;
+    expect(metrics.jev.requests).toEqual({
+      triage: 1,
+      hunkProfile: 1,
+      findingFilter: 1,
+      mergeGate: 1,
+      total: 4,
+    });
+    // scriptedPort answers every request in 5 ms.
+    expect(metrics.jev.latency).toEqual({ sumMs: 20, p50Ms: 5, p95Ms: 5, maxMs: 5 });
+    expect(metrics.jev.usage).toEqual({ inputTokens: 4, outputTokens: 4 });
+    expect(metrics.llm.hunks.total).toBe(1);
+    expect(metrics.llm.hunks.reviewed).toBe(1);
+    expect(metrics.llm.hunks.skipped.total).toBe(0);
+    expect(metrics.llm.tokens.spent).toBe(120);
+    expect(metrics.llm.tokensWithoutJev).toBe(120);
+    expect(metrics.llm.tokensSavedPct).toBe(0);
+    expect(metrics.wallTime.triageMs).toBe(10);
+    expect(metrics.wallTime.hunkProfileMs).toBe(10);
+    expect(metrics.wallTime.reviewMs).toBe(10);
+    expect(metrics.wallTime.findingFilterMs).toBe(10);
+    expect(metrics.wallTime.mergeGateMs).toBe(10);
+    expect(metrics.wallTime.publishMs).toBe(10);
+    expect(metrics.wallTime.totalMs).toBeGreaterThanOrEqual(60);
+    expect(result.publication.summaryMarkdown).toContain("### Efficiency");
+    expect(result.publication.summaryMarkdown).toContain("Jev: 4 requests · p95 latency 5 ms");
+  });
+
+  it("on a triage skip (FR-2.3) counts the unprofiled hunks as fully saved and still reports the section", async () => {
+    const pr = makePr();
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(pr),
+        decision: scriptedPort(HIGH_RISK_TRIAGE_SCRIPT),
+        reviewer: fakeReviewer(),
+      },
+      config: makeConfig(),
+      now: tickingClock(),
+    });
+
+    const { metrics } = result;
+    expect(metrics.jev.requests.total).toBe(1);
+    expect(metrics.llm.hunks.total).toBe(1);
+    expect(metrics.llm.hunks.skipped.triageSkip).toBe(1);
+    expect(metrics.llm.tokensSavedPct).toBe(100);
+    expect(metrics.wallTime.triageMs).toBe(10);
+    expect(metrics.wallTime.hunkProfileMs).toBe(0);
+    expect(metrics.wallTime.publishMs).toBe(10);
+    expect(result.publication.summaryMarkdown).toContain("### Efficiency");
+    expect(result.publication.summaryMarkdown).toContain("triage skip 1");
+  });
+
+  it("reports zeros, never null, when the run fails closed at triage", async () => {
+    const pr = makePr();
+    const failing: DecisionPort = {
+      async decide() {
+        throw new Error("jev down");
+      },
+    };
+    const result = await runPipeline({
+      ref,
+      ports: { vcs: makeVcs(pr), decision: failing, reviewer: fakeReviewer() },
+      config: makeConfig(),
+      now: tickingClock(),
+    });
+
+    expect(result.failedClosed).toBe(true);
+    expect(result.metrics.jev.requests.total).toBe(0);
+    expect(result.metrics.jev.latency.p95Ms).toBe(0);
+    expect(result.metrics.llm.tokensSavedPct).toBe(0);
+    expect(result.metrics.wallTime.totalMs).toBeGreaterThan(0);
+  });
+
+  it("attributes eligible hunks to the spend cap when the cap was already reached", async () => {
+    const pr = makePr();
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-09", spentUsd: 50, runs: 10, updatedAt: "2026-09-20T00:00:00Z" },
+    });
+    const result = await runPipeline({
+      ref,
+      ports: { vcs: makeVcs(pr), decision: fullPort(), reviewer: fakeReviewer(), spendLedger },
+      config: makeConfig(),
+      now: tickingClock(),
+    });
+
+    expect(result.metrics.llm.hunks.skipped.spendCap).toBe(1);
+    expect(result.metrics.llm.hunks.reviewed).toBe(0);
+    expect(result.metrics.llm.tokensSavedPct).toBe(100);
+    expect(result.publication.summaryMarkdown).toContain("spend cap 1");
+  });
+
+  it("attributes the hunks the per-run budget cut off to 'budget'", async () => {
+    const pr = makePr({
+      files: [
+        {
+          path: "a.ts",
+          status: "modified",
+          additions: 2,
+          deletions: 2,
+          patch: "@@ -1,1 +1,1 @@\n-old\n+new\n@@ -10,1 +10,1 @@\n-a\n+b",
+        },
+      ],
+    });
+    // fakeReviewer's call costs USD 0.0004 at Sonnet 5 rates: the first hunk alone exceeds this budget.
+    const result = await runPipeline({
+      ref,
+      ports: { vcs: makeVcs(pr), decision: fullPort(), reviewer: fakeReviewer() },
+      config: makeConfig({ budgetUsd: 0.0001 }),
+    });
+
+    expect(result.metrics.llm.hunks.total).toBe(2);
+    expect(result.metrics.llm.hunks.reviewed).toBe(1);
+    expect(result.metrics.llm.hunks.skipped.budget).toBe(1);
+  });
+});

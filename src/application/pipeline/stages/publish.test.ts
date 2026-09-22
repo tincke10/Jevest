@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
+import { type RunMetrics, ZERO_WALL_TIMES } from "../run-metrics.js";
 import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
@@ -131,6 +132,7 @@ function makeFindingFilter(
     totalRequests: 0,
     totalLatencyMs: 0,
     totalUsage: { inputTokens: 0, outputTokens: 0 },
+    requestLatenciesMs: [],
     ...overrides,
   };
 }
@@ -146,6 +148,122 @@ function makeMergeGate(overrides: Partial<MergeGateStageResult> = {}): MergeGate
   };
 }
 
+function makeMetrics(overrides: Partial<RunMetrics> = {}): RunMetrics {
+  return {
+    jev: {
+      requests: { triage: 1, hunkProfile: 3, findingFilter: 1, mergeGate: 1, total: 6 },
+      latency: { sumMs: 1400, p50Ms: 200, p95Ms: 400, maxMs: 400 },
+      usage: { inputTokens: 1540, outputTokens: 83 },
+      costUsd: 0.00006468,
+    },
+    llm: {
+      hunks: {
+        total: 5,
+        eligible: 3,
+        reviewed: 2,
+        skipped: {
+          triageSkip: 0,
+          skipChangeKind: 1,
+          secret: 1,
+          budget: 1,
+          spendCap: 0,
+          reviewerDisabled: 0,
+          total: 3,
+        },
+        truncatedByMaxHunks: 0,
+      },
+      tokens: {
+        reviewInput: 2000,
+        reviewOutput: 200,
+        summaryInput: 500,
+        summaryOutput: 80,
+        spent: 2780,
+      },
+      tokensWithoutJev: 4000,
+      tokensSavedPct: 30.5,
+      method: "Estimate, not a measurement: ceil(chars / 4) input tokens per skipped hunk.",
+    },
+    wallTime: ZERO_WALL_TIMES,
+    ...overrides,
+  };
+}
+
+describe("runPublishStage efficiency section (H2 / H4)", () => {
+  it("renders Jev requests, p95 latency, total Jev time, hunks reviewed vs skipped by reason, tokens spent and the estimated saving", () => {
+    const result = publishWith(makeTriage());
+    const efficiency = result.summaryMarkdown.split("### Efficiency")[1] ?? "";
+
+    expect(efficiency).toMatch(/Jev: 6 requests/);
+    expect(efficiency).toMatch(/p95 latency 400 ms/);
+    expect(efficiency).toMatch(/total Jev time 1400 ms/);
+    expect(efficiency).toMatch(/LLM: 2 of 5 hunks reviewed/);
+    expect(efficiency).toMatch(/3 skipped \(change kind 1, secret 1, budget 1\)/);
+    expect(efficiency).toMatch(/2780 tokens spent \(review 2200, summary 580\)/);
+    expect(efficiency).toMatch(/without Jev ≈ 4000/);
+    expect(efficiency).toMatch(/saved ≈ 30\.5%/);
+    expect(efficiency).toContain("Estimate, not a measurement");
+  });
+
+  it("puts the section last so the fingerprint covers the review content, not the run's timing (NFR-12)", () => {
+    const fast = publishWith(makeTriage());
+    const slow = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics({
+        jev: {
+          ...makeMetrics().jev,
+          latency: { sumMs: 9000, p50Ms: 1500, p95Ms: 3000, maxMs: 3000 },
+        },
+      }),
+    });
+
+    expect(slow.summaryMarkdown).not.toBe(fast.summaryMarkdown);
+    expect(slow.summaryFingerprint).toBe(fast.summaryFingerprint);
+    expect(fast.summaryMarkdown.trimEnd().split("\n").at(-1)).toContain(
+      "Estimate, not a measurement",
+    );
+  });
+
+  it("lists only the non-zero skip reasons, and says none when nothing was skipped", () => {
+    const base = makeMetrics();
+    const none = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics({
+        llm: {
+          ...base.llm,
+          hunks: {
+            ...base.llm.hunks,
+            total: 2,
+            eligible: 2,
+            reviewed: 2,
+            skipped: {
+              triageSkip: 0,
+              skipChangeKind: 0,
+              secret: 0,
+              budget: 0,
+              spendCap: 0,
+              reviewerDisabled: 0,
+              total: 0,
+            },
+          },
+        },
+      }),
+    });
+    expect(none.summaryMarkdown).toMatch(/LLM: 2 of 2 hunks reviewed · 0 skipped\n/);
+  });
+});
+
 describe("runPublishStage", () => {
   it("creates one inline comment per published (auto-band) finding, with a stable fingerprint", () => {
     const finding = makeFinding();
@@ -157,6 +275,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
 
     expect(result.inlineComments).toHaveLength(1);
@@ -195,6 +314,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     // before-line 11 ("b") is shifted to after-line 12 by the inserted line.
     expect(result.inlineComments[0]!.line).toBe(12);
@@ -212,6 +332,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.inlineComments).toHaveLength(0);
   });
@@ -243,6 +364,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
 
     expect(result.summaryMarkdown).toContain("security");
@@ -267,6 +389,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.summaryMarkdown).toMatch(/unverifiable claim.*unverified/i);
   });
@@ -280,6 +403,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.summaryMarkdown).toContain("0.1234");
     expect(result.summaryMarkdown.toLowerCase()).toContain("jev");
@@ -294,6 +418,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "failure" }),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.check.conclusion).toBe("failure");
     expect(result.check.title.length).toBeGreaterThan(0);
@@ -309,6 +434,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "success" }),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(success.labelsToAdd).toContain("jevest:auto-merge-ok");
     expect(success.labelsToRemove).not.toContain("jevest:auto-merge-ok");
@@ -321,6 +447,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "failure" }),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(failure.labelsToAdd).not.toContain("jevest:auto-merge-ok");
     expect(failure.labelsToRemove).toContain("jevest:auto-merge-ok");
@@ -335,6 +462,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.labelsToAdd).toContain("jevest:needs-human");
   });
@@ -349,6 +477,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: false,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
 
     expect(result.inlineComments).toEqual([]);
@@ -366,6 +495,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "success" }),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     const withoutInline = runPublishStage({
       triage: makeTriage(),
@@ -375,6 +505,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "success" }),
       inlineCommentsEnabled: false,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(withoutInline.check).toEqual(withInline.check);
     expect(withoutInline.labelsToAdd).toEqual(withInline.labelsToAdd);
@@ -390,6 +521,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: false,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
     expect(result.summaryMarkdown).toMatch(/no.*high.confidence findings/i);
   });
@@ -403,6 +535,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     };
     const first = runPublishStage(input);
     const second = runPublishStage(input);
@@ -419,6 +552,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: true,
+      metrics: makeMetrics(),
     });
     expect(result.summaryMarkdown).toContain("LLM review disabled by config");
     expect(result.inlineComments).toEqual([]);
@@ -433,6 +567,7 @@ describe("runPublishStage", () => {
       mergeGate: makeMergeGate({ conclusion: "success" }),
       inlineCommentsEnabled: true,
       reviewDisabled: true,
+      metrics: makeMetrics(),
     });
     expect(result.check.conclusion).toBe("success");
   });
@@ -451,6 +586,7 @@ describe("runPublishStage injected instructions in the diff (NFR-7)", () => {
       mergeGate,
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
     });
   }
 
@@ -514,6 +650,7 @@ describe("runPublishStage spend cap", () => {
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
       reviewDisabled: false,
+      metrics: makeMetrics(),
       ...extra,
     });
   }
@@ -616,6 +753,7 @@ function publishWith(triage: TriageStageResult, mergeGate = makeMergeGate()): Re
     mergeGate,
     inlineCommentsEnabled: true,
     reviewDisabled: false,
+    metrics: makeMetrics(),
   });
 }
 
@@ -762,6 +900,7 @@ describe("runTriageOnlyPublishStage", () => {
         matchesIntentProb: 0.05,
         needsProductOwnerLabel: true,
       }),
+      makeMetrics(),
     );
     expect(result.summaryMarkdown).toContain("### Intent vs change");
     expect(result.summaryMarkdown).toContain("Applies the tax rate to the checkout subtotal.");
@@ -772,7 +911,7 @@ describe("runTriageOnlyPublishStage", () => {
   });
 
   it("removes both new labels and stays green when nothing is flagged", () => {
-    const result = runTriageOnlyPublishStage(makeTriage());
+    const result = runTriageOnlyPublishStage(makeTriage(), makeMetrics());
     expect(result.labelsToRemove).toContain("jevest:description-mismatch");
     expect(result.labelsToRemove).toContain("jevest:needs-product-owner");
     expect(result.check.conclusion).toBe("success");
@@ -780,7 +919,7 @@ describe("runTriageOnlyPublishStage", () => {
 
   it("publishes only the triage decision and label, no findings or comments (FR-2.3)", () => {
     const triage = makeTriage({ category: "docs", riskLevel: "none", needsHumanLabel: false });
-    const result = runTriageOnlyPublishStage(triage);
+    const result = runTriageOnlyPublishStage(triage, makeMetrics());
 
     expect(result.inlineComments).toEqual([]);
     expect(result.summaryMarkdown).toContain("docs");
@@ -793,8 +932,52 @@ describe("runTriageOnlyPublishStage", () => {
 
   it("still adds the needs-human label when triage flagged it, even though the LLM review was skipped", () => {
     const triage = makeTriage({ needsHumanLabel: true });
-    const result = runTriageOnlyPublishStage(triage);
+    const result = runTriageOnlyPublishStage(triage, makeMetrics());
     expect(result.labelsToAdd).toContain("jevest:needs-human");
+  });
+
+  it("reports the efficiency section with every hunk saved by the triage skip (H2), fingerprint unaffected by timing", () => {
+    const base = makeMetrics();
+    const metrics = (p95Ms: number): RunMetrics =>
+      makeMetrics({
+        jev: {
+          requests: { triage: 1, hunkProfile: 0, findingFilter: 0, mergeGate: 0, total: 1 },
+          latency: { sumMs: p95Ms, p50Ms: p95Ms, p95Ms, maxMs: p95Ms },
+          usage: { inputTokens: 900, outputTokens: 40 },
+          costUsd: 0.0000378,
+        },
+        llm: {
+          ...base.llm,
+          hunks: {
+            total: 4,
+            eligible: 0,
+            reviewed: 0,
+            skipped: {
+              triageSkip: 4,
+              skipChangeKind: 0,
+              secret: 0,
+              budget: 0,
+              spendCap: 0,
+              reviewerDisabled: 0,
+              total: 4,
+            },
+            truncatedByMaxHunks: 0,
+          },
+          tokens: { reviewInput: 0, reviewOutput: 0, summaryInput: 0, summaryOutput: 0, spent: 0 },
+          tokensWithoutJev: 640,
+          tokensSavedPct: 100,
+        },
+      });
+    const first = runTriageOnlyPublishStage(makeTriage({ skipLlmReview: true }), metrics(280));
+    const second = runTriageOnlyPublishStage(makeTriage({ skipLlmReview: true }), metrics(900));
+
+    expect(first.summaryMarkdown).toMatch(/### Efficiency/);
+    expect(first.summaryMarkdown).toMatch(/Jev: 1 request /);
+    expect(first.summaryMarkdown).toMatch(
+      /LLM: 0 of 4 hunks reviewed · 4 skipped \(triage skip 4\)/,
+    );
+    expect(first.summaryMarkdown).toMatch(/saved ≈ 100%/);
+    expect(second.summaryFingerprint).toBe(first.summaryFingerprint);
   });
 });
 

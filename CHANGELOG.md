@@ -39,6 +39,22 @@ has been published under a version tag before.
   "missed in-diff injections" count that does not enter the H5 verdict.
   The recorded H5 fixtures were deleted (state changed) and must be
   re-recorded; the replay gate skips until then.
+- **Per-run efficiency metrics for H2 / H4** (`src/application/pipeline/run-metrics.ts`):
+  every pipeline result carries `metrics` (never null): Jev request count
+  per stage, latency sum / p50 / p95 / max across every Jev call of the run,
+  Jev tokens and cost (H4); hunks reviewed vs skipped by reason (triage
+  skip, skip-change-kind, secret, budget, spend cap, reviewer disabled),
+  LLM tokens spent (review + change summary) and an estimated "tokens
+  without Jev" counterfactual priced from the skipped hunks' diff size,
+  with the saving in percent (H2); and the wall clock per stage from the
+  pipeline's injectable `now`. The summary comment ends with an
+  "Efficiency" section rendering them, excluded from the summary
+  fingerprint so timing never breaks NFR-12; the Action gains the outputs
+  `jev-latency-p95-ms`, `jev-requests` and `llm-tokens-saved-pct`; `pnpm
+  review` prints the section and a wall-time line. The saving is an
+  estimate, said so on the comment itself and in `docs/BENCHMARK.md`
+  "H2 / H4 — measured per run"; no verdict on either hypothesis is claimed
+  before ≥ 20 real PRs.
 - **GitHub Action** (`action.yml`, `src/action/main.ts`): composite action,
   Node 20, runs the TypeScript source with `tsx` (no build). Publishes one
   upserted summary comment, fingerprinted inline comments, labels

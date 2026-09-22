@@ -501,6 +501,12 @@ async function main(): Promise<number> {
   console.log("");
   console.log(`[review] wrote ${join(options.outDir, "review.md")}`);
   console.log(`[review] wrote ${join(options.outDir, "review.json")}`);
+  // The summary above already carries the "Efficiency" section (H2 / H4);
+  // the wall clock per stage is only in `metrics`, so print it here.
+  const { wallTime } = result.metrics;
+  console.log(
+    `[review] wall time: total ${wallTime.totalMs} ms (triage ${wallTime.triageMs}, hunk-profile ${wallTime.hunkProfileMs}, review ${wallTime.reviewMs}, finding-filter ${wallTime.findingFilterMs}, merge-gate ${wallTime.mergeGateMs}, publish ${wallTime.publishMs})`,
+  );
 
   if (result.failedClosed) {
     console.error(`[review] failed closed at stage "${result.failureReason}" (NFR-2)`);

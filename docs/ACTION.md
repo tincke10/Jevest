@@ -376,6 +376,46 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 - **A `jevest` check run** (or commit status, see above) carrying the
   merge-gate conclusion: green, neutral ("needs a human"), or red.
 
+### Efficiency (H2 / H4)
+
+The summary comment ends with an "Efficiency" section, on every run that
+gets past triage's Jev call (a triage-only run has it too; a fail-closed
+run does not):
+
+```
+### Efficiency
+- Jev: 9 requests · p95 latency 312 ms · total Jev time 1840 ms
+- LLM: 4 of 7 hunks reviewed · 3 skipped (change kind 2, secret 1)
+- LLM tokens: 6120 tokens spent (review 5700, summary 420) · without Jev ≈ 8900 · saved ≈ 31.2%
+- Estimate, not a measurement: tokens without Jev = measured review tokens + for each of the 3 skipped hunk(s) ceil(chars / 4) input tokens + this run's mean output tokens per reviewed hunk (140); ...
+```
+
+- The Jev line is H4 (SPEC §4.2): every Jev request of the run, its
+  nearest-rank p95 and its sum.
+- The LLM lines are H2: which hunks the reviewer saw and why the others
+  were skipped (`triage skip`, `change kind` for `skipChangeKinds`,
+  `secret`, `budget`, `spend cap`, `reviewer disabled`), the tokens spent
+  (review + change summary), and an **estimated** "without Jev" figure
+  priced from the skipped hunks' diff size. The last line always says how
+  it was computed. Read [`docs/BENCHMARK.md`](BENCHMARK.md) "H2 / H4 —
+  measured per run" before quoting the percentage: it is a floor, not a
+  measurement, and can be negative on a tiny PR.
+- The section sits last and is left out of the summary comment's
+  fingerprint, so two runs over the same commit that differ only in
+  timing still count as the same review (NFR-12).
+
+The same numbers are available as action outputs:
+
+| Output | Meaning |
+|---|---|
+| `jev-requests` | Number of Jev requests this run made |
+| `jev-latency-p95-ms` | p95 latency across those requests, in ms |
+| `llm-tokens-saved-pct` | Estimated LLM tokens saved, in percent, one decimal |
+
+`pnpm review` prints the same section (it prints the whole summary) plus
+one `[review] wall time:` line with the wall clock per stage, which is
+also in `metrics.wallTime` of the pipeline result.
+
 ## What it never does
 
 **It never merges anything** (FR-6.4). The merge gate stage only emits a

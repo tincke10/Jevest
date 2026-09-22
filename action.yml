@@ -75,6 +75,20 @@ outputs:
       run (current period), in USD, as a string; empty when the spend
       ledger issue could not be read or the run ended before the review
       stage. See docs/ACTION.md "Spend cap".
+  jev-latency-p95-ms:
+    description: >-
+      H4: nearest-rank p95 of the latency of every Jev request in this run
+      (triage, one per hunk, one per finding, merge gate), in ms, as a
+      string; "0" when no Jev request answered. See docs/ACTION.md
+      "Efficiency".
+  jev-requests:
+    description: "H4: number of Jev requests this run made, as a string."
+  llm-tokens-saved-pct:
+    description: >-
+      H2: ESTIMATED share of LLM tokens the run saved by not reviewing the
+      hunks Jev skipped, in percent (one decimal, may be negative), as a
+      string. An estimate from the skipped hunks' diff size, not a
+      measurement; see docs/BENCHMARK.md "H2 / H4 — measured per run".
 
 runs:
   using: "composite"

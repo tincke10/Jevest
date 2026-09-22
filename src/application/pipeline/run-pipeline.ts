@@ -21,7 +21,16 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * at the base sha) arrives already parsed from the composition root, so a
  * missing file is the empty context and an invalid one failed closed
  * before the pipeline started.
+ *
+ * Efficiency (H2 / H4): every run ends with `metrics` (run-metrics.ts),
+ * never null. The stages already report each Jev call's latency and
+ * usage; this file only adds the wall clock around each stage, taken from
+ * the same injectable `now` the spend cap uses, and the diffs of the hunks
+ * a triage skip never profiled (so the counterfactual can price them).
+ * The metrics are computed once BEFORE publish, so the summary comment
+ * can carry them, and once after, so `metrics.wallTime` includes publish.
  */
+import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
@@ -36,6 +45,12 @@ import {
 } from "../../domain/spend-cap.js";
 import { EMPTY_PRODUCT_CONTEXT, type ProductContext } from "../context/product-context.js";
 import { jevCostUsd, pricingForModel } from "../findings/pricing.js";
+import {
+  type RunMetrics,
+  type StageWallTimes,
+  ZERO_WALL_TIMES,
+  computeRunMetrics,
+} from "./run-metrics.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
 import {
   type HunkProfileStageResult,
@@ -77,7 +92,7 @@ export interface RunPipelineInput {
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
   /** Parsed `.jevest/context.yml` from the PR's BASE sha (see context/product-context.ts). Default: empty. */
   readonly productContext?: ProductContext;
-  /** Injectable clock for the spend cap's period key and ledger timestamps. Default: `new Date()`. */
+  /** Injectable clock for the spend cap's period key, ledger timestamps and the per-stage wall time in `metrics`. Default: `new Date()`. */
   readonly now?: () => Date;
 }
 
@@ -111,7 +126,14 @@ export interface PipelineResult {
   readonly reviewSkippedForSpendCap: boolean;
   /** Ledger read/record failure, if any. Never fails the run — surfaces in the summary comment instead. */
   readonly spendLedgerError: string | null;
+  /** H2 / H4 per-run numbers (run-metrics.ts); zeros for the stages that did not run, never null. */
+  readonly metrics: RunMetrics;
 }
+
+type StageResults = Pick<
+  PipelineResult,
+  "triage" | "hunkProfile" | "review" | "findingFilter" | "mergeGate"
+>;
 
 type SpendFields = Pick<
   PipelineResult,
@@ -256,7 +278,55 @@ function severityCounts(published: FindingFilterStageResult["published"]): Recor
 
 export async function runPipeline(input: RunPipelineInput): Promise<PipelineResult> {
   const { ports, config } = input;
+  const clock = input.now ?? (() => new Date());
+  const now = clock();
   const pr = await ports.vcs.fetchPullRequest(input.ref);
+
+  // Wall clock per stage (H4): one `clock()` at each stage boundary, so a
+  // test with a ticking clock sees exactly one tick per stage. `finally`
+  // keeps the time of a stage that threw, since the fail-closed result
+  // reports metrics too.
+  const wall: { -readonly [K in keyof StageWallTimes]: number } = { ...ZERO_WALL_TIMES };
+  const elapsed = (): number => clock().getTime() - now.getTime();
+  async function timed<T>(stage: keyof StageWallTimes, run: () => Promise<T>): Promise<T> {
+    const start = elapsed();
+    try {
+      return await run();
+    } finally {
+      wall[stage] = elapsed() - start;
+    }
+  }
+
+  const reviewDisabled = config.reviewer.provider === "none";
+  let reviewSkippedForSpendCap = false;
+  let unprofiledHunkDiffs: readonly string[] = [];
+  const metricsFor = (stages: StageResults): RunMetrics =>
+    computeRunMetrics({
+      ...stages,
+      unprofiledHunkDiffs,
+      reviewSkippedForSpendCap,
+      reviewDisabled,
+      wallTime: { ...wall, totalMs: elapsed() },
+    });
+
+  const failClosed = async (
+    stage: string,
+    stages: StageResults,
+    spendFields: SpendFields,
+  ): Promise<PipelineResult> => {
+    const publication = buildFailClosedPublication(stage, stages.triage);
+    await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
+    return {
+      ref: input.ref,
+      failedClosed: true,
+      failureReason: stage,
+      ...stages,
+      publication,
+      ...summaryFields(publication, stages.findingFilter, stages.review, stages.triage),
+      ...spendFields,
+      metrics: metricsFor(stages),
+    };
+  };
 
   // Cumulative spend cap (NFR-10): evaluated once here, before anything
   // that costs LLM money — and the change summary (H7) is the first such
@@ -264,11 +334,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   // Jev-only run exactly like reviewer.provider "none"; otherwise the
   // review stage gets the per-run budget clamped to what is left under
   // the cap.
-  const now = (input.now ?? (() => new Date()))();
   const preRun = ports.spendLedger
     ? await readSpendCap(ports.spendLedger, config, now)
     : { evaluation: null, error: null };
-  const reviewSkippedForSpendCap = preRun.evaluation?.status === "reached";
+  reviewSkippedForSpendCap = preRun.evaluation?.status === "reached";
   let spend: SpendFields = {
     spendCap: preRun.evaluation,
     reviewSkippedForSpendCap,
@@ -279,31 +348,23 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
   let triage: TriageStageResult;
   try {
-    triage = await runTriageStage({
-      pr,
-      decisionPort: ports.decision,
-      sizeThresholds: config.sizeThresholds,
-      policyConfig: config.thresholds,
-      productContext: input.productContext ?? EMPTY_PRODUCT_CONTEXT,
-      ...(summarizer ? { summarizer } : {}),
-      summaryPricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
-    });
+    triage = await timed("triageMs", () =>
+      runTriageStage({
+        pr,
+        decisionPort: ports.decision,
+        sizeThresholds: config.sizeThresholds,
+        policyConfig: config.thresholds,
+        productContext: input.productContext ?? EMPTY_PRODUCT_CONTEXT,
+        ...(summarizer ? { summarizer } : {}),
+        summaryPricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
+      }),
+    );
   } catch {
-    const publication = buildFailClosedPublication("triage", null);
-    await ports.vcs.publishReview(input.ref, publication);
-    return {
-      ref: input.ref,
-      failedClosed: true,
-      failureReason: "triage",
-      triage: null,
-      hunkProfile: null,
-      review: null,
-      findingFilter: null,
-      mergeGate: null,
-      publication,
-      ...summaryFields(publication, null, null),
-      ...NO_SPEND_INFO,
-    };
+    return failClosed(
+      "triage",
+      { triage: null, hunkProfile: null, review: null, findingFilter: null, mergeGate: null },
+      NO_SPEND_INFO,
+    );
   }
 
   // The summary is LLM money already spent: book it before any path that
@@ -330,50 +391,53 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   };
 
   if (triage.skipLlmReview) {
-    const publication = runTriageOnlyPublishStage(triage);
-    await ports.vcs.publishReview(input.ref, publication);
-    return {
-      ref: input.ref,
-      failedClosed: false,
-      failureReason: null,
+    // The hunks the skip kept from being profiled, split exactly as the
+    // hunk-profile stage would have (same cap), so H2 can price them.
+    unprofiledHunkDiffs = pr.files
+      .flatMap((file) => splitFileIntoHunks(file.path, file.patch))
+      .slice(0, config.maxHunks)
+      .map((hunk) => hunk.diff);
+    const stages: StageResults = {
       triage,
       hunkProfile: null,
       review: null,
       findingFilter: null,
       mergeGate: null,
+    };
+    const spendFields = await bookSummaryOnly();
+    const publication = runTriageOnlyPublishStage(triage, metricsFor(stages));
+    await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
+    return {
+      ref: input.ref,
+      failedClosed: false,
+      failureReason: null,
+      ...stages,
       publication,
       ...summaryFields(publication, null, null, triage),
-      ...(await bookSummaryOnly()),
+      ...spendFields,
+      metrics: metricsFor(stages),
     };
   }
 
   let hunkProfile: HunkProfileStageResult;
   try {
-    hunkProfile = await runHunkProfileStage({
-      pr,
-      decisionPort: ports.decision,
-      policyConfig: config.thresholds,
-      riskLevel: triage.riskLevel,
-      skipChangeKinds: config.skipChangeKinds,
-      maxHunks: config.maxHunks,
-      ...(input.fetchFileContent ? { fetchFileContent: input.fetchFileContent } : {}),
-    });
+    hunkProfile = await timed("hunkProfileMs", () =>
+      runHunkProfileStage({
+        pr,
+        decisionPort: ports.decision,
+        policyConfig: config.thresholds,
+        riskLevel: triage.riskLevel,
+        skipChangeKinds: config.skipChangeKinds,
+        maxHunks: config.maxHunks,
+        ...(input.fetchFileContent ? { fetchFileContent: input.fetchFileContent } : {}),
+      }),
+    );
   } catch {
-    const publication = buildFailClosedPublication("hunk-profile", triage);
-    await ports.vcs.publishReview(input.ref, publication);
-    return {
-      ref: input.ref,
-      failedClosed: true,
-      failureReason: "hunk-profile",
-      triage,
-      hunkProfile: null,
-      review: null,
-      findingFilter: null,
-      mergeGate: null,
-      publication,
-      ...summaryFields(publication, null, null, triage),
-      ...(triage.summaryCostUsd > 0 ? await bookSummaryOnly() : spend),
-    };
+    return failClosed(
+      "hunk-profile",
+      { triage, hunkProfile: null, review: null, findingFilter: null, mergeGate: null },
+      triage.summaryCostUsd > 0 ? await bookSummaryOnly() : spend,
+    );
   }
 
   // The LLM reviewer is not Jev — its own per-hunk errors are already
@@ -381,7 +445,6 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   // fail-closed doesn't apply to this call. reviewer.provider: "none" is
   // Jev-only mode: the review stage never runs at all, no LLM key needed.
   // A reached spend cap takes the same path (see above).
-  const reviewDisabled = config.reviewer.provider === "none";
   let review: ReviewStageResult;
   if (reviewDisabled || reviewSkippedForSpendCap) {
     review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
@@ -391,17 +454,20 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         `internal: reviewer.provider is "${config.reviewer.provider}" but no ReviewerPort was provided`,
       );
     }
-    review = await runReviewStage({
-      hunks: hunkProfile.hunks,
-      reviewerPort: ports.reviewer,
-      // config validation guarantees model is set whenever provider isn't "none".
-      pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
-      // The change summary already spent part of this run's budget (H7).
-      budgetUsd: Math.max(
-        0,
-        (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
-      ),
-    });
+    const reviewerPort = ports.reviewer;
+    review = await timed("reviewMs", () =>
+      runReviewStage({
+        hunks: hunkProfile.hunks,
+        reviewerPort,
+        // config validation guarantees model is set whenever provider isn't "none".
+        pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
+        // The change summary already spent part of this run's budget (H7).
+        budgetUsd: Math.max(
+          0,
+          (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
+        ),
+      }),
+    );
   }
 
   if (ports.spendLedger) {
@@ -423,29 +489,21 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const hunksById = new Map(hunkProfile.hunks.map((h) => [h.id, h.diff]));
   let findingFilter: FindingFilterStageResult;
   try {
-    findingFilter = await runFindingFilterStage({
-      reviews: review.reviews,
-      hunksById,
-      decisionPort: ports.decision,
-      policyConfig: config.thresholds,
-      riskLevel: triage.riskLevel,
-    });
+    findingFilter = await timed("findingFilterMs", () =>
+      runFindingFilterStage({
+        reviews: review.reviews,
+        hunksById,
+        decisionPort: ports.decision,
+        policyConfig: config.thresholds,
+        riskLevel: triage.riskLevel,
+      }),
+    );
   } catch {
-    const publication = buildFailClosedPublication("finding-filter", triage);
-    await ports.vcs.publishReview(input.ref, publication);
-    return {
-      ref: input.ref,
-      failedClosed: true,
-      failureReason: "finding-filter",
-      triage,
-      hunkProfile,
-      review,
-      findingFilter: null,
-      mergeGate: null,
-      publication,
-      ...summaryFields(publication, null, review, triage),
-      ...spend,
-    };
+    return failClosed(
+      "finding-filter",
+      { triage, hunkProfile, review, findingFilter: null, mergeGate: null },
+      spend,
+    );
   }
 
   const injectionThresholds = config.thresholds.triage?.[triage.riskLevel];
@@ -455,67 +513,54 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
   let mergeGate: MergeGateStageResult;
   try {
-    mergeGate = await runMergeGateStage({
-      decisionPort: ports.decision,
-      policyConfig: config.thresholds,
-      riskLevel: triage.riskLevel,
-      triageCategory: triage.category,
-      publishedCountsBySeverity: severityCounts(findingFilter.published),
-      ciStatus: pr.ciStatus,
-      containsInjectedInstructionsHigh,
-      // NFR-7 in the diff: the hunk profile's max probability, as a word (NFR-5).
-      injectedInstructionsInDiff: injectedInstructionsInDiffWord(
-        hunkProfile.injectedInstructionsInDiff.maxProb,
-      ),
-      descriptionMatchesChange: triage.descriptionMatchesChange,
-      productAreasTouched: triage.productContext.areas.map((a) => ({
-        name: a.name,
-        criticality: a.criticality,
-      })),
-    });
+    mergeGate = await timed("mergeGateMs", () =>
+      runMergeGateStage({
+        decisionPort: ports.decision,
+        policyConfig: config.thresholds,
+        riskLevel: triage.riskLevel,
+        triageCategory: triage.category,
+        publishedCountsBySeverity: severityCounts(findingFilter.published),
+        ciStatus: pr.ciStatus,
+        containsInjectedInstructionsHigh,
+        // NFR-7 in the diff: the hunk profile's max probability, as a word (NFR-5).
+        injectedInstructionsInDiff: injectedInstructionsInDiffWord(
+          hunkProfile.injectedInstructionsInDiff.maxProb,
+        ),
+        descriptionMatchesChange: triage.descriptionMatchesChange,
+        productAreasTouched: triage.productContext.areas.map((a) => ({
+          name: a.name,
+          criticality: a.criticality,
+        })),
+      }),
+    );
   } catch {
-    const publication = buildFailClosedPublication("merge-gate", triage);
-    await ports.vcs.publishReview(input.ref, publication);
-    return {
-      ref: input.ref,
-      failedClosed: true,
-      failureReason: "merge-gate",
-      triage,
-      hunkProfile,
-      review,
-      findingFilter,
-      mergeGate: null,
-      publication,
-      ...summaryFields(publication, findingFilter, review, triage),
-      ...spend,
-    };
+    return failClosed(
+      "merge-gate",
+      { triage, hunkProfile, review, findingFilter, mergeGate: null },
+      spend,
+    );
   }
 
+  const stages = { triage, hunkProfile, review, findingFilter, mergeGate };
   const publication = runPublishStage({
-    triage,
-    hunkProfile,
-    review,
-    findingFilter,
-    mergeGate,
+    ...stages,
     inlineCommentsEnabled: config.publish.inlineComments,
     reviewDisabled,
     spendCap: spend.spendCap,
     reviewSkippedForSpendCap: spend.reviewSkippedForSpendCap,
     spendLedgerError: spend.spendLedgerError,
+    metrics: metricsFor(stages),
   });
-  await ports.vcs.publishReview(input.ref, publication);
+  await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
   return {
     ref: input.ref,
     failedClosed: false,
     failureReason: null,
-    triage,
-    hunkProfile,
-    review,
-    findingFilter,
-    mergeGate,
+    ...stages,
     publication,
     ...summaryFields(publication, findingFilter, review, triage),
     ...spend,
+    metrics: metricsFor(stages),
   };
 }

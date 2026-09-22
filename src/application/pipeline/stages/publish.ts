@@ -24,11 +24,20 @@
  * bar the PR gets `jevest:injected-instructions` and a human-queue line
  * naming the hunks. The red check itself comes from the merge gate, which
  * already failed in code on the same verdict.
+ *
+ * Efficiency (H2 / H4, run-metrics.ts): the last section of every summary
+ * reports the run's Jev request count, p95 latency and total Jev time, the
+ * hunks reviewed vs skipped by reason, the LLM tokens spent and the
+ * ESTIMATED tokens saved, with one line saying it is an estimate. It is
+ * deliberately last and EXCLUDED from `summaryFingerprint`: latency varies
+ * between two runs over the same commit, and NFR-12's fingerprint promises
+ * to cover the review's content, not its timing.
  */
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
+import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
 import type { FindingFilterStageResult } from "./finding-filter.js";
 import {
   type HunkProfileEntry,
@@ -65,6 +74,8 @@ export interface PublishStageInput {
   readonly reviewSkippedForSpendCap?: boolean;
   /** Why the ledger could not be read/recorded, for the summary note; `null` when it worked. */
   readonly spendLedgerError?: string | null;
+  /** The run's H2 / H4 numbers (run-metrics.ts), rendered as the closing "Efficiency" section. */
+  readonly metrics: RunMetrics;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
@@ -360,7 +371,53 @@ function summaryCostLine(triage: TriageStageResult): string {
   return `- Change summary cost: $${triage.summaryCostUsd.toFixed(4)}`;
 }
 
-function buildSummaryMarkdown(input: PublishStageInput): string {
+const SKIP_REASON_WORDS: readonly [Exclude<keyof LlmSkippedHunks, "total">, string][] = [
+  ["triageSkip", "triage skip"],
+  ["skipChangeKind", "change kind"],
+  ["secret", "secret"],
+  ["budget", "budget"],
+  ["spendCap", "spend cap"],
+  ["reviewerDisabled", "reviewer disabled"],
+];
+
+function skippedByReason(skipped: LlmSkippedHunks): string {
+  const parts = SKIP_REASON_WORDS.filter(([key]) => skipped[key] > 0).map(
+    ([key, word]) => `${word} ${skipped[key]}`,
+  );
+  return parts.length === 0
+    ? `${skipped.total} skipped`
+    : `${skipped.total} skipped (${parts.join(", ")})`;
+}
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+/** The closing section; see the module doc for why it is last and outside the fingerprint. */
+function buildEfficiencySection(metrics: RunMetrics): string[] {
+  const { jev, llm } = metrics;
+  return [
+    "### Efficiency",
+    `- Jev: ${plural(jev.requests.total, "request")} · p95 latency ${jev.latency.p95Ms} ms · total Jev time ${jev.latency.sumMs} ms`,
+    `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed · ${skippedByReason(llm.hunks.skipped)}`,
+    `- LLM tokens: ${llm.tokens.spent} tokens spent (review ${llm.tokens.reviewInput + llm.tokens.reviewOutput}, summary ${llm.tokens.summaryInput + llm.tokens.summaryOutput}) · without Jev ≈ ${llm.tokensWithoutJev} · saved ≈ ${llm.tokensSavedPct}%`,
+    `- ${llm.method}`,
+  ];
+}
+
+/** Joins the stable content and the efficiency section, fingerprinting only the former. */
+function withEfficiency(
+  stableLines: readonly string[],
+  metrics: RunMetrics,
+): { summaryMarkdown: string; summaryFingerprint: string } {
+  const stable = stableLines.join("\n");
+  return {
+    summaryMarkdown: [stable, "", ...buildEfficiencySection(metrics)].join("\n"),
+    summaryFingerprint: sha256(stable),
+  };
+}
+
+function buildSummaryLines(input: PublishStageInput): string[] {
   const { triage, findingFilter, mergeGate } = input;
 
   const skippedForSpendCap = input.reviewSkippedForSpendCap === true;
@@ -403,7 +460,7 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
     "### Merge gate",
     `- Safe to automerge probability: ${mergeGate.safeToAutomergeProb}`,
     `- Conclusion: ${mergeGate.conclusion}`,
-  ].join("\n");
+  ];
 }
 
 /**
@@ -413,9 +470,12 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
  * triage label and a short summary, per the spec's literal wording ("se
  * publica solo label y resumen de triage").
  */
-export function runTriageOnlyPublishStage(triage: TriageStageResult): ReviewPublication {
+export function runTriageOnlyPublishStage(
+  triage: TriageStageResult,
+  metrics: RunMetrics,
+): ReviewPublication {
   const forcedNeutral = mismatchForcesNeutral(triage);
-  const summaryMarkdown = [
+  const summaryLines = [
     "## Jevest review",
     "",
     "### Triage",
@@ -430,7 +490,7 @@ export function runTriageOnlyPublishStage(triage: TriageStageResult): ReviewPubl
       : []),
     "### Cost breakdown",
     summaryCostLine(triage),
-  ].join("\n");
+  ];
 
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
@@ -442,8 +502,7 @@ export function runTriageOnlyPublishStage(triage: TriageStageResult): ReviewPubl
   applyTriageV2Labels(triage, labelsToAdd, labelsToRemove);
 
   return {
-    summaryMarkdown,
-    summaryFingerprint: sha256(summaryMarkdown),
+    ...withEfficiency(summaryLines, metrics),
     inlineComments: [],
     labelsToAdd,
     labelsToRemove,
@@ -502,7 +561,7 @@ export function buildFailClosedPublication(
 }
 
 export function runPublishStage(input: PublishStageInput): ReviewPublication {
-  const summaryMarkdown = buildSummaryMarkdown(input);
+  const summary = withEfficiency(buildSummaryLines(input), input.metrics);
   const hunksById = new Map(input.hunkProfile.hunks.map((h) => [h.id, h]));
   const inlineComments = input.inlineCommentsEnabled
     ? buildInlineComments(input.findingFilter, hunksById)
@@ -538,8 +597,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     : "";
 
   return {
-    summaryMarkdown,
-    summaryFingerprint: sha256(summaryMarkdown),
+    ...summary,
     inlineComments,
     labelsToAdd,
     labelsToRemove,

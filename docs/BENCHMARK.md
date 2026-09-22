@@ -27,7 +27,7 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 | H3 | Is confidence calibrated over findings (ECE < 0.1)? | **pending** | same run as H1, needs ≥ 200 findings |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
-| H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **not measured** | phase 1b instrumentation |
+| H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
 
 ## H0 — defect detection (FAIL, closed 2026-09-19)
 
@@ -150,6 +150,50 @@ Reproducing the pass: `pnpm findings --provider claude-cli --record
 mode, so `datasets/findings.jsonl` and `FINDINGS.md` are the record. Filter
 metrics over these 14 findings: **not measured** in a committed report.
 
+## H2 / H4 — measured per run (instrumented 2026-09-22)
+
+Source: `src/application/pipeline/run-metrics.ts`, computed on every run
+of the pipeline (Action and `pnpm review`) and rendered as the closing
+"Efficiency" section of the summary comment; the Action also exposes
+`jev-latency-p95-ms`, `jev-requests` and `llm-tokens-saved-pct` as outputs.
+No verdict is claimed here: these are per-run numbers, and the SPEC §4.2
+bars (H2: −30 % LLM tokens at the same detection rate; H4: p95 < 2 s for
+PRs of ≤ 50 hunks) need at least 20 real PRs, on real repos, before either
+row can turn PASS or FAIL. Until a run of that size is committed under
+`reports/`, both stay **instrumented, no verdict**.
+
+**H4, what is measured.** Every Jev request of the run reports its own
+`latencyMs` (triage: one; hunk profile: one per profiled hunk; finding
+filter: one per finding; merge gate: one). The section shows the request
+count, the nearest-rank p95 and the sum ("total Jev time"). `metrics`
+also carries the wall clock per stage, which includes the LLM calls and
+the GitHub round trips and is therefore NOT the H4 number.
+
+**H2, what is estimated.** The tokens actually spent on the LLM are
+measured (review calls + the change summary, every input-side token
+counted: uncached, cache read, cache write). The comparison point,
+"tokens without Jev", is a COUNTERFACTUAL: what reviewing every hunk
+would have cost. Reviewed hunks contribute their measured usage; each
+hunk the run did not send to the reviewer (triage skip, `skipChangeKinds`,
+secret, per-run budget, spend cap, reviewer disabled) contributes
+`ceil(chars / 4)` input tokens from its diff plus the run's mean output
+tokens per reviewed hunk (150 when nothing was reviewed). Then
+`saved % = (without − spent) / without`.
+
+Limits, stated on the comment itself:
+
+- It is an estimate, not a measurement. The skipped hunk's real review
+  call would also carry the prompt and the `before` context, which the
+  estimate ignores, so the saving is a floor. 4 chars per token is a
+  rule of thumb, not the provider's tokenizer.
+- "Same detection rate" (the other half of H2) is not measured by this
+  instrumentation at all. It needs the finding filter's recall from H1.
+- Hunks beyond `maxHunks` are not profiled and their diff is not kept, so
+  they are counted (`truncatedByMaxHunks`) but not priced.
+- The change summary is counted as spent (it exists because of Jev's
+  triage), so a tiny PR can report a negative saving. That is the honest
+  number, not a bug.
+
 ## Runtime of the Action (2026-09-20)
 
 Source: `docs/ACTION.md`, "Why no checkout"; one real run on
@@ -175,8 +219,8 @@ benchmark. Not replayable.
 | H3 · calibration (ECE < 0.1 over ≥ 200 findings) | same run, once ≥ 200 findings exist | same command |
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
-| H2 · LLM tokens saved by triage + profile (−30%) | per-PR token accounting with and without Jev | not instrumented yet |
-| H4 · Jev latency per PR (p95 < 2 s for ≤ 50 hunks) | per-PR sum of Jev latencies | not instrumented yet |
+| H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |
+| H4 · Jev latency per PR (p95 < 2 s for ≤ 50 hunks) | same ≥ 20 PRs, `jev-latency-p95-ms` and total Jev time per run | instrumented on every run; no collection command yet |
 
 H7 ran on 2026-09-21 over all 200 pairs against live Jev, both variants
 (`reports/spike-coherence-2026-09-21T23-52-31-417Z.md`). With the LLM

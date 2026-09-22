@@ -55,6 +55,8 @@ export interface FindingFilterStageResult {
   readonly totalRequests: number;
   readonly totalLatencyMs: number;
   readonly totalUsage: Usage;
+  /** One entry per Jev request that answered (a failed request has no latency), for the run's H4 percentiles (run-metrics.ts). */
+  readonly requestLatenciesMs: readonly number[];
 }
 
 const SEVERITY_LEVELS = ["nit", "minor", "major", "critical"] as const;
@@ -107,6 +109,7 @@ export async function runFindingFilterStage(
       totalRequests: 0,
       totalLatencyMs: 0,
       totalUsage: { inputTokens: 0, outputTokens: 0 },
+      requestLatenciesMs: [],
     };
   }
 
@@ -196,5 +199,18 @@ export async function runFindingFilterStage(
     totalRequests: run.totals.requests,
     totalLatencyMs: run.totals.totalLatencyMs,
     totalUsage: { inputTokens: run.totals.inputTokens, outputTokens: run.totals.outputTokens },
+    requestLatenciesMs: requestLatencies(run.results),
   };
+}
+
+/** One latency per Jev request: results sharing a requestId came from one batched call (batch size is 1 here, kept safe anyway). */
+function requestLatencies(results: readonly { requestId: string; latencyMs: number }[]): number[] {
+  const seen = new Set<string>();
+  const latencies: number[] = [];
+  for (const result of results) {
+    if (seen.has(result.requestId)) continue;
+    seen.add(result.requestId);
+    latencies.push(result.latencyMs);
+  }
+  return latencies;
 }

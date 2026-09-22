@@ -393,14 +393,21 @@ export async function resolveConfig(
  * The `GITHUB_OUTPUT` lines, one per output declared in action.yml.
  * `spend-usd` is the cumulative total AFTER this run per the spend ledger;
  * empty when unknown (no ledger, run ended before the review stage, or
- * the ledger was unreachable — see `spendCapAnnotations`).
+ * the ledger was unreachable — see `spendCapAnnotations`). The last three
+ * are the run's H4 / H2 numbers (run-metrics.ts): always present, zeros
+ * when a stage did not run; `llm-tokens-saved-pct` is an estimate, see
+ * docs/BENCHMARK.md "H2 / H4 — measured per run".
  */
 export function buildOutputLines(result: PipelineResult): string {
+  const { metrics } = result;
   return (
     `check-conclusion=${result.check.conclusion}\n` +
     `findings-published=${result.findingsPublished}\n` +
     `cost-usd=${result.costUsd}\n` +
-    `spend-usd=${result.spendCap?.spentUsd ?? ""}\n`
+    `spend-usd=${result.spendCap?.spentUsd ?? ""}\n` +
+    `jev-latency-p95-ms=${metrics.jev.latency.p95Ms}\n` +
+    `jev-requests=${metrics.jev.requests.total}\n` +
+    `llm-tokens-saved-pct=${metrics.llm.tokensSavedPct}\n`
   );
 }
 
@@ -504,6 +511,9 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
 
     console.log(
       `jevest: PR #${ref.number} — check=${result.check.conclusion} findings=${result.findingsPublished} cost=$${result.costUsd.toFixed(4)}`,
+    );
+    console.log(
+      `jevest: efficiency — jev requests=${result.metrics.jev.requests.total} p95=${result.metrics.jev.latency.p95Ms}ms total=${result.metrics.jev.latency.sumMs}ms · llm hunks reviewed=${result.metrics.llm.hunks.reviewed}/${result.metrics.llm.hunks.total} tokens=${result.metrics.llm.tokens.spent} saved≈${result.metrics.llm.tokensSavedPct}% (estimate) · wall=${result.metrics.wallTime.totalMs}ms`,
     );
     for (const line of spendCapAnnotations(result)) {
       console.log(line);

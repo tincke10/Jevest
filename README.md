@@ -187,9 +187,11 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] Phase 0b · H0′ surface profile, AST labeler, batch-anchoring fix
 - [x] Phase 1b · six-stage local pipeline, fail-closed, idempotent publishing
 - [x] Phase 2 · composite GitHub Action, no checkout, partial `.jevest.yml`, spend cap
-- [ ] Phase 1a · H1 finding filter with enough noise, LLM-judge baseline, calibration (ECE)
-- [ ] Phase 0c · H7 intent–change coherence → product-aware triage with a `.jevest/context.yml`
-- [ ] Phase 3 · adversarial suite, tagged release, published dataset and benchmark
+- [x] Phase 0c · H7 intent–change coherence (PASS with an LLM diff summary) → product-aware triage: three-layer state, `.jevest/context.yml` read from the base branch, `jevest:description-mismatch` and `jevest:needs-product-owner` labels
+- [x] Phase 3a · adversarial suite H5 (14 cases, PASS, replayed in CI), consolidated [benchmark](docs/BENCHMARK.md), [published datasets](datasets/README.md), changelog and [release guide](docs/RELEASING.md)
+- [ ] Phase 1a · H1 finding filter with enough noise (thorough reviewer pass: 241 findings recorded so far), LLM-judge baseline (H6), calibration (H3) — **in progress**, the central hypothesis
+- [ ] Phase 3b · tagged `v0.1.0` release once H1 has a number
+- [ ] Next · in-diff injection detection as a hunk-profile question (H5 showed triage cannot see instructions hidden in code), near-duplicate crossed descriptions for a harder H7, H2/H4 instrumentation (tokens saved, Jev latency per PR)
 
 ## License
 

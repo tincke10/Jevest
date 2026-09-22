@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about a possible missing-import compile issue in the added code, not about the cache-integrity bug where clearing the cache deletes the metadata and stale entries survive.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 150,
+    "outputTokens": 220,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3661,
+  "requestId": "44b7aead-fb90-4c20-83b8-7def29d61c02"
+}

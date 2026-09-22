@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "Zod v4's invalid_union issue carries `errors`, not `options`, so the guard `issue.options && Array.isArray(issue.options) && issue.options.length > 0` is always false and the discriminator branch is unreachable.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1937,
+    "outputTokens": 2144,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 32307,
+  "requestId": "63a5d82c-6b72-4d33-9c09-99e974e833f6"
+}

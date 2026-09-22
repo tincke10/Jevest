@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding flags Windows path-separator assumptions in the newly added getRelativeDistDir helper, whereas the change fixes false externalization caused by blind slicing when the project root is not a prefix of Vitest's dist path.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 210,
+    "outputTokens": 1849,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24556,
+  "requestId": "1ed2216b-b0b3-4531-bc53-9f32f5e1a7d3"
+}

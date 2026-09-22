@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.8,
+  "reason": "The before hunk shows only a subset of the RequestHeader union and does not reveal whether a companion runtime list or parallel ResponseHeader union exists, so the claimed out-of-sync risk cannot be verified from the shown code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 945,
+    "outputTokens": 3087,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 40520,
+  "requestId": "eb7c2752-a39f-4c13-aa2f-6b725f30b007"
+}

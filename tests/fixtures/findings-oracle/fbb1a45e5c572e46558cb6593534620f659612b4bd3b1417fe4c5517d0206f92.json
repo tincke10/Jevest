@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no validate method; it was added by this change, so the claimed sync/async ambiguity about validate cannot be present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 118,
+    "outputTokens": 1309,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16190,
+  "requestId": "48287647-6d1d-43db-a231-fa61a1a1abea"
+}

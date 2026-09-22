@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code calls `ctx.experimental_clearCache()`, not `ctx.clearCache()`, so the alleged name collision from renaming to a generic method does not exist in the before code as shown.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 417,
+    "outputTokens": 1567,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19939,
+  "requestId": "58e52f4c-d29c-4c69-a80e-65424c0224d9"
+}

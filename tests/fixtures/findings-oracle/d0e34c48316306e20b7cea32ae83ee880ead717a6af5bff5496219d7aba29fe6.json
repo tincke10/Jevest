@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns removal of capturing groups as a silent API break, whereas the change's purpose was dropping lookaheads for performance, not the capturing-group behavior.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1386,
+    "outputTokens": 653,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8582,
+  "requestId": "686f9066-26f8-4317-bb98-446d935feb89"
+}

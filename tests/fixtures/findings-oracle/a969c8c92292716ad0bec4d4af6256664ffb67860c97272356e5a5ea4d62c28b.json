@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The regex class `[a-z0-9._-]+` the claim critiques is not present in the BEFORE code; it is introduced in the AFTER hunk, so the described narrowing does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 212,
+    "outputTokens": 2178,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 30070,
+  "requestId": "8e31b736-7a3e-45ad-b1d0-7334536ae065"
+}

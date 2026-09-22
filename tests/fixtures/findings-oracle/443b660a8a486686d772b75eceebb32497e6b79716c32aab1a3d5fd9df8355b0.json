@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The claimed inconsistency is introduced only by the after-change addition of QUERY to this one If-None-Match: * branch; in the BEFORE code QUERY is uniformly not handled in that branch, so the asymmetric QUERY behavior described is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 234,
+    "outputTokens": 2037,
+    "cacheReadInputTokens": 896,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27593,
+  "requestId": "80940542-e5cd-4d58-bd29-1db3fa16db30"
+}

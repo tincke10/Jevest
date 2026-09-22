@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code still defines and uses the local JsonSchema interface with items?: JsonSchema | false, additionalProperties?: JsonSchema | boolean, $defs, and $schema, so no substitution to SchemaObject has occurred yet.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 252,
+    "outputTokens": 799,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12742,
+  "requestId": "4eb49425-1e5a-4814-9d76-cec243df9b7b"
+}

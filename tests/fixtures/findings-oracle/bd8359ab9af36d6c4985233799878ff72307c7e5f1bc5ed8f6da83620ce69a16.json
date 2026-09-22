@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The commit introduced the new `sharedViteServer` feature option; the finding is about a potential CLI metadata issue with that newly added option, which is not a defect the change fixed because the option did not exist before and no default/negation handling was added.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 715,
+    "outputTokens": 1296,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18493,
+  "requestId": "80a097bc-9ea2-4bb4-9871-12da6b0c14fb"
+}

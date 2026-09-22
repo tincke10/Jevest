@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the new export of TRPCUnwrap as widening public API surface, while the change fixed TS2742 portability by exporting that alias so declarations can name the internal return type.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1280,
+    "outputTokens": 624,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9429,
+  "requestId": "37b3d23c-82be-4517-a58f-3ebb6b0be81f"
+}

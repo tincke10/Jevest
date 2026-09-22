@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain any `options.realm` JSDoc or default claim; that line appears only in the AFTER code, so the described documentation mismatch cannot be present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1687,
+    "outputTokens": 639,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8756,
+  "requestId": "bc9d93ab-461c-479c-80dd-b39aa48e5c84"
+}

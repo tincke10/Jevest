@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code contains no explicit plain Error throw—it would throw a TypeError from destructuring undefined—so the described plain Error problem is introduced by the change, not present before.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1602,
+    "outputTokens": 1705,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21383,
+  "requestId": "48a7fabf-1684-4954-ba2e-bf56e5776615"
+}

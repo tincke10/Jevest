@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code defines HeyApiConfig from the top-level FetchClient import, not from Plugins.HeyApiClientFetch.Client, so the claimed problem is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1221,
+    "outputTokens": 849,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10330,
+  "requestId": "e270763d-9007-4121-86b6-fc72abeaa7ad"
+}

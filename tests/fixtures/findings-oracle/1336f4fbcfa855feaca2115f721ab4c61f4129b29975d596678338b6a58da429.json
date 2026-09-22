@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code declares `env: E['Bindings']` without an initializer, so there is no field initializer that a constructor could overwrite.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 520,
+    "outputTokens": 704,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9499,
+  "requestId": "35205a44-c468-482c-977f-5339fb46862e"
+}

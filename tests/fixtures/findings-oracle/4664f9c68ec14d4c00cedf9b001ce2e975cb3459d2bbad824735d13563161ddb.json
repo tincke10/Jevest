@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.98,
+  "reason": "The finding is a non-functional code-style nit about a redundant condition and repeated array reallocation, not the bug fixed by ensuring queueMicrotask and nextTick stay native when only toNotFake is set.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 218,
+    "outputTokens": 280,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4540,
+  "requestId": "0fdcdacd-00ca-420d-be92-9723d77c01d4"
+}

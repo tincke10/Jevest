@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the non-optional interface members added by this feature commit, but the commit did not fix that issue—it introduced the methods.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1191,
+    "outputTokens": 459,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7102,
+  "requestId": "9ca259b5-5f13-4028-a9a2-dd981f237a81"
+}

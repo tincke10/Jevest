@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a spurious detach/re-attach caused by unconditional cleanup on every ref apply, whereas the change fixed the opposite problem of executing previous ref cleanup only when the ref identity changes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1290,
+    "outputTokens": 1308,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17761,
+  "requestId": "61532f97-a214-4164-a513-bf0a0e163221"
+}

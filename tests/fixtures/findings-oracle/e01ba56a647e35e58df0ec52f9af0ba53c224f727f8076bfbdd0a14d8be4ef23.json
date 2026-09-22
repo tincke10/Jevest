@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the ambiguity of the newly added optional `definite` flag, while the change fixed a performance issue where `z.validate` redundantly re-ran the schema after compiled rejection.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1034,
+    "outputTokens": 487,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7812,
+  "requestId": "3d96e76e-ff22-497e-bb55-b197b3f8e950"
+}

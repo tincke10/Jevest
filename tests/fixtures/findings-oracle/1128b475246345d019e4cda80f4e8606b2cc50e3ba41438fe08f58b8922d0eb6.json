@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code has no status or method guard before ETag generation, so it would compute and attach an ETag from the partial/empty body of 206/204 responses as claimed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 116,
+    "outputTokens": 5840,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 69785,
+  "requestId": "d4072439-b17c-46a1-a5de-f11a686565dc"
+}

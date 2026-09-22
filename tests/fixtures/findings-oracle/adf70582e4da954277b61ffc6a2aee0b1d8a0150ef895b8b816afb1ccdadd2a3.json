@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain the `sharedViteServer` option at all, so there is no new CLI option whose missing config-type declaration or resolver logic could be a problem.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 163,
+    "outputTokens": 916,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12490,
+  "requestId": "4534fcf4-efd2-472e-9d51-5e94d16e54b7"
+}

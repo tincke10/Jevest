@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the after-code fallback for silently producing 'undefined' on a future jsdom rename, whereas the change fixed the current jsdom 28+ rename by reading `_bytes` instead of `_buffer`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1442,
+    "outputTokens": 1284,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16823,
+  "requestId": "814cd666-ea4c-47db-bdfa-efdfb68d9cba"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "In the BEFORE code, `_properties` is explicitly exported as `properties`, so it cannot be an unused import or dead code in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1071,
+    "outputTokens": 662,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10304,
+  "requestId": "b054792f-766a-4d07-b87c-4f531bec76bc"
+}

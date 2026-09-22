@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not re-export `Unwrap`, so the claimed risk of that export missing from the core barrel cannot be present in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1383,
+    "outputTokens": 1173,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15289,
+  "requestId": "2e545fc2-b19f-499e-b6c8-54d62b2f175b"
+}

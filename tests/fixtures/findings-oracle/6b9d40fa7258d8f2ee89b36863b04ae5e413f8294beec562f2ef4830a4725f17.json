@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the new plugin-namespaced Client type in the after code, while the change is a non-bugfix chore updating stale Hey API imports, not a fix for that potential config mismatch.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1109,
+    "outputTokens": 2062,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24571,
+  "requestId": "485b3dd2-559b-43de-87c5-233ccf903db8"
+}

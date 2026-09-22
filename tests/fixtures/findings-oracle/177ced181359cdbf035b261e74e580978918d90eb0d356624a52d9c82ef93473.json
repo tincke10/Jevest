@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change only filters out q=0 entries, but the finding describes a remaining wildcard-precedence flaw where a q=0 exclusion can still match via a wildcard, which the diff does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1364,
+    "outputTokens": 4846,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 65290,
+  "requestId": "23b9a0bb-4c81-439c-afee-a0525f31d2ef"
+}

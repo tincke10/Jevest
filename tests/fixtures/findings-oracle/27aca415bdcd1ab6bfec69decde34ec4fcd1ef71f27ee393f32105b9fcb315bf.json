@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The PR explicitly states the buckets only ever need get and set, so there is no existing code that inspects, clears, or iterates the bucket map to break.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1779,
+    "outputTokens": 1073,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17611,
+  "requestId": "765d8486-440a-46bf-a9b8-e1cdc8a3ca83"
+}

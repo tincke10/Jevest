@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance fix to avoid redefining and rewriting matcher state, while the finding is an edge-case correctness concern about falsy map entries that the change neither addresses nor changes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 262,
+    "outputTokens": 1034,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14338,
+  "requestId": "ff1b0d1f-f4ff-4273-9d2f-4cc3ca775703"
+}

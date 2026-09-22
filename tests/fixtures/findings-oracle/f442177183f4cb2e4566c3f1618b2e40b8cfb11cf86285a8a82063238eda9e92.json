@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.68,
+  "reason": "The finding raises the GET/HEAD/QUERY restriction as a breaking change for POST/PUT/DELETE callers, whereas the fix addressed the spec-compliance bug that unsafe methods and error responses should not receive ETags.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 771,
+    "outputTokens": 4161,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 56595,
+  "requestId": "98027f74-d46f-4d2d-9f95-9507c7643fa2"
+}

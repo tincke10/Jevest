@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The commit is a feature addition that introduces the streamHeader option, not a bugfix for an option that was declared but ignored; the finding comments on possible incomplete wiring of the new feature rather than a defect in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 248,
+    "outputTokens": 2415,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33615,
+  "requestId": "aa16cc93-81c5-4fca-be60-4d34a58dc993"
+}

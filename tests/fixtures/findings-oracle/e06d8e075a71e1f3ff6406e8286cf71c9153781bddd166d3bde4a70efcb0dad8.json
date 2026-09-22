@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code latches the decision via useState and only calls getServerSnapshot in the lazy state initializer, then adopts the client snapshot in an effect, so it does not re-evaluate the server branch or re-invoke getServerSnapshot on every render.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 299,
+    "outputTokens": 3711,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43898,
+  "requestId": "24f15996-2a48-4a28-80a6-2a981fa1b3b5"
+}

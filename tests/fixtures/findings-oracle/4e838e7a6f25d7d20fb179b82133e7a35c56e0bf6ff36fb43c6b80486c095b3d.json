@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding describes a new throwing behavior introduced by lazy error construction, while the change fixed the performance cost of eagerly constructing the error.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 233,
+    "outputTokens": 757,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11876,
+  "requestId": "1622b431-7bf4-43b4-9fbd-d1bf6e4fa280"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the writer lock being lost when `pipeTo()` rejects by re-acquiring it in a `finally` block, while the finding criticizes that same `finally` reacquisition for potentially masking the original rejection—a different, follow-on concern.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1210,
+    "outputTokens": 941,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13049,
+  "requestId": "c5b1289b-b32e-4853-9c42-20c62176415d"
+}

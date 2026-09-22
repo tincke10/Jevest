@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds `const log = console`, so it introduces/retains the whole-console alias the finding criticizes rather than fixing a runtime console-method availability problem.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 686,
+    "outputTokens": 852,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13473,
+  "requestId": "69422475-3c9e-4fa4-8b5f-592c6a8a94b5"
+}

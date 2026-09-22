@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The before code assigns `parent` from `implementation.prototype` without checking that it is an object or null, so a primitive `prototype` would reach `Object.setPrototypeOf` and throw a TypeError.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1455,
+    "outputTokens": 369,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5660,
+  "requestId": "588a048e-9a39-419c-bd00-7df4064487d5"
+}

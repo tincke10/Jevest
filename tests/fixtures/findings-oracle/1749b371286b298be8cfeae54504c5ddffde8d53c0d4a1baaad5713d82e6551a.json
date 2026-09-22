@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding flags the removed TODO about unsupported uniqueItems/contains/minContains/maxContains, and the commit/PR explicitly fixed exactly those silently dropped array keywords, so it names the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 512,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8755,
+  "requestId": "fb29951c-4978-457f-8e2e-45e054d5d613"
+}

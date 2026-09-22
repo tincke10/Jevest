@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.8,
+  "reason": "The change addressed overwriting inclusive `bag.minimum`/`bag.maximum` bounds, but the finding concerns exclusive `exclusiveMinimum`/`exclusiveMaximum` bounds from `.gt()`/`.lt()`, which the shown fix does not handle.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1351,
+    "outputTokens": 3873,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 55346,
+  "requestId": "cbbbb0b2-5f54-4e6f-9192-e5f22f96bb4e"
+}

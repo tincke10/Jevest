@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses a strong `Map` for `buckets`, which strongly references its keys and entries, so entries cannot be garbage collected mid-parse; the weakness described only appears after the change to `WeakMap`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1806,
+    "outputTokens": 2232,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31844,
+  "requestId": "95660032-ce5f-4627-8aea-5e5614d96e5b"
+}

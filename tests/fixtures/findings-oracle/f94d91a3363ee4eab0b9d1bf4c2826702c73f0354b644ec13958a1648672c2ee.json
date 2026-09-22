@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding addresses verifying the import for the newly introduced `pipeline` call, not the backpressure and premature-resolution bug that the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 222,
+    "outputTokens": 844,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12125,
+  "requestId": "afc7071a-7ba9-4344-b05e-a8d9194c7083"
+}

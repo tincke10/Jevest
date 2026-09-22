@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about losing compile-time type checking from using util.mergeDefs, while the change fixed a runtime stack overflow in recursive schema parsing.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 242,
+    "outputTokens": 154,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3667,
+  "requestId": "44738302-d4a5-4e56-8ac9-41a2610f10bb"
+}

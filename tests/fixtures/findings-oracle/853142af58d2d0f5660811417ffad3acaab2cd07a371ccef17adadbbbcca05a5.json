@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "In the before code, a premature stream end returns `value` undefined, and destructuring `value as PromiseChunk` throws a TypeError inside the async `run` callback, so the returned promise rejects and can be unhandled if the consumer never awaits it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 200,
+    "outputTokens": 4778,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 61948,
+  "requestId": "eff4e2e2-e018-42d8-9cc8-ade8b56cfd1f"
+}

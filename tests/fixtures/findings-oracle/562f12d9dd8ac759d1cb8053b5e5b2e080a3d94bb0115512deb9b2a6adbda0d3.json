@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses Object.create(null) directly, which allocates a fresh null-prototype object per class instance; the helper-related shared-singleton risk does not exist in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1030,
+    "outputTokens": 771,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10323,
+  "requestId": "0f56faf0-7e41-491f-9508-79599fae2656"
+}

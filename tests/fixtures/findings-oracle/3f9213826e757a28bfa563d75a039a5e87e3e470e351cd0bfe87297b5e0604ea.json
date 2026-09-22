@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The BEFORE condition only throws for NaN because typeof obj === 'number' makes other types short-circuit, so booleans, objects, arrays, and undefined indeed pass silently before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1544,
+    "outputTokens": 418,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6796,
+  "requestId": "c98b3c10-82f7-449e-ac59-5de3d8f1ba16"
+}

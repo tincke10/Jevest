@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed ignoring writer.write() backpressure and resolving before the response finished, whereas the finding describes missing reader.cancel()/releaseLock() cleanup on early pipeline teardown in the new generator form, a separate resource-leak issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1543,
+    "outputTokens": 677,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9849,
+  "requestId": "3458445b-40e8-4529-bd09-be91857d044f"
+}

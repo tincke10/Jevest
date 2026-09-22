@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change only collapses cachedInternal back into cached as a refactor, while the finding concerns invalidation of the cached normalized def when def.shape is later replaced, which the change does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 886,
+    "outputTokens": 206,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3974,
+  "requestId": "cea069d1-39da-4ed6-8016-bee45c65a026"
+}

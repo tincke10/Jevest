@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding flags that adding jwt/lambda to the shared Authorizer interface incorrectly advertises them for v1 REST events, whereas the change's fixed problem was the missing v2 authorizer fields, not their over-broad placement.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 258,
+    "outputTokens": 1080,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15110,
+  "requestId": "4b84c89e-ff8b-447c-b444-d248db5799f6"
+}

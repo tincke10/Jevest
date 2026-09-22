@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.92,
+  "reason": "The before code's `DOM_ENVIRONMENTS` set uses exact string matching (`Set.has`) and contains only `'jsdom'`/`'happy-dom'`, so package-qualified or path-based environment specifiers are not recognized, which the change to a denylist and the linked issue confirm.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 115,
+    "outputTokens": 3331,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 40460,
+  "requestId": "2de03f14-58b3-4d1a-b3ff-174b0a0349b1"
+}

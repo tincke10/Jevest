@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.97,
+  "reason": "The BEFORE regex `^[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$` accepts component-only strings such as \"123\", \"#\", \"*\", lone ZWJ, lone variation selector, and lone skin tone modifier, so the claimed behavior change is real.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1741,
+    "outputTokens": 683,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10053,
+  "requestId": "9b66425e-2fac-473a-8d82-98ec39687866"
+}

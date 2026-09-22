@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code has no `options.realm` documentation or option at all, so the claim that it is documented as `{string}` is false.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1656,
+    "outputTokens": 2686,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33579,
+  "requestId": "0928c193-f247-4760-9353-c011e512fff7"
+}

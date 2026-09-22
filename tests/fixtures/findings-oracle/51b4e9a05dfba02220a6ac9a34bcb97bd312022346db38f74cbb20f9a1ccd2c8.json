@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixes clearCache deleting _metadata.json and causing stale cache entries, while the finding only criticizes error logging that stringifies the error and loses the stack trace.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 143,
+    "outputTokens": 1606,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 22314,
+  "requestId": "ac7e8e41-35aa-4b00-b101-f035f16f8336"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code explicitly emits `if (${kVar} === \"__proto__\") continue;`, so the claimed missing skip is present there and own `__proto__` keys are not processed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1477,
+    "outputTokens": 807,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11295,
+  "requestId": "efff6dd8-9a33-4d53-b0c2-a80e285f65e9"
+}

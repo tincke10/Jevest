@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not contain the subscription inference helper exports (inferSubscriptionInput/inferSubscriptionOutput) that the claim says are being added to the public entrypoint; those lines appear only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 658,
+    "outputTokens": 772,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11678,
+  "requestId": "2af7b536-c48c-44e7-9713-a5082865375e"
+}

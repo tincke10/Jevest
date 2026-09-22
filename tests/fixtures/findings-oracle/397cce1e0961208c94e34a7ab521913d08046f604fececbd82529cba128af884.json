@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed a missing delete in the rejection path causing stale entries, while the finding criticizes the delete as unconditional and able to remove a reused id's new subscription, a different cleanup-correctness issue the change did not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1166,
+    "outputTokens": 1835,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25515,
+  "requestId": "bf3541df-ad07-4422-8ea4-1c8748f34262"
+}

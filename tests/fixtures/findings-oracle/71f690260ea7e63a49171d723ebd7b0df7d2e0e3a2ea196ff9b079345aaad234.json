@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a chore adding cache checks and removing dead local helpers, while the finding warns about a possible unused path import after the removal rather than a defect in the before code that this change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 132,
+    "outputTokens": 3030,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 41416,
+  "requestId": "f4345312-150d-4989-b2db-3937914dc803"
+}

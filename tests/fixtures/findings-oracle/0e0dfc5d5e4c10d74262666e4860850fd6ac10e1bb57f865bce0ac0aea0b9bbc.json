@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code uses `util.cachedInternal`, which the commit message identifies as the prototype-backed non-own-enumerable lazy box used by schema caches, so the claimed enumerable `value` getter and eager evaluation are not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 941,
+    "outputTokens": 3565,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 46901,
+  "requestId": "0f8a465b-f881-48e1-87b2-7d7b70338380"
+}

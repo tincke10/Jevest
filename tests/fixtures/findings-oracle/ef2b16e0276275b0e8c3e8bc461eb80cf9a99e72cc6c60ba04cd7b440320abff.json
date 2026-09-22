@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The fix specifically prevents the direct self-cycle where mockPrototype === parent; the finding instead argues the guard is incomplete for indirect prototype cycles, which is a different remaining defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1562,
+    "outputTokens": 2178,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 30224,
+  "requestId": "4892658e-b2bf-4454-866f-4af1a5274c5f"
+}

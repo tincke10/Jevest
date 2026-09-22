@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding describes a potential narrowing/regression where text/json is skipped by the newly added application-only regex, while the change's purpose was to add support for structured +json content types such as application/problem+json, not to address text/json.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 740,
+    "outputTokens": 665,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10387,
+  "requestId": "e28d148c-a963-4270-8b32-828f7cc581f1"
+}

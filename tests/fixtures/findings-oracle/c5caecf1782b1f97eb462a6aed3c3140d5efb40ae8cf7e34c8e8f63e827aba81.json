@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature refactor making z.properties() a schema, while the finding concerns a potential unused import or dead code after the export removal, not the functional problem the feature addresses.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 959,
+    "outputTokens": 1648,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24226,
+  "requestId": "88337497-9927-4042-b25c-3d2f8dee56c8"
+}

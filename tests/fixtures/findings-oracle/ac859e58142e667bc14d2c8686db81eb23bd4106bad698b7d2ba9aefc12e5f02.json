@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code reads only `_buffer`, not `_bytes`, so it cannot be making the claimed assumption about jsdom 28's `_bytes` byteOffset semantics.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 211,
+    "outputTokens": 1244,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14518,
+  "requestId": "60a7b8e8-685f-4c51-80fd-1d516384889b"
+}

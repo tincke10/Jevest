@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns about the behavior change and allocation cost introduced by adding the `= {}` initializer, while the commit is a perf change restoring that initializer, not a fix for the problem described.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 141,
+    "outputTokens": 3448,
+    "cacheReadInputTokens": 896,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 49046,
+  "requestId": "c40c1c1e-689b-4d90-8cfd-0b326fdaa554"
+}

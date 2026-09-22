@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.65,
+  "reason": "The claim is a conditional verification request about an export that does not exist in the BEFORE code, and confirming re-export/collision requires files outside the hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 955,
+    "outputTokens": 4109,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 53632,
+  "requestId": "71bc1fd5-4fa9-48ee-8aa7-80309263561f"
+}

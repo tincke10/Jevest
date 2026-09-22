@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding describes a double-fold/duplicate-processing bug for nested intersection arrays in finalize, while the change addresses the emitted allOf with additionalProperties being unsatisfiable by recording the allOf arrays for folding.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1327,
+    "outputTokens": 7956,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 107785,
+  "requestId": "1c98ab11-2123-4666-9997-bd4039ba02bd"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change makes only the synchronous safeParse error lazy, while the finding complains that safeParseAsync still finalizes eagerly, which is a different (unaddressed) inconsistency rather than the synchronous perf problem the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 204,
+    "outputTokens": 2478,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33194,
+  "requestId": "7fb7dbe9-8e55-4afc-8c90-6a8abb9142c1"
+}

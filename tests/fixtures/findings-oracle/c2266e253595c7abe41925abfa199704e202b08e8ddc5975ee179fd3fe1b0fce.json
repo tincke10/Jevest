@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.75,
+  "reason": "The BEFORE code unconditionally sets bag.minimum and bag.maximum to the format range, so a prior exclusive bound from .gt()/.lt() in bag.exclusiveMinimum/exclusiveMaximum does not stop the format range from being written, leaving a looser bag.minimum alongside the exclusive bound.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 311,
+    "outputTokens": 2929,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 36182,
+  "requestId": "16337476-f7ce-4aec-99e7-80548c08df54"
+}

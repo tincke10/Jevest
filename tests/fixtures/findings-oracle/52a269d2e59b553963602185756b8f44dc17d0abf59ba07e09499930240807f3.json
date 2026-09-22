@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance refactor replacing `util.cached` with `util.cachedInternal` for prototype-backed accessor boxes, not a fix for stale normalized defs under mutation, which is what the reviewer speculated about.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1088,
+    "outputTokens": 489,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8220,
+  "requestId": "4e8bb071-fd14-4494-8bd1-416ea7936d7d"
+}

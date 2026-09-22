@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The BEFORE code's streamToNodeStream has no try/finally, reader.cancel(), or releaseLock(), so any early termination or error leaves the ReadableStreamDefaultReader uncleaned, which is the same gap the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1655,
+    "outputTokens": 3239,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 41741,
+  "requestId": "e4c0125f-438a-48cd-97e2-131753bc61ec"
+}

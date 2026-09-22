@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not include 'chUaHighEntropyValues' in the type union, so it cannot accept that option and therefore cannot exhibit the claimed accepted-but-unmapped type-checker behavior.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 856,
+    "outputTokens": 1849,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23823,
+  "requestId": "13c17b42-346d-4763-8512-28b66d73ce1e"
+}

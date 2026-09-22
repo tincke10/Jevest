@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change is a feature addition of missing W3C directives to the type union, while the finding warns that type-only additions may be incomplete unless mapping/docs/tests are updated, which is a different concern than the missing directive itself.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 744,
+    "outputTokens": 2571,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 34905,
+  "requestId": "56da8037-3e15-46ed-bd39-3b2a1cc505f7"
+}

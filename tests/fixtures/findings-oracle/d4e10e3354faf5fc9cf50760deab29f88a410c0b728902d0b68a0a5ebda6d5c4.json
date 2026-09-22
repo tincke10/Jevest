@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code has no registration of the array in a context (the line `ctx.intersections.push(allOf)` is absent), so the claimed stale-entry problem cannot occur.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1287,
+    "outputTokens": 785,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12366,
+  "requestId": "0115116a-c7d9-4eb4-a3d3-af3e2d8fb8c8"
+}

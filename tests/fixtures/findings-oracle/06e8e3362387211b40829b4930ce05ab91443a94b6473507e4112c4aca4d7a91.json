@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed a missing output directory by adding mkdirSync, while the finding complains that the new mkdirSync is outside error handling, a different defect from the missing-directory failure.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1031,
+    "outputTokens": 532,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8022,
+  "requestId": "9cfb6a84-d13e-4b41-ad1e-fd270b0d1ab0"
+}

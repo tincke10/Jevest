@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed component-only strings being accepted as emoji, whereas the finding concerns component characters still being accepted alongside a valid pictograph, a different residual behavior outside the fix's intent.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1662,
+    "outputTokens": 587,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10040,
+  "requestId": "88d75b8d-257e-48e8-a851-aa57f0820395"
+}

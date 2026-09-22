@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature addition that introduces new `validate`/`validateAsync` methods, whereas the finding speculates about a sync `validate` throwing on async refinements—a method that does not exist in the BEFORE code shown, so it cannot describe the problem this change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 134,
+    "outputTokens": 2008,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24831,
+  "requestId": "62d68a5f-68a9-4a42-b8d9-efb30b400b64"
+}

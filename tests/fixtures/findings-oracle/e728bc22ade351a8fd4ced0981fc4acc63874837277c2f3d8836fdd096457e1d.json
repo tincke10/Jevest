@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain the `sharedViteServer` option at all, so it cannot silently ignore that option when set on a project config.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 142,
+    "outputTokens": 1842,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 22901,
+  "requestId": "cd6bdf90-31ff-47d1-a166-9b2d27e916d1"
+}

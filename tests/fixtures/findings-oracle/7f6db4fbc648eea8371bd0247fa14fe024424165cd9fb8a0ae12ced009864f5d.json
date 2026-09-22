@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no hoisted allowHeadersStr constant, so the described drop of the per-request fallback is a risk introduced by the after change, not a problem present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 949,
+    "outputTokens": 639,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8962,
+  "requestId": "0896559b-cc7b-4576-85ed-835637f07085"
+}

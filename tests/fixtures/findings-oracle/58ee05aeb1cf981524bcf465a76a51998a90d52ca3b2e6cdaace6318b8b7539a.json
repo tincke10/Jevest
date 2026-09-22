@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code imports CoverageMap and Instrumenter types from the original 'istanbul-lib-coverage'/'istanbul-lib-instrument' packages, not from the @vitest fork, so there are no two nominally distinct declaration sources in the before hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1371,
+    "outputTokens": 767,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10418,
+  "requestId": "ab59b3f2-496b-4520-a6e0-7b8d76563711"
+}

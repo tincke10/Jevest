@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding questions the stability and resolution of the new @default true annotation, whereas the change was a deliberate feature making static parsing the default, not a fix for a doc/implementation mismatch.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 585,
+    "outputTokens": 1909,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26671,
+  "requestId": "bdaa71e3-98d4-41ef-84e5-1941126f8a69"
+}

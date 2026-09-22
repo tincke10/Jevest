@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding is about missing rollback of already-written content after a throw, whereas the change fixes only the indent leak, and the linked issue states compileChild already rolls back emitted content and counters.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2236,
+    "outputTokens": 540,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13662,
+  "requestId": "c417808a-2ef0-463c-befa-85823ce4632c"
+}

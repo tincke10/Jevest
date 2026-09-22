@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.96,
+  "reason": "The BEFORE code contains only the findIndex predicate, with no inline isMatchFirst head-check, so the claimed predicate duplication does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1240,
+    "outputTokens": 588,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8191,
+  "requestId": "034edf56-8f81-421d-80e1-f9d68157460a"
+}

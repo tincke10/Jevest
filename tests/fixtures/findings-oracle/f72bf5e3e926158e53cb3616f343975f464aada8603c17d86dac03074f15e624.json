@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed O(N^2) reconciliation by adding a head-match fast path, while the finding concerns the scanBudget/indexing check being skipped in that fast path, not the performance defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1161,
+    "outputTokens": 1042,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14896,
+  "requestId": "7016fc0a-c418-4e74-95ae-d1c7eb7d92da"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change added the direct regexes import to enable tree-shaking and support z.currencyCode(), while the finding speculates about an unused, duplicate, or colliding import, which is a different issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1109,
+    "outputTokens": 691,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10494,
+  "requestId": "6fc67f87-0996-4bdb-896b-00fa33cdf6d9"
+}

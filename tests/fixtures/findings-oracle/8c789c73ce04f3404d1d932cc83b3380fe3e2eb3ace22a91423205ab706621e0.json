@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The commit is a feature implementing OpenAPI cyclic type support and schema type changes, not a fix for a potential compile break from removing the log alias.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1143,
+    "outputTokens": 515,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8222,
+  "requestId": "b140945d-456d-4d4e-9348-6dfc7b08d0a6"
+}

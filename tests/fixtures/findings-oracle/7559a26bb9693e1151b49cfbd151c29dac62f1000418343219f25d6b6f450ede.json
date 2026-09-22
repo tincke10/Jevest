@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.6,
+  "reason": "The version field likely participates in the cache key, but whether stale cache directories are pruned is not visible in this hunk, so the leak cannot be confirmed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1133,
+    "outputTokens": 2100,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27904,
+  "requestId": "1f3d40f5-7a07-4755-9a3f-0916987e806a"
+}

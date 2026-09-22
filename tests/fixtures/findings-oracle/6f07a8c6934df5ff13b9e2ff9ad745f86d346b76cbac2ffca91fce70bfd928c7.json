@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding describes a possible desynchronization introduced by swapping mayOutputUndefined for mayOmitUndefined, whereas the change fixes the prefault(undefined) object-key omission by using the correct optionality-based omit predicate.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2312,
+    "outputTokens": 4051,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 57261,
+  "requestId": "821d83c4-83ca-4a99-b897-c717e7a0608a"
+}

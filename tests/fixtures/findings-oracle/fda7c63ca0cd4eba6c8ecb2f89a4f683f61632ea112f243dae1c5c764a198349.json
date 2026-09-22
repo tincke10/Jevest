@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature addition adding validate/validateAsync methods, while the finding describes an inherent limitation of the newly introduced async method, not a problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1154,
+    "outputTokens": 1225,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16637,
+  "requestId": "b04bea2d-1e9e-4c47-a405-2178c4b1363d"
+}

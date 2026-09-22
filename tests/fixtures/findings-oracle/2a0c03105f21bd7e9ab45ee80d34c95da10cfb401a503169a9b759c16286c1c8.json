@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code contains no `contentType` variable or truthiness check; it simply calls `new Response(body)[key]()`, so the claimed conflation does not exist there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 112,
+    "outputTokens": 363,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4959,
+  "requestId": "9a628c5f-9fd8-4a49-92fd-82d24033d2b2"
+}

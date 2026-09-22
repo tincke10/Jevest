@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The claim describes a risk introduced by the change from default import to namespace import, but the BEFORE code uses the default import and does not exhibit the described undefined-member problem.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1411,
+    "outputTokens": 517,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7033,
+  "requestId": "d9176491-7c71-4c19-b072-c0b9d8906aa7"
+}

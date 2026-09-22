@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding speculates about the newly imported `Seen` type being unused or introducing traversal-state coupling, whereas the change fixes record numeric keys being emitted as invalid JSON Schema property names/required values.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1414,
+    "outputTokens": 215,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5465,
+  "requestId": "02d3c51e-62b9-47f8-8cc0-e26c62ba6788"
+}

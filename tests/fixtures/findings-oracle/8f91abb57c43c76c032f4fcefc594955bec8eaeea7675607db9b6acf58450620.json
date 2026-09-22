@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature refactor switching to @vitest/istanbuljs packages, not a bugfix; the finding describes a potential broken import/reference issue, not the package-switch purpose.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1221,
+    "outputTokens": 3017,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 37960,
+  "requestId": "45b2f578-a789-44d5-9985-922ebb724323"
+}

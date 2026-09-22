@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not set prewarmModules to false, so module prewarming was still enabled for the node environment, meaning the claimed loss or regression is not present in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 788,
+    "outputTokens": 1742,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23278,
+  "requestId": "76f53776-ad7b-482c-9456-9b7a81db7a16"
+}

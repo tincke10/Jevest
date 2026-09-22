@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance optimization that intentionally adds abortEarly: true for early exit, while the finding complains that this override changes callback behavior, describing a side effect rather than the early-exit problem being solved.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 197,
+    "outputTokens": 2062,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27446,
+  "requestId": "fc52780e-ed9d-4387-a583-85a8668ec860"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds `QUERY` to the uppercase method checks but still compares raw uppercase strings, so it does not address the finding's concern about a lowercase or non-normalized `c.req.method` skipping the QUERY case.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 194,
+    "outputTokens": 1573,
+    "cacheReadInputTokens": 896,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21042,
+  "requestId": "681be7c0-812c-4eb8-a859-39fe36e48da2"
+}

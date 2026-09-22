@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is a performance concern about the newly added unconditional filter, whereas the change was a bugfix for incorrect toMatchObject behavior with asymmetric matchers.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1614,
+    "outputTokens": 370,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6442,
+  "requestId": "03c8150b-7b11-429b-9087-82307a11acc8"
+}

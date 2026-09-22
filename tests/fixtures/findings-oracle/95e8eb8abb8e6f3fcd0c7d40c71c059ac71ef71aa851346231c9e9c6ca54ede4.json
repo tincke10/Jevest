@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code has no try/finally block, so getWriter() is not called in a finally and cannot mask a pipeTo rejection.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1322,
+    "outputTokens": 728,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10239,
+  "requestId": "75b700a8-f42e-4b15-bb46-c2483e11abf5"
+}

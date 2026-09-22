@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "In the BEFORE code the synchronous path also constructs the error eagerly inside the returned object, so there is no divergence between safeParse and safeParseAsync; the laziness only appears in the AFTER change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 1166,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16217,
+  "requestId": "c64bff8c-0431-4f77-a001-2a8d8df0c3d3"
+}

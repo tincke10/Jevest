@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding complains that browser mode now loses user-configured defines, whereas the change fixed browser mode applying defines with extra double quotes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1929,
+    "outputTokens": 1132,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16507,
+  "requestId": "fd0ccb9c-9c75-40fe-bd08-872e5a32f23f"
+}

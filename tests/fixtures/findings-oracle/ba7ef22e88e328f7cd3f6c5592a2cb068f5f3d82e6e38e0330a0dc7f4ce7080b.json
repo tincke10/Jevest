@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a potential new silent-corruption issue introduced by preserving Content-Type, whereas the change fixed the original failure where the missing Content-Type made formData() throw.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1724,
+    "outputTokens": 612,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9593,
+  "requestId": "f86feaff-64dd-4452-9687-a1106313ee54"
+}

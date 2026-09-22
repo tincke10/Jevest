@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain the `type Seen` import, so the claim that it may be unused or introduce new traversal-state coupling does not apply to the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1526,
+    "outputTokens": 1073,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16356,
+  "requestId": "ac543132-5d00-4e3c-b135-3ae4872b350f"
+}

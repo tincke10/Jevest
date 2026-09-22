@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding flags possibly unused type imports in the hunk, while the change is a feature replacing local JSON schema types with official OpenAPI types and is not addressing unused imports.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 81,
+    "outputTokens": 728,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10500,
+  "requestId": "96ebd062-f1cc-4fdd-ae14-c37822fa19e5"
+}

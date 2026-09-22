@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no `node:fs` import at all, so the claimed unused `fs` import cannot be present in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 217,
+    "outputTokens": 613,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8107,
+  "requestId": "36b5fa90-e6b9-486d-b108-f4031c0f1d00"
+}

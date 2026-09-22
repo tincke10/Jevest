@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The BEFORE code reads only `_buffer`, which is undefined on jsdom 28+, and `new NodeBlob_([undefined])` produces a Blob whose content is the literal string \"undefined\", exactly the silent degradation the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1554,
+    "outputTokens": 4258,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 50413,
+  "requestId": "9fa77460-138e-4fb4-85be-6cfe7b1b324f"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.7,
+  "reason": "The before code does decrement immediately after `fn(this)`, so an async callback would misbehave, but the hunk shows no caller that passes one, so reachability is unverified.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1667,
+    "outputTokens": 4371,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 61864,
+  "requestId": "217d6222-2706-400b-ad1f-219ab1a79461"
+}

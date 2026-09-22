@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding raises a concern about the behavior change introduced by stripping subset-equality testers, not the original bug where asymmetric matchers inside toMatchObject incorrectly passed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 235,
+    "outputTokens": 472,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6919,
+  "requestId": "15849653-3631-4078-998b-db27217ddec2"
+}

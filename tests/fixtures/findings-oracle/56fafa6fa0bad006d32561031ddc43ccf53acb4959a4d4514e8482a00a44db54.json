@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The BEFORE code did not set preventAbort, so a pipeTo() rejection aborts the destination WritableStream rather than leaving it still writable/unmarked as aborted as the claim assumes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1304,
+    "outputTokens": 6029,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 73988,
+  "requestId": "47c1fa2e-a0db-4f77-a94a-c0076128e57a"
+}

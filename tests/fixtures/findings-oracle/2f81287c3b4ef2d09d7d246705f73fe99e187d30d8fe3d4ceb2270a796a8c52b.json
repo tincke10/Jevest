@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code has no snapshotChecks function or array-copy mechanism; the described shallow snapshot was introduced by the change, so the claim does not apply to the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1482,
+    "outputTokens": 3951,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 51364,
+  "requestId": "2547c53f-c341-4fc6-b975-06d55e31da99"
+}

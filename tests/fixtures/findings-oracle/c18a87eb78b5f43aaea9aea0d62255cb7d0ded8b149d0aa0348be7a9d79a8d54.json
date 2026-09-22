@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The BEFORE code does not read or await `request.bodyCache.formData`; that cached FormData reuse path is introduced only in the AFTER diff, so the described cached-rejection problem is not present in the before code shown.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 67,
+    "outputTokens": 18294,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 218724,
+  "requestId": "afa88b1d-e8d2-4ec6-b37c-c83bad73f3e9"
+}

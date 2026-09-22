@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.96,
+  "reason": "The BEFORE code defines a whitelist (DOM_ENVIRONMENTS) that would cause custom environments to skip VM pool measurement, not treat them as VM candidates.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1136,
+    "outputTokens": 1587,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21736,
+  "requestId": "7becc029-5eb5-4992-beba-9b425feb33c0"
+}

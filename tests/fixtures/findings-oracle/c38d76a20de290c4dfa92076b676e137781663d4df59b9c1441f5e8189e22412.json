@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding critiques the new helper's empty-string sentinel for conflating outside-root and root===distDir cases, whereas the change fixed the original blind-slice false Vitest import resolution bug.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 208,
+    "outputTokens": 3311,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 44689,
+  "requestId": "3e2591e5-045a-4fde-8d82-c8754df52e21"
+}

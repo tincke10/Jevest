@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding describes observable-shape side effects of the lazy error accessor introduced by the change, not the performance problem (eager construction of errors in failing safeParse) that the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 248,
+    "outputTokens": 501,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8801,
+  "requestId": "68a8a67e-0717-4284-a786-adf727b33ade"
+}

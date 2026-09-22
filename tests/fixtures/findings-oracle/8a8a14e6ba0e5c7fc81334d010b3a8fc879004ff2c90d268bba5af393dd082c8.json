@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change was a performance optimization to pre-join static header arrays, while the finding describes a semantic side-effect about later array mutations not being reflected, not the per-request join overhead the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 751,
+    "outputTokens": 509,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7486,
+  "requestId": "3b508810-f30a-404d-a7f1-746761845dfe"
+}

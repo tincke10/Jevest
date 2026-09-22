@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "The BEFORE code does not contain the getRelativeDistDir helper or its empty-string return, so the claimed empty-string conflation is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 192,
+    "outputTokens": 1416,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17956,
+  "requestId": "3129a1cb-4791-4fb7-b8f2-0748221c00fe"
+}

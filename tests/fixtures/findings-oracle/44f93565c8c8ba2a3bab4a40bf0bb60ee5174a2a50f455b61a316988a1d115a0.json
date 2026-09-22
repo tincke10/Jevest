@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding critiques insufficient validation of minProperties/maxProperties values in the newly added guard, whereas the change fixed these keywords being silently ignored altogether.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1887,
+    "outputTokens": 1522,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21589,
+  "requestId": "09f919ca-464d-483d-9734-d97b2d93705a"
+}

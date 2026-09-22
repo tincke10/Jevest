@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain `chUaHighEntropyValues` (it is only added in the AFTER change), so the claimed invalid token problem is not present in the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 930,
+    "outputTokens": 1605,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19012,
+  "requestId": "ace79fdb-f86a-4091-89a2-6119c8976d51"
+}

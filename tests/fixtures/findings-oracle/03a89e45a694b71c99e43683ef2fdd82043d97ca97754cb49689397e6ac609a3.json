@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature addition adding QUERY caching, not a bugfix for null sha256 digests, and the finding speculates about a potential bug in the new code rather than a defect in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 767,
+    "outputTokens": 1354,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18313,
+  "requestId": "7edb6667-4e00-4562-81c1-603bef9c14cc"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change fixed the missing error message for cross-realm/VMBuiltIn errors by using getMessage before Object.assign, whereas the finding warns that Object.assign can overwrite intrinsic Error fields such as stack/name/message from arbitrary cause data, which is a different hazard.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1340,
+    "outputTokens": 1720,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23210,
+  "requestId": "0ed20ab9-9caf-4d07-a4f8-04a3eb7ad807"
+}

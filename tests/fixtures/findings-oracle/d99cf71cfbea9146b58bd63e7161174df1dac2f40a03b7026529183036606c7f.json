@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code contains no mapping of empty arrays to undefined; the `exposeHeadersStr`/`allowHeadersStr` ternary mapping is introduced only in the AFTER code, so the claimed problem is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 243,
+    "outputTokens": 708,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10345,
+  "requestId": "75dbb063-19cf-4c34-8db1-01a7f61462d1"
+}

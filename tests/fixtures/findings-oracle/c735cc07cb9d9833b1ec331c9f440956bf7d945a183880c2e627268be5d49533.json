@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change added missing jwt/lambda optional fields to fix a TypeScript access error, while the finding is about the independent optionality of authorizer variants not being a discriminated union, a type-safety concern the change does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1393,
+    "outputTokens": 927,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14546,
+  "requestId": "788858c1-c1e3-4b81-848c-91b6243f2d34"
+}

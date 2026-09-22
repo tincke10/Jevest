@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed the boolean logic so non-number invalid types (booleans, objects, arrays, undefined) throw, while the finding is about Infinity and non-integer numbers still being accepted, a separate validation gap not addressed by the fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1337,
+    "outputTokens": 291,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5841,
+  "requestId": "53ffc450-175b-40c4-99a5-1572c23f6dda"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change removed unused exports as dead code, while the finding raises a potential API-breakage concern about unexporting CONFIG_EXTENSIONS, not the dead-code problem the cleanup addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 601,
+    "outputTokens": 1153,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17024,
+  "requestId": "6dad6a4d-dc56-4545-a9f4-f7be0cde320e"
+}

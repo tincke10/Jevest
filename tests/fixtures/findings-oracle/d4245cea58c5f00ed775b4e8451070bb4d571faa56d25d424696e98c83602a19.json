@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shows `@experimental` on `staticParseConcurrency`, not `@default os.availableParallelism()`, so the claimed JSDoc default does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 726,
+    "outputTokens": 2380,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25589,
+  "requestId": "af99331b-fdbc-4598-b542-96b73d65f6c8"
+}

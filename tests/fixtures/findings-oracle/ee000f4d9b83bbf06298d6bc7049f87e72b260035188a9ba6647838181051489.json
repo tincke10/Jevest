@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code's documented default allowMethods does not include QUERY, so the described broadening of advertised methods is a consequence of the change, not a problem already present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 951,
+    "outputTokens": 631,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9188,
+  "requestId": "2cbe3798-77f4-44ca-bad1-d95d0390d361"
+}

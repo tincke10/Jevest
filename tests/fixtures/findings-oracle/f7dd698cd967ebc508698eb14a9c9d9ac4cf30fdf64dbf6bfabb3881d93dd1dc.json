@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding critiques the added q > 0 filter for dropping NaN/undefined-quality entries, whereas the change fixed matching entries with explicit quality value 0.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1350,
+    "outputTokens": 683,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9867,
+  "requestId": "7fb0f079-234a-44ed-a34b-364e51de0513"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change fixed the inconsistent ordering between ONLY_WILDCARD and TAIL_WILDCARD by special-casing b === TAIL in the a-side branch, whereas the finding criticizes the resulting one-sided implementation as fragile rather than describing that original ordering defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1033,
+    "outputTokens": 6441,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 80588,
+  "requestId": "09d7c335-6457-481c-9cac-3e3195fa0a28"
+}

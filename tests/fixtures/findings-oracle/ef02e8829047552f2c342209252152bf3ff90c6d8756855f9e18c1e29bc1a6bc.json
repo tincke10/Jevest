@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code contains no `getMessage` function or `'message' in cause` check, so the described conversion of an explicitly-undefined message to the string \"undefined\" cannot occur.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 276,
+    "outputTokens": 3211,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 36979,
+  "requestId": "01235cd2-952e-4fff-88d6-18486fd3a60e"
+}

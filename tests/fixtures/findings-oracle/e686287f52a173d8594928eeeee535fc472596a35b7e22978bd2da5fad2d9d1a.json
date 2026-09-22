@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about async callbacks returning a Promise and indent restoring too early, while the change fixed synchronous child-generator throws leaking indent by moving the decrement into a finally block.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1555,
+    "outputTokens": 195,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8146,
+  "requestId": "a96ab2a8-f60f-4a52-9a4a-63594c270eea"
+}

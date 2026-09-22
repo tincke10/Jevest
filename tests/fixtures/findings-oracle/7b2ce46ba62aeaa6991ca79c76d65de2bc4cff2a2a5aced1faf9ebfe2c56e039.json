@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change alters the ordering between ONLY_WILDCARD and TAIL_WILDCARD (and TAIL self-comparison), but it does not make compareKey(a, a) return 0 for equal wildcard strings, so the reviewer's self-comparison contract violation is not the problem this fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1039,
+    "outputTokens": 1819,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23005,
+  "requestId": "2a7a68ab-e671-450e-a2b4-2ccb351af71f"
+}

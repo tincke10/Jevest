@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance optimization to load rrweb once per worker, while the finding is about the new no-op catch silently swallowing import failures, which is not the problem the commit addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 197,
+    "outputTokens": 1114,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14224,
+  "requestId": "c1dff9a8-e64c-4702-a3d5-17ad994722e9"
+}

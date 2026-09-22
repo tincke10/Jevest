@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code does not document `--server-url` in the header (only the AFTER code adds it), so the claimed documented-but-unsupported flag is not present in the before version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 945,
+    "outputTokens": 950,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12319,
+  "requestId": "130fc0f7-8c65-4454-95ca-10d7b06241ab"
+}

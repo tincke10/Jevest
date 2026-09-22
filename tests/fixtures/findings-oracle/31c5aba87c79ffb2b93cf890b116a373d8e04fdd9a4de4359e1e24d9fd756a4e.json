@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses `Shape extends core.$ZodShape` with no `core.$ZodType<unknown, T[k]>` constraint, so the claimed Input-vs-Output issue is not present in that hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 315,
+    "outputTokens": 486,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6683,
+  "requestId": "29e79d3a-7562-453b-bcca-c01d37a925b5"
+}

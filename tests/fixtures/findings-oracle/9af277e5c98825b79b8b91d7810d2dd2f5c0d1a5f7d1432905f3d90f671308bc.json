@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change makes record input keys optional when the value schema is optional/default on input, while the finding concerns whether ctx.io tracks direction flips in nested pipes/transforms.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 232,
+    "outputTokens": 1241,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17583,
+  "requestId": "da5f43dc-3393-41ed-a4c9-ba38f843e8b9"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change skips unsafe methods and non-OK (4xx/5xx) responses only, while the finding concerns 206/204 responses where c.res.ok is still true, so it is not the defect the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 260,
+    "outputTokens": 973,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12793,
+  "requestId": "105ede56-0946-4483-b5c7-e9b6e316cbea"
+}

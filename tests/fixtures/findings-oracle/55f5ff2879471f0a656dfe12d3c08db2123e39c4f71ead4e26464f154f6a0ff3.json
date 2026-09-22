@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not forward or enforce minProperties/maxProperties at all, so a contradictory pair cannot produce a silently unsatisfiable schema; the linked issue confirms they were silently ignored instead.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 145,
+    "outputTokens": 735,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11283,
+  "requestId": "cc2e5f9e-b901-4ebd-bba1-0ef5edb3e6a4"
+}

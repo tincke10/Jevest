@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change performs a dead-code cleanup by unexporting module-internal constants for knip, whereas the finding raises a source-compatibility concern about removing the export, not the dead-code problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 617,
+    "outputTokens": 975,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13181,
+  "requestId": "ad1202f7-abc3-4d61-a5b9-ea7ec3c1ef68"
+}

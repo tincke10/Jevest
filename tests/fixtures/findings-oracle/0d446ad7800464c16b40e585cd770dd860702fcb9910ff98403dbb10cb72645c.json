@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The before code's metadata write (later extracted unchanged into writeMetadata) uses writeFile, and the visible JSON.parse catch{} swallows corruption, so a partial write is treated as missing metadata.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 152,
+    "outputTokens": 3990,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 54351,
+  "requestId": "691135aa-c883-41db-a972-04f17e3d4bd0"
+}

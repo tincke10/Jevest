@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown has no process.exitCode assignment in the static-parse branch, so the claimed global mutation side effect is introduced by the AFTER code, not present before.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1585,
+    "outputTokens": 1518,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19572,
+  "requestId": "dc54712d-9b6f-4728-8f0a-778466325466"
+}

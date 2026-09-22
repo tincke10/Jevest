@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.7,
+  "reason": "The commit is a feature addition, not a bugfix, and the finding only flags that the shown hunk lacks the implementation wiring rather than describing a defect the change was meant to fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 833,
+    "outputTokens": 5470,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 68602,
+  "requestId": "040128fd-4055-4079-890b-c2ceb81047de"
+}

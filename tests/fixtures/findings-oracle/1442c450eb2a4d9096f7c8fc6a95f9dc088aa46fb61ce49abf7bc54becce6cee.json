@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes a regression where parseBody threw after formData() cached the body, while the finding raises a different behavior change that the new cache-hit path skips Content-Type validation.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1260,
+    "outputTokens": 1121,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15809,
+  "requestId": "3136323a-cf0b-4c6e-96e5-63596a5d2a3f"
+}

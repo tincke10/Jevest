@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no `definite` flag, so the claimed mutable soundness flag does not exist there; only the optional `code` string is mutable.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 167,
+    "outputTokens": 461,
+    "cacheReadInputTokens": 1408,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7075,
+  "requestId": "a151fc33-695e-4b30-a37f-dbcd8cdc65b8"
+}

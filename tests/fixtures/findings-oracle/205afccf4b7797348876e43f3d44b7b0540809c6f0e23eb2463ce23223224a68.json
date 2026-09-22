@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before constructor contains no `browserTraceDomSnapshotPromise` assignment or trace-view check at all, so the claimed conditional assignment and non-reactivity do not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 189,
+    "outputTokens": 1743,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 22006,
+  "requestId": "f5aecb34-c469-4562-a776-a39c7c3242a6"
+}

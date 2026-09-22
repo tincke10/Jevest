@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance fix that introduces early rrweb loading, while the finding complains about a getConfig() call that is absent from the before code and unrelated to that fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 625,
+    "outputTokens": 875,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12650,
+  "requestId": "0775f0d6-5320-4040-a3b8-b7b94a2c8105"
+}

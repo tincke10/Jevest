@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The commit message and linked issue confirm that before the change method/status checks only applied when If-None-Match was '*', so an upstream ETag on a non-2xx response could still match and return 304.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 921,
+    "outputTokens": 2033,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24729,
+  "requestId": "ab27dfd6-300d-4c1a-86db-b3f8b5005d00"
+}

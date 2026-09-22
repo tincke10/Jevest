@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The before code caches `normalizeDef(def)` via `cachedInternal` immediately after the shape setter, and since neither the setter nor any shown code resets that cache when `def.shape` is replaced, `_normalized.value` can indeed hold a stale normalized def.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 998,
+    "outputTokens": 6046,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 80940,
+  "requestId": "3deadff9-9d82-4a13-9def-a613b6b36a11"
+}

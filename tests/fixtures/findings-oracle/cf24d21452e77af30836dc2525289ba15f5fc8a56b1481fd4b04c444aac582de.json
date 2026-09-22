@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes the CLI exit code by setting `process.exitCode = 1` in the static-parse branch, while the finding is about the unchanged return value (`unhandledErrors: []`) leaving programmatic callers with no failure indication.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1452,
+    "outputTokens": 1832,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24681,
+  "requestId": "7919ba94-9b08-4186-90c8-747828184724"
+}

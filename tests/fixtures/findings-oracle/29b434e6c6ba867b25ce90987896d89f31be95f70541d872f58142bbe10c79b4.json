@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no early cache-hit return and always calls bufferToFormData with the request's Content-Type, so the described Content-Type bypass cannot occur in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1372,
+    "outputTokens": 2511,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 28352,
+  "requestId": "f35bf7c9-2afa-452f-8f6a-916c970db8ed"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code contains the detailed invariant comment, so the claimed loss of documentation is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2177,
+    "outputTokens": 1044,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20411,
+  "requestId": "73625f47-99b6-446c-ac3e-44fd9f72d667"
+}

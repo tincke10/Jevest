@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the mapped-type restriction itself for breaking callers that add extra properties, whereas the change intentionally introduced that restriction to fix missing autocomplete and wrong property types, not to address a regression.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 948,
+    "outputTokens": 474,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8923,
+  "requestId": "f2196603-4eb4-4eed-825b-2834828468bd"
+}

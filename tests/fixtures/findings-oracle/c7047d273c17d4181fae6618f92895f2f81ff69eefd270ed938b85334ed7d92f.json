@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claimed problem is a behavior change introduced by the AFTER code, not a defect present in the BEFORE code, where bag.minimum/maximum are unconditionally overwritten with the format's range rather than narrowed by user bounds.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 274,
+    "outputTokens": 3125,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 42974,
+  "requestId": "cff88330-1fcc-43af-97f8-da9c9e54666a"
+}

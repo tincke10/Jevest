@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code joined the arrays on each request, so the described snapshot problem (late mutations no longer taking effect) did not exist until the after change pre-joined them.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 863,
+    "outputTokens": 2405,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31385,
+  "requestId": "26818a72-a04b-4fb5-b937-56dc9c490aa2"
+}

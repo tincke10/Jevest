@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.65,
+  "reason": "invalid_union options are discriminator literal values (primitives), so `${o}` does not actually receive objects/nested arrays and the claimed '[object Object]' rendering is not reachable.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 65,
+    "outputTokens": 9688,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 126433,
+  "requestId": "9215c139-3f20-4670-a06a-e64e70e04b48"
+}

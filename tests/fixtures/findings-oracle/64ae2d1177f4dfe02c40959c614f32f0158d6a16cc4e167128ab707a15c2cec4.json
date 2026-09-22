@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not re-export INVALID at all; the claimed leak exists only in the AFTER code that added it to the export list.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1000,
+    "outputTokens": 741,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10226,
+  "requestId": "6e077d43-9505-4f3e-82c5-2c6223e05f39"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code passes `customTesters` unchanged into `asymmetricMatch`, so it does not strip the subset-equality tester; the claimed breaking deviation is introduced only by the AFTER change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1755,
+    "outputTokens": 1503,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18903,
+  "requestId": "718edff5-bca6-4525-935a-fe596aca3cb3"
+}

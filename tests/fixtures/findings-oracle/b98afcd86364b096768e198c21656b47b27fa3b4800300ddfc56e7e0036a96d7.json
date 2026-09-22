@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed memory retention by making the memoizer state weak, whereas the finding concerns WeakMap/WeakSet throwing on primitive keys, an unrelated side effect of that switch.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 260,
+    "outputTokens": 1005,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15727,
+  "requestId": "56699f1d-986f-4ca7-8002-c99346f31fbc"
+}

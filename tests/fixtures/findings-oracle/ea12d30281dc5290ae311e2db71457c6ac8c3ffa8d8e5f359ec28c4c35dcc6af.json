@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The before code does not contain the `snapshotChecks` helper; it was added by this change, so the claimed mutation cannot be present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1557,
+    "outputTokens": 2384,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26101,
+  "requestId": "a275068d-ea9b-4f6b-8014-31d8f551254a"
+}

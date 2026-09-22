@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds a configurable `streamHeader` option (feature), not a fallback or safe handling for non-JSONL responses that the finding describes as a risk of using the standard Accept header.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 262,
+    "outputTokens": 1733,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24022,
+  "requestId": "a1dc5522-80cb-4c6b-8433-388b6442929e"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code's Authorizer interface contains only the iam variant with no jwt or lambda members, so the claimed v2-only field addition and resulting v1 contamination is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 242,
+    "outputTokens": 2213,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27127,
+  "requestId": "769d7041-3696-419e-a90c-f2b21a8bfeac"
+}

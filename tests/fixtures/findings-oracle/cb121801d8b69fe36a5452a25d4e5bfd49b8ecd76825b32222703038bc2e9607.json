@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change fixes metadata loss caused by clearCache deleting the directory, whereas the finding complains about swallowed write failures, and the added writeMetadata still swallows errors.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 166,
+    "outputTokens": 5410,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 71481,
+  "requestId": "d379d12b-329d-4e9a-8a15-1c0f0e306adf"
+}

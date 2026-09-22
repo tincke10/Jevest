@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code contains no validate or validateAsync members, so the claimed breaking non-optional interface additions and predicate assignability issue are not present in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1175,
+    "outputTokens": 664,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9490,
+  "requestId": "cfa794a1-32c5-4ce3-a230-b0e3742c0c48"
+}

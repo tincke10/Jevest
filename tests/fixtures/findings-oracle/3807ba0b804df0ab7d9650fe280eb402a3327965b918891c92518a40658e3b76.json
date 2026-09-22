@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "In the BEFORE code the JSDoc still documents the old default list without 'QUERY', so there is no mismatch between documentation and implementation regarding QUERY; the claimed drift only exists in the AFTER hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 891,
+    "outputTokens": 1261,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16179,
+  "requestId": "461ea75c-aa86-40ac-80d5-333f66029cc4"
+}

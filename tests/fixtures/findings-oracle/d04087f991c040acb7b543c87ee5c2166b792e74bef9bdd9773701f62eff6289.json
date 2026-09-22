@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain `path.slice(0, -1).join('.')` or any coercion guard, so it cannot produce the claimed `\"tRPC.proxy()\"` debug string; that line exists only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1439,
+    "outputTokens": 690,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9565,
+  "requestId": "070c2fea-2873-465c-9827-9816b20ca76d"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.7,
+  "reason": "The before static branch unconditionally returned `unhandledErrors: []` after `parseSpecifications`, so parse failures recorded on test modules were not surfaced to programmatic callers.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1564,
+    "outputTokens": 6801,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 83230,
+  "requestId": "b69aae07-4d4f-46bf-83a5-cdecd5d65ee7"
+}

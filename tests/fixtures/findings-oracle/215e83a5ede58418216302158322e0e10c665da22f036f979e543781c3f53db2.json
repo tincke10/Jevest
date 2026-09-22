@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code uses `Record<string, any>`, which has only a string index signature and thus does not contain the added number/symbol indexes or the altered `keyof Variables` that the finding describes as a problem; that change is introduced by the after code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1302,
+    "outputTokens": 5397,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 64204,
+  "requestId": "0f714fcf-d902-4769-9d4f-1d219f15aa41"
+}

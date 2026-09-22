@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The BEFORE code imports UserConfig and FetchClient, not the Plugins namespace, so the claimed newer-version dependency from the Plugins import is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 167,
+    "outputTokens": 1205,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14753,
+  "requestId": "1be58b28-c0b0-466c-8f78-06f774f6a9e5"
+}

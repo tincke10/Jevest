@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code has no updated a-side branch or new ONLY/TAIL wildcard ordering; the described asymmetry belongs to the AFTER change and is not present in the shown prior code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1017,
+    "outputTokens": 7475,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 89857,
+  "requestId": "61df3b7d-0518-4ba4-980d-728ec02ca038"
+}

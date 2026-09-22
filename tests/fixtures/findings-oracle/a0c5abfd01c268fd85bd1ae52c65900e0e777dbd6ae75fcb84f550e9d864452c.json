@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no `accept.q > 0` filter at all; it sorts and matches all entries, so the claimed q>0 discarding of NaN/undefined cannot occur before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1462,
+    "outputTokens": 1137,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14382,
+  "requestId": "a9f96750-9c46-486c-81b1-39a859f566d9"
+}

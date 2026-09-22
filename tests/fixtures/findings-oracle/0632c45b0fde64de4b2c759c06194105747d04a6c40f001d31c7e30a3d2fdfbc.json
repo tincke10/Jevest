@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns the non-void return value of a bound Set.add alias being used as a callback, while the change fixes a stack overflow caused by spying on Set.prototype.add and using the spied add for internal dirty-state tracking.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1782,
+    "outputTokens": 885,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12487,
+  "requestId": "d8e515af-7bb7-4c8f-ad0f-1010efe473ea"
+}

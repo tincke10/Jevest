@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code defines HeyAPIResolvers with Exclude<..., undefined> and does not export it, so it neither includes undefined nor widens the public API; the claimed issue is introduced only by the after code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1243,
+    "outputTokens": 2175,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24538,
+  "requestId": "59ab8c8f-23ac-4092-abcb-21e58c9d6770"
+}

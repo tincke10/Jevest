@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code actually lacks process.exitCode in the staticParse branch while collectTests already sets it internally (as the issue/PR confirm), so the claimed asymmetry is reversed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 134,
+    "outputTokens": 4436,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 55763,
+  "requestId": "22576522-5f99-47fe-bd71-0a495fcd18df"
+}

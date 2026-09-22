@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code still has `@experimental` and no `@default true`, so it does not assert static parsing is on by default or promote the flag to stable API.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 697,
+    "outputTokens": 1672,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21297,
+  "requestId": "2f59b7e0-b250-404d-8b28-cc6a54c8ba2e"
+}

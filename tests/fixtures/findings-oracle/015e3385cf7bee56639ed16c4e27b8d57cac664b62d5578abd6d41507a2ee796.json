@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The claimed new `* as regexes` import is not present in the BEFORE code, so the unused/duplicate/shadow problem cannot exist there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1093,
+    "outputTokens": 1073,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14379,
+  "requestId": "0b15b910-fecf-46e4-b470-5628f36a47c2"
+}

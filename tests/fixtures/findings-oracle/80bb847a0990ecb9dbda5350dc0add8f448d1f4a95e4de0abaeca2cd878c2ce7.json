@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code imports only allAbortSignals from '../internals/signals', so the claimed raceAbortSignals export or unused-import problem does not exist in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1568,
+    "outputTokens": 575,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7458,
+  "requestId": "67c18874-a919-4e26-b6c4-e682860d1b72"
+}

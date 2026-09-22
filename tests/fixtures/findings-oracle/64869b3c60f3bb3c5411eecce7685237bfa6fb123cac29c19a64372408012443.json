@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains the exact fallback `new (_Err ?? errors.$ZodError)`, so a nullish `_Err` would not throw; the claimed TypeError arises only from the AFTER code's `failure` function, which drops the fallback.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1502,
+    "outputTokens": 2382,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27620,
+  "requestId": "56f9dfe9-40c8-44df-a0e6-aa60c411620c"
+}

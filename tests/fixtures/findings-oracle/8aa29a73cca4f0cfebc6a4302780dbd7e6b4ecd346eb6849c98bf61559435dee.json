@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change is a performance refactor that preserves enumerability via a recheck inside emitOwnKeys, not a bugfix for a pre-existing non-enumerable key defect; the finding describes a possible regression from the diff rather than a problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1366,
+    "outputTokens": 2361,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 32041,
+  "requestId": "4605f1e3-d84a-453a-b6db-41de161b9d95"
+}

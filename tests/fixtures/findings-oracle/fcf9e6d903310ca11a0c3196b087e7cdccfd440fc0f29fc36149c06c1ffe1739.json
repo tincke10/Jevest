@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about the constructor signature requiring an updated call site and possible redundant Object.assign, not the Node VM cross-realm Error message loss that the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 239,
+    "outputTokens": 1346,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18298,
+  "requestId": "b5907ce9-d5ce-4695-9cc3-738463f3d01b"
+}

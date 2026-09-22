@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown contains no existsSync/mkdirSync calls; those synchronous operations appear only in the AFTER code's newly added writeMetadata method.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1701,
+    "outputTokens": 934,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12648,
+  "requestId": "7818f84b-9e65-4c04-9e49-0562b1f0b5f1"
+}

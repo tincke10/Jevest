@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a regression where the added coercion guard breaks direct-call consumers with procedure names like toString, whereas the change fixed React 19 proxy coercion by returning debug strings for those keys.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1492,
+    "outputTokens": 701,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11533,
+  "requestId": "bc5e9302-3cdb-46ac-a65f-65648f09be02"
+}

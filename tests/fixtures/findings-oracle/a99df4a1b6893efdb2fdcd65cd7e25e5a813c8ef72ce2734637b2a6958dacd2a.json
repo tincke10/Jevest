@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns the nullability typing of `useRef` in the new code, while the change fixes missing resubscription and snapshot updates in `useSyncExternalStore`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1253,
+    "outputTokens": 875,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12949,
+  "requestId": "d2ebcd0d-ad4f-4f70-a82c-9e3d0bcba34b"
+}

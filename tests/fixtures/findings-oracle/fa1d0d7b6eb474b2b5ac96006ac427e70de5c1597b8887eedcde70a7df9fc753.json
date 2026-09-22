@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change adds new validate/validateAsync methods with input-type narrowing as an intentional feature, not fixing a defect in the before code, and the finding criticizes that added signature rather than describing a problem this commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1210,
+    "outputTokens": 1548,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21914,
+  "requestId": "db33ac7d-4786-42e4-bab0-bc168d9ca39b"
+}

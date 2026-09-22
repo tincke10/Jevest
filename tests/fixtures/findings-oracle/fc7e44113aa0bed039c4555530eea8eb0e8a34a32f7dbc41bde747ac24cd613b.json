@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding critiques the chosen completion semantics for aborted query/mutation operations, whereas the change fixed the missing AbortSignal listener that left abort completely ignored.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 184,
+    "outputTokens": 1753,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24173,
+  "requestId": "be82dc61-9b37-4a10-8992-62750ca08d33"
+}

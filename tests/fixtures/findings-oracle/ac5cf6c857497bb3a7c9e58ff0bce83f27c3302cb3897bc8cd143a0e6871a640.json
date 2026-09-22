@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code uses `map.get(expect) || {}` and unconditional `map.set`, so a falsy stored value is indeed treated as missing and overwritten rather than merged.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 246,
+    "outputTokens": 4630,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 57468,
+  "requestId": "12f43c17-a23a-4409-bf6d-268ce69bdc6d"
+}

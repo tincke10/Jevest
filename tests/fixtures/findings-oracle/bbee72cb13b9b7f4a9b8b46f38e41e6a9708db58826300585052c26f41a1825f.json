@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a bundle-size optimization that replaces Object.create(null) with a shared helper, while the finding speculates about behavior/perf risks if that helper were not a bare null-prototype object, which is not the problem the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 257,
+    "outputTokens": 809,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11153,
+  "requestId": "413e50b6-114e-46a3-80ec-01f634aa9cd9"
+}

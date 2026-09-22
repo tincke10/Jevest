@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code lacks the newly added getRelativeDistDir prefix check with startsWith that returns '' for a case/drive-letter mismatch; its root-relative logic used slice and a different startsWith on a computed tail, not the described sentinel.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 181,
+    "outputTokens": 3615,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 46095,
+  "requestId": "3c3a1849-c0c8-459c-89aa-69a1c0b7a86a"
+}

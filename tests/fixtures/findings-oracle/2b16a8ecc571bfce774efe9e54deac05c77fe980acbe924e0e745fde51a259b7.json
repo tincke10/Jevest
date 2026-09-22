@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not export INVALID or withParser, so the claimed collision involving those added names cannot occur in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 932,
+    "outputTokens": 695,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9120,
+  "requestId": "99a51068-31e8-4863-a6f6-1364dcb02270"
+}

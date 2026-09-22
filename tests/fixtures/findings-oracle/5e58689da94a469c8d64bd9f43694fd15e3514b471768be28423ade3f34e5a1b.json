@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no `isDone` variable or teardown/abort logic; that flag is introduced only in the AFTER code, so the claimed rejection-path bug cannot be a property of the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 270,
+    "outputTokens": 1345,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18106,
+  "requestId": "7069623d-ab8e-4a32-9bf9-635435ffe775"
+}

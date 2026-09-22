@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown does not reference `$ZodNumberFormats` at all; that unqualified reference appears only in the AFTER code, so the claimed compile-error risk is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1875,
+    "outputTokens": 589,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9199,
+  "requestId": "7c611496-c7d6-4281-b2c1-f0d4d537e284"
+}

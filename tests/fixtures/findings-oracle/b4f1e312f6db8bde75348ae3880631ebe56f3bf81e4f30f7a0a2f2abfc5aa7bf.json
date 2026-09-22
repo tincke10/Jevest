@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The before code's `email` regex contains two capturing groups, and the after code changes both to non-capturing groups, so the observable `exec`/`match`/`replace` capture behavior differs exactly as the claim describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1498,
+    "outputTokens": 6354,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 74298,
+  "requestId": "f8f9ea92-94a0-47b2-b15a-df098c08ece1"
+}

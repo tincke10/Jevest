@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding warns about a potential new serialization risk from forwarding skipToken through input, whereas the change fixed the separate bug where subscriptionOptions(skipToken).enabled incorrectly returned true because skipToken was stripped from the queryKey.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1459,
+    "outputTokens": 2702,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 35580,
+  "requestId": "059eb22e-db56-4cdd-b0e0-60c22892f0de"
+}

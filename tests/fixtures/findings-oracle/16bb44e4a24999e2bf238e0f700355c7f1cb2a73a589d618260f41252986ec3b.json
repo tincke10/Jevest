@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code directly dereferences `(blob as any)[implSymbol]._buffer` without a null/undefined guard, so an absent impl property would throw a TypeError.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1481,
+    "outputTokens": 4982,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 66032,
+  "requestId": "08915f69-e7cc-443a-b747-a07804fc92ee"
+}

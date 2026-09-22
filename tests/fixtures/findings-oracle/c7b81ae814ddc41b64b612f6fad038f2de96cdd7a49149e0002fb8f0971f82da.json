@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The commit is a feature addition that adds missing W3C Permissions-Policy directives (including chUaHighEntropyValues), while the finding claims that specific directive is not a real feature, which is not the problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 818,
+    "outputTokens": 3028,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 37004,
+  "requestId": "35cff417-98b8-4da5-a749-40ce6cbb0e29"
+}

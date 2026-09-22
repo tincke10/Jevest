@@ -123,7 +123,21 @@ describe("groundTruthFromLabel", () => {
     expect(counts).toEqual({ real: 1, noise: 1, unknown: 1 });
   });
 
-  it("fails with a clear message when a record has no oracle label", () => {
+  it("counts a record the labeler could not label (no label.oracle) as unknown when the file is an oracle file", () => {
+    const withoutOracle = {
+      ...base,
+      id: "f9",
+      label: { real: true, source: "line-overlap", overlapLines: 0, fixChangedLines: 0 },
+    };
+    const { groundTruth, counts } = groundTruthFromLabel(
+      [withOracle("f1", false, "real"), withoutOracle],
+      "oracle",
+    );
+    expect(groundTruth).toEqual({ f1: true });
+    expect(counts).toEqual({ real: 1, noise: 0, unknown: 1 });
+  });
+
+  it("fails with a clear message when no record at all has an oracle label (wrong file)", () => {
     const withoutOracle = {
       ...base,
       label: { real: true, source: "line-overlap", overlapLines: 0, fixChangedLines: 0 },

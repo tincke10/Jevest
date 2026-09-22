@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not import Document, OperationObject, PathItemObject, or PathsObject at all; those four type imports appear only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 193,
+    "outputTokens": 1881,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19705,
+  "requestId": "60fe6c52-9d74-4c46-a0aa-571a52ddc354"
+}

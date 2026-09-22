@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change is a feature adding QUERY support to the If-None-Match '*' branch, while the finding critiques that addition as incomplete relative to other method checks, so it is not the same defect the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 506,
+    "outputTokens": 3098,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 42623,
+  "requestId": "3c32247c-9fee-4713-9a35-030d1e8b44cd"
+}

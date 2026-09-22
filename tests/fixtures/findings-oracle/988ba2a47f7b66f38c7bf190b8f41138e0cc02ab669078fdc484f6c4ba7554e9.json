@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The `else if` branch and loop described do not exist in the before code; the before code only has the `if (toFake === undefined && toNotFake === undefined)` branch and a separate child-process `nextTick` guard.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1866,
+    "outputTokens": 1640,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18420,
+  "requestId": "eedfd4ef-3167-4a0f-bd5e-67651ec96933"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed a missing `MarkOptions` export causing type-checking errors, while the finding criticizes the untyped `stack` string field semantics, which remains unchanged and unrelated.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1227,
+    "outputTokens": 778,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12111,
+  "requestId": "2f301dd8-2108-493b-9eab-86dd2c384952"
+}

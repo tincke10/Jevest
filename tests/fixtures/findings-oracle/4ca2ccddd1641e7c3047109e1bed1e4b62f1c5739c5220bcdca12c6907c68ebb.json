@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change intentionally added typed checks options on string factories for performance/API, while the finding critiques that addition as a divergence/bypass, not a bug the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 254,
+    "outputTokens": 2327,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31638,
+  "requestId": "7322a8b6-01f7-4343-9a54-872b9e7ddd58"
+}

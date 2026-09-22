@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed memory retention by making the memoizer's buckets and back-edges weak, whereas the finding concerns the functional limitations of using a WeakSet (no iteration/size/clear and GC-shrinking membership), which is a different issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 237,
+    "outputTokens": 1046,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16346,
+  "requestId": "c172bb31-eb0e-48c7-acf2-d02ca841e99d"
+}

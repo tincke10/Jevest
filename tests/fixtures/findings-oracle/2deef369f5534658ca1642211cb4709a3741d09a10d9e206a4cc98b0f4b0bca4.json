@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.8,
+  "reason": "The change is a feature addition for the sharedViteServer CLI option, and the finding is a completeness note about needing config-type and resolver support rather than a defect the shown hunk fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 691,
+    "outputTokens": 2201,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 30617,
+  "requestId": "21dd0009-02f9-4193-a363-c6d3c1fc6843"
+}

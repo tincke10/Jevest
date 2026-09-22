@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding is about verifying re-exports introduced by the change, not about a defect in the before code that the feature commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 708,
+    "outputTokens": 1204,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16457,
+  "requestId": "f8261e42-6fc9-4309-bff5-3b0b2aebbb5d"
+}

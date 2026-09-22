@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has `export const CONFIG_NAMES`, so the claim that it is no longer exported is false about the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 729,
+    "outputTokens": 884,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11572,
+  "requestId": "a67ef876-82a5-4d5b-b657-f4eb0a1aae81"
+}

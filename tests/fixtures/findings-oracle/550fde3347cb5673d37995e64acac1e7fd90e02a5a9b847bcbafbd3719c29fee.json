@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code still uses and therefore retains `experimental_parseSpecifications`, so no external caller is broken at that point; the breakage would only occur after the rename shown in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 546,
+    "outputTokens": 2172,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 29270,
+  "requestId": "1f0a23c8-caee-4059-8792-b9f5e0bcd117"
+}

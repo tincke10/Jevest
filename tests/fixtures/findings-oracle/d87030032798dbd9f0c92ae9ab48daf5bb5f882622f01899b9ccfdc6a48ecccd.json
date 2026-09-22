@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.96,
+  "reason": "The finding describes a type-safety concern about the unchecked cast in the newly added cache-reuse branch, not the actual bug fixed, which was parseBody failing to reuse cached formData and re-parsing the body with a stale multipart boundary.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 214,
+    "outputTokens": 1154,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15689,
+  "requestId": "10efe805-4f38-4ac2-9c47-257b8d8507a0"
+}

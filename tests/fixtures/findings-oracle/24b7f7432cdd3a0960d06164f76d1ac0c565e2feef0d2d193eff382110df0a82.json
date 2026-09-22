@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The finding describes a regression where the new denylist treats an unset/default 'node' environment as VM-upside, while the change fixed the opposite problem of custom environments being omitted from VM pool measurement.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1067,
+    "outputTokens": 1198,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17634,
+  "requestId": "553f5f6a-5a72-4ab3-ace5-d0c62b032ac7"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature addition that introduced the `queryRepresentationMetadataHeaders` list, and the finding critiques that newly added list's contents rather than identifying a pre-existing defect the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 202,
+    "outputTokens": 947,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12042,
+  "requestId": "6403a534-d672-436d-be4e-d3b4eff703fb"
+}

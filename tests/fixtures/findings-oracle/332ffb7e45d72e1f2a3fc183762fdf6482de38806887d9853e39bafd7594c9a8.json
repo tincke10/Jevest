@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code calls `ctx.experimental_clearCache()`, not `ctx.clearCache()`, so the claimed missing `ctx.clearCache` path does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 555,
+    "outputTokens": 390,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6207,
+  "requestId": "4d0ea889-0ad9-401f-80ee-2e0acd416aff"
+}

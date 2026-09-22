@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not filter out q=0 entries, so it still matches and returns the supported type (as the linked issue reproduces), not the post-filter empty-list defaultSupport behavior the claim describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1439,
+    "outputTokens": 2546,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 32131,
+  "requestId": "6a8443f1-3822-4f35-b57b-be92980c2947"
+}

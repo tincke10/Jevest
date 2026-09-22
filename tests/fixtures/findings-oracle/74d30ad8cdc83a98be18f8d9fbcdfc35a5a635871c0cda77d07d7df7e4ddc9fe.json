@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code shown does not contain `import * as regexes from \"./regexes.js\"`; that runtime import appears only in the AFTER change, so the claimed circular-dependency/bundle-growth problem is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1583,
+    "outputTokens": 802,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12324,
+  "requestId": "0febcaa3-07ce-450b-835b-985b87a2c21c"
+}

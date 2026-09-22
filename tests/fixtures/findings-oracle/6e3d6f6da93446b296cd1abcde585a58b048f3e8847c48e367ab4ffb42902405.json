@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not declare any HTTPBatchStreamLinkOptions type; it uses HTTPBatchLinkOptions directly, so the claimed non-exported alias is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 200,
+    "outputTokens": 1609,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19877,
+  "requestId": "48e596a3-e8e9-4187-b834-bae1b4e71bac"
+}

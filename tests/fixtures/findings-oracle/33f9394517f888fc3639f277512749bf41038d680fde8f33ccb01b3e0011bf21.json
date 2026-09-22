@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.98,
+  "reason": "The finding describes a regression from removing the `_Err ?? errors.$ZodError` fallback (nullish `_Err` now throws), while the change fixed performance by lazily constructing the error on first read, not that fallback behavior.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1390,
+    "outputTokens": 545,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8041,
+  "requestId": "633cbe3b-9844-4d18-8173-8fc4afb63533"
+}

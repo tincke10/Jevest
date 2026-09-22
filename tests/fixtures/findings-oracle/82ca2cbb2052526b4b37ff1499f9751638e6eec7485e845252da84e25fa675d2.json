@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a side effect/regression introduced by the change's lazy error building, whereas the change fixed a performance problem (building errors eagerly was slow), so it is not about the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1424,
+    "outputTokens": 580,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8555,
+  "requestId": "d77dc912-88ad-4bfa-83c8-14a693afb0b6"
+}

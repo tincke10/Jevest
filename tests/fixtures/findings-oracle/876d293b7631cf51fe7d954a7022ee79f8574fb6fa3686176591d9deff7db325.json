@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code did not handle minProperties/maxProperties at all, so those keywords were ignored and the returned schema remained a plain ZodObject; the described wrapping/loss of object methods is introduced by the change, not present before.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2041,
+    "outputTokens": 1404,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17690,
+  "requestId": "cb5a1fd7-ddf6-4595-8326-070d92d51611"
+}

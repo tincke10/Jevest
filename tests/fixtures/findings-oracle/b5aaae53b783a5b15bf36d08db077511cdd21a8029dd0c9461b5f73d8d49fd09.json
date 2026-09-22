@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes memory retention by making the memoizer's buckets and back-edges weak so finished parse graphs can be collected, while the finding describes a possible cross-parse memo hit returning stale issues from a previous parse context, which is a different defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 271,
+    "outputTokens": 2632,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 40419,
+  "requestId": "f8fc4d9c-3563-4735-a2bf-d32e69abcfa1"
+}

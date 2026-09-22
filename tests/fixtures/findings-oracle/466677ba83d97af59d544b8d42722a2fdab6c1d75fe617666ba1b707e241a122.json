@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before-code UnknownCauseError had no explicit constructor, so a zero-argument new UnknownCauseError() call was valid; the required-argument problem is introduced by the after-code constructor, not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1375,
+    "outputTokens": 5209,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 64135,
+  "requestId": "7315afd3-0d4e-4e45-b437-6771c452c069"
+}

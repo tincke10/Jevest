@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns that using raceAbortSignals could abort the whole batch too early (over-abort regression), whereas the change fixes requests not being aborted on unsubscribe at all.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1553,
+    "outputTokens": 1627,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21419,
+  "requestId": "81cfcff2-7591-4afa-881e-145ec801d9e2"
+}

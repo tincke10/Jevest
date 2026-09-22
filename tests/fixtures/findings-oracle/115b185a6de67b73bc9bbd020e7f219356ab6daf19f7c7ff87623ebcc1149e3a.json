@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claimed swallowing of write failures is introduced by the after code's new writeMetadata catch block; the before hunk shows no metadata write path or swallowed write failures.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 150,
+    "outputTokens": 5028,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 63508,
+  "requestId": "1a184b11-01d3-4c1b-ae09-2ccc3db9c07b"
+}

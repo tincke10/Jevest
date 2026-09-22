@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The nested quantifier described appears only in the after regex; the before regex uses lookaheads and has no quantified group containing a quantified class.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 298,
+    "outputTokens": 2276,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26833,
+  "requestId": "e8a0b9b9-2e2a-499b-bcbf-654b649aa66d"
+}

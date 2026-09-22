@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the newly introduced `snapshotChecks` helper for mutating its argument, whereas the change fixed caller-array mutation and performance by copying the checks array, not this mutation footgun.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1445,
+    "outputTokens": 1693,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24023,
+  "requestId": "4f65660a-a9fb-40fb-9688-83ea834662bb"
+}

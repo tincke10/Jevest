@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change fixed a Cyclic __proto__ TypeError by skipping setPrototype when mockPrototype === parent, while the finding describes a different problem: that this guard may leave a stale parent in place rather than resetting to Object.prototype.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1482,
+    "outputTokens": 1906,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24324,
+  "requestId": "40228e7e-8abe-45f3-8f6e-7334ce8eae4c"
+}

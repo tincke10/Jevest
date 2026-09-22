@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code calls pipeTo without preventAbort, so the destination WritableStream would be aborted on a source error rather than left healthy as the claim describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1384,
+    "outputTokens": 429,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6232,
+  "requestId": "e03518c4-cccc-4d10-a0c7-d8ca9938595b"
+}

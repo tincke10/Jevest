@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The fix addresses the missing `done` check that caused a destructuring TypeError on premature stream end, whereas the finding raises a separate unhandled-promise-rejection hazard from the thrown error, which the change does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 216,
+    "outputTokens": 2229,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 28714,
+  "requestId": "973bd7c7-e43c-4dcf-bb2d-7a4ddd1992ed"
+}

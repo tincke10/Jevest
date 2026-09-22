@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code still uses `mayOutputUndefined` in `hasConditionalKeys`, so the swap to `mayOmitUndefined` and the narrow-gate/fast-path desynchronization the finding warns about does not exist in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1784,
+    "outputTokens": 4644,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 62801,
+  "requestId": "0d4720ba-a710-4fff-a2d2-9ad7e20c4891"
+}

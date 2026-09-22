@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the already-aborted fast path in the new code for firing after the request is dispatched, whereas the change fixed the pre-existing total absence of abort signal wiring.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1262,
+    "outputTokens": 1902,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26742,
+  "requestId": "2e793200-20f8-40fa-80f3-e4cbf62ce3fe"
+}

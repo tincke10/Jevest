@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The linked issue and PR state there was no matching `signal.addEventListener('abort', abort)` anywhere in the wsLink client before the change, so the claimed leaked listener did not exist and the before teardown's `removeEventListener` was a no-op.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1358,
+    "outputTokens": 2171,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25352,
+  "requestId": "ed7fef47-dd57-468f-8048-9e2df629c1de"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns about downstream type-inference changes from widening Record<string, any> to Record<PropertyKey, any>, not the original bug that symbol keys were rejected in the untyped Context fallback.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 294,
+    "outputTokens": 798,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10786,
+  "requestId": "eea858a9-a3d3-44ec-8a7b-61bcfd138fe2"
+}

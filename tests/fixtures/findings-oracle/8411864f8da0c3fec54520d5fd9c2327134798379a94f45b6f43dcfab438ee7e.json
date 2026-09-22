@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code never references `abortEarly`, so the excess-property/no-op concern cannot exist there; it only applies to the after code that adds `abortEarly: true`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 191,
+    "outputTokens": 2533,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 28306,
+  "requestId": "09f6106e-2a4e-408d-8772-4b42a747b0f2"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code contains no `validate` method at all—the method is introduced only in the AFTER change—so the claimed narrowing behavior cannot be present in the original code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 170,
+    "outputTokens": 840,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10354,
+  "requestId": "d1544aec-63b0-4425-b8ef-7d59741b335c"
+}

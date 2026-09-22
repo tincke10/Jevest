@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE snippet contains no typeof minProperties/maxProperties check, and the linked issue confirms those keywords were completely ignored before, so the claimed faulty number validation cannot be present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 207,
+    "outputTokens": 1284,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17611,
+  "requestId": "df2f63ca-6369-47c2-8f49-c0ac56234d54"
+}

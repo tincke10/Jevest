@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code declares set with key: string, not PropertyKey, so the described asymmetry from widening set without get does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 310,
+    "outputTokens": 3164,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 42499,
+  "requestId": "1d6b714a-9e5a-4896-85e8-e703312fdec9"
+}

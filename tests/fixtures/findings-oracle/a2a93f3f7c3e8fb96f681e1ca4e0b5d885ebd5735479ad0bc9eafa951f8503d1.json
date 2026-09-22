@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the missing jsdom 28 `_bytes` field causing `undefined` Blob bodies, whereas the finding speculates about a possible byteOffset/byteLength semantic difference in `_bytes` and itself says it is most likely fine.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1379,
+    "outputTokens": 1315,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17195,
+  "requestId": "7a04c377-c867-4263-9563-fe10e4952fa0"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns exception handling from a newly invoked ref cleanup, while the change fixed the missing invocation of previous ref cleanup on ref prop change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 118,
+    "outputTokens": 222,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4091,
+  "requestId": "273ff755-c890-460d-91e2-6d62e410ae50"
+}

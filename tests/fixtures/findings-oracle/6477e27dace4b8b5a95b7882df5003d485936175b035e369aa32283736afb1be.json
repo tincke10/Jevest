@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The before condition throws only when typeof obj === 'number' && isNaN(obj), so Infinity, -Infinity, non-integer, and unsafe-integer numeric values are all accepted.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1449,
+    "outputTokens": 825,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11161,
+  "requestId": "5e7d9bce-f7cc-45d5-b04f-0c8078cb4cda"
+}

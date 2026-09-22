@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no head-match fast path, so the budget/indexing check runs on every fallback iteration and cannot be skipped as the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1145,
+    "outputTokens": 2939,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 35595,
+  "requestId": "ef6f1839-58ff-4508-9422-c67ad8b0d41f"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE hunk contains no `getConfig().browser.traceView.enabled` access; that unguarded line appears only in the AFTER code, so the claimed problem is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 687,
+    "outputTokens": 979,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11793,
+  "requestId": "3bc2e3df-ada9-40bb-9a7f-0e2e787f6c21"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code still imports `istanbulDefaults` from `@istanbuljs/schema`, so the claimed undefined reference from a removed import is not present in the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1333,
+    "outputTokens": 1207,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15687,
+  "requestId": "200a7142-00e9-4d33-bfbf-222a9b0205a3"
+}

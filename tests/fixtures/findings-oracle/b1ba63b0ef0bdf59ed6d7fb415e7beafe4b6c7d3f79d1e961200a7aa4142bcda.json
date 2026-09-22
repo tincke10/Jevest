@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds a `streamHeader` option, while the finding complains that the new `HTTPBatchStreamLinkOptions` type is not exported, which is unrelated to the feature being implemented.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 216,
+    "outputTokens": 758,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10456,
+  "requestId": "1530c0a7-899b-4add-8da8-64b91bd2ea53"
+}

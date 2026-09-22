@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance optimization to pre-join static CORS header arrays, while the finding warns about a potential correctness regression in per-request Access-Control-Request-Headers fallback handling.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 837,
+    "outputTokens": 258,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4615,
+  "requestId": "57252031-31fc-48b7-85a7-b4c294c8203a"
+}

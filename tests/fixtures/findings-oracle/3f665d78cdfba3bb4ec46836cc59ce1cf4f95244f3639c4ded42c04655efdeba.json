@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed overly strict cookie-name validation when parsing the Cookie header, whereas the finding flags the fragile unescaped '[' in the newly introduced relaxed regex character class.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1307,
+    "outputTokens": 1374,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18566,
+  "requestId": "7394e0a4-0518-4b09-9f9e-62aa40a4f4c0"
+}

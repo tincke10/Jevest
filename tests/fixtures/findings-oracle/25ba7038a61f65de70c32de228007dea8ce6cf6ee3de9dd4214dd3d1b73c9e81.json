@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code imports only allAbortSignals, not raceAbortSignals, so the claimed abort-any-caller regression is not present in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1665,
+    "outputTokens": 353,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5262,
+  "requestId": "dece3673-5cfb-4cfc-9aea-cfbcf0cb47a2"
+}

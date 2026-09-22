@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding critiques the design of the newly added `lambda?: Record<string, unknown> | null` type, whereas the fix addressed the absence of JWT/Lambda authorizer fields in `ApiGatewayRequestContextV2`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1395,
+    "outputTokens": 750,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11018,
+  "requestId": "1bca4b07-65f1-48b7-b8f8-e4c8c355b988"
+}

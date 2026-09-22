@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not pass `prefix` to `trpcMutationOptions`, so the claimed issue of `prefix` being out of scope or shadowed at that call site cannot occur.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1501,
+    "outputTokens": 3264,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 37612,
+  "requestId": "3acfab58-16fa-463f-9952-8101cab444aa"
+}

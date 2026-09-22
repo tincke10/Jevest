@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The linked issue quotes the before code's `normalizedDistDir.slice(root.length)`, so when root is `'/'` the slice removes the leading slash and returns a relative path without a leading separator.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1622,
+    "outputTokens": 3667,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 45874,
+  "requestId": "8bea855d-f680-4e61-8c0e-ee0d25e97b35"
+}

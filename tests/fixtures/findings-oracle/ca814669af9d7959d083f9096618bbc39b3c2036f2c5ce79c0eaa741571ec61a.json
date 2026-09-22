@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.97,
+  "reason": "The change fixes stale subscriptions when subscribe/getSnapshot changes, whereas the finding describes a new unconditional re-render perf issue caused by the version counter replacement.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 229,
+    "outputTokens": 924,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13454,
+  "requestId": "b3163a15-76a1-4587-86c9-3254c6385211"
+}

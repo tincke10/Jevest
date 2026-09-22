@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.6,
+  "reason": "Whether removing `_properties as properties` is a breaking change depends on whether this export was part of a shipped public API and/or whether `z.properties` is re-exported elsewhere, which the hunk does not show.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 91,
+    "outputTokens": 7519,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 100855,
+  "requestId": "cb1b7525-4d9c-4cc7-990d-8d594695dc84"
+}

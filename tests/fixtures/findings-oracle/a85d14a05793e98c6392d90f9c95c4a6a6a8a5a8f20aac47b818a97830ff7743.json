@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code declares the three constants without `export`, so they are module-private and the claimed public API widening does not exist there; only the AFTER change adds `export`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1695,
+    "outputTokens": 871,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11582,
+  "requestId": "851695fc-2abc-49a1-ad17-a100d829935d"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a side effect of the fix on blob() type behavior, not the original defect where formData() threw after another body accessor due to missing Content-Type.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1746,
+    "outputTokens": 302,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5215,
+  "requestId": "17986cda-33cc-4b80-8560-153cf80118ab"
+}

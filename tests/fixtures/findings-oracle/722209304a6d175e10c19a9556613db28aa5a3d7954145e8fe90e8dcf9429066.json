@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a side-effect of the fix (pipeline destroying the writable on error), not the original backpressure/early-resolution defect the change addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1560,
+    "outputTokens": 159,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3454,
+  "requestId": "e4f41a69-73fa-403e-8045-04932f3e89b0"
+}

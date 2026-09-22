@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding is about a memory-leak risk from exposing a bound Set.add handle, while the change fixed a stack overflow caused by DIRTY_MOCK_STATES.add recursively invoking the spied Set.prototype.add.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1770,
+    "outputTokens": 937,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13310,
+  "requestId": "89a87421-39c3-42f2-bcd4-1e630f05bf58"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code lacks the `mockPrototype !== parent` guard and instead calls `Object.setPrototypeOf(mockPrototype, parent)` when the existing prototype differs, which in the `mockPrototype === parent` case throws a cyclic __proto__ TypeError rather than silently keeping a stale prototype.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 186,
+    "outputTokens": 1666,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20033,
+  "requestId": "e5823c94-d6dc-45db-b58a-66479201d216"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code uses Map/Set, not WeakMap/WeakSet, so the claimed TypeError from WeakMap/WeakSet on primitive keys is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 244,
+    "outputTokens": 1692,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21338,
+  "requestId": "352f3043-a15d-468e-be42-2ed9914e1898"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The before code constructs `error` as an own plain data property, so the enumerable accessor and the observable shape differences the claim describes are introduced by the change, not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 232,
+    "outputTokens": 6461,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 86002,
+  "requestId": "b6ad15e9-7650-410c-b8e6-bc2cc21d4623"
+}

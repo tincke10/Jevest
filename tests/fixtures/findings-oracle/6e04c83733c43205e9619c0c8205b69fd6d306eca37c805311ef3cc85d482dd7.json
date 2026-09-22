@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no `as ZodInt`/`as ZodFloat32`/... assertions—the returns are plain `core._int(ZodNumberFormat, params)` etc.—so the asserted assertion-silencing problem is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1787,
+    "outputTokens": 2319,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27447,
+  "requestId": "8eff74bc-fac5-4a4c-998d-cbd999113b0c"
+}

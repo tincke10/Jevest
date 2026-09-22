@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The commit is a feature adding QUERY as a default CORS method, not a bugfix, and the finding flags possible JSDoc/runtime drift rather than the feature itself.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 907,
+    "outputTokens": 4690,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 61675,
+  "requestId": "cca3309f-e214-4743-ac85-2bc5baca4fad"
+}

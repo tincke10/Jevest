@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding complains about lost documentation of an inclusion invariant in a comment, whereas the change fixed a runtime/type bug where undefined prefault outputs dropped object keys.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2193,
+    "outputTokens": 594,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12580,
+  "requestId": "efbe93ee-2ec3-4ebc-a0e1-e9afb5733fa6"
+}

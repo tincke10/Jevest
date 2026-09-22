@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change removed lookaheads as a performance optimization, while the finding warns that the replacement regex may introduce catastrophic backtracking, not the lookahead overhead the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1466,
+    "outputTokens": 871,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12984,
+  "requestId": "915777c2-76e4-4e85-9b33-217f2b7ea4fd"
+}

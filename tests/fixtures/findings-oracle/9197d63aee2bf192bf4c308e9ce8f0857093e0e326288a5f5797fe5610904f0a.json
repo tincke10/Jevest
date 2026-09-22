@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The sharedViteServer option does not exist in the BEFORE code, so it cannot document a default of true or affect --no-shared-vite-server generation.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 187,
+    "outputTokens": 1634,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21399,
+  "requestId": "730227e9-4d7d-4b5c-be73-f28085925fb5"
+}

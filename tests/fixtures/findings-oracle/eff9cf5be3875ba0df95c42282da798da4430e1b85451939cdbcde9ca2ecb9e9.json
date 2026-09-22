@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code's `Record<string, any>` fallback allowed numeric keys in `set`, and Hono's `var` getter uses `Object.fromEntries(this.#var)`, which stringifies numeric keys so `1` and `'1'` collide.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1330,
+    "outputTokens": 7738,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 98890,
+  "requestId": "bb3c2308-7e17-451b-8b2b-a9ad8099dbbc"
+}

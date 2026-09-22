@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change was a performance optimization replacing a Reflect.ownKeys+propertyIsEnumerable loop with separate string/symbol snapshot passes, while the finding raises a possible key-ordering/observable-behavior concern from that split, not the performance problem the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 194,
+    "outputTokens": 1257,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17968,
+  "requestId": "8260c617-3f86-4a99-83dc-22f2177e2f88"
+}

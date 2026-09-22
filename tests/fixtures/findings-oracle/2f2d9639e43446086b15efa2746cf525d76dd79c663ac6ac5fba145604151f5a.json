@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding raises a possible circular-import/server-code concern about the added import, while the change fixed lost parse error details by reusing toRollupError.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1669,
+    "outputTokens": 205,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4073,
+  "requestId": "ed279fa0-b170-4691-813d-4e085d2a0f7e"
+}

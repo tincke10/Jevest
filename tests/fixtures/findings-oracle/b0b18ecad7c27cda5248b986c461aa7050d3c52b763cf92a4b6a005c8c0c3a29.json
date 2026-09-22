@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance refactor replacing Reflect.ownKeys with emitOwnKeys, while the finding concerns a potential __proto__ guard regression, not the performance problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1365,
+    "outputTokens": 629,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9625,
+  "requestId": "da65ba46-0616-4e00-8734-45eaa000f003"
+}

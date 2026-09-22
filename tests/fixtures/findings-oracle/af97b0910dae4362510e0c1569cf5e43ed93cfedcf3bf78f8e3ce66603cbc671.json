@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no `streamHeader` option, so the described collision from choosing `streamHeader: 'accept'` cannot occur in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1112,
+    "outputTokens": 724,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9943,
+  "requestId": "d2f4c463-4c78-48cf-bcdc-1ed915e5d7ac"
+}

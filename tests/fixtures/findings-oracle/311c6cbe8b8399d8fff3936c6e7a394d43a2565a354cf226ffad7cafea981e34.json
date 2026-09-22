@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes synchronous fs calls/redundant existsSync in writeMetadata, whereas the fix addresses the missing metadata file after clearing the cache causing stale cache entries.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1589,
+    "outputTokens": 1622,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21358,
+  "requestId": "b190cc78-b25f-4abe-a72a-c83961cab4ad"
+}

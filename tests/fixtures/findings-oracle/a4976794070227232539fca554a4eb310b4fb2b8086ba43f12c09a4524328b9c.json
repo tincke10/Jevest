@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The before code's mutationOptions call lacks the `prefix` argument, so the claimed inconsistency of prefix being added there is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 3041,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 36721,
+  "requestId": "d745dfa1-ba36-48a8-bb9f-393df9b8260f"
+}

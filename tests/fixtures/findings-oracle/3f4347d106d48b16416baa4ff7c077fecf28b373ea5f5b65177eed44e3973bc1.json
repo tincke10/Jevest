@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature sync adding newly registered IANA headers, while the finding raises a speculative concern about incomplete companion/response union updates and semantic direction rather than the stale type definitions the feature addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 833,
+    "outputTokens": 3868,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 54235,
+  "requestId": "3ae95d8b-df01-435f-a6c2-726a2ce6d532"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change widens the type signatures to allow symbol keys, while the finding describes a runtime mismatch in the c.var getter for non-string/symbol keys, which the fix does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1218,
+    "outputTokens": 353,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6036,
+  "requestId": "effd7e8d-c0d1-4a4d-a0c3-3c805953fa87"
+}

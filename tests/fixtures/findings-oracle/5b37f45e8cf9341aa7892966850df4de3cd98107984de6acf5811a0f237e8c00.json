@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding targets the root '/' leading-separator inconsistency in the newly added getRelativeDistDir helper, whereas the commit fixed false Vitest import resolution caused by blind sliced tails when project root is not a prefix of the dist path.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1510,
+    "outputTokens": 4240,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 52704,
+  "requestId": "cf03de8b-fa65-4511-bb0d-e356115535cc"
+}

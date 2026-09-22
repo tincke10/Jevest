@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.75,
+  "reason": "The finding identifies that z.emoji() still accepts component-only strings that are not valid emoji, which is the same defect the change set out to fix, even though the fix did not cover U+20E3 and Regional Indicator.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1700,
+    "outputTokens": 4357,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 57430,
+  "requestId": "e9ca606e-0bf3-4309-8895-8f53be9663bb"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance/bundle-size refactor replacing Object.create(null) with a helper, not a bugfix about accidentally sharing a children map, and the finding describes a hypothetical bug in the new helper rather than a problem in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 918,
+    "outputTokens": 722,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10764,
+  "requestId": "b552c3a1-afe8-4565-bcfd-5aac3f9eb27b"
+}

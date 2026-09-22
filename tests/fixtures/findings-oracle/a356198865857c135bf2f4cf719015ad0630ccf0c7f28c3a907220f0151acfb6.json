@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code has no `prewarmModules` property at all, so the claimed optional tri-state coercion problem does not exist in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 278,
+    "outputTokens": 1473,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18523,
+  "requestId": "44dce100-e137-4e0a-98a7-a63c45e907d0"
+}

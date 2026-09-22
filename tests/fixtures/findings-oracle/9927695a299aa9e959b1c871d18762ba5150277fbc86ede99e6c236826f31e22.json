@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds the sharedViteServer CLI option as a feature, while the finding describes a root-only/project-config validation concern that the shown change does not fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 158,
+    "outputTokens": 1951,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26761,
+  "requestId": "5a01596c-ab22-4a31-862a-fed10c04062e"
+}

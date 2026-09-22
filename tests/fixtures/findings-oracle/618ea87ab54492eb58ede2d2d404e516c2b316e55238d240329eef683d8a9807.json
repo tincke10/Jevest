@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE hunk contains no regex (line 27 is blank); the described regex with the lookahead is introduced only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 856,
+    "outputTokens": 7756,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 98296,
+  "requestId": "a0c07044-cb33-40d4-9034-2a2d2a9e32f8"
+}

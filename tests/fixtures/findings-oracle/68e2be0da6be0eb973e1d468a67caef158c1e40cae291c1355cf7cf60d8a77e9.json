@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "In the BEFORE code the catch handler contains no clientSubscriptions.delete call (that line exists only on the success path before .catch), so the claimed catch-handler deletion of a new subscription's entry cannot occur.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 254,
+    "outputTokens": 1649,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21419,
+  "requestId": "dcbc83c0-c957-48fb-9ebd-cb668e724154"
+}

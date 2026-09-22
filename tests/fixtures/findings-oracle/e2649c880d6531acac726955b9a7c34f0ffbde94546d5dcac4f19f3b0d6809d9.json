@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses `Shape extends core.$ZodShape` with no `T[k] extends Function ? never : k` remapping, so it did not exclude function-valued properties; that exclusion exists only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 291,
+    "outputTokens": 849,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11247,
+  "requestId": "9f7a1126-ce10-4c4d-9a8b-cc0dce73eb40"
+}

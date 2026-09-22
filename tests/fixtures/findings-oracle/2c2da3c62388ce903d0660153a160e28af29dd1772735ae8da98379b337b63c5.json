@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code contains no import or use of sha256, so the claimed null-digest cache-key problem does not exist in the before code as shown.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 879,
+    "outputTokens": 1190,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14780,
+  "requestId": "8f4ffbf2-e88a-4fce-8531-30145cb670d4"
+}

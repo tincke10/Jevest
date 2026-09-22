@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The pre-change code used Object.assign(new UnknownCauseError(), cause) for arbitrary object causes, so enumerable message/stack/name properties on cause could overwrite the Error instance's intrinsics.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1452,
+    "outputTokens": 3603,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 48434,
+  "requestId": "5451b4be-ce95-460f-b990-48d0d483a22f"
+}

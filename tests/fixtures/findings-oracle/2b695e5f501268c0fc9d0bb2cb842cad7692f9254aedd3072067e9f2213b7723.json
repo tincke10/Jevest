@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code does not contain the new `toRollupError` import from `./environments/fetchModule`, so the claimed circular-import/server-code pull cannot be present in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1781,
+    "outputTokens": 1421,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18185,
+  "requestId": "bca6ef1c-7dd0-4f8a-b336-fb8bdeca83bd"
+}

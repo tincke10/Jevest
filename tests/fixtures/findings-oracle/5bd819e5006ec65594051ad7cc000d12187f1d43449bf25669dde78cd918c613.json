@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain `queryRepresentationMetadataHeaders` or any QUERY body-digest logic; that constant and the described cache-key mechanism are introduced in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 186,
+    "outputTokens": 390,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5605,
+  "requestId": "afff9fed-f4fb-4b10-8841-a29cd3a59199"
+}

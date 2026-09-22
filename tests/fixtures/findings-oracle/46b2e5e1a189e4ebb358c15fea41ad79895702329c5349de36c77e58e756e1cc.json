@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes the lost writer lock after pipeTo() throws by re-acquiring in finally, whereas the finding describes a different remaining problem where the re-acquired writer is attached to an already-errored writable and later writes reject.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 220,
+    "outputTokens": 2359,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31302,
+  "requestId": "5d7e589f-0ad9-4dfc-91c1-81d3f41a1f5d"
+}

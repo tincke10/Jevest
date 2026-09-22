@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no streamHeader field at all, so there is no option for resolveHTTPLinkOptions to strip or for downstream code to read from resolvedOpts.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 236,
+    "outputTokens": 1011,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12986,
+  "requestId": "b4547421-5406-46c1-9b59-aa1dbdfe9aa5"
+}

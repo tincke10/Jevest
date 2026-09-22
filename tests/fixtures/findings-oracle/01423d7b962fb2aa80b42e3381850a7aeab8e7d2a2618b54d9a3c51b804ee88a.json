@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The BEFORE code's Set type fallback uses ContextVariableMap & Record<string, any>, whose key type does not include symbol, so the exported set signature indeed constrains public callers to string/number keys.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 252,
+    "outputTokens": 3973,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 49829,
+  "requestId": "44122480-bd78-4145-a87f-d0e5ef200345"
+}

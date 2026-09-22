@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed missing error message/stack for cross-realm VM errors by extracting message from the cause, while the finding describes an edge case in the newly added getMessage that turns an undefined or exotic message property into a bogus string.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1316,
+    "outputTokens": 2693,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 35098,
+  "requestId": "4ca87dc8-c77d-4d44-8ffb-38eb01474942"
+}

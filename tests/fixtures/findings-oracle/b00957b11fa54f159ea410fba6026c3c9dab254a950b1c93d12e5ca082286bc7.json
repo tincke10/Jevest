@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance optimization that hashes the environment-invariant cache key material once and bumps the cache version for invalidation, while the finding is about the fragility of manually maintained cache version literals causing stale caches if forgotten.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 984,
+    "outputTokens": 697,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10336,
+  "requestId": "b2765f77-beba-49e7-a281-fd0177295f1f"
+}

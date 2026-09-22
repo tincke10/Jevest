@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code calls util.cached, not util.cachedInternal, so the claimed caching/visibility contract change does not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1135,
+    "outputTokens": 1528,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21181,
+  "requestId": "dc5be32a-53ea-42db-9fbe-52ebada79c4d"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code has no `pipeline` call or import, so the claimed concern about verifying a `node:stream/promises` import does not apply to it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 206,
+    "outputTokens": 1571,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20367,
+  "requestId": "c72b1251-cb7c-4b8d-9112-4932ef4d4aa2"
+}

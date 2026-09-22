@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code contains no useRef call; the criticized `useRef<() => void>(null)` appears only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1365,
+    "outputTokens": 1608,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19200,
+  "requestId": "dd2f2e62-c687-464c-b9e3-74cef6fdf0b4"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed a performance regression by adding a `prewarmModules: false` opt-out, while the finding raises a TypeScript excess-property-checking concern about whether that new property is actually declared, a different issue than the perf problem the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 688,
+    "outputTokens": 334,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5644,
+  "requestId": "4831cb91-a930-42e7-af06-520ed67784f9"
+}

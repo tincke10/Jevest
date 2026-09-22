@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The before code constructs the ZodError and calls util.finalizeIssue immediately inside the safeParse return expression, so finalization is not deferred; the deferral described only exists in the after code's getter.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1408,
+    "outputTokens": 516,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7418,
+  "requestId": "e015d442-b893-4a52-94cf-d55ca2e5abbf"
+}

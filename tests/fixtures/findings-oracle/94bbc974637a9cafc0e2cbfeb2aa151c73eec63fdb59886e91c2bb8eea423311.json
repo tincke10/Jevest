@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change introduced the snapshotChecks function with the `def.checks = [...def.checks]` assignment and did not alter it to address a TypeScript generic-assignment error; the commit's intent was performance and typed options, not fixing a compile error.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1443,
+    "outputTokens": 2466,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27089,
+  "requestId": "1c331989-e873-4619-825d-ab0a8742ab9e"
+}

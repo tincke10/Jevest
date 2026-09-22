@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding identifies the exact behavior the change fixed—component-only strings like \"123\", \"#\", \"*\", lone ZWJ, and lone skin-tone modifiers previously validated by z.emoji() and now fail.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1629,
+    "outputTokens": 355,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7402,
+  "requestId": "36eb0317-a0e5-475e-a520-58749b6972bb"
+}

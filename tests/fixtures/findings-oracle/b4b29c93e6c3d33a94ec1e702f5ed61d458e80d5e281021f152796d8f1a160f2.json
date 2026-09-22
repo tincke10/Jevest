@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not re-export withParser at all, so the claimed missing-core-export or classic/mini asymmetry cannot be present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 965,
+    "outputTokens": 652,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8535,
+  "requestId": "96c7ec5f-6a38-49a5-be3d-cc7bf8a59fd9"
+}

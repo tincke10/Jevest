@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding flags a possible missing import for AnyClientTypes in the new option type, whereas the change is a feature addition adding the streamHeader option to select the streaming header, not a fix for a compilation/import defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1138,
+    "outputTokens": 535,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7301,
+  "requestId": "23130b7b-94dd-4572-806a-d11275d0fa95"
+}

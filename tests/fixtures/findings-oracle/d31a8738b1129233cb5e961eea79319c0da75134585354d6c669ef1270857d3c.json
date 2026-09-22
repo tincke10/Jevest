@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding questions whether other option builder branches pass prefix after the mutation branch gained it, whereas the change fixed the specific bug that mutationOptions itself was missing the prefix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 204,
+    "outputTokens": 798,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11406,
+  "requestId": "535ef0d1-d239-49e7-85c7-08c0f86b573f"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.99,
+  "reason": "The before code contains no `lambda` property at all, so the claimed optional/nullable/`unknown` combination and dual absent representations are not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1507,
+    "outputTokens": 2014,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24236,
+  "requestId": "d84fa96e-a4ee-4209-a979-9d5067bec759"
+}

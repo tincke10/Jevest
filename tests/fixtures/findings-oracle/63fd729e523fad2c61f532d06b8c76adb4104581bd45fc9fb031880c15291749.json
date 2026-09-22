@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding concerns the default fallback when all q-values are zero (a possible new edge after filtering), whereas the change fixes the discrete bug that q=0 entries still matched a supported type.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 175,
+    "outputTokens": 1300,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18213,
+  "requestId": "ffab5d2d-07b5-45df-bfdc-c8158cc3909f"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change only reworded the Tajik invalid_union message and left the `${o}` interpolation unchanged, while the reviewer described a raw string-conversion defect for non-primitive options.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1873,
+    "outputTokens": 293,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7995,
+  "requestId": "8dc9a602-e8c4-4897-9ac0-b8a5fc08a0b0"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is an API-surface concern about the new exports, whereas the change exported the constants to fix wildcard middleware route matching.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1583,
+    "outputTokens": 213,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4182,
+  "requestId": "b380a79e-6e35-4401-ae93-c5092438175d"
+}

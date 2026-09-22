@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.7,
+  "reason": "The before code's `invalid_union` case hardcodes the phrase 'Қимати дискриминатори нодуруст' ('Invalid discriminator value'), which explicitly refers to a discriminator even though this issue code is used for generic union failures, not just discriminated unions.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 74,
+    "outputTokens": 2321,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31464,
+  "requestId": "d5b039fd-f0b2-41e0-8fea-9f7c32860ce7"
+}

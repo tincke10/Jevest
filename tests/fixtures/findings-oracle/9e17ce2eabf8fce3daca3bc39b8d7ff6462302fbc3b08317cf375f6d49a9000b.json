@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code unconditionally calls map.set(expect, results) after merging, so it does not skip the write or depend on mutating the stored object.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 806,
+    "outputTokens": 831,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10149,
+  "requestId": "b0562a51-5243-4dd6-b14e-ab6e29f7b6fc"
+}

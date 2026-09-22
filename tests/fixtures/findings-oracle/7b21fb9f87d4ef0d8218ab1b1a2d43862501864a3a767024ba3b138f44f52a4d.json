@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding describes a potential regression from the new guard skipping non-required schema logic, while the change fixed the original defect of input record keys being incorrectly marked required when defaults could fill them.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1184,
+    "outputTokens": 1231,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18777,
+  "requestId": "de071ca2-1e51-4b60-adee-aaa1a2bd5ec0"
+}

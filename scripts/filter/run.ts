@@ -207,14 +207,22 @@ export function groundTruthFromLabel(
     }
     const oracle = finding.label.oracle;
     if (oracle === undefined) {
-      throw new Error(
-        `finding "${finding.id}" has no label.oracle, so --label oracle cannot score it. Run \`pnpm findings:label --findings <in> --out <out> --labeler deepseek --mode record\` first and point --findings at the output.`,
-      );
+      // The labeler failed on this record (truncation, balance, rate limit):
+      // it is unlabeled, which is exactly what `unknown` means — excluded,
+      // counted. Only a file with no oracle label at all is the wrong file.
+      counts.unknown += 1;
+      continue;
     }
     counts[oracle.verdict] += 1;
     if (oracle.verdict !== "unknown") {
       groundTruth[finding.id] = oracle.verdict === "real";
     }
+  }
+
+  if (label === "oracle" && findings.length > 0 && counts.unknown === findings.length) {
+    throw new Error(
+      "no record has a label.oracle, so --label oracle cannot score this file. Run `pnpm findings:label --findings <in> --out <out> --labeler deepseek --mode record` first and point --findings at the output.",
+    );
   }
 
   return { groundTruth, counts };

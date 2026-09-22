@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code reaches ETag generation after `next()` with no method/status guard, and the PR description confirms method/status checks previously applied only when If-None-Match was `*`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 243,
+    "outputTokens": 5223,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 64044,
+  "requestId": "480ccb5e-57df-4e8a-9271-6293e84cf7c5"
+}

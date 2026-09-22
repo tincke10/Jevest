@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not push `allOf` (or any child's `allOf`) into `ctx.intersections`, so there is no recorded child array to be folded a second time; the added line in the AFTER code is what introduces recording.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 159,
+    "outputTokens": 3116,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 40121,
+  "requestId": "80d058f1-7fe5-437c-bbd9-ddbe641cbe29"
+}

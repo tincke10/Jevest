@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code has no `prewarmModules` property, so the claimed problem about that property being silently accepted as a no-op cannot be present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 800,
+    "outputTokens": 1320,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17422,
+  "requestId": "8744573a-e5d4-46fd-aeee-3c776ee3776c"
+}

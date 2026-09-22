@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding points to the exported Set type as the real public constraint, and the change fixed exactly that by widening Record<string, any> to Record<PropertyKey, any> for symbol keys.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 268,
+    "outputTokens": 1555,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20110,
+  "requestId": "ffc0bebf-1437-4541-bf08-e6ada6c2bd50"
+}

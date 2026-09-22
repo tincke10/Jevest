@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about an empty-string vs absent Content-Type precision issue in the added truthiness check, while the change fixes the missing Content-Type on rebuilt cached bodies that made formData() throw.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 128,
+    "outputTokens": 979,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14220,
+  "requestId": "bff65a7a-4c67-4c1c-b358-63cd496b4024"
+}

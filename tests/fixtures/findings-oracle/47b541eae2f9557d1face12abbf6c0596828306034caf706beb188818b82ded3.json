@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code has only the `iam` member and lacks `jwt`/`lambda`; the claimed three independently optional mutually-exclusive shapes do not exist there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 225,
+    "outputTokens": 1574,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18344,
+  "requestId": "402b2404-6806-41bc-8a06-2ef3a72a0dce"
+}

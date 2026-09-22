@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code's streamToNodeStream only uses writer.write/end and never calls pipeline, so the claimed pipeline ERR_INVALID_ARG_TYPE rejection cannot occur in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 305,
+    "outputTokens": 1173,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14586,
+  "requestId": "a63e14d2-8f8e-44de-ba84-049dbde4bced"
+}

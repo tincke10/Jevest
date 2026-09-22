@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding questions whether the newly added regex constant is used (dead code/lint), whereas the change's purpose was to support structured JSON content-types, not to fix an unused constant.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 187,
+    "outputTokens": 880,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12689,
+  "requestId": "cbe232e5-4425-4832-aab0-8f9c2dc21042"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code uses a single Reflect.ownKeys pass and does not split string and symbol keys, so the claimed split-induced visitation order change is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 178,
+    "outputTokens": 1880,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21936,
+  "requestId": "c24cf776-89f2-4962-9fdb-8bc812bf5fa8"
+}

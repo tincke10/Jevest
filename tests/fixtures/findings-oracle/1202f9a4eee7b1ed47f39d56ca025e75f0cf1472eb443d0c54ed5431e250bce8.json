@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed caller-array mutation by copying the checks array via snapshotChecks, but the finding describes a different remaining issue—that the copied array still shares $ZodCheck instances—which the change did not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 218,
+    "outputTokens": 745,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11001,
+  "requestId": "2b884598-f75a-41f3-a615-68b72b080a69"
+}

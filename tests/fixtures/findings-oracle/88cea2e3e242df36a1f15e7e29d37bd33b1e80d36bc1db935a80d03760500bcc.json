@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code explicitly checks propertyIsEnumerable and skips non-enumerable own properties, so the claimed removed-filter problem is not present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 198,
+    "outputTokens": 607,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8808,
+  "requestId": "459a4142-eaa3-477f-b678-2767daec7643"
+}

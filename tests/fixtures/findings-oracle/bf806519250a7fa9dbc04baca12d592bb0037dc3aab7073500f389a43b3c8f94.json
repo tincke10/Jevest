@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding complains that the fix removes the ability to fake nextTick/queueMicrotask via toNotFake, while the change fixes the opposite bug of those timers being unintentionally faked when only toNotFake was set.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1802,
+    "outputTokens": 2064,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26738,
+  "requestId": "23ff8da4-ae77-472d-9b10-65f58d7ce196"
+}

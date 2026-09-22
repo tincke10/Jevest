@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "The before code never reads or casts request.bodyCache.formData; it calls request.arrayBuffer() directly, so the claimed unchecked assertion is not present in the BEFORE hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 198,
+    "outputTokens": 510,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6505,
+  "requestId": "b03b02f4-d349-49b7-b7ea-c9441eef4e5a"
+}

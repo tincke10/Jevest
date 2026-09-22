@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code eagerly constructs the ZodError inside safeParse, so any throw from finalizeIssue or the constructor would escape from safeParse, not from a later result.error read; the lazy getter that causes the claimed behavior only exists in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 217,
+    "outputTokens": 1209,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15400,
+  "requestId": "f05e6365-69c2-40c0-8e45-03720ffcdc52"
+}

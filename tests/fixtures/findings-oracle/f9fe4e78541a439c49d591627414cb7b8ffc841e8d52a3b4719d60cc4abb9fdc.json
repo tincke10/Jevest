@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.99,
+  "reason": "The BEFORE code does not declare a streamHeader option at all, so the claimed no-op of a declared streamHeader option is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 232,
+    "outputTokens": 993,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12151,
+  "requestId": "fc009ef5-d125-4c79-bdc3-0855f9cfb261"
+}

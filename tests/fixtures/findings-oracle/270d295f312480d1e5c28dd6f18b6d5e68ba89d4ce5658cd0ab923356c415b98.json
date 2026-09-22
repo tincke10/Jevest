@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code does not define validate or validateAsync, so the claimed asymmetry and lack of narrowing for validateAsync cannot be present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1138,
+    "outputTokens": 2399,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 27240,
+  "requestId": "f709d1e4-b6af-44c0-9ddf-298044a8ba2e"
+}

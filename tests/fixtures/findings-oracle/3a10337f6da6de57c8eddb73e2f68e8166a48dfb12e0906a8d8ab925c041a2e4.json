@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change adds a `definite` flag to avoid a redundant interpreted pass in `z.validate`, while the finding is about the mutability of `code`/`definite`, which is a separate safety concern not addressed by the fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 951,
+    "outputTokens": 378,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7056,
+  "requestId": "5c6c9b2d-259a-4623-bff0-1007824b97e7"
+}

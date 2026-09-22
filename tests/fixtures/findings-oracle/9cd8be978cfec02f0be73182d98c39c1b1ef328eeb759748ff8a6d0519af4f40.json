@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed unsatisfiable allOf JSON Schema output by folding object intersections, whereas the finding describes a potential TypeError from the newly added ctx.intersections.push if the context array is missing.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1309,
+    "outputTokens": 588,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9182,
+  "requestId": "bb6322c4-fa5d-421b-b316-6ef4a119f217"
+}

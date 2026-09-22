@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "The BEFORE code does not contain the `addDirtyMock` bound alias at all, so the claimed Set-returning callback hazard does not exist in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1894,
+    "outputTokens": 1095,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14053,
+  "requestId": "6b4dbf93-756b-4033-88d4-36ec1e350ea4"
+}

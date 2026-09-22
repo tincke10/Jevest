@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.8,
+  "reason": "The finding warns that parse may still use the strict validCookieNameRegEx unless the relaxed regex is wired in, which is exactly the strict cookie-name validation bug the commit intended to fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1294,
+    "outputTokens": 1936,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 28453,
+  "requestId": "6a0ad12c-7ac4-41ba-a7ec-8b0dc98bc0e6"
+}

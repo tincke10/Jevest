@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not define or store a `definite` property on `CompiledFn` (only `code` is optional), so the claimed hazard of dropping `definite` cannot be present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 962,
+    "outputTokens": 1645,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23288,
+  "requestId": "e8976e62-f135-4ea0-940a-c3c0c586ef41"
+}

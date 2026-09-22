@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The BEFORE regex's ` > ` alternative has no end anchor, so a slice like ` > something else entirely` still matches and deletes the key even without a trailing counter, making the two branches inconsistent.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 7231,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 92997,
+  "requestId": "0fb9742c-0dd6-4490-b904-40b9c3911bc4"
+}

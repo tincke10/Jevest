@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding is about exact-case method string comparison causing lowercase methods to skip ETag handling, whereas the change fixes skipping unsafe methods or error responses for non-'*' If-None-Match values and does not make the method comparison case-insensitive.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 234,
+    "outputTokens": 906,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13041,
+  "requestId": "03027018-feb3-4a57-85ca-47e2be4f65a1"
+}

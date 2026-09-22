@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no `!omittableOnInput` guard at line 487 (only `if (keyValues && !def.partial)`), so the claimed new outer-guard skip of the entire block cannot occur in the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1168,
+    "outputTokens": 3330,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 42471,
+  "requestId": "74f36e3d-f36c-4cbd-a06d-a50d10453732"
+}

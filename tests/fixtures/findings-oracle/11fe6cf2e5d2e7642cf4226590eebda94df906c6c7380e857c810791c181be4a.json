@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The before code shown calls `loader.load(op)` without any per-operation AbortController or `raceAbortSignals`, so the claimed abort-listener leak cannot occur in this hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 230,
+    "outputTokens": 6223,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 73102,
+  "requestId": "e02c1948-f5d1-47c0-ba0b-088aec4de954"
+}

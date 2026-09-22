@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.75,
+  "reason": "In the BEFORE code, an empty `testName` makes `uncheckedKey.slice(testName.length)` return the full key and the unanchored `/ \\d+$| > /` regex is evaluated against that whole key, so unrelated keys ending in space+digits (or containing ` > `) would be deleted.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1698,
+    "outputTokens": 6492,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 83498,
+  "requestId": "2c99cfc0-0704-48e0-9b21-c70a9a12381d"
+}

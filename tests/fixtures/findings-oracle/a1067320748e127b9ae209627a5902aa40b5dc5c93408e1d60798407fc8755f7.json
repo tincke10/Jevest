@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code only supplies `arg1` inside `getQueryKeyInternal`, not as a separate `input` field, so there are not two sources of truth.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1409,
+    "outputTokens": 1268,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16211,
+  "requestId": "af859afe-ce04-4d53-93a7-050466b12107"
+}

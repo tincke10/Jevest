@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "Before the change there was only the strict validCookieNameRegEx used for both parsing and serialization, so a name like `paraglide:lang` was dropped at parse time rather than parsed and later rejected by setCookie/serialize.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 258,
+    "outputTokens": 2696,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33638,
+  "requestId": "9983c23f-2923-4b26-87e1-84bdbc2c795e"
+}

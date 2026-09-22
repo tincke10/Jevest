@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns a primitive `parent` reaching `Object.setPrototypeOf`, while the fix added `mockPrototype !== parent` to prevent cyclic self-assignment as described in the issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 191,
+    "outputTokens": 352,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4846,
+  "requestId": "34984ee9-e7a2-4358-bbe6-760d16b9db31"
+}

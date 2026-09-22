@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE pattern is `^[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$` and does not contain `\\p{Regional_Indicator}`, so the claimed Regional_Indicator syntax error cannot occur in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 217,
+    "outputTokens": 1930,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24568,
+  "requestId": "7d211ada-2c66-4d63-b436-6a7464fb98c4"
+}

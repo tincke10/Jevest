@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "In the BEFORE code, `clientSubscriptions.delete(id)` is executed after the `respond({... type: 'stopped'})` call, so an error thrown by `respond` would occur before deletion, not after; the claimed 'after the entry was already deleted' sequence is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1255,
+    "outputTokens": 6468,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 81628,
+  "requestId": "517bb0a7-878e-4ebf-9f52-1962bdf65223"
+}

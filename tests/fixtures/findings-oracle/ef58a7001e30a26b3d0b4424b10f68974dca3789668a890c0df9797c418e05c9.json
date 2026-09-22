@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The before code literally contains a manually maintained cache version literal, and the PR description confirms version is part of the cache key, so an un-bumped change can indeed leave stale cached output.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 968,
+    "outputTokens": 878,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12555,
+  "requestId": "914df9d3-f8f7-4354-9c13-ac1587cefcda"
+}

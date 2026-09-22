@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding inverts the actual asymmetry—it claims the staticParse branch already sets process.exitCode and the collectTests fallback does not, while the fix adds exit-code handling to the static branch because that branch lacked it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 150,
+    "outputTokens": 1957,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26668,
+  "requestId": "4823fb3a-5ff8-4ef2-a3e1-adc2732b7abd"
+}

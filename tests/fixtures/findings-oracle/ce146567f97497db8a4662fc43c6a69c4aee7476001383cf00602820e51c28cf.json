@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about engine compatibility and a SyntaxError from unsupported Unicode properties, while the change fixed validation logic rejecting component-only strings that contain no emoji anchor.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 233,
+    "outputTokens": 162,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3733,
+  "requestId": "53b434f0-3d61-4413-b854-4feb43a8a587"
+}

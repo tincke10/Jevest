@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not import toRollupError at all, so the claimed unused import or build error cannot be present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1704,
+    "outputTokens": 662,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9336,
+  "requestId": "29d2208a-01aa-4b1e-9091-474fbec554d9"
+}

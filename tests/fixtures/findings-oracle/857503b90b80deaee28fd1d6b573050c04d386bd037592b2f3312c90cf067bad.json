@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.75,
+  "reason": "The before code/PR indicates the previous matcher was limited to standard application/json, so text/json and text/x-json were not previously pretty-printed and the claimed regression is not actually present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 852,
+    "outputTokens": 2548,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 36342,
+  "requestId": "0a7a9c90-26cf-45af-bd3c-2f9c88c7ec67"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code uses a manual writer.write loop and never calls pipeline or destroys the writer, so the claimed pipeline destruction cannot occur in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1672,
+    "outputTokens": 2000,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 24273,
+  "requestId": "520e622b-8f1d-43e0-b628-5fa590ea421a"
+}

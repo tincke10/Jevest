@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code contains only type-only imports and no `cloneRawRequest` runtime import, so the claimed hard runtime dependency is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 835,
+    "outputTokens": 799,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10117,
+  "requestId": "0f06386f-98f0-423b-9d55-edb146253ca7"
+}

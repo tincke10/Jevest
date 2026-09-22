@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown does not export TRPCUnwrap; that export is added only in the AFTER code, so the claimed widening of the public API by exposing Unwrap is not present before the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1392,
+    "outputTokens": 318,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5048,
+  "requestId": "2d71808e-b480-4579-91ba-8fa1573cffd4"
+}

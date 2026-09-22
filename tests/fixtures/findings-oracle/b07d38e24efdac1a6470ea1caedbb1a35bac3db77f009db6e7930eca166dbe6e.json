@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixes a stale clientSubscriptions entry by deleting it in the catch path, while the finding argues that deleting the entry without aborting the underlying subscription causes a different resource leak, so it is not the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1207,
+    "outputTokens": 586,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9001,
+  "requestId": "6c0e0e2d-8867-4b30-af10-d47bf031548d"
+}

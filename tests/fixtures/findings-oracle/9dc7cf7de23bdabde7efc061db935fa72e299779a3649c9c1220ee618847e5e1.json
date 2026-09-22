@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The diff only rephrases the Tajik 'discriminator' message grammatically but still refers to a discriminator for invalid_union, so it does not fix the reviewer's concern about plain unions getting a misleading discriminator message.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1882,
+    "outputTokens": 742,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13396,
+  "requestId": "dd0f4cde-40c9-4f83-9262-a64245f5ebf5"
+}

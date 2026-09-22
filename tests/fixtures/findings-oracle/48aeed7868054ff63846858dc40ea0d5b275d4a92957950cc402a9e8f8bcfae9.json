@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code still invokes `experimental_clearCache()` and the commit explicitly keeps the old name as a deprecated alias, so the claimed public API break is neither present in the before code nor realized by the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 150,
+    "outputTokens": 1813,
+    "cacheReadInputTokens": 896,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23372,
+  "requestId": "32afa766-0b58-4c93-90d4-9b0bbf1f5f44"
+}

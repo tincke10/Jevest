@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.75,
+  "reason": "The BEFORE code has no try/finally and never restores indent on a throw, so the specific 'indent restored but content not rolled back' failure mode is not what the before code does; the linked issue says the dedented output is character-identical, so content was not left half-written.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1708,
+    "outputTokens": 7689,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 103986,
+  "requestId": "7b08bf43-52ff-4b63-996e-fb62d7393a0a"
+}

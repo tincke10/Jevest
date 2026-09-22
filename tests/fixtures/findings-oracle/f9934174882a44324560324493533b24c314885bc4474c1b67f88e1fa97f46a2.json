@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.75,
+  "reason": "The finding warns that parameterizing ZodNumberFormat breaks assignability and existing callers, while the change intentionally parameterized the types to fix the opposite defect—the formats being indistinguishable at the type level—so it describes a consequence of the fix rather than the problem fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 236,
+    "outputTokens": 6123,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 84584,
+  "requestId": "286eb774-dde4-4b83-87cf-4a7937b00bb8"
+}

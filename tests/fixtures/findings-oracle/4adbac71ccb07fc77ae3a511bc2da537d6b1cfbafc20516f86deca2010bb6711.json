@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed custom environments being skipped from VM pool measurements, while the finding criticizes the resulting failure for custom environments lacking setupVM, which the change explicitly accepts rather than addresses.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 128,
+    "outputTokens": 642,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9455,
+  "requestId": "83a66de8-4843-4271-ab47-13121a0c526b"
+}

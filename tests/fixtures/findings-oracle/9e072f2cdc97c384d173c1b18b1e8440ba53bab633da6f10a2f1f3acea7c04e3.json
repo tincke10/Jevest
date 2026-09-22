@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The bound alias `addDirtyMock` does not exist in the BEFORE code, so the described capture issue cannot be present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1823,
+    "outputTokens": 459,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6398,
+  "requestId": "9225563c-3167-4fbd-b1c9-a60f2df56f39"
+}

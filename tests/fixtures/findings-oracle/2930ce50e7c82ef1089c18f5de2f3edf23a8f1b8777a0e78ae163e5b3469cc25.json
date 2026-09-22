@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no MarkOptions declaration or export, so the claimed naming issue is not present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1324,
+    "outputTokens": 964,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13371,
+  "requestId": "15b3589d-34c8-4d45-82c5-e75aff911520"
+}

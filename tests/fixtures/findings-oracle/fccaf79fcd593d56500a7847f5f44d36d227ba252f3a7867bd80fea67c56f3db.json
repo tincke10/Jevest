@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a correctness risk introduced by the change's skip of map.set, while the change fixed a performance issue of redefining and writing state on every update.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 694,
+    "outputTokens": 563,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7764,
+  "requestId": "ffc2b947-5d98-4b42-98d1-ec07c7f47b7f"
+}

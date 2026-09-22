@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns parameter precedence/bookkeeping (processedSet vs !i) while the commit fixed suffix wildcard route matching returning 404.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1268,
+    "outputTokens": 2416,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33757,
+  "requestId": "9940af2a-7bf1-43e1-938c-6ba15db83637"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The commit is a feature addition for QUERY request caching and not a bugfix, and the finding concerns a potential weakness in the newly introduced size-cap constant rather than a problem the change was meant to fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 219,
+    "outputTokens": 668,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10219,
+  "requestId": "8b928b34-ef37-418d-a6ac-03159aa3e5c1"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds `withParser` and `INVALID` to the classic barrel, while the finding questions whether those exports resolve from core and are missing from mini — a different concern from the feature export the change introduced.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 853,
+    "outputTokens": 1044,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17078,
+  "requestId": "6c3b0bf5-26b3-42dc-b592-8bb30436f4bb"
+}

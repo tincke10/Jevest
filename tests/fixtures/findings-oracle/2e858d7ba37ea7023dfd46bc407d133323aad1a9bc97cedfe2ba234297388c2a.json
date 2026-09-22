@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The before code explicitly constrained Shape to core.$ZodShape, so the described inability to guarantee that constraint cannot occur.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 986,
+    "outputTokens": 700,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10305,
+  "requestId": "cb2b8214-00b4-47aa-8f99-da22fcdf338b"
+}

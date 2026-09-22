@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed OpenAPI cyclic type support and adopted official SchemaObject types, not the source-breaking removal of the exported JsonSchema interface that the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 108,
+    "outputTokens": 510,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7984,
+  "requestId": "80120124-8efa-40d8-bb6e-f742f654805d"
+}

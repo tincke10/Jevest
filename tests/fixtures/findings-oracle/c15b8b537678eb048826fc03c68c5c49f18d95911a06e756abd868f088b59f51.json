@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed false externalization from blind slice when the project root is not an ancestor, while the finding describes case/drive-letter sensitivity of the prefix check causing a false negative, which is a different defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1477,
+    "outputTokens": 4694,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 61999,
+  "requestId": "266bda83-94e8-4214-b048-cd335db5dc3c"
+}

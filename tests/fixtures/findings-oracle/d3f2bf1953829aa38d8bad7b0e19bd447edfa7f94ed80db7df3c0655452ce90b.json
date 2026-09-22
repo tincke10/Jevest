@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The BEFORE code declares `ZodNumberFormat` as the non-generic `core.$constructor<ZodNumberFormat>`, so its `_zod` internals cannot carry a narrower format type, exactly the type-level limitation the claim describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 212,
+    "outputTokens": 2469,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31734,
+  "requestId": "94657895-8aaf-4e3c-9b81-a28e5b25a968"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code did not pass `input` to `trpcSubscriptionOptions`, so it could not forward a raw `skipToken`; that forwarding only appears in the AFTER hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1571,
+    "outputTokens": 1304,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17287,
+  "requestId": "6a6b7d1a-22af-4c4b-b4ad-b1949de424dd"
+}

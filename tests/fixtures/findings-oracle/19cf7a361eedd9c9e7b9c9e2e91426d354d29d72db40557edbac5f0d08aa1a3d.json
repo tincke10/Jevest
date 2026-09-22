@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code does not contain a `definite` property at all, so the claimed ambiguity around `definite?: boolean | undefined` cannot be present in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1018,
+    "outputTokens": 299,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5047,
+  "requestId": "65ecfbb6-b5e5-4099-92cf-6160b97b96fd"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.7,
+  "reason": "The PR is a chore for OpenAPI fixture caching/docs standardization, not a bugfix, and the finding describes a potential regression in local node_modules JSDoc suppression rather than the nondeterminism/standardization the removal was meant to address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 843,
+    "outputTokens": 7307,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 94764,
+  "requestId": "1ee8db9c-84a4-4954-ad13-88eaa16400b5"
+}

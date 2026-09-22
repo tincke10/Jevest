@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change removes the legacy `_properties as properties` export as part of turning `z.properties()` into a schema, whereas the finding warns that removing it is a breaking API change, not a bug the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1003,
+    "outputTokens": 1007,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14926,
+  "requestId": "a323f6fa-c4e0-4b99-b4e3-acd379eb4a39"
+}

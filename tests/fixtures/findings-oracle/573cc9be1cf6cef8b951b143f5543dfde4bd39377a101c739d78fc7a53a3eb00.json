@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code explicitly imports `reports` from `istanbul-reports`, so the claimed deleted/unresolved import does not exist in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 245,
+    "outputTokens": 1667,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 22165,
+  "requestId": "f464a355-1879-4482-9226-348360f4c46a"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code lacks the new else-if branch that unconditionally appends `nextTick` when `toFake` is undefined and `toNotFake` is set, so the child-process guard is not dead for that path and the claim describes the AFTER code, not the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1873,
+    "outputTokens": 2610,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31704,
+  "requestId": "3f0af3c5-3c4f-4e07-aa2b-71a1ae67d814"
+}

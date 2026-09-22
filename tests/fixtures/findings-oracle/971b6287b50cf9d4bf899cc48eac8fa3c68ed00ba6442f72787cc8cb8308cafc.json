@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed parseBody failing due to re-serializing cached formData with a new multipart boundary, not the reviewer's concern about re-throwing or unhandled rejection from an already-rejected bodyCache.formData promise.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1235,
+    "outputTokens": 1551,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18595,
+  "requestId": "f5d32c55-2610-49aa-ac75-6b0bb9615f5c"
+}

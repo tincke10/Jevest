@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change intentionally adds the INVALID export as part of the z.withParser feature, so it does not fix the reviewer's concern about INVALID leaking as public API; it is the source of that exposure, not a fix for it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 888,
+    "outputTokens": 517,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7919,
+  "requestId": "285b9fcf-8759-4129-ae62-bdec6762d0b8"
+}

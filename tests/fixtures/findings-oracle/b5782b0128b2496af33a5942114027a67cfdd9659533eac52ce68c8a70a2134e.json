@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claimed synchronous `observer.complete()` on an already-aborted signal exists only in the AFTER code's `onAbort` fast path; the BEFORE code never checks `signal.aborted` and never calls `observer.complete()` during subscribe, so the described problem is not present in the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1374,
+    "outputTokens": 1636,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19123,
+  "requestId": "05b433d8-779c-41a4-a817-1b7d6e1ce0af"
+}

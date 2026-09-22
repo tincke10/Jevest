@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance refactor replacing a Reflect.ownKeys loop with emitOwnKeys, while the finding warns that the refactor may leave unbalanced braces, which is a potential introduced defect, not the performance problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 213,
+    "outputTokens": 838,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12289,
+  "requestId": "29e53570-7feb-4710-a7ac-13918d609b46"
+}

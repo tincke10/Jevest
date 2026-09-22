@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.78,
+  "reason": "The change is a feature adding a `streamHeader` option to choose the streaming header, not a bugfix for `resolveHTTPLinkOptions` stripping/ignoring that field, which is the separate implementation concern the reviewer raised.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1148,
+    "outputTokens": 2645,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 37250,
+  "requestId": "aa0c1947-b956-4306-9482-4500068f69ef"
+}

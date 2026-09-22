@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code contains no `const log = console;` binding, so there is no unused local that could fail compilation.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 235,
+    "outputTokens": 915,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11813,
+  "requestId": "bec8d513-563e-4d7c-89d1-dce5fd3b0ee6"
+}

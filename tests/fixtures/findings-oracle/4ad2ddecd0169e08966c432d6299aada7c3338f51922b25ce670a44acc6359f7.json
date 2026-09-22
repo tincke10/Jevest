@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding concerns a type/duck-typing mismatch for `pipeline` (potential ERR_INVALID_ARG_TYPE), whereas the change fixed ignored backpressure and premature resolution by replacing the manual write loop with `pipeline`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 321,
+    "outputTokens": 805,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12014,
+  "requestId": "5db97cc0-bf9b-4abb-863d-08184c9cccc8"
+}

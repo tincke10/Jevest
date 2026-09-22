@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code's regex character class includes \\p{Emoji_Component}, which matches ASCII digits, '#', '*', ZWJ, and variation selectors even when a pictograph is present, so inputs like '😀123' are accepted.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1774,
+    "outputTokens": 2663,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 34755,
+  "requestId": "9651ac2a-a831-40d8-9744-0680c49f4348"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses only the custom `trpc-accept` header and has no `streamHeader` option to send a standard `Accept` header, so the described standard-Accept content-negotiation risk does not exist in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 246,
+    "outputTokens": 384,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6102,
+  "requestId": "6654b12a-a242-4c7d-8b67-fdc09740a31e"
+}

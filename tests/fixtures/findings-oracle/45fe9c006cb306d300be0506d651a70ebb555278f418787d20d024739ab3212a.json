@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns about a potential missing `Unwrap` export from the core barrel, while the change fixed TS2742 declaration portability by re-exporting `TRPCUnwrap` from an existing internal type.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1271,
+    "outputTokens": 1121,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14850,
+  "requestId": "3f699897-0e0d-4196-b80e-61c82db64207"
+}

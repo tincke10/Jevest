@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain MarkOptions or `stack?: string`; that property is only introduced by the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1339,
+    "outputTokens": 1254,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17195,
+  "requestId": "01fdc2a9-54fb-4471-b885-0bd1dc2cb016"
+}

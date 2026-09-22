@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.7,
+  "reason": "The shown BEFORE hunk does not include the method comparison, and the PR only confirms a method check existed without showing its case handling or whether lowercase methods are reachable.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 90,
+    "outputTokens": 13707,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 176868,
+  "requestId": "2b2257fb-0176-49ac-ab11-4f18091cf9dc"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no configurable title field at all, so there is no user-supplied title that could be an empty string or contain unescaped markdown/HTML.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 985,
+    "outputTokens": 398,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6631,
+  "requestId": "cf7f78f5-7cc5-4c58-b4fd-159bc7936755"
+}

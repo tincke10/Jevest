@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "In the BEFORE code `this.writer = this.writable.getWriter()` is only reachable after `pipeTo()` resolves, so a failed pipe skips that line and cannot attach a newly acquired writer to an errored writable.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 204,
+    "outputTokens": 1975,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25654,
+  "requestId": "84f24f31-2e0a-4b3d-af9e-5954825b790f"
+}

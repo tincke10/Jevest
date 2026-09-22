@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed the missing export of MarkOptions causing type-checking errors in published declarations, while the finding raises a naming/collision concern about the export, not the defect addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 337,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5743,
+  "requestId": "e2536517-eff6-47b6-b0e0-57d5e44bafb1"
+}

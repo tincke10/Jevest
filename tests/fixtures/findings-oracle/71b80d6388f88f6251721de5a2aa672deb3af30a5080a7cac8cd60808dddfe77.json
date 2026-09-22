@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code's `properties` signature uses `Shape extends core.$ZodShape` with no `keyof T` restriction, so it did not reject shape keys outside `T` and therefore did not exhibit the claimed regression.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 932,
+    "outputTokens": 2868,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 39190,
+  "requestId": "4d966633-2770-4362-ac70-4b1cb9a92c75"
+}

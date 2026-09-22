@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a deliberate feature rename/promotion (not a bugfix), and the finding warns about a partial-rename TypeError that does not exist in the BEFORE code, which still calls `experimental_parseSpecifications`.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 469,
+    "outputTokens": 2228,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 30392,
+  "requestId": "b67e13c7-86b8-42b5-acaa-6eed2c41a43b"
+}

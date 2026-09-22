@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance optimization to avoid redefining all state properties, not to prevent TypeError from non-configurable properties, and the finding explicitly says it is pre-existing and not introduced by the diff.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 239,
+    "outputTokens": 516,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7291,
+  "requestId": "c460de65-42d2-4958-b2dc-739d53b07c0e"
+}

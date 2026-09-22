@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code still declares and exports `JsonSchema`, so it is not removed from the module's public surface; the removal only appears in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1116,
+    "outputTokens": 2201,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 28782,
+  "requestId": "9ead503d-174c-4767-87c4-af6e6b7962be"
+}

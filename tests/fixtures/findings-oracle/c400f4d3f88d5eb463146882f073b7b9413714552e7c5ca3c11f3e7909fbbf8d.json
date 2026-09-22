@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a deliberate performance opt-out for the node environment to avoid prewarm overhead, while the finding warns that this opt-out is a broad, possibly regressive behavior change, not the pre-existing defect the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 676,
+    "outputTokens": 713,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10741,
+  "requestId": "b764fe3d-28b4-4b99-b512-1254eeca9bd0"
+}

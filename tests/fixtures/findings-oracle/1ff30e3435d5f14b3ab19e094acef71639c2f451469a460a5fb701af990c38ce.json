@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code lacks the new else-if branch and does not force queueMicrotask into toNotFake; it only adds nextTick in child processes, so the removal of the toNotFake-style way to fake both timers is not actually present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 250,
+    "outputTokens": 1739,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21201,
+  "requestId": "dad16d50-2735-4dc6-922b-1664398156ff"
+}

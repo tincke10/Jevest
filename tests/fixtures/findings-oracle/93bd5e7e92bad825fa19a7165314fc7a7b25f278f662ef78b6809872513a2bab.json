@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The commit is a refactor that makes `util.cached` behave like the old `cachedInternal` (value inherited/non-enumerable), so the reviewer's warned enumerable-getter regression at this call site does not occur and was not the bug being fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 957,
+    "outputTokens": 5184,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 69232,
+  "requestId": "bd417bcc-755e-4c35-ae61-8d2826d34d13"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding flags the changed behavior that bag.minimum/maximum may no longer equal the format's full range, while the change fixed the opposite bug of format checks overwriting tighter user-supplied min/max bounds.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 290,
+    "outputTokens": 810,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13101,
+  "requestId": "2a9808cd-ebdc-4043-b6cd-809210b7bc8d"
+}

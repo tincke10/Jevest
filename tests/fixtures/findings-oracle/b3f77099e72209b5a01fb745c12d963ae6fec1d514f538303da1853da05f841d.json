@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the process.exitCode side effect introduced by the fix, not the original defect that vitest list exited 0 on static parse failures.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1473,
+    "outputTokens": 1984,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25424,
+  "requestId": "98058295-918d-4640-9f3f-86a301b17c66"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change is a feature/package migration switching to @vitest/istanbuljs packages, not a bugfix for the CJS default-vs-namespace import interop risk the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1299,
+    "outputTokens": 1555,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23002,
+  "requestId": "883d2794-4b32-4e60-86af-4775528418d9"
+}

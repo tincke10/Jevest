@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code calls `this.experimental_parseSpecifications(...)`, not `this.parseSpecifications(...)`, so the claimed missing-method TypeError from the rename is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 453,
+    "outputTokens": 945,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12471,
+  "requestId": "6e96c905-2370-4008-9410-9e2411e25b96"
+}

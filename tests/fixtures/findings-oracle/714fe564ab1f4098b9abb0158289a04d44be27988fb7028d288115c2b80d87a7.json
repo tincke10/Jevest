@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain any `hasFailed` usage, so there is no missing import or signature mismatch to verify in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 186,
+    "outputTokens": 1245,
+    "cacheReadInputTokens": 1920,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16433,
+  "requestId": "69040592-e87c-49b7-9675-afbe0c465a78"
+}

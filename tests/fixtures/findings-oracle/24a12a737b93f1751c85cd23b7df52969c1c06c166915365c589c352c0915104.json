@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding speculates about property descriptor/enumerability differences from mergeDefs, while the change fixed a recursive schema stack overflow by avoiding spread-induced shape resolution.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 165,
+    "outputTokens": 221,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4704,
+  "requestId": "012ebf89-a165-429a-a8c7-35bd74a3a329"
+}

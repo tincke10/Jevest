@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding is about an unqualified `$ZodNumberFormats` reference potentially causing a compile error, while the change fixed type-level format distinction by adding a generic parameter.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1763,
+    "outputTokens": 930,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13330,
+  "requestId": "d3d8055d-e2fa-48e5-b7cb-b6895d2d2719"
+}

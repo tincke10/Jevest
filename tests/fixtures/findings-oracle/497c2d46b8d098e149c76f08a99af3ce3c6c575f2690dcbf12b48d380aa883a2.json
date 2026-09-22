@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code has no generic Format parameter on ZodNumberFormat, so the described breaking type change from parameterizing it is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 220,
+    "outputTokens": 1570,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20998,
+  "requestId": "2c1d5edc-1cf2-4036-b5d4-5a3f6671e155"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The claimed `unsubscribeRef` and second `[]` effect cleanup do not exist in the BEFORE code, which instead returns the unsubscribe cleanup from the same effect that created the subscription.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 242,
+    "outputTokens": 307,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4406,
+  "requestId": "7802e8bc-8b70-425f-834c-52a8c70caeeb"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not re-export `inferSubscriptionInput` or `inferSubscriptionOutput`, so the claimed compile failure for those names cannot be present in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 820,
+    "outputTokens": 1042,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14438,
+  "requestId": "2384ddc6-1166-43f3-8e93-38bd8c65c35a"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The before code invokes the user-supplied ref cleanup in the attribute-removal loop without try/catch and does not delete the map entry before invoking it, so a throwing cleanup aborts applyProps and leaves the refCleanupMap stale.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 102,
+    "outputTokens": 5077,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 63277,
+  "requestId": "ac14657c-5a60-4e2f-8be0-f3ccacc30791"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The BEFORE code shown does not declare any module-scope constant like jsonContentTypeRegex; the constant only appears in the AFTER code, so the claimed dead code/unused local problem is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 171,
+    "outputTokens": 774,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10314,
+  "requestId": "6e6cb0be-4555-49eb-ae4c-f6b694469060"
+}

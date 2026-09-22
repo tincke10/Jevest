@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses the allowlist DOM_ENVIRONMENTS containing only jsdom and happy-dom, so an unset environment defaulting to node is not in that set and VM candidates are correctly skipped; the claimed VM-upside misclassification is introduced by the AFTER denylist, not present before.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1179,
+    "outputTokens": 1684,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20629,
+  "requestId": "9ea38601-b255-4ac5-8995-0ddabe428e3f"
+}

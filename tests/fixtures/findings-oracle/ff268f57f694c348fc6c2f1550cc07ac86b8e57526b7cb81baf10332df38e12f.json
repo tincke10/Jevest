@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The commit is a feature addition for QUERY support, not a bugfix, and the finding describes a potential runtime TypeError in that new feature rather than a problem the change was made to fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 230,
+    "outputTokens": 2289,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 30938,
+  "requestId": "d462c20b-4e8e-499c-afb8-616a3ccc6183"
+}

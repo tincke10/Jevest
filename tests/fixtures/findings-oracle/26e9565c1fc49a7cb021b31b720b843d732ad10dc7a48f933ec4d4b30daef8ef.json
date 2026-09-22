@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding warns that the added `startsWith` guard may be too strict for callers that do not pass the full prefix, whereas the change fixed the opposite defect where the missing prefix check caused skipped tests to delete unrelated snapshot keys.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1676,
+    "outputTokens": 2123,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 29174,
+  "requestId": "02f66151-2dff-4453-97b9-a2ee50ea802d"
+}

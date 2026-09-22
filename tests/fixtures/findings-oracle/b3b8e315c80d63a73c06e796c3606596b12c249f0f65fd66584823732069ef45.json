@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown does not enforce min/maxProperties at all—only propertyNames is handled—so there is no post-parse check whose output-stage key-stripping could miscount.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 254,
+    "outputTokens": 595,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8601,
+  "requestId": "8de44247-e0e3-4178-bac5-0913dd5b6d71"
+}

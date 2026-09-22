@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes minProperties/maxProperties being silently ignored by enforcing them; it does not add a conversion-time sanity check for contradictory minProperties > maxProperties, which is the defect the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 161,
+    "outputTokens": 1247,
+    "cacheReadInputTokens": 2304,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18425,
+  "requestId": "12b7a8bf-1045-49cd-8cf2-f13d5c4489ca"
+}

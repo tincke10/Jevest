@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not force abortEarly on ctx; it only spreads the caller's _ctx and sets async false, so the claimed divergence from forcing abortEarly:true is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1242,
+    "outputTokens": 742,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10355,
+  "requestId": "e7a70e8e-df05-4b78-b83f-eb8f81180e78"
+}

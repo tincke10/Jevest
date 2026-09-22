@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes an empty-testName edge case where the added startsWith guard is vacuously true, whereas the change fixed the missing prefix check that let a skipped test's name match any longer snapshot key.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1586,
+    "outputTokens": 990,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15180,
+  "requestId": "0ea91619-b897-47ff-bc4a-d11637a66980"
+}

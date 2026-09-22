@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixes the missing keyPrefix in mutationOptions, while the finding warns about a potential breaking change from adding prefix, which is a different concern than the bug fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1384,
+    "outputTokens": 585,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8932,
+  "requestId": "cc21c7fb-91ca-4335-bc22-00fd4d08ec81"
+}

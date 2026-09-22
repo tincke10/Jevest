@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is an API rename/promotion (experimental_clearCache to clearCache with a deprecated alias), not a fix for a missing clearCache method, while the finding raises a speculative runtime error in the new call that the change did not address as a bug.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 443,
+    "outputTokens": 509,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8143,
+  "requestId": "dabd03e1-d9d2-4e21-a6a3-9ff64d0ff375"
+}

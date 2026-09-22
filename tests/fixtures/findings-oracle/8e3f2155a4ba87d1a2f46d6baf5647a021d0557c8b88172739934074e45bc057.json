@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature addition adding a configurable title, not a bugfix, and the finding flags edge cases in that new feature rather than a pre-existing defect the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 873,
+    "outputTokens": 1141,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17864,
+  "requestId": "6c249d60-b18c-417a-bd5c-e85212fe2d1a"
+}

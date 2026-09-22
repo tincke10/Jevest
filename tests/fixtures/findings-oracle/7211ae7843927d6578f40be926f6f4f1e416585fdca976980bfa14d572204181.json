@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code lacks `uncheckedKey.startsWith(testName)`, so the claimed new requirement (and resulting false negatives) is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1788,
+    "outputTokens": 3410,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43189,
+  "requestId": "44044abc-5de2-4b98-820a-2729e381ed8b"
+}

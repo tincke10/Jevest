@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The commit is a feature adding QUERY request cache support, and the finding describes a collision/encoding concern about that new synthetic cache-key mechanism rather than a defect this change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 224,
+    "outputTokens": 1749,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23107,
+  "requestId": "7dfaa1b5-f918-44a9-8e03-6ade52d459af"
+}

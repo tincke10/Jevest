@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim is about a break caused by adding `prefix` to mutation options, but the BEFORE code does not pass `prefix`, so that change-induced break is not present in the BEFORE code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1496,
+    "outputTokens": 1912,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 23283,
+  "requestId": "d72f9338-0bb8-4dbc-9cbb-5c407e4f4ed4"
+}

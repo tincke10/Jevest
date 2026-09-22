@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The memoizer's fast path compares the current context object to the cached lastCtx, so a separate parse call with a different context cannot reuse the previous parse's bucket—the before code only retained the bucket strongly, it did not reuse it across contexts.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 255,
+    "outputTokens": 4324,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 57634,
+  "requestId": "40ec3013-418d-4ae8-b159-e5166deb7867"
+}

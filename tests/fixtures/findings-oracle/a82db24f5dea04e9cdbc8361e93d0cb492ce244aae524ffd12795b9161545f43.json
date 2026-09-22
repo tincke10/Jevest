@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The BEFORE code's `processedSet` is reset per outer loop and set true after the first possible key, so `!processed` is true only at i===0, already enforcing the same first-key-only precedence the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1380,
+    "outputTokens": 6685,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 82753,
+  "requestId": "ecad0b0c-fdcb-4e94-b498-fc4b105567bd"
+}

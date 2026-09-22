@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The BEFORE code has no QUERY branch at all, so the claimed lowercase/non-normalized method silently skipping the QUERY case is not the actual before behavior; the after code still uses an uppercase 'QUERY' literal and would also skip 'query'.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 434,
+    "outputTokens": 3264,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43258,
+  "requestId": "f9f22f7c-9d5c-4f01-b25a-b2fb769f072d"
+}

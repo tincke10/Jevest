@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature that adds new public type exports rather than fixing the API-surface stability concern the finding raises; the finding's warning is not addressed by (and is arguably worsened by) the change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 674,
+    "outputTokens": 774,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10964,
+  "requestId": "73b8f0ae-990e-451a-a89f-4f3b48d20177"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The before code's non-wildcard branch calls etagMatches without any method guard, so non-GET/HEAD methods with a matching concrete If-None-Match can still reach the 304 response.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 606,
+    "outputTokens": 712,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10434,
+  "requestId": "64e457db-372b-4f24-8576-b8bad5306909"
+}

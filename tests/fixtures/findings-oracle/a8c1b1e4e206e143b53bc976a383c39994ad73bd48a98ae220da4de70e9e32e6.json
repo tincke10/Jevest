@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the performance defect of z.validate parsing the whole schema, whereas the finding questions whether the newly added abortEarly flag is a valid/honored property at all.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1103,
+    "outputTokens": 2755,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 35938,
+  "requestId": "30fd8c10-9735-4b13-a353-2870ed14973b"
+}

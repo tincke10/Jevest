@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The character class `[!#-:<>-[\\]-~]` appears only in the AFTER code, not in the BEFORE code shown, so the claimed unescaped `[` issue is not present in the before version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1419,
+    "outputTokens": 1979,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21883,
+  "requestId": "ff2f7f6d-aff2-43f1-82b4-64226a95b208"
+}

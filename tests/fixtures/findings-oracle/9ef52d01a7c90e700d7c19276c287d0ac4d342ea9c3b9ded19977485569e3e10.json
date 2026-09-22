@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain an `isMatchFirst` head check, so index 0 is only compared once inside `findIndex`; the described double comparison is introduced by the change and not present before.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 187,
+    "outputTokens": 1591,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18465,
+  "requestId": "b559d54d-0b34-49fa-8053-68f866033c22"
+}

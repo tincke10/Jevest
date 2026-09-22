@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed jsdom 28 renaming `_buffer` to `_bytes`, while the finding complains about a missing null check on `impl` when the blob is not jsdom-backed, which the fix did not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1369,
+    "outputTokens": 336,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6077,
+  "requestId": "f11b9a47-00b9-4d8b-83e3-8b62f4b1668a"
+}

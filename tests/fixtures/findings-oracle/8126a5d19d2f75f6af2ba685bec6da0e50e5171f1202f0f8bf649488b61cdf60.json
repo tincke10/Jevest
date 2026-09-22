@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code uses `useEffect(..., [])`, so the effect runs only once and never re-runs on `subscribe` or snapshot changes, making the described render-loop impossible.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 224,
+    "outputTokens": 902,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12017,
+  "requestId": "d4411a8b-0b44-441b-a78c-405617b0f833"
+}

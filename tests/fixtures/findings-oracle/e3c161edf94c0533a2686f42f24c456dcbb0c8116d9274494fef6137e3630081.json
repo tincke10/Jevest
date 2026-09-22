@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance optimization replacing dictionary-mode cached boxes with prototype-backed cachedInternal boxes that still memoize identically, whereas the finding speculates cachedInternal might not memoize and could regress or break consumers.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1151,
+    "outputTokens": 1153,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16809,
+  "requestId": "f65357b0-f45d-4546-89b8-2ebd9b4bb84e"
+}

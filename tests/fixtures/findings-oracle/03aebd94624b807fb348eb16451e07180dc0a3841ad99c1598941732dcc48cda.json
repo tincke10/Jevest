@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code spreads `_ctx` without setting `abortEarly`, so a caller-supplied `abortEarly: false` is preserved and not overridden.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1205,
+    "outputTokens": 687,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10238,
+  "requestId": "189f6d6c-a401-4e7d-a0be-e655a2283a1a"
+}

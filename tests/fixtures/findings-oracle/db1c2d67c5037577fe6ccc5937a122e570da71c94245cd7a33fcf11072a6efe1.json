@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown calls `loader.load(op)` directly and contains no `raceAbortSignals` usage at all, so the claimed missing import and undefined/already-aborted signal behavior cannot be present in that code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1512,
+    "outputTokens": 425,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6930,
+  "requestId": "e9d3f908-c59b-47ea-91ef-0ce4c2501e77"
+}

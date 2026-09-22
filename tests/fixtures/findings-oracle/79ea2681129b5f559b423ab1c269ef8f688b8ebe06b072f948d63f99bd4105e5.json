@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding discusses future fragility if the define target later changes, not the performance problem of redundantly redefining matcher state on every expect call that this change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 643,
+    "outputTokens": 1229,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16718,
+  "requestId": "fb1b1684-704e-4914-988a-cd0842afee85"
+}

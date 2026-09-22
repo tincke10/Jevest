@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE hunk has no `refCleanupMap.get(container)?.()` call in the `ref` branch, so the previous ref cleanup is not invoked when the new ref produces no cleanup; that invocation is only added in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1450,
+    "outputTokens": 3460,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43298,
+  "requestId": "096be2a0-8fe1-4337-8557-fb84a16e64d5"
+}

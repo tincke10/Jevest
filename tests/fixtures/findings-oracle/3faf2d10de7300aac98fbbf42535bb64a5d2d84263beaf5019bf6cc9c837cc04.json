@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding warns about condition reordering causing `_scriptDefines` to be lost when sharedServer and browser mode are both active, whereas the change fixed browser-mode double-quoting of `config.define` values.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1908,
+    "outputTokens": 836,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12519,
+  "requestId": "0b82a8f4-c6b7-4aa3-b6d1-b058b333cc46"
+}

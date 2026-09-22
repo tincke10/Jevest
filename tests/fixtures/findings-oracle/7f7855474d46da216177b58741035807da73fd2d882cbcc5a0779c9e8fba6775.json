@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about a truthiness-check semantic loosening in the handlerSet guard, while the change fixed suffix wildcard route matching returning 404.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 188,
+    "outputTokens": 588,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9119,
+  "requestId": "ef42b024-d869-45ca-ad84-4a2c6c36fa9a"
+}

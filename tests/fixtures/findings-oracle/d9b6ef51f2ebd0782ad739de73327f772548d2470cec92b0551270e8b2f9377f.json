@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding explicitly warns that renaming experimental_parseSpecifications will break callers unless a deprecated alias is kept, and the linked PR states the old method remains as a deprecated alias.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 434,
+    "outputTokens": 253,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4762,
+  "requestId": "39f6bedb-e171-498d-ad50-b56d3148001d"
+}

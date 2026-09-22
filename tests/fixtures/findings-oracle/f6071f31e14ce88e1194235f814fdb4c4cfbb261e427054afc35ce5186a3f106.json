@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding describes defaulted/required keys with undefined output now being written into the result object, which is exactly the 'preserve undefined prefault outputs and object keys' defect the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2256,
+    "outputTokens": 874,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15676,
+  "requestId": "45eed18e-f539-441b-8f49-afcd0dd6d8a9"
+}

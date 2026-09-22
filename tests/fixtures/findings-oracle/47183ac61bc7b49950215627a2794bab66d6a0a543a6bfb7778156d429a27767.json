@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding critiques a post-parse output issue in a min/maxProperties guard that did not exist before, while the change fixed the keywords being silently ignored entirely.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1934,
+    "outputTokens": 3429,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 47027,
+  "requestId": "25539ec9-be17-4ec7-9f83-f13096fad075"
+}

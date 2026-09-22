@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the fix's exclusion of Function-valued keys from the mapped type, whereas the change fixed the original over-permissive shape that allowed unknown keys and wrong property types.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 947,
+    "outputTokens": 636,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9710,
+  "requestId": "10494dfb-5647-4e82-8680-1b3dfcf390c2"
+}

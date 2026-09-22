@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about a value import adding a runtime module dependency, while the change fixed JSON Schema emission of numeric record keys as strings.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1471,
+    "outputTokens": 314,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6648,
+  "requestId": "97c06dde-3051-44a3-aaa5-9bcdbde99ec2"
+}

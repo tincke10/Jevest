@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not contain `relaxedCookieNameRegEx`, so the claimed dead/unwired constant cannot be present there; only the strict `validCookieNameRegEx` exists.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1406,
+    "outputTokens": 1548,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20222,
+  "requestId": "858f626f-b77b-4301-91d1-ebb7a0d82726"
+}

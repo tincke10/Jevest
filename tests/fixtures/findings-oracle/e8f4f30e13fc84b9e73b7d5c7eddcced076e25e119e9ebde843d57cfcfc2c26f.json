@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding identifies the exact change of moving `utils.getMessage` into the failure branch, which is the eager spy-matcher failure formatting this commit made lazy for performance.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1253,
+    "outputTokens": 1170,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17697,
+  "requestId": "11e5fcc0-71f3-486a-b7ea-85996d1fd519"
+}

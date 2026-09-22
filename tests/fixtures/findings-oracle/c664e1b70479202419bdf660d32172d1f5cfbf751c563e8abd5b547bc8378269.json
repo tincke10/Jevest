@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The finding is about `scopes` being required versus absent inside the newly added `jwt` type, whereas the change fixed the missing `jwt`/`lambda` authorizer properties entirely.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1411,
+    "outputTokens": 742,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10899,
+  "requestId": "2a5d72aa-41be-4c95-add9-efbb96cca3a8"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.96,
+  "reason": "In the BEFORE code the `sharedServer` branch comes first, so when both `sharedServer` and `isBrowserEnabled` are true it still sets `_scriptDefines` from the shared server; the shadowing problem is introduced by the reorder in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2020,
+    "outputTokens": 906,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11494,
+  "requestId": "0f235dcd-23d3-416f-a87a-c1e88ac21b97"
+}

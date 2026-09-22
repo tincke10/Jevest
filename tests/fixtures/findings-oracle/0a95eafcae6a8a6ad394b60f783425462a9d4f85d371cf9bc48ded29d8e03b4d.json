@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "The BEFORE code has no call to the previous ref cleanup in the 'ref' branch, so it cannot run old cleanup on every applyProps even when the ref is unchanged; that behavior was introduced by the added line in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 122,
+    "outputTokens": 827,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11158,
+  "requestId": "fb757c65-fed3-4d15-bea1-ded2ed661b47"
+}

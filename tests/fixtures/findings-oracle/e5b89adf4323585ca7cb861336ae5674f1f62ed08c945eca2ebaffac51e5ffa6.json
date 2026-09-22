@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds the streamHeader option and does not address the reviewer's concern about collision/precedence between streamHeader and a user-supplied Accept header.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1128,
+    "outputTokens": 869,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12953,
+  "requestId": "8ea2346b-9b6d-461d-bd35-a9d49f096c9b"
+}

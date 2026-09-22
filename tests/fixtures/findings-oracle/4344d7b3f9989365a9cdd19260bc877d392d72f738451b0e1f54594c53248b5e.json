@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The described behavior change is caused only by the AFTER code copying Content-Type onto the rebuilt Response; the BEFORE code used bare new Response(body) with no Content-Type, so the claimed silent change to blob type was not present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1858,
+    "outputTokens": 1016,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13356,
+  "requestId": "54d4d48a-ba8c-4935-a145-76e3f071a43c"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain the synthetic '/.hono/cache' path or fixed query parameters; those constants were introduced only in the AFTER change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 208,
+    "outputTokens": 703,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9600,
+  "requestId": "dfccb745-3d6c-4975-9837-145f135c438d"
+}

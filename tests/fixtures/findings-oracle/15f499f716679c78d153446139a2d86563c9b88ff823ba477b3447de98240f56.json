@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not reference AnyClientTypes at all, so the claimed missing import/compile problem is not present in it.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1122,
+    "outputTokens": 372,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5860,
+  "requestId": "330baf63-a389-4689-ac35-b3e6a03957c8"
+}

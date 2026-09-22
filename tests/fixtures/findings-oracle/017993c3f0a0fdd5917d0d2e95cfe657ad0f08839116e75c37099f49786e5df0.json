@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The BEFORE code's array branch explicitly has a TODO stating uniqueItems and contains/minContains/maxContains are unsupported, confirming those constraints were silently dropped.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1964,
+    "outputTokens": 2864,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 39011,
+  "requestId": "3e8c2e54-131d-4814-9641-546eb4c30de0"
+}

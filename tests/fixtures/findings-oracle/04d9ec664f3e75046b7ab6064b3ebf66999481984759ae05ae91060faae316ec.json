@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code passes the original `op` directly to `loader.load(op)`; the shallow clone with a raced signal only appears in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1509,
+    "outputTokens": 191,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 3899,
+  "requestId": "829e3dd3-13f3-41eb-9a12-3652aab9e522"
+}

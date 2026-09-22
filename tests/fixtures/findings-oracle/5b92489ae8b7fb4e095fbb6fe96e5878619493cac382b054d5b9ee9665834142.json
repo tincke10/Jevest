@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed format checks overwriting tighter min/max bounds, while the finding is about `as number` casts and mixed number/bigint comparisons, a different type-safety concern.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 268,
+    "outputTokens": 944,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13939,
+  "requestId": "1033137c-72cd-45d5-b836-49b5d53752fd"
+}

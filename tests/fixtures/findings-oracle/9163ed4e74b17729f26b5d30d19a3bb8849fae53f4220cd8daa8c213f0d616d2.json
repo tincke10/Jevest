@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The before code has no snapshotChecks function or snapshot call anywhere, so the claim that only _string/_coercedString snapshot checks while other factories do not does not describe the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 240,
+    "outputTokens": 6871,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 75916,
+  "requestId": "4dd87430-9628-407d-885e-6f011abf09bd"
+}

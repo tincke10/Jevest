@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code's set is an allowlist of jsdom/happy-dom used to detect environments with a VM upside, not a denylist, so the claimed inversion and predicate flip are not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 166,
+    "outputTokens": 3414,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 41235,
+  "requestId": "b2c99e2a-b92d-43a9-a6fe-435355ad358e"
+}

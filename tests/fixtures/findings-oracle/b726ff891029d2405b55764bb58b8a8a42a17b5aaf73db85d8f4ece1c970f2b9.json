@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "In the BEFORE code CONFIG_EXTENSIONS is explicitly exported as `export const CONFIG_EXTENSIONS`, so the claim that it is no longer exported is false for the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 713,
+    "outputTokens": 1522,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17010,
+  "requestId": "0312cc17-21c7-4ea9-83c3-7cd59e7dc93d"
+}

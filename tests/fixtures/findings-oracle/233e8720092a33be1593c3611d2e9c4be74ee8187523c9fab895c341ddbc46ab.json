@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change adds the INVALID and withParser exports rather than fixing an export-collision or ambiguous re-export issue, which is what the finding describes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 820,
+    "outputTokens": 249,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4360,
+  "requestId": "b044c905-0d93-4794-81b4-1c2f59a5529b"
+}

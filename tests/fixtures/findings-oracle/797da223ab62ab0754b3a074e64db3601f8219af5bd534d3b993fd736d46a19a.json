@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code does not contain `const log = console;`; that line is added in the AFTER change, so the claimed hardwired console alias was not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 674,
+    "outputTokens": 1046,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13420,
+  "requestId": "aaaff2fb-bc8c-4b0e-930e-13928caa7ac3"
+}

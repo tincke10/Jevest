@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change replaced the local JsonSchema type with SchemaObject to support cyclic types, while the finding warns about potential shape regressions from that substitution, which is not the problem the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 140,
+    "outputTokens": 1198,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18247,
+  "requestId": "02af0af2-df4f-4118-b8b1-4485f41cdd61"
+}

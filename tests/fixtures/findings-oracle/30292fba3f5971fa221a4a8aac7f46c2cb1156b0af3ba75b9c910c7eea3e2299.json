@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixed React 19 proxy coercion by special-casing valueOf/toString/toJSON, while the finding criticizes the returned root debug string as uninformative, a separate polish issue that did not exist in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1327,
+    "outputTokens": 1026,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13437,
+  "requestId": "6ec603f2-fd30-47f2-875a-0f85588068c0"
+}

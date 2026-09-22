@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature addition adding a configurable job-summary title, while the finding is about a potential internal type/default issue from making the new title property required, not the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 921,
+    "outputTokens": 873,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12973,
+  "requestId": "e73aaef5-8098-4e43-a49e-b4fa4da9942d"
+}

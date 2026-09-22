@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding criticizes the unsafe `as` casts hiding a potential runtime/type format mismatch, whereas the change fixed the lack of type-level format distinction by adding generics.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 267,
+    "outputTokens": 964,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 14728,
+  "requestId": "506c3063-2a9c-42b6-8d8c-3a6aba275c6c"
+}

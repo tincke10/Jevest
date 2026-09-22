@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.8,
+  "reason": "The commit is a performance change that restores the `env` initializer, while the finding is about a TypeScript assignability issue with `{}` requiring a cast, which the change did not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 443,
+    "outputTokens": 6850,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 83637,
+  "requestId": "538077e3-7f5d-4358-a8d7-17e41edfadfa"
+}

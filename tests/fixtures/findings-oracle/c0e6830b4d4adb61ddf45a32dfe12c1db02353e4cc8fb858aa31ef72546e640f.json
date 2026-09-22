@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.7,
+  "reason": "The finding warns that the set inversion requires call sites to be flipped to avoid reversing VM logic, not that custom environments were omitted from VM pool measurements, which is the bug the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1078,
+    "outputTokens": 5131,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 68454,
+  "requestId": "de727199-c55b-4027-b8b1-871169e3c94b"
+}

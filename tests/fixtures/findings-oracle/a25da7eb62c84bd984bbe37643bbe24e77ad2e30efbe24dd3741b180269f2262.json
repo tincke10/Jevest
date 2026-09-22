@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 1,
+  "reason": "The BEFORE code contains no `MarkOptions` or `BrowserTraceEntryKind` definitions, so the claimed public `mark()` API behavior cannot be present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1400,
+    "outputTokens": 1335,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17439,
+  "requestId": "9cb7272e-a4f2-489e-abdf-708fd01368f7"
+}

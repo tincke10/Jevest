@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the missing `done` check that caused destructuring `undefined`, while the finding criticizes the error type/context of the plain `Error` thrown instead, which is not the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1490,
+    "outputTokens": 1190,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 17258,
+  "requestId": "ad521451-7fb2-4ae4-951e-60c9fef33a51"
+}

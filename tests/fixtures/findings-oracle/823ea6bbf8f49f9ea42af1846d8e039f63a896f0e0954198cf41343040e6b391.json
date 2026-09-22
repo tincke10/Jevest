@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code shown does not use getConfig() at all; it only reads getBrowserState().config, so the claimed un-imported/unpopulated getConfig() call is not present in the before code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 737,
+    "outputTokens": 382,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6098,
+  "requestId": "d4728f79-6829-4805-8505-25d1f2d82e72"
+}

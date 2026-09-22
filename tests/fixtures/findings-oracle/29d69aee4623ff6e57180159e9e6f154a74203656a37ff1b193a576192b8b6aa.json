@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The before code constructs `new Response(body)[key]()` without a Content-Type, so `formData()` throws immediately rather than silently producing corrupted parts; the described corruption only arises from the after change preserving the media type.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1836,
+    "outputTokens": 454,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6995,
+  "requestId": "fa231e10-c366-48cb-8264-a98bedf9e8c4"
+}

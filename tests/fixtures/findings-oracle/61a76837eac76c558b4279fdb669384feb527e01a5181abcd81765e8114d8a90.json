@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The change added snapshotChecks to clone caller-supplied checks arrays for string factories, and the finding describes the same aliasing/mutation issue, noting it is not applied to other factories.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 256,
+    "outputTokens": 5684,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 73809,
+  "requestId": "7dd0f08c-5cd9-4fd3-bd3f-1a16318806cd"
+}

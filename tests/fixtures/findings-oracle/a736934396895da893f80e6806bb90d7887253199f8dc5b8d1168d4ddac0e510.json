@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change only added QUERY to the If-None-Match '*' branch, while the finding describes the separate pre-existing issue that the etagMatches branch still applies to all methods.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 494,
+    "outputTokens": 235,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4768,
+  "requestId": "7ead7e13-39a5-4a28-ba16-d61d4300e311"
+}

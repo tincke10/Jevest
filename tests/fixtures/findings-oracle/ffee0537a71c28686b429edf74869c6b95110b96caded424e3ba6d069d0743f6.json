@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.8,
+  "reason": "The finding criticizes the post-fix duplication of the input as a new second source of truth and a potential cache-key mismatch, not the pre-existing bug where the queryKey-stripped skipToken caused subscriptionOptions(skipToken).enabled to incorrectly return true.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1425,
+    "outputTokens": 6362,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 78408,
+  "requestId": "35d8f28d-de85-429b-99a0-64860096cf0c"
+}

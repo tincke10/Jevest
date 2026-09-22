@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about orphaned on-disk cache directories from the version bump, while the change is a performance optimization that only incidentally bumps the version to invalidate the cache, not a fix for cache cleanup.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1021,
+    "outputTokens": 263,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 4762,
+  "requestId": "c9d652e7-6f1c-4d9f-bd6c-87be01de19f8"
+}

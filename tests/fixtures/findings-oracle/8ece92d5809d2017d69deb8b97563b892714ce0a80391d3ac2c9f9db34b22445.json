@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding concerns the hint branch '^ > ' being unanchored at the end and not requiring a trailing counter, but the change added a prefix check and start anchors while leaving that end-anchor asymmetry unfixed; the actual fix addressed skipped tests hiding obsolete snapshots.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 204,
+    "outputTokens": 775,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11496,
+  "requestId": "0e722046-06e7-4003-b452-3a96ef1228a5"
+}

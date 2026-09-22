@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The before-code comment explicitly states a middle-rung key is included only if its output is not undefined, and the linked issue confirms prefault(undefined) parsed to {} instead of {a: undefined}.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2240,
+    "outputTokens": 2122,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 31509,
+  "requestId": "1daf0044-7d59-4813-bff4-2145a325c716"
+}

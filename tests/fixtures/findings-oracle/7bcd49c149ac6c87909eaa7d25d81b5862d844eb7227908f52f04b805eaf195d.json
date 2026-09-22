@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature switching Istanbul packages to @vitest scoped packages, while the finding describes a potential missing import/replacement compile error that is a side effect of that switch, not the problem the change intended to fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1285,
+    "outputTokens": 3549,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 47855,
+  "requestId": "903dc581-cdd1-4099-afb4-4a6798d24e8d"
+}

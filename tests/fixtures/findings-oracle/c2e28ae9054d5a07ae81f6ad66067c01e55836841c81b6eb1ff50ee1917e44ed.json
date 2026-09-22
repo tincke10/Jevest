@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.96,
+  "reason": "The BEFORE code constrains Shape to core.$ZodShape and contains no keyof T mapped type, so it did not collapse to {} and accept non-schema values.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 262,
+    "outputTokens": 1222,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 15530,
+  "requestId": "aad5bc10-3a12-493c-b3de-09170a71bf93"
+}

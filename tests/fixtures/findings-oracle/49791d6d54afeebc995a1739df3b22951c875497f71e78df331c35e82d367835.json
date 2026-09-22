@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change fixes unsatisfiable intersection schemas by folding object members into one object, while the finding describes a potential stale array registration if json.allOf is later replaced, which is a different implementation concern.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 151,
+    "outputTokens": 775,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12502,
+  "requestId": "1cb24776-b445-4e12-a39f-f53e4029f96d"
+}

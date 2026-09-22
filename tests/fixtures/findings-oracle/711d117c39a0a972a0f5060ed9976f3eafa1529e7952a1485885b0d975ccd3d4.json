@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code's browser branch assigns `config.define || {}` to `resolvedTestConfig.defines`, so it does not drop user-configured defines; the empty `{}` assignment only appears in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 2041,
+    "outputTokens": 859,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12222,
+  "requestId": "d39e19cc-b78b-4efe-b113-5b6c1e5ab268"
+}

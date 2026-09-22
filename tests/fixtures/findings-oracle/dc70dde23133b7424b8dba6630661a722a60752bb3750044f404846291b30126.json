@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding describes the early return skipping If-None-Match/304 negotiation for non-2xx responses, which is exactly the error-response behavior the commit intentionally fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 809,
+    "outputTokens": 1799,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25078,
+  "requestId": "0b7159cc-7f94-4354-9ef9-f6c55dcf41a1"
+}

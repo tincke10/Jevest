@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The BEFORE regex requires the last local-part character to be in `[A-Za-z0-9_+-]`, which excludes the apostrophe even though the preceding `*` class permits it, so a local part ending in `'` cannot match.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1345,
+    "outputTokens": 1008,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13080,
+  "requestId": "59e2a8e6-8c5f-44c5-8334-1fda8e01de4d"
+}

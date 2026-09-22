@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code uses `util.cached`, not `util.cachedInternal`, so the claimed desynchronization specific to `cachedInternal`'s invalidation behavior is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1200,
+    "outputTokens": 5332,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 65296,
+  "requestId": "c821bf91-02d4-43e4-9ad3-d0a9c69ab199"
+}

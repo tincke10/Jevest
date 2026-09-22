@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns that the newly added `const log = console` may be unused dead code, which is a potential issue introduced by the change, not the problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 123,
+    "outputTokens": 745,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11724,
+  "requestId": "2f11720b-ef6a-4af9-bf5b-41c02b570101"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding discusses redundant dead code in the isChildProcess guard after the new else-if branch, not the bug the change fixed where supplying toNotFake caused queueMicrotask/nextTick to be faked.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1761,
+    "outputTokens": 998,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13105,
+  "requestId": "479fc742-efe1-4e1d-9059-b6fa0b62aa7e"
+}

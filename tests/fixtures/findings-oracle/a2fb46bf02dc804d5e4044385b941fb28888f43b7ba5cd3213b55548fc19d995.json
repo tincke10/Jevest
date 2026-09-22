@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding describes a type-level hole in the new mapped type when T is unknown (collapses to {} and accepts non-schema values), while the change's intended fix was to key the shape off known instance types and reject unknown keys or wrong property types.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 278,
+    "outputTokens": 878,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 12739,
+  "requestId": "499105ae-6743-43b7-ad1c-e52468161819"
+}

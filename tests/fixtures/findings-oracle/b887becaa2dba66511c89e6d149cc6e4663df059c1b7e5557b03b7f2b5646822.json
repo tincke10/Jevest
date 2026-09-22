@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The diff only rewords the Tajik discriminator message inside the existing branch and leaves the `issue.options` guard untouched, so it does not address the reviewer's claim that the branch is dead code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1953,
+    "outputTokens": 328,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 8729,
+  "requestId": "9d6d56ae-4a7c-4e79-904b-509cd6ebb940"
+}

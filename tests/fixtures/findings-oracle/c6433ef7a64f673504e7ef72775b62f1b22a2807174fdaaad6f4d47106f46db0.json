@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change fixed missing previous ref cleanup execution when a ref prop changes identity, while the finding describes stale refCleanupMap entries causing double cleanup after cleanup is invoked, a different defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1338,
+    "outputTokens": 3246,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 39735,
+  "requestId": "b6eeea4b-4f8b-4a51-8481-18dda8996c0e"
+}

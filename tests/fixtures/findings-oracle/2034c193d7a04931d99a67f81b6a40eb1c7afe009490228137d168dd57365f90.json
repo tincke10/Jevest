@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.99,
+  "reason": "The BEFORE code does not compute a filtered `testers` array at all; that assignment was introduced only in the AFTER change.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1726,
+    "outputTokens": 408,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5632,
+  "requestId": "9b3f123e-c794-4c11-b9b1-8fe7155f1b1b"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The constant `defaultMaxQueryBodySize` does not exist in the BEFORE code—it is introduced in the AFTER hunk—so there is no byte threshold or guard present to be bypassed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 203,
+    "outputTokens": 744,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10460,
+  "requestId": "d432bc1e-a3f6-4ac9-b27f-a9c4249dc5a9"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change optimized the record key walk via emitOwnKeys but left the numeric retry's typeof check unchanged, so the finding targets a separate missed optimization rather than the fixed record-walk performance issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 182,
+    "outputTokens": 1362,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 20538,
+  "requestId": "f318769c-084f-4d18-8932-e618c16c47f7"
+}

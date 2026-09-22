@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code has no `jwt` property at all, so the claimed required `scopes` inside `jwt` is not present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1523,
+    "outputTokens": 1768,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19045,
+  "requestId": "b311bbd1-3b6b-48f3-8838-a2d73bf11aff"
+}

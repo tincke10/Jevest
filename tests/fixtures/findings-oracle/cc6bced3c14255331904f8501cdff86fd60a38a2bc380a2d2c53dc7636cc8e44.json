@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code uses object spread, which invokes any lazy `shape` getter once and stores the resolved value as a data property rather than copying the accessor, so repeated-resolution on the merged def cannot occur as claimed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 328,
+    "outputTokens": 1870,
+    "cacheReadInputTokens": 2176,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25272,
+  "requestId": "01163c36-0960-407b-a537-6797aa45146d"
+}

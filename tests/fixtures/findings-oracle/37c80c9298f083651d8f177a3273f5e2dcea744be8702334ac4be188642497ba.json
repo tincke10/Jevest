@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed a missing clientSubscriptions.delete(id) on subscription task rejection, whereas the finding describes a pre-existing .then/.catch chaining issue where errors from the success handler would send an extra error response after a stopped response.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 247,
+    "outputTokens": 365,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 5154,
+  "requestId": "66cc91c1-d43c-44ba-bfbc-636c15816bb8"
+}

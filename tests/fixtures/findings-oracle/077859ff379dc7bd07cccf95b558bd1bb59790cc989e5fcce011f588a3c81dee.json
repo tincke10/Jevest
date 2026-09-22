@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The before code contains no ctx.io === \"input\" gating, so the claimed flaw in that gating cannot be present.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 216,
+    "outputTokens": 3473,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43651,
+  "requestId": "48a6a1aa-94ba-434a-80f6-ce1e96d91ecb"
+}

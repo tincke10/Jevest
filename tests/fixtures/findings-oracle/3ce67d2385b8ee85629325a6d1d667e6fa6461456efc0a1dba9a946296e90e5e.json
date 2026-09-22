@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains none of the constructs the claim names (trailing-slash regex, `${normalizedRoot}/` prefix, `=== '/'` check); they are introduced only in the AFTER code.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1602,
+    "outputTokens": 2032,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 26000,
+  "requestId": "f619f006-096e-46c4-b4fb-45112870f1fa"
+}

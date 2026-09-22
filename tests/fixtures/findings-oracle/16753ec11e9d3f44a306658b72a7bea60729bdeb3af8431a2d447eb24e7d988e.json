@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the new mapped-type constraint `core.$ZodType<unknown, T[k]>` (which appears only after the change), whereas the before code had no such constraint and the change fixed the lack of key/type checking, so it does not describe the same defect.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 331,
+    "outputTokens": 1563,
+    "cacheReadInputTokens": 1280,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 22772,
+  "requestId": "fef6c7a3-f51e-4d0f-98a4-51b46de0031d"
+}

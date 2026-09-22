@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.75,
+  "reason": "The change fixed the same malformed WWW-Authenticate header risk the finding describes by adding quote escaping for realm (and error_description), even though the finding also raises a function-resolver type annotation issue.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1544,
+    "outputTokens": 5842,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 75076,
+  "requestId": "cb69875e-1496-46cd-bfd1-31dbde035b9a"
+}

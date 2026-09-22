@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.98,
+  "reason": "The BEFORE code unconditionally assigns `bag.minimum = minimum` and `bag.maximum = maximum`, overwriting any prior NaN value, so the comparison-based NaN-discard behavior described does not exist in that version.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1395,
+    "outputTokens": 1484,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 19189,
+  "requestId": "60ef9dfc-de60-4664-a8e9-f2948c0e77b8"
+}

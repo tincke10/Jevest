@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a performance optimization to load rrweb once per worker, while the finding describes an undefined promise/non-reactive config defect, which the change does not fix.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 205,
+    "outputTokens": 2467,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 33534,
+  "requestId": "e125fcb0-ef1c-4156-a3bb-0aa5fcc90360"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a feature that adds QUERY to the default allowMethods, while the finding warns about the silent behavior broadening introduced by that addition, not about a problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 839,
+    "outputTokens": 399,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6168,
+  "requestId": "ee664d99-6cfb-46b7-bae9-962f24b8896d"
+}

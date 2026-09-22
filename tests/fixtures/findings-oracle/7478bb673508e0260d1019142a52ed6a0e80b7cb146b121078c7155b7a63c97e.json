@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.75,
+  "reason": "The fix specifically reverses the environment allowlist to a denylist so path-based custom happy-dom environments get VM pool measurements, whereas the finding concerns exact-name matching missing package-qualified or per-file node environments, which the change does not address.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 3,
+    "outputTokens": 4522,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 59517,
+  "requestId": "45b6c16f-c78a-4d8c-9c93-75bdaf98e11a"
+}

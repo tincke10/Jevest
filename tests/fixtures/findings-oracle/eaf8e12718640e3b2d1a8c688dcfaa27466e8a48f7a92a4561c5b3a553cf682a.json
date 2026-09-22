@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding warns about a render-loop risk from changing the effect dependencies, whereas the change fixed the failure to resubscribe when the subscribe function changes.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 240,
+    "outputTokens": 695,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9465,
+  "requestId": "6c97b672-1245-4bac-8413-0b1afef2f715"
+}

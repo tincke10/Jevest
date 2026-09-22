@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds a new feature CLI option, while the finding warns about a docs-generation check consequence of adding an option—not the problem this feature change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 107,
+    "outputTokens": 674,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9901,
+  "requestId": "29e99572-e133-4f3d-ae8d-114a5c687df0"
+}

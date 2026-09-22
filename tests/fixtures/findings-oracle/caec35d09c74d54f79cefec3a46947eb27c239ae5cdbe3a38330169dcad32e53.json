@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding critiques a potential subscription leak from the new separate cleanup effect in the AFTER code, not the missing resubscription on subscribe/getSnapshot changes that the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 258,
+    "outputTokens": 1274,
+    "cacheReadInputTokens": 1664,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 18737,
+  "requestId": "bcf32947-adf4-4912-ba5b-924e478874c4"
+}

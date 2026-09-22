@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change adds a configurable realm option while preserving the request-URL default, whereas the finding questions the accuracy/leak of that documented default and does not describe the missing configurability the commit fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1575,
+    "outputTokens": 1812,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 25834,
+  "requestId": "5b131d81-395d-45b1-8389-aea427d26239"
+}

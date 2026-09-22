@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the missing abort on unsubscribe, while the finding describes a different flaw in the newly added `isDone` logic not marking rejections, which the before code did not even contain.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1438,
+    "outputTokens": 2651,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 35225,
+  "requestId": "87d89f71-4e75-41b4-84b4-30040ec6d0ab"
+}

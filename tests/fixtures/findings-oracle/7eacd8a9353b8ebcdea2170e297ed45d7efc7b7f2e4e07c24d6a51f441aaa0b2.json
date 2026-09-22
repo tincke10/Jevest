@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding criticizes the broad MarkOptions.kind union allowing user-injected engine-like trace entries, whereas the change fixed missing public type exports for declaration-file type-checking, not the allowed kind values.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1288,
+    "outputTokens": 632,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 9148,
+  "requestId": "893e6cfe-440d-48fd-bcda-45fe191e8a25"
+}

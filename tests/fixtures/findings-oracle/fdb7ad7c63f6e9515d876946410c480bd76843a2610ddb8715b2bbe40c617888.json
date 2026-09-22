@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.7,
+  "reason": "In the BEFORE code, `*/*` with q=1 sorts before `text/html;q=0` and matches a supported `text/html`, so the explicitly rejected type is still served, which is the problem described.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 196,
+    "outputTokens": 4741,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 59760,
+  "requestId": "e8e17807-b706-4d12-8a49-7fc1bb19144e"
+}

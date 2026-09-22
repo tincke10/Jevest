@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.97,
+  "reason": "The BEFORE code does not contain any rrweb-snapshot import or `.catch(() => {})` handler, so the claimed swallowed import failure cannot be present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 181,
+    "outputTokens": 515,
+    "cacheReadInputTokens": 1024,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 7463,
+  "requestId": "ad3de887-79d8-4877-9390-231d75aef1cc"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not contain the sharedViteServer CLI option, so the described docs-generation mismatch arising from adding it is not present in that code state.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 731,
+    "outputTokens": 1132,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 16095,
+  "requestId": "4f4dcbaa-adc3-4a03-a69c-fc1841ab3886"
+}

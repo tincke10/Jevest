@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding flags a potential API compatibility break from changing Map to WeakMap, whereas the change fixed excessive memory retention by making parse state weak, not the absence of Map methods.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1667,
+    "outputTokens": 430,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10112,
+  "requestId": "d3e2f5aa-10d2-488e-857f-83dcbc0ea405"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about possible loss of ZodObject-specific methods from the new checkObjectGuards wrapper, not about minProperties/maxProperties being silently ignored, which is the bug the fix addressed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1929,
+    "outputTokens": 583,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 10298,
+  "requestId": "b33515dd-68f0-4925-84cf-d1bdbf4f45e6"
+}

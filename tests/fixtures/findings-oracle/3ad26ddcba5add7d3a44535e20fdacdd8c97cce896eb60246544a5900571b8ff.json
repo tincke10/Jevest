@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The finding warns that switching to the `Plugins` import introduces a newer-version dependency risk, whereas the change is a chore refactor from the old `UserConfig`/`FetchClient` types to the new API and does not fix that compatibility risk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 183,
+    "outputTokens": 3203,
+    "cacheReadInputTokens": 1536,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 43110,
+  "requestId": "8b7c95a4-1caf-4fcd-93f8-598a258ef8d6"
+}

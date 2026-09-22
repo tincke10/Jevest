@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding concerns maintainability of duplicated matching logic introduced with `isMatchFirst`, whereas the change fixed the O(N^2) reconciliation lookup by adding a head-match optimization.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1128,
+    "outputTokens": 772,
+    "cacheReadInputTokens": 640,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 11852,
+  "requestId": "647fac87-8ddc-4194-9343-6a87062338fb"
+}

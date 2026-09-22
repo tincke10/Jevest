@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change specifically fixed React 19 coercion through valueOf/toString/toJSON returning a proxy, whereas the finding raises a different concern about Symbol.toPrimitive/inspect.custom not being handled and valueOf's string return changing numeric coercion.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 209,
+    "outputTokens": 2832,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 38677,
+  "requestId": "efa72fc4-d964-4f33-ad9b-8705e92fc2d4"
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code does not define or expose a bound `add` handle (`addDirtyMock`); that alias is introduced only in the AFTER code, so the claimed problem cannot be present in the BEFORE hunk.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1882,
+    "outputTokens": 1684,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 21415,
+  "requestId": "3d214dd6-8086-4636-8d23-4d2f690dca51"
+}

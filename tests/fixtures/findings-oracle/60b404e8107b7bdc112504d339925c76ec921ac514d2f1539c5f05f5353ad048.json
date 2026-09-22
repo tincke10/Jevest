@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "The before-code regex `^[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$` accepts lone U+20E3 and single regional indicators because they are `Emoji_Component`, so those non-emoji strings pass validation as claimed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 276,
+    "outputTokens": 4025,
+    "cacheReadInputTokens": 2048,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 49927,
+  "requestId": "c304be5b-0d61-4b1e-b8a6-f51f9ebb6430"
+}

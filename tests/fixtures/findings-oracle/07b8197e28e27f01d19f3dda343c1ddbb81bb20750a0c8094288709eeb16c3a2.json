@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding describes a pre-existing asymmetry about apostrophes in the local part that the performance-focused rewrite explicitly preserves, not the lookahead performance problem the change fixed.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 209,
+    "outputTokens": 467,
+    "cacheReadInputTokens": 1792,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 6335,
+  "requestId": "bba36259-c56c-496c-915b-b97243b55f12"
+}

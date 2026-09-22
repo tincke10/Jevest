@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The BEFORE code contains no filtering or `isSubsetEqualityTester` call, so the claimed identity-based filtering failure cannot be present there.",
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 1734,
+    "outputTokens": 1072,
+    "cacheReadInputTokens": 512,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 13709,
+  "requestId": "160177db-2492-457a-a08f-7d683e28be56"
+}

@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678ea2a70a8b1f6b07ec4526f63",
+  "requestId": "req_01a0c8f14f8474feb472f24a7acbeca6",
   "model": "jev-1.13.0",
-  "latencyMs": 198,
+  "latencyMs": 208,
   "usage": {
     "inputTokens": 961,
     "outputTokens": 136
@@ -9,12 +9,12 @@
   "answers": {
     "app/Services/ResetLinkService.php#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.9
+      "noul": 0.87
     },
     "app/Services/ResetLinkService.php#0-f0__severity": {
       "type": "score",
-      "score": 3,
-      "confidence": 1,
+      "score": 2.99,
+      "confidence": 0.99,
       "legend": {
         "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
         "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
@@ -34,7 +34,7 @@
     },
     "app/Services/ResetLinkService.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.82
+      "noul": 0.81
     }
   }
 }

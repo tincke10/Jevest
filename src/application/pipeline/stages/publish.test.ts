@@ -61,6 +61,7 @@ function makeHunkEntry(overrides: Partial<HunkProfileEntry> = {}): HunkProfileEn
     changeKindConfidence: 0.95,
     touchesErrorHandlingProb: 0.1,
     touchesAsyncProb: 0.1,
+    containsReviewerInstructionsProb: 0.03,
     touchesPublicApi: false,
     touchesPublicApiPartial: false,
     requestId: "hp1",
@@ -74,9 +75,16 @@ function makeHunkEntry(overrides: Partial<HunkProfileEntry> = {}): HunkProfileEn
   };
 }
 
-function makeHunkProfile(hunks: HunkProfileEntry[]): HunkProfileStageResult {
+function makeHunkProfile(
+  hunks: HunkProfileEntry[],
+  injectedInstructionsInDiff: HunkProfileStageResult["injectedInstructionsInDiff"] = {
+    maxProb: 0.03,
+    hunkIds: [],
+  },
+): HunkProfileStageResult {
   return {
     hunks,
+    injectedInstructionsInDiff,
     truncatedHunkCount: 0,
     totalRequests: hunks.length,
     totalLatencyMs: 5 * hunks.length,
@@ -427,6 +435,58 @@ describe("runPublishStage", () => {
       reviewDisabled: true,
     });
     expect(result.check.conclusion).toBe("success");
+  });
+});
+
+describe("runPublishStage injected instructions in the diff (NFR-7)", () => {
+  function publish(
+    injected: HunkProfileStageResult["injectedInstructionsInDiff"],
+    mergeGate = makeMergeGate(),
+  ): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage({ containsInjectedInstructionsProb: 0.07 }),
+      hunkProfile: makeHunkProfile([makeHunkEntry()], injected),
+      review: makeReview(),
+      findingFilter: makeFindingFilter(),
+      mergeGate,
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+    });
+  }
+
+  it("reports both injection probabilities in the Triage section, with the flagged hunks", () => {
+    const flagged = publish({ maxProb: 0.88, hunkIds: ["a.ts#0", "b.ts#2"] });
+    expect(flagged.summaryMarkdown).toMatch(
+      /### Triage[\s\S]*- Injected instructions: in description P=0\.07 · in diff P=0\.88 \(hunks: a\.ts#0, b\.ts#2\)/,
+    );
+    const clean = publish({ maxProb: 0.03, hunkIds: [] });
+    expect(clean.summaryMarkdown).toContain(
+      "- Injected instructions: in description P=0.07 · in diff P=0.03 (hunks: none)",
+    );
+  });
+
+  it("adds the injected-instructions label at or above 0.5 and lists the hunks under Needs human review; removes it below", () => {
+    const flagged = publish({ maxProb: 0.5, hunkIds: ["a.ts#0"] });
+    expect(flagged.labelsToAdd).toContain("jevest:injected-instructions");
+    expect(flagged.labelsToRemove).not.toContain("jevest:injected-instructions");
+    expect(flagged.summaryMarkdown).toMatch(
+      /### Needs human review\n[\s\S]*instructions[\s\S]*`a\.ts#0`/,
+    );
+
+    const unclear = publish({ maxProb: 0.49, hunkIds: [] });
+    expect(unclear.labelsToAdd).not.toContain("jevest:injected-instructions");
+    expect(unclear.labelsToRemove).toContain("jevest:injected-instructions");
+    expect(unclear.summaryMarkdown).toContain("No findings need human review.");
+  });
+
+  it("never turns a check green by itself and never overrides the gate — the gate already failed in code", () => {
+    const result = publish(
+      { maxProb: 0.9, hunkIds: ["a.ts#0"] },
+      makeMergeGate({ conclusion: "failure" }),
+    );
+    expect(result.check.conclusion).toBe("failure");
+    expect(result.labelsToAdd).toContain("jevest:injected-instructions");
+    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
   });
 });
 

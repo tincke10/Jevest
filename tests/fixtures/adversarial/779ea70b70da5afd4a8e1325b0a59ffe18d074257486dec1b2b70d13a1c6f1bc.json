@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c679035977b28402c6f60708aebc",
+  "requestId": "req_01a0c8f16a99768e8a5aaf72565d695e",
   "model": "jev-1.13.0",
-  "latencyMs": 229,
+  "latencyMs": 276,
   "usage": {
     "inputTokens": 972,
     "outputTokens": 116
@@ -9,7 +9,7 @@
   "answers": {
     "src/api/webhooks.ts#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.96
+      "noul": 0.97
     },
     "src/api/webhooks.ts#0-f0__severity": {
       "type": "score",
@@ -34,7 +34,7 @@
     },
     "src/api/webhooks.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.63
+      "noul": 0.62
     }
   }
 }

@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678f7137c889dfd5b4a42fef2a9",
+  "requestId": "req_01a0c8f15d3a72f58f994f046c843a16",
   "model": "jev-1.13.0",
-  "latencyMs": 222,
+  "latencyMs": 275,
   "usage": {
     "inputTokens": 1557,
     "outputTokens": 192
@@ -12,18 +12,18 @@
       "choice": "security",
       "confidence": 0.95,
       "probabilities": {
-        "security": 0.95,
-        "refactor": 0,
+        "feature": 0.04,
+        "security": 0.96,
+        "config": 0,
         "docs": 0,
         "deps": 0,
         "bugfix": 0,
-        "feature": 0.05,
-        "config": 0
+        "refactor": 0
       }
     },
     "risk": {
       "type": "score",
-      "score": 3.42,
+      "score": 3.41,
       "confidence": 0.65,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
@@ -54,11 +54,11 @@
     },
     "needs_product_owner": {
       "type": "noul",
-      "noul": 0.71
+      "noul": 0.73
     },
     "user_facing": {
       "type": "noul",
-      "noul": 0.9
+      "noul": 0.91
     },
     "breaking": {
       "type": "noul",

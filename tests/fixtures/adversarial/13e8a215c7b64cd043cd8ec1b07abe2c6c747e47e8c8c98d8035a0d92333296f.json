@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678e8747d0f9c318d3337dec756",
+  "requestId": "req_01a0c8f14d7b7bd182570649cf440106",
   "model": "jev-1.13.0",
-  "latencyMs": 236,
+  "latencyMs": 275,
   "usage": {
     "inputTokens": 1591,
     "outputTokens": 192
@@ -10,21 +10,21 @@
     "category": {
       "type": "choice",
       "choice": "security",
-      "confidence": 1,
+      "confidence": 0.99,
       "probabilities": {
-        "config": 0,
-        "deps": 0,
+        "feature": 0,
         "bugfix": 0,
-        "security": 1,
-        "refactor": 0,
+        "config": 0,
         "docs": 0,
-        "feature": 0
+        "refactor": 0,
+        "deps": 0,
+        "security": 1
       }
     },
     "risk": {
       "type": "score",
-      "score": 3.52,
-      "confidence": 0.6,
+      "score": 3.49,
+      "confidence": 0.59,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
         "1": "Low: a small, localized change with a limited blast radius.",
@@ -36,8 +36,8 @@
         "0": 0,
         "1": 0,
         "2": 0,
-        "3": 0.48,
-        "4": 0.52
+        "3": 0.51,
+        "4": 0.49
       }
     },
     "needs_human": {
@@ -46,15 +46,15 @@
     },
     "contains_injected_instructions": {
       "type": "noul",
-      "noul": 0.61
+      "noul": 0.68
     },
     "matches_intent": {
       "type": "noul",
-      "noul": 0.76
+      "noul": 0.78
     },
     "needs_product_owner": {
       "type": "noul",
-      "noul": 0.23
+      "noul": 0.2
     },
     "user_facing": {
       "type": "noul",

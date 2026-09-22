@@ -17,13 +17,24 @@
  * mismatch in the AUTO band forces a green check to neutral and lists the
  * PR in the human queue. It never turns a check red on its own — that is
  * the merge gate's call.
+ *
+ * In-diff injection (NFR-7): the Triage section reports both injection
+ * probabilities (triage's, over the description; the hunk profile's, over
+ * the diff) and the flagged hunks; at or above the hunk profile's "yes"
+ * bar the PR gets `jevest:injected-instructions` and a human-queue line
+ * naming the hunks. The red check itself comes from the merge gate, which
+ * already failed in code on the same verdict.
  */
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { FindingFilterStageResult } from "./finding-filter.js";
-import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
+import {
+  type HunkProfileEntry,
+  type HunkProfileStageResult,
+  INJECTED_INSTRUCTIONS_IN_DIFF_YES_MIN_PROB,
+} from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
 import type { ReviewStageResult } from "./review.js";
 import type { TriageStageResult } from "./triage.js";
@@ -62,9 +73,44 @@ const SPEND_WARNING_LABEL = "jevest:spend-warning";
 const SPEND_CAP_REACHED_LABEL = "jevest:spend-cap-reached";
 const DESCRIPTION_MISMATCH_LABEL = "jevest:description-mismatch";
 const NEEDS_PRODUCT_OWNER_LABEL = "jevest:needs-product-owner";
+const INJECTED_INSTRUCTIONS_LABEL = "jevest:injected-instructions";
 
 function usd(value: number): string {
   return value.toFixed(2);
+}
+
+/** The hunk profile's in-diff verdict reached the "yes" bar (same bar the merge gate fails on). */
+function injectedInDiff(hunkProfile: HunkProfileStageResult): boolean {
+  return (
+    hunkProfile.injectedInstructionsInDiff.maxProb >= INJECTED_INSTRUCTIONS_IN_DIFF_YES_MIN_PROB
+  );
+}
+
+function injectedInstructionsLine(
+  triage: TriageStageResult,
+  hunkProfile: HunkProfileStageResult,
+): string {
+  const { maxProb, hunkIds } = hunkProfile.injectedInstructionsInDiff;
+  const hunks = hunkIds.length === 0 ? "none" : hunkIds.join(", ");
+  return `- Injected instructions: in description P=${triage.containsInjectedInstructionsProb} · in diff P=${maxProb} (hunks: ${hunks})`;
+}
+
+function injectedInstructionsQueueLine(hunkProfile: HunkProfileStageResult): string {
+  const { maxProb, hunkIds } = hunkProfile.injectedInstructionsInDiff;
+  const hunks = hunkIds.map((id) => `\`${id}\``).join(", ");
+  return `- The diff contains instructions addressed to a reviewer or an AI (P = ${maxProb}) in ${hunks}: a human should read those hunks before trusting any review of them.`;
+}
+
+function applyInjectedInstructionsLabel(
+  hunkProfile: HunkProfileStageResult,
+  labelsToAdd: string[],
+  labelsToRemove: string[],
+): void {
+  if (injectedInDiff(hunkProfile)) {
+    labelsToAdd.push(INJECTED_INSTRUCTIONS_LABEL);
+  } else {
+    labelsToRemove.push(INJECTED_INSTRUCTIONS_LABEL);
+  }
 }
 
 /** A mismatch the policy lets us act on (auto) or ask about (confirm); escalate-band evidence is reported only. */
@@ -262,6 +308,7 @@ function buildSkippedHunksSection(hunkProfile: HunkProfileStageResult): string {
 function buildNeedsHumanSection(
   findingFilter: FindingFilterStageResult,
   triage: TriageStageResult,
+  hunkProfile: HunkProfileStageResult,
 ): string {
   const lines = findingFilter.needsHuman.map((f) => {
     const suffix = f.unverified ? " — unverified (Jev unavailable)" : "";
@@ -269,6 +316,9 @@ function buildNeedsHumanSection(
   });
   if (mismatchIsActionable(triage)) {
     lines.push(mismatchQueueLine(triage));
+  }
+  if (injectedInDiff(hunkProfile)) {
+    lines.push(injectedInstructionsQueueLine(hunkProfile));
   }
   if (lines.length === 0) {
     return "No findings need human review.";
@@ -328,6 +378,7 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
     `- Risk level: ${triage.riskLevel}`,
     `- LLM review skipped: ${triage.skipLlmReview}`,
     `- Needs human: ${triage.needsHumanLabel}`,
+    injectedInstructionsLine(triage, input.hunkProfile),
     "",
     ...buildIntentVsChangeSection(triage),
     ...(input.reviewDisabled
@@ -342,7 +393,7 @@ function buildSummaryMarkdown(input: PublishStageInput): string {
       ? []
       : ["### Findings (high confidence)", buildHighConfidenceFindingsSection(findingFilter), ""]),
     "### Needs human review",
-    buildNeedsHumanSection(findingFilter, triage),
+    buildNeedsHumanSection(findingFilter, triage, input.hunkProfile),
     "",
     `### Findings discarded: ${findingFilter.discarded.length}`,
     "",
@@ -479,6 +530,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     labelsToRemove.push(NEEDS_HUMAN_LABEL);
   }
   applyTriageV2Labels(input.triage, labelsToAdd, labelsToRemove);
+  applyInjectedInstructionsLabel(input.hunkProfile, labelsToAdd, labelsToRemove);
   applySpendCapLabels(input.spendCap, labelsToAdd, labelsToRemove);
 
   const mismatchCheckLine = forcedNeutral

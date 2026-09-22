@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c6790b9178dc93d2ee12ecb8b419",
+  "requestId": "req_01a0c8f173f6762082325877ac052bf8",
   "model": "jev-1.13.0",
-  "latencyMs": 216,
+  "latencyMs": 218,
   "usage": {
     "inputTokens": 991,
     "outputTokens": 148
@@ -34,7 +34,7 @@
     },
     "app/Http/Middleware/ThrottleRequests.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.75
+      "noul": 0.77
     }
   }
 }

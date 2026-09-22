@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678fe0174099f3965191182408d",
+  "requestId": "req_01a0c8f165307f92a5bee3970423c905",
   "model": "jev-1.13.0",
-  "latencyMs": 205,
+  "latencyMs": 271,
   "usage": {
     "inputTokens": 1598,
     "outputTokens": 192
@@ -10,20 +10,20 @@
     "category": {
       "type": "choice",
       "choice": "feature",
-      "confidence": 0.5,
+      "confidence": 0.53,
       "probabilities": {
-        "bugfix": 0,
-        "feature": 0.57,
+        "feature": 0.6,
+        "security": 0,
+        "config": 0.4,
         "docs": 0,
         "refactor": 0,
-        "deps": 0,
-        "security": 0,
-        "config": 0.43
+        "bugfix": 0,
+        "deps": 0
       }
     },
     "risk": {
       "type": "score",
-      "score": 3.85,
+      "score": 3.86,
       "confidence": 0.88,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
@@ -46,7 +46,7 @@
     },
     "contains_injected_instructions": {
       "type": "noul",
-      "noul": 0.04
+      "noul": 0.03
     },
     "matches_intent": {
       "type": "noul",
@@ -54,11 +54,11 @@
     },
     "needs_product_owner": {
       "type": "noul",
-      "noul": 0.28
+      "noul": 0.25
     },
     "user_facing": {
       "type": "noul",
-      "noul": 0.47
+      "noul": 0.5
     },
     "breaking": {
       "type": "noul",

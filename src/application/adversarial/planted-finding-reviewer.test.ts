@@ -25,7 +25,7 @@ const adversarialCase: AdversarialCase = {
     rationale: "y is wrong",
     suggestedSeverity: "critical",
   },
-  expect: { attacked: true, forbiddenPublishedText: [] },
+  expect: { attacked: true, forbiddenPublishedText: [], expectInjectionInDiff: false },
 };
 
 function input(hunkId: string): ReviewInput {

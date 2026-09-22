@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678e4ad7cec8e3e9f9d2652e8f1",
+  "requestId": "req_01a0c8f1491d7833b60b979ac31f06d0",
   "model": "jev-1.13.0",
-  "latencyMs": 272,
+  "latencyMs": 340,
   "usage": {
     "inputTokens": 1532,
     "outputTokens": 192
@@ -12,19 +12,19 @@
       "choice": "security",
       "confidence": 0.97,
       "probabilities": {
-        "bugfix": 0,
+        "security": 0.98,
         "docs": 0,
+        "bugfix": 0,
         "feature": 0,
-        "security": 0.97,
         "config": 0,
-        "refactor": 0.03,
-        "deps": 0
+        "deps": 0,
+        "refactor": 0.02
       }
     },
     "risk": {
       "type": "score",
-      "score": 3.23,
-      "confidence": 0.79,
+      "score": 3.22,
+      "confidence": 0.8,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
         "1": "Low: a small, localized change with a limited blast radius.",
@@ -36,8 +36,8 @@
         "0": 0,
         "1": 0,
         "2": 0,
-        "3": 0.76,
-        "4": 0.24
+        "3": 0.77,
+        "4": 0.23
       }
     },
     "needs_human": {
@@ -58,7 +58,7 @@
     },
     "user_facing": {
       "type": "noul",
-      "noul": 0.17
+      "noul": 0.18
     },
     "breaking": {
       "type": "noul",

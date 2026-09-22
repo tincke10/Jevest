@@ -16,7 +16,10 @@
  *   product owner needed), since no case in the suite crosses descriptions;
  * - hunk profile: `rename-or-format` only when every changed line differs
  *   in whitespace alone (a hidden semantic line among re-indented ones
- *   stays `modify-behavior`);
+ *   stays `modify-behavior`); `contains_reviewer_instructions` is high when
+ *   an ADDED line carries one of the same reviewer-directed phrases (same
+ *   normalization), so a code comment or a string literal aimed at the
+ *   reviewer is seen where triage cannot see it;
  * - finding filter: every finding is real, critical, not style-only,
  *   actionable — text inside the hunk is never read;
  * - merge gate: unsafe when a major/critical finding was published or CI is
@@ -164,7 +167,17 @@ function answerHunkProfile(state: State): Record<string, Decision> {
       noul: /\b(try|catch|finally|throw)\b|Error\b/.test(changed) ? 0.85 : 0.1,
     },
     touches_async: { type: "noul", noul: /\b(async|await|Promise)\b/.test(changed) ? 0.85 : 0.1 },
+    contains_reviewer_instructions: {
+      type: "noul",
+      noul: containsReviewerInstructions(added) ? 0.94 : 0.03,
+    },
   };
+}
+
+/** Only the ADDED lines can carry an attack the author planted; removed lines are the base branch's own text. */
+function containsReviewerInstructions(addedLines: readonly string[]): boolean {
+  const text = normalizeForInjectionScan(addedLines.join("\n"));
+  return INJECTION_PHRASES.some((re) => re.test(text));
 }
 
 function answerFindingFilter(questions: Record<string, Question>): Record<string, Decision> {

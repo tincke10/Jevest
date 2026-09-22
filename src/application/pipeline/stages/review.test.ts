@@ -28,6 +28,7 @@ function makeHunk(overrides: Partial<HunkProfileEntry> = {}): HunkProfileEntry {
     changeKindConfidence: 0.9,
     touchesErrorHandlingProb: 0.1,
     touchesAsyncProb: 0.1,
+    containsReviewerInstructionsProb: 0.03,
     touchesPublicApi: false,
     touchesPublicApiPartial: true,
     requestId: "req1",

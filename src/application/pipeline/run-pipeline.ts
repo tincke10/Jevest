@@ -37,7 +37,11 @@ import {
 import { EMPTY_PRODUCT_CONTEXT, type ProductContext } from "../context/product-context.js";
 import { jevCostUsd, pricingForModel } from "../findings/pricing.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
-import { type HunkProfileStageResult, runHunkProfileStage } from "./stages/hunk-profile.js";
+import {
+  type HunkProfileStageResult,
+  injectedInstructionsInDiffWord,
+  runHunkProfileStage,
+} from "./stages/hunk-profile.js";
 import { type MergeGateStageResult, runMergeGateStage } from "./stages/merge-gate.js";
 import {
   buildFailClosedPublication,
@@ -459,6 +463,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       publishedCountsBySeverity: severityCounts(findingFilter.published),
       ciStatus: pr.ciStatus,
       containsInjectedInstructionsHigh,
+      // NFR-7 in the diff: the hunk profile's max probability, as a word (NFR-5).
+      injectedInstructionsInDiff: injectedInstructionsInDiffWord(
+        hunkProfile.injectedInstructionsInDiff.maxProb,
+      ),
       descriptionMatchesChange: triage.descriptionMatchesChange,
       productAreasTouched: triage.productContext.areas.map((a) => ({
         name: a.name,

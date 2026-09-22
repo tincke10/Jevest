@@ -13,9 +13,18 @@ import type { DecisionPort } from "../../../domain/ports/decision-port.js";
  * banded directly (no `|p-0.5|*2` transform) — high probability of safety
  * *is* the confidence we act on. FR-6.4: this stage only emits a signal, it
  * never merges anything itself.
+ *
+ * NFR-7 / FR-6.3: a suspected prompt injection anywhere in the PR fails the
+ * gate in CODE, whatever Jev answers here. Two sources, same treatment:
+ * triage's `contains_injected_instructions` (title/body/labels, resolved by
+ * the caller against the triage confirm bar) and the hunk profile's
+ * `contains_reviewer_instructions` (the diff itself, resolved to a word by
+ * `injectedInstructionsInDiffWord`). Only "yes" forces failure; "unclear"
+ * is handed to Jev in the state and left to the band.
  */
 import type { NoulQuestion } from "../../../domain/question.js";
 import type { Criticality } from "../../context/product-context.js";
+import type { InjectedInstructionsInDiffWord } from "./hunk-profile.js";
 import type { DescriptionMatchWord, RiskLevel } from "./triage.js";
 
 function safeToAutomergeQuestion(): NoulQuestion {
@@ -40,6 +49,8 @@ export interface MergeGateStageInput {
   readonly ciStatus: "success" | "failure" | "pending" | "unknown";
   /** FR-6.3: computed by the caller from triage's own containsInjectedInstructionsProb + threshold. */
   readonly containsInjectedInstructionsHigh: boolean;
+  /** NFR-7 in the diff: the hunk profile's verdict as a word (`injectedInstructionsInDiffWord`); "yes" fails the gate. */
+  readonly injectedInstructionsInDiff: InjectedInstructionsInDiffWord;
   /** Triage v2 (H7): the description-vs-change verdict as a word, resolved in code from P(matches_intent). */
   readonly descriptionMatchesChange: DescriptionMatchWord;
   /** Product areas the PR touches with their criticality words (from `.jevest/context.yml`). */
@@ -63,6 +74,7 @@ export async function runMergeGateStage(input: MergeGateStageInput): Promise<Mer
     published_findings_by_severity: input.publishedCountsBySeverity,
     ci_status: input.ciStatus,
     description_matches_change: input.descriptionMatchesChange,
+    injected_instructions_in_diff: input.injectedInstructionsInDiff,
     product_areas_touched: input.productAreasTouched.map((a) => ({
       name: a.name,
       criticality: a.criticality,
@@ -79,9 +91,10 @@ export async function runMergeGateStage(input: MergeGateStageInput): Promise<Mer
   }
 
   let conclusion: MergeGateStageResult["conclusion"];
-  if (input.containsInjectedInstructionsHigh) {
-    // FR-6.3: a suspected prompt injection in the PR fails the gate
-    // regardless of how safe the model otherwise judges the merge to be.
+  if (input.containsInjectedInstructionsHigh || input.injectedInstructionsInDiff === "yes") {
+    // FR-6.3: a suspected prompt injection in the PR — in its text (triage)
+    // or in its diff (hunk profile) — fails the gate regardless of how safe
+    // the model otherwise judges the merge to be.
     conclusion = "failure";
   } else {
     const policy = createConfidencePolicy(input.policyConfig);

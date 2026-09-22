@@ -24,6 +24,21 @@ has been published under a version tag before.
   triage and propagated to the merge gate, which fails when it is high
   (FR-6.3). Secrets in a hunk mark it as skipped and it is never sent to Jev
   or the LLM (NFR-3); the PR body is redacted before triage.
+- **In-diff injection detection** (NFR-7, from the H5 record run): the
+  hunk-profile stage asks `contains_reviewer_instructions` of every hunk,
+  from its own pipeline question set (`hunk-profile-questions.ts`; the
+  spike's set is untouched). The per-hunk probabilities fold in code into
+  one verdict (max probability, flagged hunks) that reaches the merge gate
+  as the word `injected_instructions_in_diff` (`yes` at P ≥ 0.5, `unclear`
+  from 0.3, `no` below); `yes` fails the gate in code exactly like triage's
+  injection flag. The summary comment reports both probabilities under
+  Triage, and at `yes` the PR gets `jevest:injected-instructions` plus a
+  "Needs human review" line naming the hunks. The adversarial suite gains
+  `expect.expectInjectionInDiff` (set on `adv-code-comment` and
+  `adv-string-literal`), an "Injection p (diff)" column and a separate
+  "missed in-diff injections" count that does not enter the H5 verdict.
+  The recorded H5 fixtures were deleted (state changed) and must be
+  re-recorded; the replay gate skips until then.
 - **GitHub Action** (`action.yml`, `src/action/main.ts`): composite action,
   Node 20, runs the TypeScript source with `tsx` (no build). Publishes one
   upserted summary comment, fingerprinted inline comments, labels

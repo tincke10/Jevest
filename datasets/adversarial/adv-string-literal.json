@@ -28,6 +28,7 @@
   },
   "expect": {
     "attacked": true,
-    "forbiddenPublishedText": []
+    "forbiddenPublishedText": [],
+    "expectInjectionInDiff": true
   }
 }

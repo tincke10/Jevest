@@ -179,6 +179,7 @@ describe("runPipeline", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
       "a.ts#0-f0__severity": {
         type: "score",
@@ -403,6 +404,7 @@ describe("runPipeline", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
       "a.ts#0-f0__severity": {
         type: "score",
@@ -463,6 +465,7 @@ describe("runPipeline", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       safe_to_automerge: { type: "noul", noul: 0.95 },
     });
     let reviewerCalled = false;
@@ -519,6 +522,7 @@ describe("runPipeline", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       safe_to_automerge: { type: "noul", noul: 0.95 },
     });
 
@@ -551,6 +555,7 @@ describe("runPipeline", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
       "a.ts#0-f0__severity": {
         type: "score",
@@ -607,6 +612,7 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       safe_to_automerge: { type: "noul", noul: 0.95 },
     });
   }
@@ -865,6 +871,7 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
       },
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
       safe_to_automerge: { type: "noul", noul: 0.95 },
       ...overrides,
     });
@@ -1086,6 +1093,59 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(result.publication.summaryMarkdown).toMatch(/core.*criticality medium/);
     expect(result.publication.summaryMarkdown).toMatch(/risk raised from low to medium/i);
     expect(result.publication.summaryMarkdown).toContain("Keep it fast.");
+  });
+
+  it("fails the merge gate in code, labels the PR and names the hunks when the hunk profile finds instructions in the diff (NFR-7)", async () => {
+    const vcs = makeVcs(makePr());
+    const states: unknown[] = [];
+    const inner = mediumRiskPort({
+      contains_reviewer_instructions: { type: "noul", noul: 0.91 },
+      safe_to_automerge: { type: "noul", noul: 0.99 },
+    });
+    const decision: DecisionPort = {
+      async decide(state, questions) {
+        states.push(state);
+        return inner.decide(state, questions);
+      },
+    };
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision, reviewer: fakeReviewer() },
+      config: makeConfig({
+        triage: { productContextPath: ".jevest/context.yml", changeSummary: "never" },
+      }),
+    });
+    expect(result.hunkProfile?.injectedInstructionsInDiff).toEqual({
+      maxProb: 0.91,
+      hunkIds: ["a.ts#0"],
+    });
+    const mergeGateState = states.at(-1) as Record<string, unknown>;
+    expect(mergeGateState).toMatchObject({ injected_instructions_in_diff: "yes" });
+    expect(JSON.stringify(mergeGateState)).not.toContain("0.91");
+    expect(result.mergeGate?.safeToAutomergeProb).toBe(0.99);
+    expect(result.check.conclusion).toBe("failure");
+    expect(result.publication.labelsToAdd).toContain("jevest:injected-instructions");
+    expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+    expect(result.publication.summaryMarkdown).toContain(
+      "Injected instructions: in description P=0.02 · in diff P=0.91 (hunks: a.ts#0)",
+    );
+    expect(result.publication.summaryMarkdown).toMatch(/### Needs human review[\s\S]*a\.ts#0/);
+  });
+
+  it("removes the injected-instructions label and keeps the gate's own conclusion when the diff is clean", async () => {
+    const vcs = makeVcs(makePr());
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer() },
+      config: makeConfig({
+        triage: { productContextPath: ".jevest/context.yml", changeSummary: "never" },
+      }),
+    });
+    expect(result.hunkProfile?.injectedInstructionsInDiff).toEqual({ maxProb: 0.02, hunkIds: [] });
+    expect(result.publication.labelsToRemove).toContain("jevest:injected-instructions");
+    expect(result.publication.summaryMarkdown).toContain(
+      "Injected instructions: in description P=0.02 · in diff P=0.02 (hunks: none)",
+    );
   });
 
   it("records the summary cost in the ledger even on a triage-only run (FR-2.3 skip), and forces neutral on an auto-band mismatch", async () => {

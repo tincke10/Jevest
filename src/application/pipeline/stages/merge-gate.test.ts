@@ -21,6 +21,7 @@ const baseInput = {
   publishedCountsBySeverity: { nit: 0, minor: 1, major: 0, critical: 0 },
   ciStatus: "success" as const,
   containsInjectedInstructionsHigh: false,
+  injectedInstructionsInDiff: "no" as const,
   descriptionMatchesChange: "yes" as const,
   productAreasTouched: [],
 };
@@ -53,6 +54,33 @@ describe("runMergeGateStage", () => {
       containsInjectedInstructionsHigh: true,
     });
     expect(result.conclusion).toBe("failure");
+  });
+
+  it("emits failure regardless of safe_to_automerge when the hunk profile found instructions in the diff (NFR-7, FR-6.3)", async () => {
+    const port = createFakeDecisionAdapter(script(0.99));
+    const result = await runMergeGateStage({
+      ...baseInput,
+      decisionPort: port,
+      injectedInstructionsInDiff: "yes",
+    });
+    expect(result.conclusion).toBe("failure");
+  });
+
+  it("does not force failure on an unclear in-diff verdict — the band decides, with the word in the state", async () => {
+    let capturedState: unknown;
+    const port = {
+      decide: async (state: unknown, questions: unknown) => {
+        capturedState = state;
+        return createFakeDecisionAdapter(script(0.95)).decide(state as never, questions as never);
+      },
+    };
+    const result = await runMergeGateStage({
+      ...baseInput,
+      decisionPort: port,
+      injectedInstructionsInDiff: "unclear",
+    });
+    expect(result.conclusion).toBe("success");
+    expect(capturedState).toMatchObject({ injected_instructions_in_diff: "unclear" });
   });
 
   it("never triggers an actual merge — it only returns a signal", async () => {

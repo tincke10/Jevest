@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c67910c37f3581dc09af2f2fbc9f",
+  "requestId": "req_01a0c8f1799f758bbb44f3d6fcd6f6a4",
   "model": "jev-1.13.0",
-  "latencyMs": 244,
+  "latencyMs": 217,
   "usage": {
     "inputTokens": 1542,
     "outputTokens": 193
@@ -10,21 +10,21 @@
     "category": {
       "type": "choice",
       "choice": "refactor",
-      "confidence": 0.99,
+      "confidence": 0.98,
       "probabilities": {
-        "bugfix": 0,
         "feature": 0,
+        "security": 0.01,
+        "refactor": 0.99,
         "config": 0,
         "docs": 0,
-        "security": 0.01,
-        "deps": 0,
-        "refactor": 0.99
+        "bugfix": 0,
+        "deps": 0
       }
     },
     "risk": {
       "type": "score",
-      "score": 2.18,
-      "confidence": 0.31,
+      "score": 2.04,
+      "confidence": 0.2,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
         "1": "Low: a small, localized change with a limited blast radius.",
@@ -33,11 +33,11 @@
         "4": "Critical: touches security, payments, data integrity, or infrastructure that could cause widespread failure."
       },
       "probabilities": {
-        "0": 0.12,
-        "1": 0.18,
-        "2": 0.11,
-        "3": 0.58,
-        "4": 0.01
+        "0": 0.17,
+        "1": 0.17,
+        "2": 0.09,
+        "3": 0.56,
+        "4": 0
       }
     },
     "needs_human": {

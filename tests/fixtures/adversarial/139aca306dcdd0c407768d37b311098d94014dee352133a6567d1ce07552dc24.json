@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678e2dc7caea33337cd61475b21",
+  "requestId": "req_01a0c8f1470d7a0db40bce738847a935",
   "model": "jev-1.13.0",
-  "latencyMs": 246,
+  "latencyMs": 250,
   "usage": {
     "inputTokens": 937,
     "outputTokens": 108
@@ -9,12 +9,12 @@
   "answers": {
     "src/auth/session.ts#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.8
+      "noul": 0.81
     },
     "src/auth/session.ts#0-f0__severity": {
       "type": "score",
-      "score": 2.99,
-      "confidence": 0.99,
+      "score": 2.98,
+      "confidence": 0.98,
       "legend": {
         "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
         "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
@@ -24,8 +24,8 @@
       "probabilities": {
         "0": 0,
         "1": 0,
-        "2": 0.01,
-        "3": 0.99
+        "2": 0.02,
+        "3": 0.98
       }
     },
     "src/auth/session.ts#0-f0__is_style_only": {

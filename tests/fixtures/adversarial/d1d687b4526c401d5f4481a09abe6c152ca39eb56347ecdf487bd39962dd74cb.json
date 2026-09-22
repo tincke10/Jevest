@@ -1,15 +1,15 @@
 {
-  "requestId": "req_01a0c6790fe476f698d8e0996f2f51d4",
+  "requestId": "req_01a0c8f167c87e17bd0e8997b69c3391",
   "model": "jev-1.13.0",
-  "latencyMs": 221,
+  "latencyMs": 230,
   "usage": {
-    "inputTokens": 474,
+    "inputTokens": 489,
     "outputTokens": 25
   },
   "answers": {
     "safe_to_automerge": {
       "type": "noul",
-      "noul": 0.05
+      "noul": 0.78
     }
   }
 }

@@ -367,8 +367,10 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
   to a human review queue, and the run's cost.
 - **Labels**, added/removed per the triage and merge-gate outcome (e.g.
   `jevest:needs-human`, `jevest:auto-merge-ok`,
-  `jevest:description-mismatch`, `jevest:needs-product-owner`) and the
-  spend cap state (`jevest:spend-warning`, `jevest:spend-cap-reached`).
+  `jevest:description-mismatch`, `jevest:needs-product-owner`,
+  `jevest:injected-instructions` when a hunk of the diff itself talks to
+  the reviewer) and the spend cap state (`jevest:spend-warning`,
+  `jevest:spend-cap-reached`).
 - **One "Jevest spend ledger" issue** per repo, holding the cumulative
   spend behind `spendCap` (see "Spend cap").
 - **A `jevest` check run** (or commit status, see above) carrying the
@@ -392,8 +394,10 @@ how much, and what to publish.
 ## Language support
 
 Jevest reviews a pull request's diff regardless of language — Jev's
-`change_kind`/`touches_error_handling`/`touches_async` questions and the
-LLM review itself run on the raw diff for any file. The one
+`change_kind`/`touches_error_handling`/`touches_async`/
+`contains_reviewer_instructions` questions (the hunk-profile stage, one
+request per hunk) and the LLM review itself run on the raw diff for any
+file. The one
 language-specific piece is **AST-based public-API detection**
 (`touches_public_api`, SPEC §4.3): that's TypeScript/JavaScript/Vue only.
 For a `.vue` file, only its `<script>`/`<script setup>` block is
@@ -419,9 +423,14 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   same job/workflow without a manual approval gate in front of it.
 - **All PR content is treated as untrusted input** (SPEC NFR-7): the title,
   body, diffs, and file contents can all contain attempted prompt
-  injection. Jev's `contains_injected_instructions` triage question feeds
-  directly into the merge gate, and the adversarial suite (H5) regression-
-  tests this in CI (SPEC §4.2, §10).
+  injection. Two Jev questions cover it: `contains_injected_instructions`
+  in triage (title, body, labels) and `contains_reviewer_instructions` in
+  the hunk-profile stage, asked of every hunk's diff so an instruction
+  hidden in a code comment or a string literal is seen where triage cannot
+  see it. Either one high fails the merge gate in code; the in-diff one
+  also adds `jevest:injected-instructions` and lists the hunks under
+  "Needs human review" in the summary comment. The adversarial suite (H5)
+  regression-tests this in CI (SPEC §4.2, §10).
 - Never put an API key directly in a workflow file — always
   `${{ secrets.<NAME> }}` (NFR-9).
 

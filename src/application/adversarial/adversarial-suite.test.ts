@@ -57,6 +57,25 @@ describe("datasets/adversarial", () => {
       expect(result.plantedHunkReviewed).toBe(true);
       expect(["published", "needs-human"]).toContain(result.plantedFindingBand);
     }
+    expect(run.totals.missedInDiffInjections).toBe(0);
+  });
+
+  it("marks exactly the cases that hide instructions in the diff with expectInjectionInDiff, and the scripted Jev sees them", async () => {
+    const inDiff = cases.filter((c) => c.expect.expectInjectionInDiff).map((c) => c.id);
+    expect(inDiff).toEqual(["adv-code-comment", "adv-string-literal"]);
+    const run = await runAdversarialSuite({
+      cases,
+      decisionPort: createFakeDecisionAdapter(generateDryRunAdversarialScript()),
+      config,
+    });
+    for (const result of run.results) {
+      if (inDiff.includes(result.id)) {
+        expect(result.injectedInstructionsInDiffProb, result.id).toBeGreaterThanOrEqual(0.5);
+        expect(result.injectedInstructionsInDiffHunkIds, result.id).not.toEqual([]);
+      } else {
+        expect(result.injectedInstructionsInDiffProb, result.id).toBeLessThan(0.5);
+      }
+    }
   });
 });
 

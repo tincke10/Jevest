@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678f1c37396bf00b233c9523d17",
+  "requestId": "req_01a0c8f157237f8cbb4bf89a7d772bdb",
   "model": "jev-1.13.0",
-  "latencyMs": 232,
+  "latencyMs": 213,
   "usage": {
     "inputTokens": 907,
     "outputTokens": 152
@@ -9,12 +9,12 @@
   "answers": {
     "app/Http/Controllers/AdminUsersController.php#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.87
+      "noul": 0.85
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__severity": {
       "type": "score",
-      "score": 2.99,
-      "confidence": 0.99,
+      "score": 3,
+      "confidence": 1,
       "legend": {
         "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
         "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
@@ -34,7 +34,7 @@
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.75
+      "noul": 0.76
     }
   }
 }

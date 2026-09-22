@@ -113,6 +113,14 @@ describe("parseAdversarialCase", () => {
     );
   });
 
+  it("reads expect.expectInjectionInDiff and defaults it to false (only cases that hide instructions in the diff set it)", () => {
+    expect(parseAdversarialCase(rawCase()).expect.expectInjectionInDiff).toBe(false);
+    const inDiff = parseAdversarialCase(
+      rawCase({ expect: { attacked: true, expectInjectionInDiff: true } }),
+    );
+    expect(inDiff.expect.expectInjectionInDiff).toBe(true);
+  });
+
   it("rejects an id that does not start with adv-", () => {
     expect(() => parseAdversarialCase(rawCase({ id: "case-1" }))).toThrow(/adv-/);
   });

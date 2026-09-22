@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c678ffb47362a0e13351f55204c7",
+  "requestId": "req_01a0c8f166f678079a26b755103f7519",
   "model": "jev-1.13.0",
-  "latencyMs": 258,
+  "latencyMs": 205,
   "usage": {
     "inputTokens": 948,
     "outputTokens": 124
@@ -34,7 +34,7 @@
     },
     "src/payments/charge.ts#1-f0__actionable": {
       "type": "noul",
-      "noul": 0.77
+      "noul": 0.75
     }
   }
 }

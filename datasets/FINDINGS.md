@@ -581,3 +581,90 @@ Stated plainly, because this label will be quoted as ground truth:
 `needs_manual_review: true` stays `true` on every record. This label is a
 better instrument than line-overlap, not a substitute for someone reading the
 code.
+
+### 10.6 Results (2026-09-22)
+
+Run over all 299 thorough findings, `deepseek-v4-pro`, both framings. Report:
+`reports/oracle-2026-09-22T16-56-57-376Z.md`. 586 calls (two runs — 15
+findings first truncated at the 8192-token reasoning cap and retried with
+`--max-tokens 32768`), cost USD 4.96, latency per finding (both passes) p50
+37 s / p95 113 s. Framing agreement (Pass A vs. Pass B, before combination)
+84.0%.
+
+| Verdict | Count | Share |
+|---|---|---|
+| `real` | 7 | 2.4% |
+| `noise` | 239 | 81.6% |
+| `unknown` | 47 | 16.0% |
+
+Six additional findings could not be labeled at all: DeepSeek returned `402
+insufficient balance` on the retry, after the balance ran out mid-run. They
+are scored as `unknown` — excluded from H1/H3/H6 exactly like any other
+`unknown`, not counted as noise or discarded silently.
+
+Cross-tab against the old line-overlap label: of the 133 findings
+line-overlap called real, the oracle says 7 real / 106 noise / 20 unknown; of
+the 160 it called noise, the oracle says 0 real / 133 noise / 27 unknown. The
+two labels agree on 57% of the cases where the oracle reaches a decision —
+line-overlap's "real" was wrong (by the oracle's read) on 106 of 133 cases.
+
+Sampled reasons hold up under reading. One `noise` verdict is on a finding
+warning that switching a `Map` to a `WeakMap` "drops size/clear/iteration":
+the reason cites the PR's own statement that the buckets only ever need
+`get` and `set`, so the dropped methods were never used and the warning does
+not describe what the fix actually changed.
+
+Re-scoring H1/H6/H3 against `label.oracle`
+(`pnpm filter --findings datasets/findings-thorough-oracle.jsonl --mode
+replay --judge deepseek --judge-mode replay --label oracle`, zero new LLM
+calls, report `reports/filter-2026-09-22T16-58-00-234Z.md`), scored
+population 246 (7 real / 239 noise, 53 `unknown` excluded): Jev AUC rises
+0.592 → 0.708, the DeepSeek judge 0.567 → 0.700 (241 scored, 5 truncated).
+H6 **PASS** (182× cheaper, recall gap within tolerance). H1 **FAIL,
+formally** — no threshold clears recall ≥ 0.95 AND noise discarded ≥ 0.40 at
+once; at full recall Jev discards 25.5% of the noise, the judge 32.1%. H3
+**FAIL** — ECE 0.504 against a 2.8% base rate, Jev's probabilities running
+far above the true rate of real findings. Full tables, both threshold curves
+and the reading: `docs/BENCHMARK.md`, "Re-scored against the fix-aware
+oracle label (2026-09-22)".
+
+## 11. Why only 7 real findings: the reviewer sees the fix
+
+Two independent scorers both rise sharply against the oracle label (§10.6),
+which says the label measures something real. It also surfaces a structural
+limit of this dataset that no amount of re-labeling fixes.
+
+`datasets/hunks.jsonl` gives the reviewer the bugfix commit's own diff:
+`before` is the buggy code, `diff` is the change that fixed it. The reviewer
+is being shown, hunk by hunk, a change that already fixes whatever defect was
+there. A finding only scores `real` when it happens to describe the exact
+defect the fix removed — everything else the reviewer flags, however
+plausible, is either about code the fix never touched (`unknown` by design,
+§10.2) or simply wrong (`noise`). Out of 299 findings from 100 already-fixed
+hunks, 7 landed on the actual defect.
+
+That makes `findings-thorough-oracle.jsonl` two different things at once:
+
+- **A large, clean noise benchmark.** 239 confirmed-noise findings with
+  fix-aware reasons attached is a solid population for measuring how much
+  noise a filter removes.
+- **An unusable recall population.** 7 positives is too few to estimate
+  recall with any confidence interval worth reporting, which is why H1
+  stays formally FAIL even though the underlying AUC shows real separation
+  (§10.6).
+
+**Proposed next step (H1b, not yet approved, no cost incurred): reverse the
+hunks.** Present `after → before` instead of `before → after` — i.e., show
+the reviewer the buggy state as if it were "the change" and hide the fix.
+Under that framing, a real finding is one that flags the bug the fix later
+removed, and every one of the 100 defect hunks becomes a chance to produce a
+real finding instead of 1-in-3 on average. The pipeline is unchanged: a
+reviewer pass on DeepSeek, oracle labeling exactly as in §10, Jev/judge
+scoring exactly as in §9/§10.6 — all existing tooling, no new code. Estimated
+cost ≈ USD 10 of DeepSeek. Blocked on topping up the DeepSeek balance
+(exhausted 2026-09-22, see §10.6).
+
+Until H1b lands, stage 4 (finding filter) stays in annotate mode
+(`findingFilter.mode: "annotate"`): findings are published with their
+confidence, never silently discarded, per the pending product decision in
+§9 and `docs/SPEC.md` §4.6.

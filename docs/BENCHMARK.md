@@ -22,9 +22,9 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 |---|---|---|---|
 | H0 | Does this hunk contain a defect? | **FAIL** (closed, pivot) | below, `reports/spike-*.md` |
 | H0′ | What kind of change is this hunk, what surface does it touch? | **PARTIAL** | below, `reports/spike-profile-*.md` |
-| H1 | Is this LLM finding a real defect? (central) | **FAIL** on current labels, **inconclusive** on the question (2026-09-22): recall 0.920, noise discarded 0.173 at threshold 0.20, AUC 0.592 — near chance, same as the LLM-judge control | below, "Thorough findings pass and finding filter" |
-| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 | same run as H1 |
-| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** (2026-09-22): ECE 0.191 over N=299 — inherits H1's label caveat | same run as H1 |
+| H1 | Is this LLM finding a real defect? (central) | **FAIL** on both labels, but the fix-aware oracle validates the signal (2026-09-22): vs. line-overlap AUC 0.592 (near chance); re-scored vs. the fix-aware oracle label (n=7 real / 239 noise) AUC 0.708 — real separation, but the ≥0.95 recall AND ≥40% noise-discarded bar is unreachable on 7 positives (25.5% discarded at full recall) | below, "Thorough findings pass and finding filter" |
+| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** again vs. oracle: 182× cheaper, recall gap within tolerance | same run as H1 |
+| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** (2026-09-22): ECE 0.191 over N=299 vs. line-overlap; ECE 0.504 vs. oracle (base rate 0.028 — Jev's probabilities run far above the true real rate) — inherits H1's label caveat either way | same run as H1 |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
@@ -304,11 +304,87 @@ pnpm findings:label --findings datasets/findings-thorough.jsonl \
 pnpm filter --findings /tmp/oracle.jsonl --mode replay --judge none --label oracle
 ```
 
-Cost of the labeling pass: measured prompts are ~640 system tokens (cached
-after the first call in each framing) plus ~1,312 user tokens per finding.
-Priced with the recorded judge's measured 2,456 output tokens per call
-(deepseek-v4-pro reasoning dominates the bill), 598 calls come to roughly USD 7.
-**Not yet run.**
+Run 2026-09-22: 586 calls over the 299 findings (two runs — 15 findings first
+truncated at the 8192-token reasoning cap, retried with `--max-tokens 32768`),
+cost USD 4.96, latency per finding (both passes) p50 37 s / p95 113 s.
+Report: `reports/oracle-2026-09-22T16-56-57-376Z.md`. Verdicts: 7 real (2.4%),
+239 noise (81.6%), 47 unknown (16.0%), plus 6 findings the labeler could not
+reach at all (DeepSeek returned `402 insufficient balance` on the retry;
+scored as unknown, same as any other unknown — excluded from H1/H3/H6).
+Framing agreement (Pass A vs. Pass B, before combination) 84.0%.
+
+Cross-tab against the old line-overlap label: of the 133 findings line-overlap
+called real, the oracle says 7 real / 106 noise / 20 unknown; of the 160 it
+called noise, the oracle says 0 real / 133 noise / 27 unknown. The two labels
+agree on 57% of the cases where the oracle reaches a decision. Sampled reasons
+hold up under reading — for example, a noise verdict on a finding warning that
+switching a `Map` to a `WeakMap` "drops size/clear/iteration" cites the PR's
+own statement that the buckets only ever need `get` and `set`.
+
+### Re-scored against the fix-aware oracle label (2026-09-22)
+
+`pnpm filter --findings datasets/findings-thorough-oracle.jsonl --mode replay
+--judge deepseek --judge-mode replay --label oracle` — zero new LLM calls,
+Jev and the judge replay from the same fixtures scored in the line-overlap run
+above. Report: `reports/filter-2026-09-22T16-58-00-234Z.md`. Scored
+population 246 (7 real / 239 noise); 53 findings excluded as `unknown`.
+
+| Metric | Jev vs. oracle | DeepSeek judge vs. oracle |
+|---|---|---|
+| Scored | 246 / 246 | 241 / 246 (5 truncated) |
+| AUC | 0.708 (was 0.592 vs. line-overlap) | 0.700 (was 0.567 vs. line-overlap) |
+| ECE | 0.504 (base rate 0.028) | not computed |
+| Cost | USD 0.0128 | USD 2.33 |
+| Latency p50 / p95 | 250 ms / 334 ms | 31.5 s / 85.8 s |
+
+Jev threshold curve: 0.20 R 1.000 ND 0.146 | 0.30 R 1.000 ND 0.255 | 0.40
+R 0.857 ND 0.360 | 0.50 R 0.714 ND 0.460. The report's own F1-best threshold
+(0.85) gives R 0.429 ND 0.862 P 0.083 — meaningless at 7 positives; the curve
+above is the number that matters here. P(real) Jev assigned the 7 real
+findings: 0.39, 0.46, 0.73, 0.78, 0.85, 0.87, 0.90.
+
+Judge threshold curve: 0.30 R 1.000 ND 0.226 | 0.40 R 1.000 ND 0.321 | 0.50
+R 0.857 ND 0.372 | 0.60 R 0.714 ND 0.662 | 0.70 R 0.429 ND 0.697.
+
+**H6 vs. oracle: PASS** — cost ratio 182×, recall gap within tolerance. **H1
+vs. oracle: FAIL, formally** — no threshold reaches recall ≥ 0.95 AND noise
+discarded ≥ 0.40 at once: at full recall (threshold 0.20–0.30) Jev discards
+25.5% of the noise, the judge 32.1%. **H3 vs. oracle: FAIL** — ECE 0.504,
+driven by Jev's probabilities running far above the oracle's 2.8% real rate.
+
+Reading:
+
+1. The oracle label is validated by two independent scorers, both rising on
+   it (Jev 0.592 → 0.708, judge 0.567 → 0.700): it measures something the
+   line-overlap label did not.
+2. The structural reason there are only 7 real findings: `datasets/hunks.jsonl`
+   presents the reviewer with the bugfix commit's own diff (before → after).
+   A reviewer reviewing 100 already-fixed bugs can only produce a "real"
+   finding when it happens to describe the defect being fixed — 7 times in
+   299. The set is therefore a large, clean NOISE benchmark (239) and an
+   unusable RECALL population (n=7, no confidence interval worth reporting).
+3. What Jev does show on this set: at the threshold that keeps every real
+   finding, it removes a quarter of the noise; the reasoning judge removes a
+   third, at 182× the cost. Neither clears the 40% bar. Calibration is off in
+   a known direction — probabilities too high for a 2.8% base rate.
+4. Next step (proposed, not yet approved, no cost incurred): H1b — a
+   reversed-hunk dataset (present after → before, the buggy state as the
+   change), so a real finding is one that flags the bug the fix later
+   removed; reviewer pass on DeepSeek, oracle labeling and Jev/judge scoring
+   all from existing tooling. Estimated ≈ USD 10 of DeepSeek. Requires
+   topping up the DeepSeek balance (exhausted 2026-09-22).
+5. Stage 4 stays in annotate mode (`findingFilter.mode: "annotate"`) until
+   H1b lands.
+
+Reproduce, zero cost:
+
+```sh
+pnpm findings:label --findings datasets/findings-thorough.jsonl \
+    --out datasets/findings-thorough-oracle.jsonl \
+    --labeler deepseek --mode replay
+pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
+    --mode replay --judge deepseek --judge-mode replay --label oracle
+```
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 
@@ -373,13 +449,16 @@ benchmark. Not replayable.
 ## Pending
 
 H1, H6 and H3 ran on 2026-09-22 (see "Thorough findings pass and finding
-filter" above): H1 FAIL / inconclusive, H6 PASS, H3 FAIL. What remains is
-not another run of `pnpm filter` — it is a human-labeled sample to replace
-the line-overlap label before either verdict can be trusted.
+filter" above) and were re-scored the same day against the fix-aware oracle
+label (see "Re-scored against the fix-aware oracle label" above): H1 FAIL
+(formally — n=7 real is too small to clear the recall bar), H6 PASS, H3 FAIL.
+What remains is not a human-labeled sample — the oracle replaces that need —
+but H1b: a reversed-hunk dataset that can produce a real-finding population
+large enough to measure recall on.
 
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
-| H1 · finding filter, re-scored on a human-labeled sample (recall ≥ 0.95, ≥ 40% noise discarded) | ≥ 60–80 hand-verified findings (`datasets/FINDINGS.md` §5 step 2), then a zero-cost replay of the existing Jev and judge fixtures | `pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay` once the labels are patched |
+| H1 · finding filter, re-scored on a reversed-hunk oracle sample (recall ≥ 0.95, ≥ 40% noise discarded) | H1b: present after → before so a real finding is one that flags the bug the fix later removed; reviewer pass, oracle label, Jev/judge scoring (≈ USD 10 of DeepSeek; balance exhausted 2026-09-22) | not yet built |
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |

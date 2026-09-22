@@ -130,6 +130,18 @@ has been published under a version tag before.
   `jevest:needs-product-owner`. A summarizer failure never fails the run:
   triage falls back to the without-summary arm and the comment says so.
   Dependency added: `picomatch` (zero transitive dependencies).
+- **Fix-aware oracle label for findings** (`pnpm dataset:evidence` collects
+  the issue/PR text behind each fix into `hunk-evidence.jsonl`; `pnpm
+  findings:label --labeler deepseek --mode record|replay|dry-run
+  [--max-tokens N]` labels a findings file against it, two framings with
+  agreement required, writing `label.oracle` alongside the existing
+  line-overlap label; `pnpm filter --label oracle` re-scores H1/H6/H3
+  against it at zero extra cost). `--max-tokens` raises DeepSeek's
+  reasoning cap past the 8192 default for findings whose labeling was
+  truncated. Non-circular by construction: the labeler sees the real fix,
+  the commit message and the linked issue/PR, none of which the reviewer,
+  Jev or the judge ever saw. Design, weaknesses and the 2026-09-22 run:
+  `datasets/FINDINGS.md` §10.
 
 ### Changed
 
@@ -152,11 +164,16 @@ has been published under a version tag before.
   control scored AUC 0.567 on the same labels Jev scores 0.592 on, both
   near chance, so neither separates real defects from noise under the
   current label. H6: **PASS** (188.9× cheaper than the judge, recall gap
-  0.035). H3: **FAIL** (ECE 0.191 over N=299, same label caveat as H1). A
-  human-labeled sample (≥ 60 findings) is needed before H1 has a valid
-  verdict; the stage-4 discard-vs-annotate-only decision is pending on it.
-  See `docs/BENCHMARK.md`. H0 failed and is closed; H7 passed with an LLM
-  diff summary (partial without one).
+  0.035). H3: **FAIL** (ECE 0.191 over N=299, same label caveat as H1).
+  Re-scored the same day against a fix-aware oracle label instead of a
+  human-labeled sample (`reports/filter-2026-09-22T16-58-00-234Z.md`): AUC
+  rises to 0.708 (Jev) and 0.700 (judge), confirming the label carries
+  real signal, but only 7 of 299 findings are confirmed real, too few for
+  a recall verdict, so H1 stays **FAIL formally** and H3 stays **FAIL**
+  (ECE 0.504); H6 **PASS** stands (182×). The stage-4 discard-vs-annotate
+  decision stays on annotate until H1b (a reversed-hunk dataset) produces
+  a usable real-finding population. See `docs/BENCHMARK.md`. H0 failed and
+  is closed; H7 passed with an LLM diff summary (partial without one).
 - `touches_public_api` is derived by AST only for TypeScript/JavaScript and
   Vue `<script>` blocks; other languages get the Jev questions on the raw
   diff but no AST labels.

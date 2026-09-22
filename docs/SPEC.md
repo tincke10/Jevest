@@ -203,6 +203,39 @@ Reproducir, costo cero:
 pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay
 ```
 
+### 4.6.1 Re-puntuación contra la etiqueta oráculo fix-aware (2026-09-22, más tarde ese mismo día)
+
+En vez de etiquetar a mano, la etiqueta se reconstruye con información que ni Jev ni el juez tuvieron nunca: el código DESPUÉS del fix real, el mensaje del commit y el texto del issue o PR vinculado (diseño completo en `datasets/FINDINGS.md` §10). Pase con `deepseek-v4-pro`, dos framings sobre la misma evidencia con acuerdo obligatorio, sobre los 299 findings del pase thorough. Reporte: `reports/oracle-2026-09-22T16-56-57-376Z.md`; dataset `datasets/findings-thorough-oracle.jsonl`; fixtures `tests/fixtures/findings-oracle/`.
+
+**Resultado del etiquetado**: 586 llamadas (dos corridas — 15 findings truncados en el tope de 8192 tokens de razonamiento, reintentados con `--max-tokens 32768`), costo USD 4.96, latencia por finding (ambos pases) p50 37 s / p95 113 s. Veredictos: 7 reales (2.4%), 239 ruido (81.6%), 47 unknown (16.0%), más 6 findings que el etiquetador no pudo alcanzar (DeepSeek devolvió `402 insufficient balance` en el reintento; cuentan como unknown, igual que cualquier otro unknown). Acuerdo entre framings (Pase A vs. Pase B, antes de combinar) 84.0%.
+
+Cruce contra la etiqueta line-overlap anterior: de los 133 findings que line-overlap marcó real, el oráculo dice 7 real / 106 ruido / 20 unknown; de los 160 que marcó ruido, el oráculo dice 0 real / 133 ruido / 27 unknown. Las dos etiquetas coinciden en el 57% de los casos donde el oráculo decide. Las razones muestreadas resisten la lectura — por ejemplo, un veredicto de ruido sobre un finding que advertía que cambiar un `Map` por un `WeakMap` "elimina size/clear/iteration" cita la afirmación del propio PR de que los buckets solo necesitan `get` y `set`.
+
+**Re-puntuación** (`pnpm filter --findings datasets/findings-thorough-oracle.jsonl --mode replay --judge deepseek --judge-mode replay --label oracle`, costo cero — Jev y el juez repiten desde los fixtures ya grabados. Reporte: `reports/filter-2026-09-22T16-58-00-234Z.md`. Población puntuada 246 (7 real / 239 ruido; 53 excluidos como unknown):
+
+- **Jev**: AUC 0.708 (era 0.592 contra line-overlap). Curva: umbral 0.20 R 1.000 ND 0.146 | 0.30 R 1.000 ND 0.255 | 0.40 R 0.857 ND 0.360 | 0.50 R 0.714 ND 0.460. El umbral óptimo por F1 del reporte (0.85) da R 0.429 ND 0.862 P 0.083 — sin sentido con 7 positivos. ECE 0.504 (tasa base 0.028: las probabilidades de Jev corren muy por encima de la tasa real de positivos). Costo USD 0.0128, latencia p50 250 ms / p95 334 ms.
+- **Juez DeepSeek** (241 puntuados, 5 truncados): AUC 0.700 (era 0.567). Curva: 0.30 R 1.000 ND 0.226 | 0.40 R 1.000 ND 0.321 | 0.50 R 0.857 ND 0.372 | 0.60 R 0.714 ND 0.662 | 0.70 R 0.429 ND 0.697. Costo USD 2.33, latencia p50 31.5 s / p95 85.8 s.
+
+**Veredictos vs. oráculo**: H6 **PASS** (ratio de costo 182×, brecha de recall dentro de tolerancia). H1 **FAIL formal** (ningún umbral llega a recall ≥ 0.95 Y ruido descartado ≥ 0.40 a la vez: con recall pleno Jev descarta 25.5% del ruido, el juez 32.1%). H3 **FAIL** (ECE 0.504).
+
+**Lectura**:
+
+1. La etiqueta oráculo queda validada por dos puntuadores independientes que suben con ella (Jev 0.592 → 0.708, juez 0.567 → 0.700): mide algo que line-overlap no medía.
+2. Hallazgo estructural: `datasets/hunks.jsonl` le muestra al revisor el propio diff del commit de fix (before → after). Un revisor que revisa 100 bugs ya arreglados solo puede producir un finding "real" cuando casualmente describe el defecto que el fix corrigió — 7 veces en 299. El set es entonces un benchmark de RUIDO grande y limpio (239) y una población de RECALL inutilizable (n=7, sin intervalo de confianza que valga la pena reportar).
+3. Lo que Jev sí muestra en este set: en el umbral que conserva todos los findings reales, descarta un cuarto del ruido; el juez razonador descarta un tercio, a 182× el costo. Ninguno llega a la barra del 40%. La calibración está desviada en una dirección conocida: probabilidades demasiado altas para una tasa base de 2.8%.
+4. Próximo paso (propuesto, no aprobado, sin costo incurrido): H1b — un dataset de hunks invertidos (mostrar after → before: el estado con el bug como "el cambio"), de forma que un finding real sea uno que señale el bug que el fix luego eliminó; pase de revisor sobre DeepSeek, etiquetado oráculo y puntuación Jev/juez, todo con las herramientas existentes. Estimado ≈ USD 10 de DeepSeek. Requiere recargar el saldo de DeepSeek (agotado el 2026-09-22).
+5. La etapa 4 se mantiene en modo solo-anotar (`findingFilter.mode: "annotate"`) hasta H1b.
+
+Reproducir, costo cero:
+
+```
+pnpm findings:label --findings datasets/findings-thorough.jsonl \
+    --out datasets/findings-thorough-oracle.jsonl \
+    --labeler deepseek --mode replay
+pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
+    --mode replay --judge deepseek --judge-mode replay --label oracle
+```
+
 ## 5. Fases y alcance
 
 ### Fase 0 — Spike de defectos (CERRADA, H0 fallida)
@@ -457,11 +490,13 @@ jevest/
 | Tema | Decisión | Consecuencia |
 |---|---|---|
 | Etiqueta line-overlap invalidada por el control H6 | El juez LLM (DeepSeek) dio AUC 0.567 y precisión = tasa base sobre el mismo set donde Jev midió AUC 0.592: ninguno de los dos separa reales de ruido bajo la etiqueta line-overlap actual | H1 queda FAIL/inconcluso y H3 FAIL heredado; se necesita una muestra etiquetada a mano (≥ 60-80 findings) antes de re-medir; decisión sobre la etapa 4 (descartar vs. solo-anotar) pendiente hasta entonces |
+| Etiqueta oráculo fix-aware reemplaza a line-overlap como verdad de terreno de H1 | En vez de etiquetar a mano, un labeler LLM ve información que ni Jev ni el juez tuvieron nunca (el código después del fix, el mensaje del commit, el issue/PR vinculado), con dos framings y acuerdo obligatorio (`datasets/FINDINGS.md` §10). Re-puntuados contra ella, Jev sube de AUC 0.592 a 0.708 y el juez de 0.567 a 0.700: la etiqueta mide algo real. Pero el set solo produce 7 findings reales en 299 (el revisor ve el propio diff del fix), población insuficiente para el veredicto de recall de H1 | H1 sigue FAIL formal (no H3/H6): PASS de H6 se sostiene (182×); H3 FAIL (ECE 0.504). Pendiente: H1b con hunks invertidos |
+| Pendiente: H1b con hunks invertidos | Dataset que muestra after → before (el estado con el bug como "el cambio"), para que un finding real sea uno que señale el bug que el fix luego eliminó; mismo pipeline de revisor + etiquetado oráculo + puntuación Jev/juez | Estimado ≈ USD 10 de DeepSeek; requiere recargar el saldo (agotado el 2026-09-22); etapa 4 se mantiene en modo solo-anotar hasta entonces |
 
 ### Pendiente
 
 - Nombre y organización para publicar la Action y el dataset (fase 3).
-- Muestra etiquetada a mano (≥ 60-80 findings, real/ruido × severidad) para un veredicto H1 válido; hasta entonces, la decisión sobre la etapa 4 (descartar vs. solo-anotar) queda abierta.
+- H1b: dataset de hunks invertidos (after → before) para tener una población de findings reales suficiente y un veredicto H1 válido; hasta entonces, la etapa 4 se mantiene en modo solo-anotar. Requiere recargar el saldo de DeepSeek (agotado el 2026-09-22), estimado ≈ USD 10.
 
 ---
 

@@ -28,7 +28,10 @@ describe("parseArgs", () => {
       "4",
       "--model",
       "deepseek-flash",
+      "--max-tokens",
+      "16384",
     ]);
+    expect(options.maxTokens).toBe(16384);
     expect(options.findingsPath).toBe("datasets/findings-thorough.jsonl");
     expect(options.outPath).toBe("datasets/findings-thorough-oracle.jsonl");
     expect(options.labeler).toBe("deepseek");
@@ -41,6 +44,14 @@ describe("parseArgs", () => {
     const options = parseArgs(["--labeler", "dry-run", "--mode", "dry-run"]);
     expect(options.labeler).toBe("dry-run");
     expect(options.mode).toBe("dry-run");
+  });
+
+  it("defaults maxTokens to undefined (the adapter's default) and rejects a non-positive --max-tokens", () => {
+    expect(parseArgs(["--labeler", "deepseek"]).maxTokens).toBeUndefined();
+    expect(() => parseArgs(["--labeler", "deepseek", "--max-tokens", "0"])).toThrow(/--max-tokens/);
+    expect(() => parseArgs(["--labeler", "deepseek", "--max-tokens", "lots"])).toThrow(
+      /--max-tokens/,
+    );
   });
 
   it("rejects an unknown labeler, mode or a concurrency below 1", () => {

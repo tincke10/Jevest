@@ -8,7 +8,7 @@
  *   pnpm findings:label --findings datasets/findings-thorough.jsonl \
  *                       --out datasets/findings-thorough-oracle.jsonl \
  *                       --labeler deepseek|dry-run --mode record|replay|dry-run \
- *                       [--concurrency N] [--model deepseek-v4-pro]
+ *                       [--concurrency N] [--model deepseek-v4-pro] [--max-tokens N]
  *
  * Why this exists: the line-overlap label (§2) does not measure "is this
  * finding a real defect" — Jev and a DeepSeek reasoning judge both sit at
@@ -83,6 +83,8 @@ export interface CliOptions {
   readonly mode: Mode;
   readonly concurrency: number;
   readonly model: string;
+  /** Labeler max_tokens; undefined keeps the adapter default (8192). Raise it to retry findings truncated by long reasoning. */
+  readonly maxTokens?: number;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -100,6 +102,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let mode: Mode = "replay";
   let concurrency = DEFAULT_CONCURRENCY;
   let model = DEFAULT_MODEL;
+  let maxTokens: number | undefined;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -138,6 +141,15 @@ export function parseArgs(argv: readonly string[]): CliOptions {
       case "--model":
         model = requireValue(argv, ++i, "--model");
         break;
+      case "--max-tokens": {
+        const raw = requireValue(argv, ++i, "--max-tokens");
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 1) {
+          throw new Error(`--max-tokens must be an integer >= 1, got "${raw}"`);
+        }
+        maxTokens = value;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
@@ -152,7 +164,15 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     );
   }
 
-  return { findingsPath, outPath, labeler, mode, concurrency, model };
+  return {
+    findingsPath,
+    outPath,
+    labeler,
+    mode,
+    concurrency,
+    model,
+    ...(maxTokens === undefined ? {} : { maxTokens }),
+  };
 }
 
 function buildLabeler(options: CliOptions): FindingLabelerPort {
@@ -171,6 +191,7 @@ function buildLabeler(options: CliOptions): FindingLabelerPort {
     underlying: createDeepSeekFindingLabeler({
       client: new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: DEEPSEEK_BASE_URL }),
       model: options.model,
+      ...(options.maxTokens === undefined ? {} : { maxTokens: options.maxTokens }),
     }),
   });
 }

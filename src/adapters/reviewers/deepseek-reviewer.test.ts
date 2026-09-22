@@ -5,6 +5,7 @@ import {
   DEEPSEEK_BASE_URL,
   DEEPSEEK_SYSTEM_PROMPT,
   type DeepSeekChatClient,
+  buildDeepSeekSystemPrompt,
   createDeepSeekReviewer,
 } from "./deepseek-reviewer.js";
 import {
@@ -154,6 +155,17 @@ describe("createDeepSeekReviewer", () => {
       { role: "system", content: DEEPSEEK_SYSTEM_PROMPT },
       { role: "user", content: expect.stringContaining(SAMPLE_INPUT.file) },
     ]);
+  });
+
+  it("honors a systemPrompt override, still appending DeepSeek's json_object rules", async () => {
+    const client = fakeClient(async () => successResponse());
+    await createDeepSeekReviewer({ client, systemPrompt: "custom prompt" }).review(SAMPLE_INPUT);
+    const [params] = client.chat.completions.create.mock.calls[0]!;
+    const system = params.messages[0].content as string;
+    expect(system.startsWith("custom prompt")).toBe(true);
+    expect(system).toBe(buildDeepSeekSystemPrompt("custom prompt"));
+    expect(system.toLowerCase()).toContain("json");
+    expect(system).toContain('"suggested_severity"');
   });
 
   it("system prompt satisfies DeepSeek's json_object contract: mentions json and shows the shape", () => {

@@ -115,6 +115,18 @@ describe("createAnthropicReviewer", () => {
     expect(params.messages[0].content).toContain(SAMPLE_INPUT.hunkHeader);
   });
 
+  it("honors a systemPrompt override while keeping the cache_control marker", async () => {
+    const client = fakeClient(async () => successResponse());
+    const reviewer = createAnthropicReviewer({ client, systemPrompt: "custom prompt" });
+
+    await reviewer.review(SAMPLE_INPUT);
+
+    const [params] = client.messages.parse.mock.calls[0]!;
+    expect(params.system).toEqual([
+      { type: "text", text: "custom prompt", cache_control: { type: "ephemeral" } },
+    ]);
+  });
+
   it("never sends budget_tokens or an assistant prefill message", async () => {
     const client = fakeClient(async () => successResponse());
     const reviewer = createAnthropicReviewer({ client });

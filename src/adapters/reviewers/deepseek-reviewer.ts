@@ -70,6 +70,11 @@ export interface DeepSeekChatClient {
 
 export interface DeepSeekReviewerOptions {
   readonly client: DeepSeekChatClient;
+  /**
+   * Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")`
+   * for the low-bar pass. DeepSeek's json_object rules are always appended.
+   */
+  readonly systemPrompt?: string;
   /** Default "deepseek-v4-pro"; "deepseek-flash" is the cheaper option. */
   readonly model?: string;
   /** Default 4096 — findings are short structured output; too low truncates the JSON. */
@@ -104,7 +109,8 @@ const OUTPUT_EXAMPLE = JSON.stringify(
  * json_object response is free-form JSON, so the schema has to be stated
  * in prose — there is no server-side schema enforcement here).
  */
-export const DEEPSEEK_SYSTEM_PROMPT = `${REVIEW_SYSTEM_PROMPT}
+export function buildDeepSeekSystemPrompt(base: string): string {
+  return `${base}
 
 Output format: respond with a single JSON object and nothing else — no prose, no markdown fences. It must have exactly this shape:
 ${OUTPUT_EXAMPLE}
@@ -114,6 +120,9 @@ Rules for the JSON:
 - "line_start" and "line_end" are integers (BEFORE-side absolute line numbers, as described above).
 - "claim" and "rationale" are non-empty strings.
 - "suggested_severity" is exactly one of: "nit", "minor", "major", "critical".`;
+}
+
+export const DEEPSEEK_SYSTEM_PROMPT = buildDeepSeekSystemPrompt(REVIEW_SYSTEM_PROMPT);
 
 function parseReviewJson(content: string | null | undefined, hunkId: string) {
   const text = content?.trim() ?? "";
@@ -137,6 +146,10 @@ export function createDeepSeekReviewer(options: DeepSeekReviewerOptions): Review
   const model = options.model ?? DEFAULT_MODEL;
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   const now = options.now ?? Date.now;
+  const systemPrompt =
+    options.systemPrompt === undefined
+      ? DEEPSEEK_SYSTEM_PROMPT
+      : buildDeepSeekSystemPrompt(options.systemPrompt);
 
   return {
     async review(input: ReviewInput): Promise<ReviewOutput> {
@@ -146,7 +159,7 @@ export function createDeepSeekReviewer(options: DeepSeekReviewerOptions): Review
         response = await options.client.chat.completions.create({
           model,
           messages: [
-            { role: "system", content: DEEPSEEK_SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: buildReviewUserPrompt(input) },
           ],
           response_format: { type: "json_object" },

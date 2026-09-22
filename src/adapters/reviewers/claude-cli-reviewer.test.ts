@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type ClaudeCliSpawn, createClaudeCliReviewer } from "./claude-cli-reviewer.js";
+import { REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
 import {
   ClaudeCliError,
   ClaudeCliProcessError,
@@ -100,6 +101,18 @@ describe("createClaudeCliReviewer", () => {
     expect(output.findings).toEqual([]);
   });
 
+  it("uses the strict REVIEW_SYSTEM_PROMPT by default and honors a systemPrompt override", async () => {
+    const defaultSpawn = okSpawn();
+    await createClaudeCliReviewer({ spawn: defaultSpawn }).review(SAMPLE_INPUT);
+    const [defaultArgs] = defaultSpawn.mock.calls[0]!;
+    expect(defaultArgs[defaultArgs.indexOf("--system-prompt") + 1]).toBe(REVIEW_SYSTEM_PROMPT);
+
+    const spawn = okSpawn();
+    await createClaudeCliReviewer({ spawn, systemPrompt: "custom prompt" }).review(SAMPLE_INPUT);
+    const [args] = spawn.mock.calls[0]!;
+    expect(args[args.indexOf("--system-prompt") + 1]).toBe("custom prompt");
+  });
+
   it("builds the expected minimal-footprint argv: --safe-mode, --tools '', the shared system prompt, and the json schema", async () => {
     const spawn = okSpawn();
     const reviewer = createClaudeCliReviewer({ spawn });
@@ -165,6 +178,23 @@ describe("createClaudeCliReviewer", () => {
     }));
     const reviewer = createClaudeCliReviewer({ spawn, timeoutMs: 1000 });
     await expect(reviewer.review(SAMPLE_INPUT)).rejects.toThrow(ClaudeCliTimeoutError);
+  });
+
+  it("classifies a usage-limit result as ReviewerRateLimitError even on a non-zero exit code", async () => {
+    const spawn = fakeSpawn(async () => ({
+      stdout: JSON.stringify({
+        subtype: "error_during_execution",
+        is_error: true,
+        usage: { padding: "p".repeat(600) },
+        result: "Claude usage limit reached",
+      }),
+      stderr: "",
+      exitCode: 1,
+      timedOut: false,
+    }));
+    await expect(createClaudeCliReviewer({ spawn }).review(SAMPLE_INPUT)).rejects.toThrow(
+      ReviewerRateLimitError,
+    );
   });
 
   it("throws ClaudeCliProcessError on a non-zero exit code", async () => {

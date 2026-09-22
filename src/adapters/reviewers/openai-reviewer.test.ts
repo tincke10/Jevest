@@ -104,6 +104,13 @@ describe("createOpenAiReviewer", () => {
     expect(output.latencyMs).toBe(400);
   });
 
+  it("honors a systemPrompt override", async () => {
+    const client = fakeClient(async () => successResponse());
+    await createOpenAiReviewer({ client, systemPrompt: "custom prompt" }).review(SAMPLE_INPUT);
+    const [params] = client.chat.completions.parse.mock.calls[0]!;
+    expect(params.messages[0]).toEqual({ role: "system", content: "custom prompt" });
+  });
+
   it("defaults to model gpt-5.6-luna and includes the system and user messages", async () => {
     const client = fakeClient(async () => successResponse());
     const reviewer = createOpenAiReviewer({ client });

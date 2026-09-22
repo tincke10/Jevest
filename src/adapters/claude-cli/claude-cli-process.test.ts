@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ClaudeCliError } from "../reviewers/reviewer-errors.js";
+import {
+  ClaudeCliError,
+  ClaudeCliProcessError,
+  ReviewerRateLimitError,
+} from "../reviewers/reviewer-errors.js";
 import { buildClaudeCliArgs, parseClaudeCliEnvelope } from "./claude-cli-process.js";
 
 const schema = z.object({ answer: z.string() });
@@ -82,5 +86,45 @@ describe("parseClaudeCliEnvelope", () => {
     expect(() => parseClaudeCliEnvelope(ok({ answer: 1 }), schema, context)).toThrow(
       ClaudeCliError,
     );
+  });
+});
+
+describe("parseClaudeCliEnvelope on a non-zero exit", () => {
+  const context = { provider: "claude-cli", itemId: "x", timeoutMs: 1000, fallbackLatencyMs: 5 };
+  const padding = "p".repeat(600);
+
+  it("classifies a usage-limit message in the envelope's result as ReviewerRateLimitError even when the process exited 1", () => {
+    const stdout = JSON.stringify({
+      subtype: "error_during_execution",
+      is_error: true,
+      api_error_status: null,
+      usage: { input_tokens: 0, output_tokens: 0, padding },
+      result: "Claude usage limit reached. Your limit will reset at 3am",
+    });
+    expect(() =>
+      parseClaudeCliEnvelope({ stdout, stderr: "", exitCode: 1, timedOut: false }, schema, context),
+    ).toThrow(ReviewerRateLimitError);
+  });
+
+  it("surfaces the envelope's result text in ClaudeCliProcessError even when it sits past the 500-char excerpt", () => {
+    const stdout = JSON.stringify({
+      subtype: "error_during_execution",
+      is_error: true,
+      usage: { input_tokens: 0, output_tokens: 0, padding },
+      result: "Something specific went wrong",
+    });
+    expect(() =>
+      parseClaudeCliEnvelope({ stdout, stderr: "", exitCode: 1, timedOut: false }, schema, context),
+    ).toThrow(/Something specific went wrong/);
+  });
+
+  it("still throws ClaudeCliProcessError with the raw excerpt when stdout is not JSON", () => {
+    expect(() =>
+      parseClaudeCliEnvelope(
+        { stdout: "not json", stderr: "boom", exitCode: 127, timedOut: false },
+        schema,
+        context,
+      ),
+    ).toThrow(ClaudeCliProcessError);
   });
 });

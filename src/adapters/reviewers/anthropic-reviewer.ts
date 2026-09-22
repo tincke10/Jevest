@@ -67,6 +67,8 @@ export interface AnthropicReviewerOptions {
   readonly maxTokens?: number;
   /** Injectable clock for deterministic latency tests. Default: `Date.now`. */
   readonly now?: () => number;
+  /** Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")` for the low-bar pass. */
+  readonly systemPrompt?: string;
 }
 
 const DEFAULT_MODEL = "claude-opus-5";
@@ -81,6 +83,7 @@ export function createAnthropicReviewer(options: AnthropicReviewerOptions): Revi
   const effort = options.effort ?? DEFAULT_EFFORT;
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   const now = options.now ?? Date.now;
+  const systemPrompt = options.systemPrompt ?? REVIEW_SYSTEM_PROMPT;
 
   return {
     async review(input: ReviewInput): Promise<ReviewOutput> {
@@ -90,9 +93,7 @@ export function createAnthropicReviewer(options: AnthropicReviewerOptions): Revi
         response = await options.client.messages.parse({
           model,
           max_tokens: maxTokens,
-          system: [
-            { type: "text", text: REVIEW_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-          ],
+          system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
           messages: [{ role: "user", content: buildReviewUserPrompt(input) }],
           output_config: { format: OUTPUT_FORMAT, effort },
         });

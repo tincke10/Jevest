@@ -53,6 +53,8 @@ export interface OpenAiChatClient {
 
 export interface OpenAiReviewerOptions {
   readonly client: OpenAiChatClient;
+  /** Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")` for the low-bar pass. */
+  readonly systemPrompt?: string;
   /** Default "gpt-5.6-luna" (confirmed in the installed SDK's ChatModel union). */
   readonly model?: string;
   /** Injectable clock for deterministic latency tests. Default: `Date.now`. */
@@ -66,6 +68,7 @@ const RESPONSE_FORMAT = zodResponseFormat(reviewOutputSchema, "review_output");
 export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPort {
   const model = options.model ?? DEFAULT_MODEL;
   const now = options.now ?? Date.now;
+  const systemPrompt = options.systemPrompt ?? REVIEW_SYSTEM_PROMPT;
 
   return {
     async review(input: ReviewInput): Promise<ReviewOutput> {
@@ -75,7 +78,7 @@ export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPo
         response = await options.client.chat.completions.parse({
           model,
           messages: [
-            { role: "system", content: REVIEW_SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             { role: "user", content: buildReviewUserPrompt(input) },
           ],
           response_format: RESPONSE_FORMAT,

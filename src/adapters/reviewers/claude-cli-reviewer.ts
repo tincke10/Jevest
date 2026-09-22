@@ -60,6 +60,8 @@ export interface ClaudeCliReviewerOptions {
   readonly timeoutMs?: number;
   /** Injectable clock for deterministic latency fallback. Default: `Date.now`. */
   readonly now?: () => number;
+  /** Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")` for the low-bar pass. */
+  readonly systemPrompt?: string;
 }
 
 const DEFAULT_MODEL = "claude-opus-5";
@@ -75,6 +77,41 @@ function excerpt(stdout: string, stderr: string): string {
 function looksLikeRateLimit(apiErrorStatus: unknown, text: string): boolean {
   if (apiErrorStatus === 429) return true;
   return /rate.?limit|usage.?limit|quota/i.test(text);
+}
+
+/**
+ * A non-zero exit still usually carries a JSON envelope on stdout whose
+ * `result` names the real reason (e.g. a usage limit), often past the
+ * 500-char excerpt. Classify it: rate-limit signals become
+ * ReviewerRateLimitError so callers back off and retry; anything else is a
+ * ClaudeCliProcessError whose message leads with that `result` text.
+ */
+function throwForNonZeroExit(
+  result: ClaudeCliProcessResult,
+  provider: string,
+  rateLimitCheck: (apiErrorStatus: unknown, text: string) => boolean,
+): never {
+  let envelope: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(result.stdout) as unknown;
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      envelope = parsed as Record<string, unknown>;
+    }
+  } catch {
+    envelope = null;
+  }
+  if (envelope === null) {
+    throw new ClaudeCliProcessError(result.exitCode, excerpt(result.stdout, result.stderr));
+  }
+  const resultText = typeof envelope.result === "string" ? envelope.result : "";
+  if (rateLimitCheck(envelope.api_error_status, `${resultText} ${result.stderr}`)) {
+    throw new ReviewerRateLimitError(provider, envelope);
+  }
+  const lead = resultText === "" ? "" : `result: ${resultText.slice(0, EXCERPT_LEN)} | `;
+  throw new ClaudeCliProcessError(
+    result.exitCode,
+    `${lead}${excerpt(result.stdout, result.stderr)}`,
+  );
 }
 
 function defaultSpawn(
@@ -113,6 +150,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
   const model = options.model ?? DEFAULT_MODEL;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const now = options.now ?? Date.now;
+  const systemPrompt = options.systemPrompt ?? REVIEW_SYSTEM_PROMPT;
 
   return {
     async review(input: ReviewInput): Promise<ReviewOutput> {
@@ -127,7 +165,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
         "--tools",
         "",
         "--system-prompt",
-        REVIEW_SYSTEM_PROMPT,
+        systemPrompt,
         "--json-schema",
         JSON.stringify(REVIEW_OUTPUT_JSON_SCHEMA),
         buildReviewUserPrompt(input),
@@ -141,7 +179,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
         throw new ClaudeCliTimeoutError(timeoutMs, input.hunkId);
       }
       if (result.exitCode !== 0) {
-        throw new ClaudeCliProcessError(result.exitCode, excerpt(result.stdout, result.stderr));
+        throwForNonZeroExit(result, PROVIDER, looksLikeRateLimit);
       }
 
       let envelope: Record<string, unknown>;

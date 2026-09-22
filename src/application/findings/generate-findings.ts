@@ -7,7 +7,7 @@
  * couldn't be processed" shape as ../spike/spike-runner.ts).
  */
 import { ReviewerRateLimitError } from "../../adapters/reviewers/reviewer-errors.js";
-import type { FindingRecord, ReviewerProvider } from "../../domain/finding.js";
+import type { FindingRecord, ReviewPromptMode, ReviewerProvider } from "../../domain/finding.js";
 import { computeFixChangedLines, labelFinding } from "../../domain/line-overlap.js";
 import type { ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { HunkRecord } from "../spike/hunk-record.js";
@@ -55,6 +55,11 @@ export interface GenerateFindingsOptions {
   /** Hunks reviewed in parallel. Default 1 (sequential, original behavior). */
   readonly concurrency?: number;
   readonly retry?: RetryOptions;
+  /**
+   * Stamped on every record's `reviewer.promptMode`. Absent leaves the
+   * field off the record (strict, the pre-2026-09-21 wire shape).
+   */
+  readonly promptMode?: ReviewPromptMode;
 }
 
 function defaultSleep(ms: number): Promise<void> {
@@ -116,7 +121,11 @@ export async function generateFindings(
         id: `${hunk.id}::${options.provider}::${index}`,
         hunkId: hunk.id,
         datasetVersion: 2,
-        reviewer: { provider: options.provider, model: output.model },
+        reviewer: {
+          provider: options.provider,
+          model: output.model,
+          ...(options.promptMode !== undefined ? { promptMode: options.promptMode } : {}),
+        },
         file: hunk.file,
         lineStart: finding.lineStart,
         lineEnd: finding.lineEnd,

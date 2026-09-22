@@ -8,7 +8,7 @@
  * Usage:
  *   pnpm findings --provider anthropic|openai|deepseek|claude-cli [--limit N]
  *                 [--budget-usd N] [--estimate] [--out path] [--record]
- *                 [--seed N] [--concurrency N]
+ *                 [--seed N] [--concurrency N] [--prompt strict|thorough]
  *
  * `--estimate` never spends real per-token API money: for `anthropic`, it
  * uses `client.messages.countTokens` on a small sample (a free endpoint —
@@ -23,6 +23,12 @@
  * `--concurrency N` (default 2, claude-cli only in practice — the Anthropic
  * and OpenAI adapters aren't run with more than 1 in this task) reviews
  * hunks in parallel via generateFindings's worker pool.
+ *
+ * `--prompt thorough` (default strict, unchanged behavior) swaps in the
+ * low-bar REVIEW_SYSTEM_PROMPT_THOROUGH so the dataset gets enough noise to
+ * evaluate the filter (SPEC §13, 2026-09-21). Thorough fixtures are recorded
+ * under tests/fixtures/findings-thorough/ so they never collide with the
+ * strict ones (the fixture key hashes the ReviewInput, not the prompt).
  */
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -37,6 +43,7 @@ import {
 } from "../../src/adapters/reviewers/deepseek-reviewer.js";
 import { createOpenAiReviewer } from "../../src/adapters/reviewers/openai-reviewer.js";
 import { createRecordedReviewer } from "../../src/adapters/reviewers/recorded-reviewer.js";
+import { reviewSystemPromptFor } from "../../src/adapters/reviewers/review-prompt.js";
 import { estimateClaudeCliCostUsd } from "../../src/application/findings/estimate-claude-cli-cost.js";
 import { estimateReviewCostUsd } from "../../src/application/findings/estimate-cost.js";
 import { generateFindings } from "../../src/application/findings/generate-findings.js";
@@ -51,6 +58,7 @@ import type { HunkRecord } from "../../src/application/spike/hunk-record.js";
 import { stratifiedSample } from "../../src/application/spike/stratified-sample.js";
 import {
   type FindingRecord,
+  type ReviewPromptMode,
   parseFindingRecordsJsonl,
   stringifyFindingRecord,
 } from "../../src/domain/finding.js";
@@ -58,7 +66,10 @@ import type { ReviewerPort } from "../../src/domain/ports/reviewer-port.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DATASET_PATH = join(REPO_ROOT, "datasets/hunks.jsonl");
-const FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/findings");
+const FIXTURES_DIR_BY_PROMPT: Record<ReviewPromptMode, string> = {
+  strict: join(REPO_ROOT, "tests/fixtures/findings"),
+  thorough: join(REPO_ROOT, "tests/fixtures/findings-thorough"),
+};
 const DEFAULT_OUT_PATH = join(REPO_ROOT, "datasets/findings.jsonl");
 
 const DEFAULT_BUDGET_USD = 5;
@@ -76,6 +87,7 @@ const RATE_LIMIT_BACKOFF_MS = 60_000;
 
 type Provider = "anthropic" | "openai" | "deepseek" | "claude-cli";
 const PROVIDERS: readonly Provider[] = ["anthropic", "openai", "deepseek", "claude-cli"];
+const PROMPT_MODES: readonly ReviewPromptMode[] = ["strict", "thorough"];
 
 export interface CliOptions {
   readonly provider: Provider;
@@ -87,6 +99,7 @@ export interface CliOptions {
   readonly record: boolean;
   readonly seed: number;
   readonly concurrency: number;
+  readonly prompt: ReviewPromptMode;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -106,6 +119,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let record = false;
   let seed = DEFAULT_SAMPLE_SEED;
   let concurrency = DEFAULT_CONCURRENCY;
+  let prompt: ReviewPromptMode = "strict";
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -163,6 +177,14 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         concurrency = value;
         break;
       }
+      case "--prompt": {
+        const value = requireValue(argv, ++i, "--prompt");
+        if (!PROMPT_MODES.includes(value as ReviewPromptMode)) {
+          throw new Error(`--prompt must be one of ${PROMPT_MODES.join(", ")}, got "${value}"`);
+        }
+        prompt = value as ReviewPromptMode;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
@@ -172,7 +194,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     throw new Error(`--provider is required (one of ${PROVIDERS.map((p) => `"${p}"`).join(", ")})`);
   }
 
-  return { provider, limit, budgetUsd, estimate, out, record, seed, concurrency };
+  return { provider, limit, budgetUsd, estimate, out, record, seed, concurrency, prompt };
 }
 
 function pricingFor(provider: Provider): ModelPricing {
@@ -199,7 +221,12 @@ function pricingFor(provider: Provider): ModelPricing {
   return { inputPerMTok: 0, outputPerMTok: 0, cacheReadPerMTok: 0, cacheWritePerMTok: 0 };
 }
 
-function buildReviewer(provider: Provider, record: boolean): ReviewerPort {
+function buildReviewer(
+  provider: Provider,
+  record: boolean,
+  promptMode: ReviewPromptMode,
+): ReviewerPort {
+  const systemPrompt = reviewSystemPromptFor(promptMode);
   let underlying: ReviewerPort;
   if (provider === "anthropic") {
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -207,30 +234,35 @@ function buildReviewer(provider: Provider, record: boolean): ReviewerPort {
         'provider "anthropic" requires resolvable credentials (ANTHROPIC_API_KEY, or an `ant auth login` profile)',
       );
     }
-    underlying = createAnthropicReviewer({ client: new Anthropic() });
+    underlying = createAnthropicReviewer({ client: new Anthropic(), systemPrompt });
   } else if (provider === "openai") {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('provider "openai" requires OPENAI_API_KEY to be set');
     }
-    underlying = createOpenAiReviewer({ client: new OpenAI() });
+    underlying = createOpenAiReviewer({ client: new OpenAI(), systemPrompt });
   } else if (provider === "deepseek") {
     if (!process.env.DEEPSEEK_API_KEY) {
       throw new Error('provider "deepseek" requires DEEPSEEK_API_KEY to be set');
     }
     underlying = createDeepSeekReviewer({
       client: new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: DEEPSEEK_BASE_URL }),
+      systemPrompt,
     });
   } else {
     // claude-cli: no API key check — it deliberately spawns `claude -p`
     // with ANTHROPIC_API_KEY stripped, drawing on the Claude Max
     // subscription's OAuth session instead (SPEC §13 2026-09-19 decision).
-    underlying = createClaudeCliReviewer({});
+    underlying = createClaudeCliReviewer({ systemPrompt });
   }
 
   if (!record) {
     return underlying;
   }
-  return createRecordedReviewer({ fixturesDir: FIXTURES_DIR, mode: "record", underlying });
+  return createRecordedReviewer({
+    fixturesDir: FIXTURES_DIR_BY_PROMPT[promptMode],
+    mode: "record",
+    underlying,
+  });
 }
 
 async function runAnthropicEstimate(hunks: readonly HunkRecord[]): Promise<number> {
@@ -335,11 +367,11 @@ async function main(): Promise<number> {
     );
   }
 
-  const reviewer = buildReviewer(options.provider, options.record);
+  const reviewer = buildReviewer(options.provider, options.record, options.prompt);
   const pricing = pricingFor(options.provider);
 
   console.log(
-    `[findings] reviewing ${hunks.length} hunk(s) with provider=${options.provider}, ` +
+    `[findings] reviewing ${hunks.length} hunk(s) with provider=${options.provider}, prompt=${options.prompt}, ` +
       `budget=$${options.budgetUsd} (nominal for claude-cli), concurrency=${options.concurrency}...`,
   );
 
@@ -355,6 +387,7 @@ async function main(): Promise<number> {
     // throw ReviewerRateLimitError; only claude-cli is expected to hit it
     // in practice (the task brief's explicit requirement).
     retry: { maxAttempts: RATE_LIMIT_MAX_ATTEMPTS, backoffMs: RATE_LIMIT_BACKOFF_MS },
+    promptMode: options.prompt,
   });
   const wallMs = Date.now() - wallStart;
 

@@ -7,6 +7,23 @@
  *
  * Usage:
  *   pnpm filter [--findings <path>] [--batch-size N] [--mode live|record|replay|dry-run]
+ *              [--judge none|deepseek|claude-cli|dry-run] [--judge-mode record|replay]
+ *              [--judge-concurrency N]
+ *
+ * `--judge deepseek` (H6, SPEC FR-8.3) runs the LLM-judge baseline over
+ * the same findings and scores it at Jev's best threshold; `--judge-mode
+ * record` makes real DeepSeek API calls (DEEPSEEK_API_KEY, per-token
+ * billed, resumable, fixtures under tests/fixtures/filter-judge-deepseek/),
+ * `replay` (default) reads them back. `--judge claude-cli` is the earlier
+ * subscription-billed judge, kept only to replay its partial fixture set
+ * under tests/fixtures/filter-judge/ (rule of 2026-09-22: the Claude
+ * subscription is reserved for reviews; every other LLM call goes through
+ * DeepSeek). The two judges never share a fixtures dir because the fixture
+ * key hashes the input only, not the model. `--judge dry-run` proves the
+ * H6 path with seeded fake answers. The judge and Jev sides are
+ * independent; the H1/H6/H3 command is
+ *   DEEPSEEK_API_KEY=... pnpm filter --findings datasets/findings-thorough.jsonl \
+ *       --mode replay --judge deepseek --judge-mode record
  *
  * `--batch-size` defaults to 1 (one finding per Jev request): batch
  * anchoring makes answers converge within a batch (SPEC NFR-14,
@@ -22,10 +39,17 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
+import OpenAI from "openai";
 import { createFakeDecisionAdapter } from "../../src/adapters/fake-decision-adapter.js";
+import { createClaudeCliFindingJudge } from "../../src/adapters/judges/claude-cli-finding-judge.js";
+import { createDeepSeekFindingJudge } from "../../src/adapters/judges/deepseek-finding-judge.js";
+import { createFakeFindingJudge } from "../../src/adapters/judges/fake-finding-judge.js";
+import { createRecordedFindingJudge } from "../../src/adapters/judges/recorded-finding-judge.js";
 import { createRecordedDecisionAdapter } from "../../src/adapters/recorded-decision-adapter.js";
+import { DEEPSEEK_BASE_URL } from "../../src/adapters/reviewers/deepseek-reviewer.js";
 import { createTypeSafeDecisionAdapter } from "../../src/adapters/typesafe-decision-adapter.js";
 import { generateDryRunFilterScript } from "../../src/application/filter/dry-run-filter-script.js";
+import { generateDryRunJudgeScript } from "../../src/application/filter/dry-run-judge-script.js";
 import {
   buildFilterReport,
   renderFilterReportMarkdown,
@@ -35,23 +59,38 @@ import {
   type FindingRecord,
   parseFindingRecordsJsonl,
 } from "../../src/application/filter/finding-record.js";
+import { type JudgeRunResult, runJudge } from "../../src/application/filter/judge-runner.js";
 import { parseHunkRecordsJsonl } from "../../src/application/spike/hunk-record.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
+import type { FindingJudgePort } from "../../src/domain/ports/finding-judge-port.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FINDINGS_PATH = join(REPO_ROOT, "datasets/findings.jsonl");
 const HUNKS_PATH = join(REPO_ROOT, "datasets/hunks.jsonl");
 const FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter");
+const JUDGE_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter-judge");
+const DEEPSEEK_JUDGE_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter-judge-deepseek");
 const REPORTS_DIR = join(REPO_ROOT, "reports");
 const DRY_RUN_SEED = 42;
+// Same rate-limit backoff as scripts/findings/generate.ts: 60s, 4 attempts.
+const JUDGE_RATE_LIMIT_MAX_ATTEMPTS = 4;
+const JUDGE_RATE_LIMIT_BACKOFF_MS = 60_000;
+const DEFAULT_JUDGE_CONCURRENCY = 2;
 
 type Mode = "live" | "record" | "replay" | "dry-run";
 const MODES: readonly Mode[] = ["live", "record", "replay", "dry-run"];
+type Judge = "none" | "deepseek" | "claude-cli" | "dry-run";
+const JUDGES: readonly Judge[] = ["none", "deepseek", "claude-cli", "dry-run"];
+type JudgeMode = "record" | "replay";
+const JUDGE_MODES: readonly JudgeMode[] = ["record", "replay"];
 
-interface CliOptions {
+export interface CliOptions {
   readonly findingsPath: string;
   readonly batchSize: number;
   readonly mode: Mode | null;
+  readonly judge: Judge;
+  readonly judgeMode: JudgeMode;
+  readonly judgeConcurrency: number;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -66,6 +105,9 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let findingsPath = DEFAULT_FINDINGS_PATH;
   let batchSize = 1;
   let mode: Mode | null = null;
+  let judge: Judge = "none";
+  let judgeMode: JudgeMode = "replay";
+  let judgeConcurrency = DEFAULT_JUDGE_CONCURRENCY;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -88,12 +130,75 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         mode = value as Mode;
         break;
       }
+      case "--judge": {
+        const value = requireValue(argv, ++i, "--judge");
+        if (!JUDGES.includes(value as Judge)) {
+          throw new Error(`--judge must be one of ${JUDGES.join(", ")}, got "${value}"`);
+        }
+        judge = value as Judge;
+        break;
+      }
+      case "--judge-mode": {
+        const value = requireValue(argv, ++i, "--judge-mode");
+        if (!JUDGE_MODES.includes(value as JudgeMode)) {
+          throw new Error(`--judge-mode must be one of ${JUDGE_MODES.join(", ")}, got "${value}"`);
+        }
+        judgeMode = value as JudgeMode;
+        break;
+      }
+      case "--judge-concurrency": {
+        const raw = requireValue(argv, ++i, "--judge-concurrency");
+        const value = Number(raw);
+        if (!Number.isInteger(value) || value < 1) {
+          throw new Error(`--judge-concurrency must be an integer >= 1, got "${raw}"`);
+        }
+        judgeConcurrency = value;
+        break;
+      }
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
   }
 
-  return { findingsPath, batchSize, mode };
+  return { findingsPath, batchSize, mode, judge, judgeMode, judgeConcurrency };
+}
+
+function buildJudge(judge: Judge, judgeMode: JudgeMode): FindingJudgePort | null {
+  switch (judge) {
+    case "none":
+      return null;
+    case "dry-run":
+      return createFakeFindingJudge(generateDryRunJudgeScript(DRY_RUN_SEED));
+    case "deepseek": {
+      if (judgeMode === "replay") {
+        return createRecordedFindingJudge({
+          fixturesDir: DEEPSEEK_JUDGE_FIXTURES_DIR,
+          mode: "replay",
+        });
+      }
+      if (!process.env.DEEPSEEK_API_KEY) {
+        throw new Error("--judge deepseek --judge-mode record requires DEEPSEEK_API_KEY to be set");
+      }
+      return createRecordedFindingJudge({
+        fixturesDir: DEEPSEEK_JUDGE_FIXTURES_DIR,
+        mode: "record",
+        underlying: createDeepSeekFindingJudge({
+          client: new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: DEEPSEEK_BASE_URL }),
+        }),
+      });
+    }
+    case "claude-cli":
+      if (judgeMode === "replay") {
+        return createRecordedFindingJudge({ fixturesDir: JUDGE_FIXTURES_DIR, mode: "replay" });
+      }
+      // No API key check on purpose: the claude-cli adapter strips
+      // ANTHROPIC_API_KEY and bills the Claude subscription (SPEC §13).
+      return createRecordedFindingJudge({
+        fixturesDir: JUDGE_FIXTURES_DIR,
+        mode: "record",
+        underlying: createClaudeCliFindingJudge({}),
+      });
+  }
 }
 
 async function resolveMode(requested: Mode | null): Promise<Mode> {
@@ -159,6 +264,7 @@ async function main(): Promise<number> {
   const datasetVersion = findings[0]?.datasetVersion ?? 1;
 
   const port = buildPort(mode, findings);
+  const judgePort = buildJudge(options.judge, options.judgeMode);
 
   console.log(`[filter] running ${findings.length} findings (mode=${mode})...`);
   const run = await runFilter({
@@ -178,10 +284,55 @@ async function main(): Promise<number> {
     console.warn(`[filter] ${run.failures.length} finding(s) failed`);
   }
 
+  let judgeRun: JudgeRunResult | null = null;
+  if (judgePort) {
+    console.log(
+      `[filter] judging ${findings.length} findings with judge=${options.judge} (judge-mode=${options.judgeMode}, concurrency=${options.judgeConcurrency})...`,
+    );
+    judgeRun = await runJudge({
+      judge: judgePort,
+      findings,
+      hunkDiffsById,
+      concurrency: options.judgeConcurrency,
+      retry: { maxAttempts: JUDGE_RATE_LIMIT_MAX_ATTEMPTS, backoffMs: JUDGE_RATE_LIMIT_BACKOFF_MS },
+      onProgress: ({ completed, total }) => {
+        const line = `[filter] judge ${completed}/${total}`;
+        process.stdout.write(process.stdout.isTTY ? `\r${line}` : `${line}\n`);
+      },
+    });
+    if (process.stdout.isTTY) {
+      process.stdout.write("\n");
+    }
+    if (judgeRun.failures.length > 0) {
+      console.warn(`[filter] ${judgeRun.failures.length} judge call(s) failed`);
+      for (const failure of judgeRun.failures) {
+        console.warn(`[filter]   ${failure.findingId}: ${failure.error}`);
+      }
+    }
+    if (judgeRun.stoppedEarly) {
+      console.warn(`[filter] judge STOPPED EARLY: ${judgeRun.stopReason}`);
+    }
+    console.log(
+      `[filter] judge: ${judgeRun.totals.requests} call(s), $${judgeRun.totals.totalCostUsd.toFixed(4)} ` +
+        `(${options.judge === "claude-cli" ? "nominal, subscription" : "real, per-token"}), wall time ${(judgeRun.totals.wallTimeMs / 1000).toFixed(1)}s`,
+    );
+  }
+
   const report = buildFilterReport(
     { results: run.results, failures: run.failures },
     realByFindingId,
-    { datasetVersion },
+    {
+      datasetVersion,
+      ...(judgeRun
+        ? {
+            judgeRun: {
+              provider: options.judge,
+              results: judgeRun.results,
+              failures: judgeRun.failures,
+            },
+          }
+        : {}),
+    },
   );
   const markdown = renderFilterReportMarkdown(report);
 
@@ -201,9 +352,13 @@ async function main(): Promise<number> {
   return report.h1.verdict === "PASS" ? 0 : 2;
 }
 
-main()
-  .then((code) => process.exit(code))
-  .catch((error: unknown) => {
-    console.error("[filter] error:", error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
+// Guard so `import { parseArgs } from "./run.js"` (unit tests) never
+// triggers a run: only run main() when this file is the executed entry point.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main()
+    .then((code) => process.exit(code))
+    .catch((error: unknown) => {
+      console.error("[filter] error:", error instanceof Error ? error.message : error);
+      process.exit(1);
+    });
+}

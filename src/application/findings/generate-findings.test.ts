@@ -412,3 +412,50 @@ describe("generateFindings", () => {
     expect(result.failures[0]!.hunkId).toBe("r2");
   });
 });
+
+describe("generateFindings promptMode", () => {
+  function reviewerWithOneFinding(): ReviewerPort {
+    return createFakeReviewer({
+      h1: {
+        findings: [
+          { lineStart: 11, lineEnd: 11, claim: "c", rationale: "r", suggestedSeverity: "minor" },
+        ],
+        model: "claude-opus-5",
+        usage: {
+          inputTokens: 1,
+          outputTokens: 1,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+        latencyMs: 1,
+      },
+    });
+  }
+
+  it("stamps reviewer.promptMode on every record when given", async () => {
+    const result = await generateFindings({
+      hunks: [hunk({ id: "h1" })],
+      reviewer: reviewerWithOneFinding(),
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+      promptMode: "thorough",
+    });
+    expect(result.records[0]?.reviewer).toEqual({
+      provider: "claude-cli",
+      model: "claude-opus-5",
+      promptMode: "thorough",
+    });
+  });
+
+  it("leaves reviewer.promptMode absent when not given (strict, unchanged wire shape)", async () => {
+    const result = await generateFindings({
+      hunks: [hunk({ id: "h1" })],
+      reviewer: reviewerWithOneFinding(),
+      provider: "claude-cli",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 10,
+    });
+    expect(result.records[0]?.reviewer).toEqual({ provider: "claude-cli", model: "claude-opus-5" });
+  });
+});

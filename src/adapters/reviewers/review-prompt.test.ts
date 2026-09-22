@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
-import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from "./review-prompt.js";
+import {
+  REVIEW_SYSTEM_PROMPT,
+  REVIEW_SYSTEM_PROMPT_THOROUGH,
+  buildReviewUserPrompt,
+  reviewSystemPromptFor,
+} from "./review-prompt.js";
 
 const SAMPLE_INPUT: ReviewInput = {
   hunkId: "zod-9446b5c-1",
@@ -66,5 +71,36 @@ describe("buildReviewUserPrompt", () => {
   it("omits any profile section when no profile is given", () => {
     const prompt = buildReviewUserPrompt(SAMPLE_INPUT);
     expect(prompt.toLowerCase()).not.toContain("profile");
+  });
+});
+
+describe("REVIEW_SYSTEM_PROMPT_THOROUGH", () => {
+  it("is a distinct non-empty constant that keeps the strict prompt's structure", () => {
+    expect(typeof REVIEW_SYSTEM_PROMPT_THOROUGH).toBe("string");
+    expect(REVIEW_SYSTEM_PROMPT_THOROUGH).not.toBe(REVIEW_SYSTEM_PROMPT);
+    const lower = REVIEW_SYSTEM_PROMPT_THOROUGH.toLowerCase();
+    expect(lower).toMatch(/logic|boundary|async|error handling/);
+    expect(lower).toMatch(/absolute/);
+    expect(lower).toMatch(/before/);
+  });
+
+  it("lowers the bar: report plausible or suspected issues, prefer reporting over silence, one finding per location", () => {
+    const lower = REVIEW_SYSTEM_PROMPT_THOROUGH.toLowerCase();
+    expect(lower).toMatch(/plausible|suspected/);
+    expect(lower).toMatch(/not sure|unsure|uncertain/);
+    expect(lower).toMatch(/prefer reporting/);
+    expect(lower).toMatch(/one finding per/);
+  });
+
+  it("contains no hunk-specific content from a sample input", () => {
+    expect(REVIEW_SYSTEM_PROMPT_THOROUGH).not.toContain(SAMPLE_INPUT.hunkId);
+    expect(REVIEW_SYSTEM_PROMPT_THOROUGH).not.toContain(SAMPLE_INPUT.diff);
+  });
+});
+
+describe("reviewSystemPromptFor", () => {
+  it("maps strict to the strict prompt and thorough to the thorough prompt", () => {
+    expect(reviewSystemPromptFor("strict")).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(reviewSystemPromptFor("thorough")).toBe(REVIEW_SYSTEM_PROMPT_THOROUGH);
   });
 });

@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { ReviewInput, ReviewOutput } from "../../domain/ports/reviewer-port.js";
+import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import { createFakeReviewer } from "./fake-reviewer.js";
 import {
   MissingReviewFixtureError,
@@ -71,6 +71,32 @@ describe("createRecordedReviewer", () => {
     const raw = await readFile(join(dir, `${key}.json`), "utf8");
     expect(JSON.parse(raw)).not.toHaveProperty("sessionId");
     expect(raw).not.toContain("session-abc-123");
+  });
+
+  it("record mode resumes: an input whose fixture already exists is served from disk without calling the underlying reviewer", async () => {
+    const first = createRecordedReviewer({
+      fixturesDir: dir,
+      mode: "record",
+      underlying: createFakeReviewer({ h1: OUTPUT }),
+    });
+    await first.review(INPUT);
+
+    let calls = 0;
+    const counting: ReviewerPort = {
+      async review() {
+        calls += 1;
+        return { ...OUTPUT, latencyMs: 999 };
+      },
+    };
+    const resumed = createRecordedReviewer({
+      fixturesDir: dir,
+      mode: "record",
+      underlying: counting,
+    });
+    const output = await resumed.review(INPUT);
+
+    expect(calls).toBe(0);
+    expect(output).toEqual(OUTPUT);
   });
 
   it("replay mode reads back a previously recorded fixture with no underlying reviewer", async () => {

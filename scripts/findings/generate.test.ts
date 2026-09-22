@@ -21,7 +21,15 @@ describe("parseArgs", () => {
       record: false,
       seed: 42,
       concurrency: 2,
+      prompt: "strict",
     });
+  });
+
+  it("parses --prompt thorough and rejects an unknown prompt mode", () => {
+    expect(parseArgs(["--provider", "claude-cli", "--prompt", "thorough"]).prompt).toBe("thorough");
+    expect(() => parseArgs(["--provider", "claude-cli", "--prompt", "lenient"])).toThrow(
+      /--prompt/,
+    );
   });
 
   it("parses --provider openai", () => {

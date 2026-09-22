@@ -4,6 +4,11 @@
  * and persists its ReviewOutput; "replay" mode reads it back with a loud
  * error on a miss. Used by `scripts/findings/generate.ts --record` to save
  * raw responses under tests/fixtures/findings/ for replay tests (SPEC §10.3).
+ *
+ * "record" mode is resumable: an input whose fixture already exists is
+ * served from disk and the underlying reviewer is not called, so an
+ * interrupted 100-hunk run can be re-launched and only pays for what is
+ * missing. Delete the fixture to force a fresh recording.
  */
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -48,6 +53,16 @@ function sortDeep(value: unknown): unknown {
   return value;
 }
 
+async function readFixture(fixturePath: string): Promise<ReviewOutput | null> {
+  let raw: string;
+  try {
+    raw = await readFile(fixturePath, "utf8");
+  } catch {
+    return null;
+  }
+  return JSON.parse(raw) as ReviewOutput;
+}
+
 export function createRecordedReviewer(options: RecordedReviewerOptions): ReviewerPort {
   const { underlying } = options;
   if (options.mode === "record" && !underlying) {
@@ -60,17 +75,19 @@ export function createRecordedReviewer(options: RecordedReviewerOptions): Review
       const fixturePath = join(options.fixturesDir, `${key}.json`);
 
       if (options.mode === "replay") {
-        let raw: string;
-        try {
-          raw = await readFile(fixturePath, "utf8");
-        } catch {
+        const recorded = await readFixture(fixturePath);
+        if (recorded === null) {
           throw new MissingReviewFixtureError(key, fixturePath);
         }
-        return JSON.parse(raw) as ReviewOutput;
+        return recorded;
       }
 
       if (!underlying) {
         throw new Error('RecordedReviewer in "record" mode requires an `underlying` reviewer');
+      }
+      const existing = await readFixture(fixturePath);
+      if (existing !== null) {
+        return existing;
       }
       const output = await underlying.review(input);
       // sessionId identifies a specific claude-cli session; a fixture is

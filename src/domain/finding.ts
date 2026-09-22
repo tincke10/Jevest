@@ -10,10 +10,19 @@ export type ReviewerProvider = "anthropic" | "openai" | "deepseek" | "claude-cli
 export type FindingSeverity = "nit" | "minor" | "major" | "critical";
 /** How the reviewer call was paid for. Omitted on the wire (and undefined here) means "api". */
 export type FindingBilling = "api" | "subscription";
+/**
+ * Which reviewer system prompt produced the finding. "strict" reports only
+ * concrete defects; "thorough" reports every plausible or suspected issue
+ * (added 2026-09-21 because the strict pass yielded too little noise to
+ * evaluate the filter, SPEC §13). Omitted on the wire means "strict".
+ */
+export type ReviewPromptMode = "strict" | "thorough";
 
 export interface FindingReviewer {
   readonly provider: ReviewerProvider;
   readonly model: string;
+  /** Present only when the generator set it; absent means "strict" (pre-2026-09-21 records). */
+  readonly promptMode?: ReviewPromptMode;
 }
 
 export interface FindingLabel {
@@ -71,6 +80,7 @@ const REVIEWER_PROVIDERS = new Set<ReviewerProvider>([
 ]);
 const FINDING_SEVERITIES = new Set<FindingSeverity>(["nit", "minor", "major", "critical"]);
 const FINDING_BILLINGS = new Set<FindingBilling>(["api", "subscription"]);
+const REVIEW_PROMPT_MODES = new Set<ReviewPromptMode>(["strict", "thorough"]);
 
 function describe(value: unknown): string {
   if (value === undefined) return "undefined (missing)";
@@ -194,6 +204,12 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
   const label = expectObject(obj.label, "label", lineNumber);
   const usage = expectObject(obj.usage, "usage", lineNumber);
   const billing = expectOptionalEnum(obj.billing, FINDING_BILLINGS, "billing", lineNumber);
+  const promptMode = expectOptionalEnum(
+    reviewer.prompt_mode,
+    REVIEW_PROMPT_MODES,
+    "reviewer.prompt_mode",
+    lineNumber,
+  );
 
   return {
     id: expectString(obj.id, "id", lineNumber),
@@ -202,6 +218,7 @@ export function parseFindingRecordLine(line: string, lineNumber: number): Findin
     reviewer: {
       provider: expectEnum(reviewer.provider, REVIEWER_PROVIDERS, "reviewer.provider", lineNumber),
       model: expectString(reviewer.model, "reviewer.model", lineNumber),
+      ...(promptMode !== undefined ? { promptMode } : {}),
     },
     file: expectString(obj.file, "file", lineNumber),
     lineStart: expectNumber(obj.line_start, "line_start", lineNumber),
@@ -254,16 +271,22 @@ export function parseFindingRecordsJsonl(content: string): FindingRecord[] {
 
 /**
  * Serializes a FindingRecord back to the exact snake_case JSONL shape, no
- * trailing newline. `billing` is only emitted when non-default
- * ("subscription"), so a record parsed without it round-trips byte-for-byte
- * without acquiring one.
+ * trailing newline. `billing` and `reviewer.prompt_mode` are only emitted
+ * when present, so a record parsed without them round-trips byte-for-byte
+ * without acquiring them.
  */
 export function stringifyFindingRecord(record: FindingRecord): string {
   return JSON.stringify({
     id: record.id,
     hunk_id: record.hunkId,
     dataset_version: record.datasetVersion,
-    reviewer: { provider: record.reviewer.provider, model: record.reviewer.model },
+    reviewer: {
+      provider: record.reviewer.provider,
+      model: record.reviewer.model,
+      ...(record.reviewer.promptMode !== undefined
+        ? { prompt_mode: record.reviewer.promptMode }
+        : {}),
+    },
     file: record.file,
     line_start: record.lineStart,
     line_end: record.lineEnd,

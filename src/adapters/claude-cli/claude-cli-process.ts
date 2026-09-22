@@ -56,6 +56,41 @@ function looksLikeRateLimit(apiErrorStatus: unknown, text: string): boolean {
   return /rate.?limit|usage.?limit|quota/i.test(text);
 }
 
+/**
+ * A non-zero exit still usually carries a JSON envelope on stdout whose
+ * `result` names the real reason (e.g. a usage limit), often past the
+ * 500-char excerpt. Classify it: rate-limit signals become
+ * ReviewerRateLimitError so callers back off and retry; anything else is a
+ * ClaudeCliProcessError whose message leads with that `result` text.
+ */
+function throwForNonZeroExit(
+  result: ClaudeCliProcessResult,
+  provider: string,
+  rateLimitCheck: (apiErrorStatus: unknown, text: string) => boolean,
+): never {
+  let envelope: Record<string, unknown> | null = null;
+  try {
+    const parsed = JSON.parse(result.stdout) as unknown;
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      envelope = parsed as Record<string, unknown>;
+    }
+  } catch {
+    envelope = null;
+  }
+  if (envelope === null) {
+    throw new ClaudeCliProcessError(result.exitCode, excerpt(result.stdout, result.stderr));
+  }
+  const resultText = typeof envelope.result === "string" ? envelope.result : "";
+  if (rateLimitCheck(envelope.api_error_status, `${resultText} ${result.stderr}`)) {
+    throw new ReviewerRateLimitError(provider, envelope);
+  }
+  const lead = resultText === "" ? "" : `result: ${resultText.slice(0, EXCERPT_LEN)} | `;
+  throw new ClaudeCliProcessError(
+    result.exitCode,
+    `${lead}${excerpt(result.stdout, result.stderr)}`,
+  );
+}
+
 export function defaultClaudeCliSpawn(
   args: readonly string[],
   options: { timeoutMs: number },
@@ -147,7 +182,7 @@ export function parseClaudeCliEnvelope<T>(
     throw new ClaudeCliTimeoutError(context.timeoutMs, context.itemId);
   }
   if (result.exitCode !== 0) {
-    throw new ClaudeCliProcessError(result.exitCode, excerpt(result.stdout, result.stderr));
+    throwForNonZeroExit(result, context.provider, looksLikeRateLimit);
   }
 
   let envelope: Record<string, unknown>;

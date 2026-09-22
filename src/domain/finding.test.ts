@@ -188,3 +188,43 @@ describe("stringifyFindingRecord", () => {
     expect(JSON.parse(line).billing).toBe("subscription");
   });
 });
+
+describe("reviewer.prompt_mode", () => {
+  it("leaves promptMode undefined when absent (strict by default, pre-2026-09-21 records)", () => {
+    const record = parseFindingRecordLine(validRecordJson(), 1);
+    expect(record.reviewer.promptMode).toBeUndefined();
+  });
+
+  it("parses reviewer.prompt_mode: thorough when present", () => {
+    const record = parseFindingRecordLine(
+      validRecordJson({
+        reviewer: { provider: "claude-cli", model: "claude-opus-5", prompt_mode: "thorough" },
+      }),
+      1,
+    );
+    expect(record.reviewer.promptMode).toBe("thorough");
+  });
+
+  it("throws when reviewer.prompt_mode is present but unknown", () => {
+    expect(() =>
+      parseFindingRecordLine(
+        validRecordJson({
+          reviewer: { provider: "claude-cli", model: "claude-opus-5", prompt_mode: "lenient" },
+        }),
+        3,
+      ),
+    ).toThrow(/line 3.*reviewer\.prompt_mode/);
+  });
+
+  it("round-trips prompt_mode through stringify and omits it when absent", () => {
+    const withMode = validRecordJson({
+      reviewer: { provider: "claude-cli", model: "claude-opus-5", prompt_mode: "thorough" },
+    });
+    expect(stringifyFindingRecord(parseFindingRecordLine(withMode, 1))).toContain(
+      '"prompt_mode":"thorough"',
+    );
+    expect(stringifyFindingRecord(parseFindingRecordLine(validRecordJson(), 1))).not.toContain(
+      "prompt_mode",
+    );
+  });
+});

@@ -24,7 +24,7 @@ LLM review bots get switched off for three reasons: they comment too much, they 
 
 | Pain | What Jevest does about it | Who decides |
 |---|---|---|
-| **Noise** | Every LLM finding is re-judged: real defect? style-only? actionable? High confidence publishes, medium goes to a human queue, low is dropped and counted | Jev, one request per finding |
+| **Noise** | Every LLM finding is re-judged: real defect? style-only? actionable? High confidence publishes, medium goes to a human queue, low is annotated (default) or filtered, per `findingFilter.mode` | Jev, one request per finding |
 | **Indiscriminate cost** | Triage on the PR's metadata, then a surface profile per hunk; format-only hunks never reach the LLM; per-run and cumulative spend caps | Jev + code |
 | **Blind auto-merge** | A merge gate that only ever emits a check conclusion. Jevest has no merge call wired at all | Jev, one request |
 

@@ -244,6 +244,7 @@ describe("loadJevestConfig", () => {
       expect(config.skipChangeKinds).toEqual(defaults.skipChangeKinds);
       expect(config.failClosed).toBe(defaults.failClosed);
       expect(config.publish).toEqual(defaults.publish);
+      expect(config.findingFilter).toEqual(defaults.findingFilter);
     });
 
     it("overriding one nested threshold leaves every sibling stage/risk at its default value", async () => {
@@ -341,6 +342,35 @@ describe("loadJevestConfigFromString", () => {
 
   it('defaults the label to "<config>" when omitted', async () => {
     await expect(loadJevestConfigFromString("reviewer: [oops\n")).rejects.toThrow(/<config>/);
+  });
+});
+
+describe("findingFilter config (stage 4 mode)", () => {
+  it('defaults findingFilter.mode to "annotate" when omitted', async () => {
+    const config = await loadJevestConfigFromString("", "<config>");
+    expect(config.findingFilter).toEqual({ mode: "annotate" });
+  });
+
+  it('accepts an explicit findingFilter.mode: "discard"', async () => {
+    const config = await loadJevestConfigFromString(
+      "findingFilter:\n  mode: discard\n",
+      "<config>",
+    );
+    expect(config.findingFilter).toEqual({ mode: "discard" });
+  });
+
+  it("rejects an unknown findingFilter.mode", async () => {
+    await expect(
+      loadJevestConfigFromString("findingFilter:\n  mode: skip\n", "<config>"),
+    ).rejects.toThrow(JevestConfigError);
+  });
+
+  it("leaves findingFilter untouched (still the default) when a partial file overrides an unrelated key", async () => {
+    const filePath = await writeConfig("budgetUsd: 1\n");
+    const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
+    const config = await loadJevestConfig(filePath);
+    expect(config.findingFilter).toEqual(defaults.findingFilter);
+    expect(config.findingFilter).toEqual({ mode: "annotate" });
   });
 });
 

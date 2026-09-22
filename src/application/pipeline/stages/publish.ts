@@ -4,10 +4,17 @@
  * `ReviewPublication` from every prior stage's result: inline comments only
  * for auto-band findings (`findingFilter.published`); a markdown summary
  * covering the triage decision, skipped hunks, needs-human findings,
- * discarded count and cost breakdown; and the labels/check for the merge
- * gate outcome. Fingerprints are `sha256` of stable content (path/line/claim
- * for a comment, the whole summary text for the summary) so a re-run over
- * unchanged input reproduces the exact same fingerprints (NFR-12).
+ * discarded count, low-confidence findings and cost breakdown; and the
+ * labels/check for the merge gate outcome. Fingerprints are `sha256` of
+ * stable content (path/line/claim for a comment, the whole summary text for
+ * the summary) so a re-run over unchanged input reproduces the exact same
+ * fingerprints (NFR-12).
+ *
+ * Stage 4 annotate mode (H1 pending, product decision 2026-09-22, see
+ * stages/finding-filter.ts): `findingFilter.lowConfidence` — findings that
+ * would have been discarded — is rendered in a collapsed "Low-confidence
+ * findings" section, never as inline comments, never affecting the merge
+ * gate, but INCLUDED in the fingerprint (it is review content, not timing).
  *
  * Triage v2 (H7) adds an "Intent vs change" section (what the change
  * summary says, product areas touched with their criticality, the
@@ -38,7 +45,7 @@ import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
-import type { FindingFilterStageResult } from "./finding-filter.js";
+import { type FindingFilterStageResult, noulConfidence } from "./finding-filter.js";
 import {
   type HunkProfileEntry,
   type HunkProfileStageResult,
@@ -337,6 +344,33 @@ function buildNeedsHumanSection(
   return lines.join("\n");
 }
 
+/**
+ * `mode: "annotate"` (H1 pending, product decision 2026-09-22, see
+ * stages/finding-filter.ts): findings that would have been discarded are
+ * kept visible here instead — in a collapsed section so they don't compete
+ * with the findings a human actually needs to look at, never as inline
+ * comments, and part of the fingerprinted content (unlike Efficiency)
+ * because they are review content, not timing. Always empty in
+ * `mode: "discard"`, rendered the same way as any other empty bucket.
+ */
+function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): string[] {
+  const body =
+    findingFilter.lowConfidence.length === 0
+      ? ["No low-confidence findings."]
+      : findingFilter.lowConfidence.map((f) => {
+          const confidence = noulConfidence(f.isRealDefectProb);
+          return `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (P(real defect)=${f.isRealDefectProb}, confidence=${confidence})`;
+        });
+  return [
+    "<details>",
+    "<summary>Low-confidence findings (annotated, not filtered — H1 pending)</summary>",
+    "",
+    ...body,
+    "",
+    "</details>",
+  ];
+}
+
 function buildHighConfidenceFindingsSection(findingFilter: FindingFilterStageResult): string {
   if (findingFilter.published.length === 0) {
     return "No high-confidence findings.";
@@ -453,6 +487,8 @@ function buildSummaryLines(input: PublishStageInput): string[] {
     buildNeedsHumanSection(findingFilter, triage, input.hunkProfile),
     "",
     `### Findings discarded: ${findingFilter.discarded.length}`,
+    "",
+    ...buildLowConfidenceSection(findingFilter),
     "",
     "### Cost breakdown",
     buildCostSection(input),

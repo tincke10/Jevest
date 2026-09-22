@@ -129,6 +129,7 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
     skipChangeKinds: [],
     failClosed: true,
     triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
+    findingFilter: { mode: "annotate" },
   };
 }
 
@@ -449,6 +450,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     publication,
     check: publication.check,
     findingsPublished: 2,
+    findingsLowConfidence: 3,
     costUsd: 0.1234,
     spendCap: null,
     reviewSkippedForSpendCap: false,
@@ -508,9 +510,9 @@ function evaluation(overrides: Partial<SpendCapEvaluation> = {}): SpendCapEvalua
 }
 
 describe("buildOutputLines", () => {
-  it("emits the seven outputs, with spend-usd as the cumulative total after this run and the H2 / H4 numbers", () => {
+  it("emits the eight outputs, with spend-usd as the cumulative total after this run and the H2 / H4 numbers", () => {
     expect(buildOutputLines(makeResult({ spendCap: evaluation() }))).toBe(
-      "check-conclusion=success\nfindings-published=2\ncost-usd=0.1234\nspend-usd=12.5\n" +
+      "check-conclusion=success\nfindings-published=2\nfindings-low-confidence=3\ncost-usd=0.1234\nspend-usd=12.5\n" +
         "jev-latency-p95-ms=400\njev-requests=6\nllm-tokens-saved-pct=30.5\n",
     );
   });

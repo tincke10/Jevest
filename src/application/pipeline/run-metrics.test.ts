@@ -141,6 +141,7 @@ function makeFindingFilter(requestLatenciesMs: number[]): FindingFilterStageResu
     published: [],
     needsHuman: [],
     discarded: [],
+    lowConfidence: [],
     totalRequests: requestLatenciesMs.length,
     totalLatencyMs: requestLatenciesMs.reduce((acc, ms) => acc + ms, 0),
     totalUsage: {

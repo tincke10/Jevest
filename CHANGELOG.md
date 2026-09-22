@@ -137,6 +137,12 @@ has been published under a version tag before.
   Jev request: batching anchors the answers to each other
   (`docs/analysis/h0-prime-error-analysis.md`, NFR-14).
 - AST profile labels are computed on changed lines only (labels v2).
+- Stage 4 (finding filter) no longer discards findings by default
+  (`findingFilter.mode: "annotate"`, product decision 2026-09-22): a
+  low-confidence finding is now kept in a `lowConfidence` bucket, shown in
+  a collapsed summary-comment section instead of being dropped, until H1
+  has a valid verdict; the original discard behavior is available via
+  `findingFilter.mode: "discard"`.
 
 ### Known limitations
 

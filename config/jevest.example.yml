@@ -118,6 +118,19 @@ triage:
   #            only (H7 without-summary arm).
   changeSummary: auto
 
+# Stage 4 (finding filter) mode. H1 (see docs/BENCHMARK.md, docs/SPEC.md
+# §4.6) found Jev's is_real_defect judgment near chance against the current
+# labels, so the label isn't trustworthy enough to discard findings on yet.
+findingFilter:
+  # annotate (default) - nothing is ever discarded. A finding that would
+  #   have been filtered out is kept in a separate "low-confidence" bucket
+  #   instead, shown in the summary comment under a collapsed section —
+  #   never as an inline comment, never affecting the merge gate — so
+  #   nothing is silently dropped while H1 is pending a valid verdict.
+  # discard - the original behavior: low-confidence findings are dropped.
+  #   Opt in only once H1 has a valid verdict for your data.
+  mode: annotate
+
 # FR-7 publish behavior.
 publish:
   # RECOMMENDATION: set this to false for the first weeks of a rollout on a

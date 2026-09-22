@@ -113,6 +113,8 @@ export interface PipelineResult {
    */
   readonly check: import("../../domain/ports/vcs-port.js").ReviewPublication["check"];
   readonly findingsPublished: number;
+  /** `findingFilter.lowConfidence.length` (`mode: "annotate"` only; 0 in `mode: "discard"`). See stages/finding-filter.ts. */
+  readonly findingsLowConfidence: number;
   /** LLM money spent on this run: the review stage plus the change summary. */
   readonly costUsd: number;
   /**
@@ -151,10 +153,11 @@ function summaryFields(
   findingFilter: FindingFilterStageResult | null,
   review: ReviewStageResult | null,
   triage: TriageStageResult | null = null,
-): Pick<PipelineResult, "check" | "findingsPublished" | "costUsd"> {
+): Pick<PipelineResult, "check" | "findingsPublished" | "findingsLowConfidence" | "costUsd"> {
   return {
     check: publication.check,
     findingsPublished: findingFilter?.published.length ?? 0,
+    findingsLowConfidence: findingFilter?.lowConfidence.length ?? 0,
     costUsd: (review?.totalCostUsd ?? 0) + (triage?.summaryCostUsd ?? 0),
   };
 }
@@ -496,6 +499,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         decisionPort: ports.decision,
         policyConfig: config.thresholds,
         riskLevel: triage.riskLevel,
+        mode: config.findingFilter.mode,
       }),
     );
   } catch {

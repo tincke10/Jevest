@@ -393,16 +393,19 @@ export async function resolveConfig(
  * The `GITHUB_OUTPUT` lines, one per output declared in action.yml.
  * `spend-usd` is the cumulative total AFTER this run per the spend ledger;
  * empty when unknown (no ledger, run ended before the review stage, or
- * the ledger was unreachable — see `spendCapAnnotations`). The last three
- * are the run's H4 / H2 numbers (run-metrics.ts): always present, zeros
- * when a stage did not run; `llm-tokens-saved-pct` is an estimate, see
- * docs/BENCHMARK.md "H2 / H4 — measured per run".
+ * the ledger was unreachable — see `spendCapAnnotations`). `findings-low-
+ * confidence` is stage 4's `lowConfidence` bucket count (`mode: "annotate"`,
+ * H1 pending — see stages/finding-filter.ts); always 0 in `mode: "discard"`.
+ * The last three are the run's H4 / H2 numbers (run-metrics.ts): always
+ * present, zeros when a stage did not run; `llm-tokens-saved-pct` is an
+ * estimate, see docs/BENCHMARK.md "H2 / H4 — measured per run".
  */
 export function buildOutputLines(result: PipelineResult): string {
   const { metrics } = result;
   return (
     `check-conclusion=${result.check.conclusion}\n` +
     `findings-published=${result.findingsPublished}\n` +
+    `findings-low-confidence=${result.findingsLowConfidence}\n` +
     `cost-usd=${result.costUsd}\n` +
     `spend-usd=${result.spendCap?.spentUsd ?? ""}\n` +
     `jev-latency-p95-ms=${metrics.jev.latency.p95Ms}\n` +

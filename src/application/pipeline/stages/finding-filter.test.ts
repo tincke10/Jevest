@@ -78,11 +78,13 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
     expect(result.published).toHaveLength(1);
     expect(result.needsHuman).toHaveLength(0);
     expect(result.discarded).toHaveLength(0);
+    expect(result.lowConfidence).toHaveLength(0);
     expect(result.published[0]!.claim).toBe("off-by-one");
   });
 
@@ -97,14 +99,16 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
     expect(result.needsHuman).toHaveLength(1);
     expect(result.published).toHaveLength(0);
     expect(result.discarded).toHaveLength(0);
+    expect(result.lowConfidence).toHaveLength(0);
   });
 
-  it("discards a finding confidently classified as noise (escalate band, non-critical)", async () => {
+  it("discards a finding confidently classified as noise (escalate band, non-critical) in discard mode", async () => {
     const review = makeReview();
     // isReal=0.5 -> noul confidence = |0.5-0.5|*2 = 0 -> escalate band; predictedReal = 0.5>=0.5 = true actually...
     // use a value clearly on the "not real" side with low confidence: isReal=0.55 -> confidence=0.1 -> escalate, predictedReal=true (>=0.5)
@@ -117,11 +121,34 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
     expect(result.discarded).toHaveLength(1);
     expect(result.published).toHaveLength(0);
     expect(result.needsHuman).toHaveLength(0);
+    expect(result.lowConfidence).toHaveLength(0);
+  });
+
+  it("routes a finding that would have been discarded into lowConfidence instead, in annotate mode (product decision 2026-09-22, H1 pending)", async () => {
+    const review = makeReview();
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.45, 0, 0.6, 0.2));
+
+    const result = await runFindingFilterStage({
+      reviews: [review],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+    });
+
+    expect(result.discarded).toHaveLength(0);
+    expect(result.published).toHaveLength(0);
+    expect(result.needsHuman).toHaveLength(0);
+    expect(result.lowConfidence).toHaveLength(1);
+    expect(result.lowConfidence[0]!.claim).toBe("off-by-one");
+    expect(result.lowConfidence[0]!.isRealDefectProb).toBe(0.45);
   });
 
   it("never discards a critical-severity finding, even at escalate-band confidence (FR-5.4)", async () => {
@@ -135,8 +162,27 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
+    expect(result.discarded).toHaveLength(0);
+    expect(result.needsHuman).toHaveLength(1);
+  });
+
+  it("never puts a critical-severity finding in lowConfidence either, in annotate mode (FR-5.4)", async () => {
+    const review = makeReview();
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.45, 3, 0.6, 0.2));
+
+    const result = await runFindingFilterStage({
+      reviews: [review],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+    });
+
+    expect(result.lowConfidence).toHaveLength(0);
     expect(result.discarded).toHaveLength(0);
     expect(result.needsHuman).toHaveLength(1);
   });
@@ -153,6 +199,7 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
     expect(result.discarded).toHaveLength(0);
@@ -174,10 +221,12 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
     expect(result.published).toEqual([]);
     expect(result.needsHuman).toEqual([]);
     expect(result.discarded).toEqual([]);
+    expect(result.lowConfidence).toEqual([]);
     expect(result.totalRequests).toBe(0);
   });
 
@@ -193,10 +242,12 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
 
     expect(result.published).toHaveLength(0);
     expect(result.discarded).toHaveLength(0);
+    expect(result.lowConfidence).toHaveLength(0);
     expect(result.needsHuman).toHaveLength(1);
     expect(result.needsHuman[0]!.findingId).toBe("a.ts#0-f0");
     expect(result.needsHuman[0]!.claim).toBe("off-by-one");
@@ -217,6 +268,7 @@ describe("runFindingFilterStage", () => {
       decisionPort: port,
       policyConfig,
       riskLevel: "low",
+      mode: "discard",
     });
     expect(result.totalRequests).toBe(2);
     expect(result.published).toHaveLength(2);

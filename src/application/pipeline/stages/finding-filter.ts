@@ -39,6 +39,16 @@ export interface FilteredFinding {
   readonly unverified: boolean;
 }
 
+/**
+ * Product decision (2026-09-22, see docs/BENCHMARK.md "H1"): H1 found Jev's
+ * is_real_defect judgment near chance against the current labels, so the
+ * label isn't trustworthy enough to discard findings on yet.
+ * `"annotate"` (default, see config/jevest.example.yml `findingFilter.mode`)
+ * never puts anything in `discarded` — what would have been dropped goes
+ * to `lowConfidence` instead. `"discard"` is the original behavior.
+ */
+export type FindingFilterMode = "annotate" | "discard";
+
 export interface FindingFilterStageInput {
   readonly reviews: readonly ReviewStageEntry[];
   /** hunkId -> diff, so `buildFindingState` can look up the hunk each finding is about. */
@@ -46,12 +56,19 @@ export interface FindingFilterStageInput {
   readonly decisionPort: DecisionPort;
   readonly policyConfig: ConfidencePolicyConfig;
   readonly riskLevel: RiskLevel;
+  readonly mode: FindingFilterMode;
 }
 
 export interface FindingFilterStageResult {
   readonly published: FilteredFinding[];
   readonly needsHuman: FilteredFinding[];
   readonly discarded: FilteredFinding[];
+  /**
+   * `mode: "annotate"` only: findings that would have been discarded, kept
+   * here instead so nothing is silently dropped while H1 is pending a valid
+   * verdict. Always empty in `mode: "discard"`.
+   */
+  readonly lowConfidence: FilteredFinding[];
   readonly totalRequests: number;
   readonly totalLatencyMs: number;
   readonly totalUsage: Usage;
@@ -66,8 +83,13 @@ function jevSeverityLevel(score: number): (typeof SEVERITY_LEVELS)[number] {
   return SEVERITY_LEVELS[index] as (typeof SEVERITY_LEVELS)[number];
 }
 
-/** How concentrated a noul's probability is, as a 0..1 "confidence" for banding (SPEC §1.1: concentrated = high). */
-function noulConfidence(prob: number): number {
+/**
+ * How concentrated a noul's probability is, as a 0..1 "confidence" for
+ * banding (SPEC §1.1: concentrated = high). Exported so publish.ts can
+ * render the same confidence for `lowConfidence` findings without
+ * duplicating the formula.
+ */
+export function noulConfidence(prob: number): number {
   // Rounded to avoid floating-point noise (e.g. |0.95-0.5|*2 === 0.8999999999999999
   // in IEEE 754) pushing a value that should land exactly on a configured
   // threshold to the wrong side of it.
@@ -106,6 +128,7 @@ export async function runFindingFilterStage(
       published: [],
       needsHuman: [],
       discarded: [],
+      lowConfidence: [],
       totalRequests: 0,
       totalLatencyMs: 0,
       totalUsage: { inputTokens: 0, outputTokens: 0 },
@@ -125,6 +148,7 @@ export async function runFindingFilterStage(
   const published: FilteredFinding[] = [];
   const needsHuman: FilteredFinding[] = [];
   const discarded: FilteredFinding[] = [];
+  const lowConfidence: FilteredFinding[] = [];
 
   for (const result of run.results) {
     const record = findingsById.get(result.findingId);
@@ -164,8 +188,12 @@ export async function runFindingFilterStage(
       // A critical finding is never discarded, whatever the band: the worst
       // case is one extra item in the human queue.
       needsHuman.push(filtered);
-    } else {
+    } else if (input.mode === "discard") {
       discarded.push(filtered);
+    } else {
+      // "annotate" (default, product decision 2026-09-22, H1 pending):
+      // never discard — keep it visible instead.
+      lowConfidence.push(filtered);
     }
   }
 
@@ -196,6 +224,7 @@ export async function runFindingFilterStage(
     published,
     needsHuman,
     discarded,
+    lowConfidence,
     totalRequests: run.totals.requests,
     totalLatencyMs: run.totals.totalLatencyMs,
     totalUsage: { inputTokens: run.totals.inputTokens, outputTokens: run.totals.outputTokens },

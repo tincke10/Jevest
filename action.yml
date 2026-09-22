@@ -67,6 +67,14 @@ outputs:
     description: 'The merge-gate conclusion: "success", "neutral", or "failure".'
   findings-published:
     description: "Number of findings published (inline + summary), as a string."
+  findings-low-confidence:
+    description: >-
+      Number of findings in stage 4's low-confidence bucket, as a string:
+      findings that would have been filtered out but are kept visible
+      (summary comment only, never inline, never affecting the merge gate)
+      because `findingFilter.mode` is "annotate" (default) — H1 hasn't a
+      valid verdict yet, see docs/ACTION.md "Finding filter mode". Always
+      "0" in `mode: "discard"`.
   cost-usd:
     description: "Total LLM + Jev cost for this run, in USD, as a string."
   spend-usd:

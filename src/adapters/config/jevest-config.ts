@@ -41,6 +41,7 @@ const KNOWN_TOP_LEVEL_KEYS = new Set([
   "skipChangeKinds",
   "failClosed",
   "triage",
+  "findingFilter",
 ]);
 
 function isEnoent(error: unknown): boolean {
@@ -164,6 +165,23 @@ const triageSchema = z
   })
   .default({ productContextPath: DEFAULT_PRODUCT_CONTEXT_PATH, changeSummary: "auto" });
 
+// Product decision (2026-09-22, see docs/BENCHMARK.md "H1"): H1 found Jev's
+// is_real_defect judgment near chance against the current labels (and the
+// LLM-judge control equally near chance), so the label isn't trustworthy
+// enough to discard findings on yet. "annotate" (default) never puts a
+// finding in `discarded`: what would have been dropped is kept in a
+// separate `lowConfidence` bucket instead, visible in the summary comment
+// only (never inline, never affecting the merge gate). "discard" restores
+// the original behavior — opt in only once H1 has a valid verdict.
+export const FINDING_FILTER_MODES = ["annotate", "discard"] as const;
+export type FindingFilterMode = (typeof FINDING_FILTER_MODES)[number];
+
+const findingFilterSchema = z
+  .object({
+    mode: z.enum(FINDING_FILTER_MODES).default("annotate"),
+  })
+  .default({ mode: "annotate" });
+
 const jevestConfigSchema = z
   .object({
     reviewer: reviewerSchema,
@@ -176,6 +194,7 @@ const jevestConfigSchema = z
     skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
     failClosed: z.boolean().default(true),
     triage: triageSchema,
+    findingFilter: findingFilterSchema,
   })
   .superRefine((c, ctx) => {
     if (c.triage.changeSummary === "always" && c.reviewer.provider === "none") {
@@ -206,6 +225,7 @@ export interface JevestConfig {
     readonly productContextPath: string;
     readonly changeSummary: ChangeSummaryMode;
   };
+  readonly findingFilter: { readonly mode: FindingFilterMode };
 }
 
 function toConfidencePolicyConfig(
@@ -280,6 +300,7 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
     skipChangeKinds: result.data.skipChangeKinds,
     failClosed: result.data.failClosed,
     triage: result.data.triage,
+    findingFilter: result.data.findingFilter,
   };
 }
 

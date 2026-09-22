@@ -129,6 +129,7 @@ function makeFindingFilter(
     published: [],
     needsHuman: [],
     discarded: [],
+    lowConfidence: [],
     totalRequests: 0,
     totalLatencyMs: 0,
     totalUsage: { inputTokens: 0, outputTokens: 0 },
@@ -320,7 +321,7 @@ describe("runPublishStage", () => {
     expect(result.inlineComments[0]!.line).toBe(12);
   });
 
-  it("does not create inline comments for needsHuman or discarded findings", () => {
+  it("does not create inline comments for needsHuman, discarded or lowConfidence findings", () => {
     const result = runPublishStage({
       triage: makeTriage(),
       hunkProfile: makeHunkProfile([]),
@@ -328,6 +329,7 @@ describe("runPublishStage", () => {
       findingFilter: makeFindingFilter({
         needsHuman: [makeFinding({ findingId: "b" })],
         discarded: [makeFinding({ findingId: "c" })],
+        lowConfidence: [makeFinding({ findingId: "d" })],
       }),
       mergeGate: makeMergeGate(),
       inlineCommentsEnabled: true,
@@ -570,6 +572,68 @@ describe("runPublishStage", () => {
       metrics: makeMetrics(),
     });
     expect(result.check.conclusion).toBe("success");
+  });
+});
+
+describe("runPublishStage low-confidence findings (annotate mode, H1 pending, product decision 2026-09-22)", () => {
+  function publish(findingFilter: FindingFilterStageResult): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter,
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics(),
+    });
+  }
+
+  it("renders a collapsed details section titled 'Low-confidence findings (annotated, not filtered — H1 pending)' with file:line, claim, P(real defect) and confidence", () => {
+    const finding = makeFinding({
+      file: "b.ts",
+      lineStart: 42,
+      claim: "maybe a leak",
+      isRealDefectProb: 0.42,
+    });
+    const result = publish(makeFindingFilter({ lowConfidence: [finding] }));
+
+    expect(result.summaryMarkdown).toContain("<details>");
+    expect(result.summaryMarkdown).toContain(
+      "<summary>Low-confidence findings (annotated, not filtered — H1 pending)</summary>",
+    );
+    const section = result.summaryMarkdown.split("<summary>Low-confidence")[1] ?? "";
+    expect(section).toContain("b.ts");
+    expect(section).toContain("42");
+    expect(section).toContain("maybe a leak");
+    expect(section).toMatch(/P\(real defect\)=0\.42/);
+    // confidence = |0.42-0.5|*2 = 0.16
+    expect(section).toMatch(/confidence=0\.16/);
+    expect(result.summaryMarkdown).toContain("</details>");
+  });
+
+  it("shows 'No low-confidence findings.' when the bucket is empty (e.g. mode: discard)", () => {
+    const result = publish(makeFindingFilter());
+    expect(result.summaryMarkdown).toContain("No low-confidence findings.");
+  });
+
+  it("creates no inline comments for a low-confidence finding", () => {
+    const result = publish(makeFindingFilter({ lowConfidence: [makeFinding()] }));
+    expect(result.inlineComments).toEqual([]);
+  });
+
+  it("does not change the merge-gate conclusion or labels", () => {
+    const withLowConfidence = publish(makeFindingFilter({ lowConfidence: [makeFinding()] }));
+    const without = publish(makeFindingFilter());
+    expect(withLowConfidence.check).toEqual(without.check);
+    expect(withLowConfidence.labelsToAdd).toEqual(without.labelsToAdd);
+    expect(withLowConfidence.labelsToRemove).toEqual(without.labelsToRemove);
+  });
+
+  it("is included in the summary fingerprint, unlike the Efficiency section — a low-confidence set changing changes the fingerprint", () => {
+    const empty = publish(makeFindingFilter());
+    const withOne = publish(makeFindingFilter({ lowConfidence: [makeFinding()] }));
+    expect(withOne.summaryFingerprint).not.toBe(empty.summaryFingerprint);
   });
 });
 

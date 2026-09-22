@@ -76,6 +76,7 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
     skipChangeKinds: ["rename-or-format"],
     failClosed: true,
     triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
+    findingFilter: { mode: "annotate" },
     ...overrides,
   };
 }
@@ -587,6 +588,87 @@ describe("runPipeline", () => {
     expect(result.publication.inlineComments).toEqual([]);
     expect(result.publication.summaryMarkdown).toContain("Findings (high confidence)");
     expect(result.publication.summaryMarkdown).toContain("off-by-one");
+  });
+});
+
+describe("runPipeline finding filter mode (stage 4 annotate vs discard, product decision 2026-09-22)", () => {
+  /** Medium risk, one finding whose is_real_defect confidence lands in the escalate band, non-critical (would have been discarded). */
+  function lowConfidenceFindingPort(): DecisionPort {
+    return scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
+      // finding_filter medium: autoMin=0.93, confirmMin=0.68. isReal=0.3 ->
+      // confidence=|0.3-0.5|*2=0.4 < confirmMin -> escalate band,
+      // predictedReal=false, severity 0 (nit): non-critical.
+      "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.3 },
+      "a.ts#0-f0__severity": {
+        type: "score",
+        score: 0,
+        confidence: 0.8,
+        legend: { 0: "nit", 1: "minor", 2: "major", 3: "critical" },
+        probabilities: { 0: 0.7, 1: 0.1, 2: 0.1, 3: 0.1 },
+      },
+      "a.ts#0-f0__is_style_only": { type: "noul", noul: 0.6 },
+      "a.ts#0-f0__actionable": { type: "noul", noul: 0.2 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+  }
+
+  const oneFinding = [
+    {
+      lineStart: 1,
+      lineEnd: 1,
+      claim: "questionable claim",
+      rationale: "low confidence",
+      suggestedSeverity: "major" as const,
+    },
+  ];
+
+  it("annotate (default): routes a would-be-discarded finding to lowConfidence, never discarded, counted in findingsLowConfidence", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: lowConfidenceFindingPort(),
+        reviewer: fakeReviewer(oneFinding),
+      },
+      config: makeConfig({ findingFilter: { mode: "annotate" } }),
+    });
+
+    expect(result.findingFilter?.discarded).toEqual([]);
+    expect(result.findingFilter?.lowConfidence).toHaveLength(1);
+    expect(result.findingsLowConfidence).toBe(1);
+  });
+
+  it("discard: keeps the original behavior, the finding lands in discarded and findingsLowConfidence is 0", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: lowConfidenceFindingPort(),
+        reviewer: fakeReviewer(oneFinding),
+      },
+      config: makeConfig({ findingFilter: { mode: "discard" } }),
+    });
+
+    expect(result.findingFilter?.lowConfidence).toEqual([]);
+    expect(result.findingFilter?.discarded).toHaveLength(1);
+    expect(result.findingsLowConfidence).toBe(0);
   });
 });
 

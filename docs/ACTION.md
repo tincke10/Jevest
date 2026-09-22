@@ -76,6 +76,26 @@ budgetUsd: 1
 
 Point `config-path` elsewhere if you'd rather not use the repo root.
 
+### Finding filter mode
+
+`findingFilter.mode` controls what stage 4 does with a low-confidence
+finding. H1 (see [`docs/BENCHMARK.md`](BENCHMARK.md)) found Jev's
+`is_real_defect` judgment near chance against the current labels, so the
+label isn't trustworthy enough to discard findings on yet:
+
+- `annotate` (default) — nothing is ever discarded. A finding that would
+  have been filtered out is kept in a collapsed "Low-confidence findings"
+  section of the summary comment instead — never as an inline comment,
+  never affecting the merge gate — so nothing is silently dropped while
+  H1 is pending a valid verdict.
+- `discard` — the original behavior: low-confidence findings are dropped.
+  Opt in only once H1 has a valid verdict for your data.
+
+```yaml
+findingFilter:
+  mode: discard
+```
+
 ### Choosing a reviewer
 
 `reviewer.provider` selects which LLM writes the findings; Jev's role is

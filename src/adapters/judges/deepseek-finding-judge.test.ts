@@ -98,14 +98,14 @@ describe("createDeepSeekFindingJudge", () => {
     expect(output.usage.cacheReadInputTokens).toBe(250);
   });
 
-  it("defaults to deepseek-v4-pro, json_object output, max_tokens 1024, and sends the judge prompt with the JSON shape", async () => {
+  it("defaults to deepseek-v4-pro, json_object output, max_tokens 8192 (reasoning tokens count against it), and sends the judge prompt with the JSON shape", async () => {
     const client = fakeClient(async () => successResponse());
     await createDeepSeekFindingJudge({ client }).judge(SAMPLE_INPUT);
 
     const [params] = client.chat.completions.create.mock.calls[0]!;
     expect(params.model).toBe("deepseek-v4-pro");
     expect(params.response_format).toEqual({ type: "json_object" });
-    expect(params.max_tokens).toBe(1024);
+    expect(params.max_tokens).toBe(8192);
     expect(params.messages).toEqual([
       { role: "system", content: DEEPSEEK_JUDGE_SYSTEM_PROMPT },
       { role: "user", content: expect.stringContaining(SAMPLE_INPUT.claim) },
@@ -154,7 +154,7 @@ describe("createDeepSeekFindingJudge", () => {
     );
   });
 
-  it("throws ReviewerParseError on invalid JSON (e.g. truncated by max_tokens)", async () => {
+  it("throws ReviewerParseError naming the truncation when finish_reason is length (reasoning ate max_tokens)", async () => {
     const client = fakeClient(async () =>
       successResponse({
         choices: [
@@ -162,9 +162,18 @@ describe("createDeepSeekFindingJudge", () => {
         ],
       }),
     );
-    await expect(createDeepSeekFindingJudge({ client }).judge(SAMPLE_INPUT)).rejects.toThrow(
-      ReviewerParseError,
+    const promise = createDeepSeekFindingJudge({ client }).judge(SAMPLE_INPUT);
+    await expect(promise).rejects.toThrow(ReviewerParseError);
+    await expect(promise).rejects.toThrow(/truncated at max_tokens=8192 \(finish_reason=length\)/);
+  });
+
+  it("throws ReviewerParseError on invalid JSON with finish_reason stop, without a truncation note", async () => {
+    const client = fakeClient(async () =>
+      successResponse({ choices: [{ message: { content: "not json" }, finish_reason: "stop" }] }),
     );
+    const promise = createDeepSeekFindingJudge({ client }).judge(SAMPLE_INPUT);
+    await expect(promise).rejects.toThrow(ReviewerParseError);
+    await expect(promise).rejects.not.toThrow(/truncated/);
   });
 
   it("throws ReviewerParseError when the JSON does not match the judge schema (probability out of range)", async () => {

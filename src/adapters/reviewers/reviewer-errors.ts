@@ -36,8 +36,12 @@ export class ReviewerApiError extends Error {
 }
 
 export class ReviewerParseError extends Error {
-  constructor(provider: string, hunkId: string) {
-    super(`${provider} reviewer returned unparseable structured output for hunk "${hunkId}"`);
+  constructor(provider: string, hunkId: string, detail?: string) {
+    super(
+      `${provider} reviewer returned unparseable structured output for hunk "${hunkId}"${
+        detail === undefined ? "" : `: ${detail}`
+      }`,
+    );
     this.name = "ReviewerParseError";
   }
 }

@@ -59,14 +59,19 @@ export interface DeepSeekFindingJudgeOptions {
   readonly client: DeepSeekJudgeChatClient;
   /** Default "deepseek-v4-pro"; "deepseek-flash" is the cheaper option. */
   readonly model?: string;
-  /** Default 1024 — one small JSON object; too low truncates it. */
+  /**
+   * Default 8192. deepseek-v4-pro is a reasoning model and its
+   * `reasoning_content` tokens count against `max_tokens` (measured: ~900
+   * completion tokens for a 40-token JSON answer), so a "one small JSON
+   * object" budget of 1024 truncated most real hunks before the JSON began.
+   */
   readonly maxTokens?: number;
   /** Injectable clock for deterministic latency tests. Default: `Date.now`. */
   readonly now?: () => number;
 }
 
 const DEFAULT_MODEL = "deepseek-v4-pro";
-const DEFAULT_MAX_TOKENS = 1024;
+const DEFAULT_MAX_TOKENS = 8192;
 const PROVIDER = "deepseek";
 
 const OUTPUT_EXAMPLE = JSON.stringify(
@@ -95,20 +100,31 @@ Rules for the JSON:
 - "severity" is exactly one of: "nit", "minor", "major", "critical".
 - "is_style_only" and "actionable" are booleans.`;
 
-function parseJudgeJson(content: string | null | undefined, findingId: string) {
+function parseJudgeJson(
+  content: string | null | undefined,
+  findingId: string,
+  finishReason: string | null | undefined,
+  maxTokens: number,
+) {
+  // Name the truncation: a "length" finish with a broken JSON is the model's
+  // reasoning eating the budget, not a schema problem, and the fix differs.
+  const detail =
+    finishReason === "length"
+      ? `truncated at max_tokens=${maxTokens} (finish_reason=length)`
+      : undefined;
   const text = content?.trim() ?? "";
   if (text === "") {
-    throw new ReviewerParseError(PROVIDER, findingId);
+    throw new ReviewerParseError(PROVIDER, findingId, detail);
   }
   let json: unknown;
   try {
     json = JSON.parse(text);
   } catch {
-    throw new ReviewerParseError(PROVIDER, findingId);
+    throw new ReviewerParseError(PROVIDER, findingId, detail);
   }
   const result = judgeOutputSchema.safeParse(json);
   if (!result.success) {
-    throw new ReviewerParseError(PROVIDER, findingId);
+    throw new ReviewerParseError(PROVIDER, findingId, detail);
   }
   return result.data;
 }
@@ -150,7 +166,13 @@ export function createDeepSeekFindingJudge(options: DeepSeekFindingJudgeOptions)
       }
       const latencyMs = now() - start;
 
-      const parsed = parseJudgeJson(response.choices[0]?.message.content, input.findingId);
+      const choice = response.choices[0];
+      const parsed = parseJudgeJson(
+        choice?.message.content,
+        input.findingId,
+        choice?.finish_reason,
+        maxTokens,
+      );
 
       const usage = response.usage;
       const promptTokens = usage?.prompt_tokens ?? 0;

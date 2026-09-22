@@ -353,3 +353,72 @@ DEEPSEEK_API_KEY=... pnpm filter --findings datasets/findings-thorough.jsonl \
 
 (`--mode replay` reads the Jev fixtures under `tests/fixtures/filter/` once
 the Jev side has been recorded with `--mode record`.)
+
+## 9. Filter results (2026-09-22)
+
+The H1/H6/H3 run against `findings-thorough.jsonl`. Report:
+`reports/filter-2026-09-22T14-36-07-230Z.md`. Fixtures: Jev filter
+`tests/fixtures/filter/` (299); DeepSeek judge
+`tests/fixtures/filter-judge-deepseek/` (294 of 299 — 5 truncated,
+reasoning exceeded the 8192-token `max_tokens`); claude-cli judge
+`tests/fixtures/filter-judge/` (223 of 299, **frozen** — the Claude
+subscription is reserved for reviews and this judge is not extended
+further).
+
+**Jev finding filter** (299/299 answered, one finding per request):
+
+| Metric | Value |
+|---|---|
+| Best threshold (`is_real_defect`) | 0.20 |
+| Precision / Recall / F1 at 0.20 | 0.485 / 0.920 / 0.635 |
+| Noise discarded at 0.20 | 0.173 |
+| ECE (H3) | 0.191 over N = 299 |
+| AUC (real vs. noise) | 0.592 |
+| Severity confidence p10/p50/p90/mean | 0.558 / 0.800 / 0.950 / 0.776 |
+| Cost | USD 0.015425, 367,267 input tokens |
+| Latency p50/p95 | 252 ms / 331 ms |
+
+Curve: threshold 0.10 R 0.985 ND 0.031 P 0.462 | 0.15 R 0.964 ND 0.093
+P 0.473 | 0.20 R 0.920 ND 0.173 P 0.485 | 0.30 R 0.825 ND 0.278 P 0.491 |
+0.40 R 0.723 ND 0.377 P 0.495 | 0.50 R 0.657 ND 0.506 P 0.529.
+
+**LLM-judge baseline (H6), DeepSeek** (`deepseek-v4-pro`, `json_object`,
+same state per finding as Jev — hunk diff, claim, rationale, file, lines):
+
+| Metric | Jev | Judge (DeepSeek) |
+|---|---|---|
+| Recall at threshold 0.20 | 0.920 | 0.955 |
+| Precision at threshold 0.20 | 0.485 | 0.452 |
+| Noise discarded at threshold 0.20 | 0.173 | 0.043 |
+| AUC | 0.592 | 0.567 |
+| Cost | USD 0.015425 | USD 2.9132 |
+| Latency p50/p95 | 252 / 331 ms | 32,813 / 85,811 ms |
+
+Cost ratio judge/Jev: 188.9×. Recall gap (judge − Jev): 0.035. Judge
+severity vs. label: major 67 real / 76 noise, minor 58/73, critical 4/10,
+nit 4/2.
+
+**Verdicts**: H1 **FAIL** (recall 0.920 < 0.95; noise discarded 0.173 <
+0.40). H6 **PASS** (≥ 100× cheaper, recall gap ≤ 0.05). H3 **FAIL** (ECE
+0.191 ≥ 0.10).
+
+**Reading, and why the H1/H3 FAIL is inconclusive rather than final**:
+precision of both Jev and the DeepSeek judge equals the base rate (0.458)
+at every threshold, and both AUCs sit near 0.5. A reasoning LLM that
+spends roughly 30 seconds per finding cannot separate real defects from
+noise either, which means the line-overlap label (§2, weaknesses in §3)
+does not actually measure "is this finding a real defect" — the DeepSeek
+run doubles as a control on the ground truth, not just a cost baseline. H1
+is FAIL on the current labels and inconclusive on the question it asks; H3
+inherits the same caveat, since an ECE computed against an invalid label
+is not a calibration verdict. H6 stands on cost and latency regardless:
+"equal recall" here is equal recall at near-chance discrimination, which
+is the comparison H6 asks for.
+
+What a valid H1 verdict needs: a human-labeled stratified sample (§5 step
+2, "manual verification of a 40-record sample" — scaled here to ≥ 60–80
+findings across real/noise × severity), then a zero-cost replay of the
+existing Jev and judge fixtures against the corrected labels. An LLM
+labeler would be circular. Full write-up and reproduction command:
+`docs/BENCHMARK.md`, "Thorough findings pass and finding filter (H1 / H6
+/ H3, 2026-09-22)".

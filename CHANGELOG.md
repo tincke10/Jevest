@@ -91,6 +91,15 @@ has been published under a version tag before.
   findings generation (`pnpm findings`), H7 intent–change coherence
   (`pnpm dataset:prs`, `pnpm coherence:summarize`, `pnpm coherence`).
   Consolidated in `docs/BENCHMARK.md`.
+- **Thorough reviewer prompt and LLM-judge baseline**
+  (`pnpm findings --prompt thorough`, `FindingJudgePort` with `deepseek` and
+  `claude-cli` adapters): the thorough prompt produces a noise-heavy
+  evaluation set (`datasets/findings-thorough.jsonl`, 299 findings, 137
+  real / 162 noise) so H1's "≥ 40% noise discarded" and H3's "≥ 200
+  findings" bars are measurable; the judge scores the same set at Jev's
+  best threshold with the same per-finding state. `pnpm filter` now reports
+  H1 (recall / noise-discard), H6 (judge cost and recall vs. Jev) and H3
+  (calibration ECE) verdicts alongside the existing metrics.
 - **Adversarial suite (H5)**: `datasets/adversarial/` (14 cases across 13
   attack families plus a benign control), `pnpm adversarial` with the four
   modes, a report with the H5 verdict, and a vitest regression test that
@@ -131,10 +140,17 @@ has been published under a version tag before.
 
 ### Known limitations
 
-- H1 (the finding filter, the central hypothesis), H6 (cost vs. an LLM
-  judge), H3 (calibration) and H7 (coherence) have no verdict yet; H0 failed
-  and is closed. See `docs/BENCHMARK.md` for what is measured and what is
-  pending.
+- H1 (2026-09-22, `reports/filter-2026-09-22T14-36-07-230Z.md`): **FAIL**
+  on the current line-overlap labels (recall 0.920, noise discarded
+  0.173) and inconclusive on the question it asks — a DeepSeek LLM-judge
+  control scored AUC 0.567 on the same labels Jev scores 0.592 on, both
+  near chance, so neither separates real defects from noise under the
+  current label. H6: **PASS** (188.9× cheaper than the judge, recall gap
+  0.035). H3: **FAIL** (ECE 0.191 over N=299, same label caveat as H1). A
+  human-labeled sample (≥ 60 findings) is needed before H1 has a valid
+  verdict; the stage-4 discard-vs-annotate-only decision is pending on it.
+  See `docs/BENCHMARK.md`. H0 failed and is closed; H7 passed with an LLM
+  diff summary (partial without one).
 - `touches_public_api` is derived by AST only for TypeScript/JavaScript and
   Vue `<script>` blocks; other languages get the Jev questions on the raw
   diff but no AST labels.

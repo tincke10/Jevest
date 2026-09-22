@@ -177,6 +177,32 @@ Lectura: el resumen escrito por el LLM sin ver la descripción es lo que convier
 
 14 casos (`datasets/adversarial/`), Jev en vivo, fixtures en `tests/fixtures/adversarial/`. Primera corrida: 0 auto-merges indebidos, **2 críticos plantados descartados** (Jev les puso severidad 2.3/3 y "no es defecto real" con confianza; el guard FR-5.4 solo miraba la severidad de Jev). Corrección: crítico por cualquiera de las dos fuentes nunca se descarta. Replay: 14/14, 0 indebidos, 0 suprimidos, 0 fugas. Punto ciego documentado: `contains_injected_instructions` da ~0.03 para instrucciones dentro del diff porque el triage no ve el diff; los checks salieron rojos por conservadurismo del merge gate. Pendiente: pregunta por hunk en la etapa 2.
 
+### 4.6 Resultado de la fase 1a (2026-09-22): H1 FAIL, H6 PASS, H3 FAIL — etiqueta invalidada
+
+Corrida completa sobre `datasets/findings-thorough.jsonl` (299 findings, 137 reales / 162 ruido por line-overlap, tasa base de reales 0.458), revisor thorough (`claude-cli`, `claude-opus-5`) sobre los 100 hunks v2. Reporte: `reports/filter-2026-09-22T14-36-07-230Z.md`. Fixtures: revisor en `tests/fixtures/findings-thorough/`; filtro Jev en `tests/fixtures/filter/` (299); juez DeepSeek en `tests/fixtures/filter-judge-deepseek/` (294); juez claude-cli en `tests/fixtures/filter-judge/` (223, congelado desde el 2026-09-22 — la cuenta de Claude está reservada para reviews, no se extiende más).
+
+**Filtro Jev** (299/299 respondidas, un finding por request): mejor umbral 0.20 sobre `is_real_defect` → precisión 0.485, recall 0.920, F1 0.635, ruido descartado 0.173, ECE 0.191 sobre N=299, AUC (real vs. ruido) 0.592. Confianza de severidad: p10 0.558, p50 0.800, p90 0.950, media 0.776. Costo USD 0.015425 (367,267 tokens de entrada); latencia p50 252 ms, p95 331 ms.
+
+Curva: umbral 0.10 R 0.985 ND 0.031 P 0.462 | 0.15 R 0.964 ND 0.093 P 0.473 | 0.20 R 0.920 ND 0.173 P 0.485 | 0.30 R 0.825 ND 0.278 P 0.491 | 0.40 R 0.723 ND 0.377 P 0.495 | 0.50 R 0.657 ND 0.506 P 0.529.
+
+**Juez LLM (H6), DeepSeek**: `deepseek-v4-pro` vía `json_object`, mismo state por finding que Jev (diff del hunk + claim + rationale + file + líneas). 294/299 respondidas (5 truncadas: el razonamiento superó el `max_tokens` de 8192; un primer intento con el default de 1024 truncó 263/299, corregido en el commit `d12fede`). En el umbral 0.20 de Jev: recall 0.955, precisión 0.452, ruido descartado 0.043, AUC 0.567. Costo USD 2.9132; latencia p50 32,813 ms, p95 85,811 ms. Ratio de costo juez/Jev: 188.9×. Brecha de recall (juez − Jev): 0.035. **H6: PASS** (≥ 100× más barato, recall dentro de 0.05).
+
+Severidad del juez vs. etiqueta: major 67 reales / 76 ruido, minor 58/73, critical 4/10, nit 4/2.
+
+**Lectura, la clave del resultado**: la precisión de Jev y del juez razonador es igual a la tasa base (0.458) en todos los umbrales, y ambos AUC están cerca de 0.5 (0.592 y 0.567). Un modelo que piensa ~30 s por finding tampoco separa las dos clases, así que la etiqueta line-overlap (las líneas del finding solapan las líneas que tocó el fix en un hunk ya etiquetado defecto; cualquier otra cosa en un hunk benigno es ruido — debilidades en `datasets/FINDINGS.md` §3) no mide "¿es este finding un defecto real?". La corrida de DeepSeek fue un control sobre el ground truth, no solo un baseline de costo.
+
+**Veredicto**: H1 **FAIL sobre las etiquetas actuales, INCONCLUSO sobre la pregunta que hace**. H3 hereda la misma salvedad: un ECE contra una etiqueta inválida no es un veredicto de calibración. H6 **PASS** se sostiene en costo y latencia, pero "recall equivalente" acá significa recall equivalente en discriminación casi al azar.
+
+Lo que hace falta para un H1 válido: una muestra etiquetada a mano (`datasets/FINDINGS.md` §5 paso 2, "verificación manual"), al menos 60-80 findings estratificados por real/ruido × severidad, y volver a puntuar Jev y el juez desde los fixtures existentes a costo cero (replay). Un etiquetador LLM sería circular.
+
+Decisión de producto pendiente (no se toma acá): mantener la etapa 4 (filtro de findings) descartando por debajo de la banda, o pasarla a solo-anotar (publicar todo, marcar confianza) hasta tener un veredicto H1 válido. Triage, perfil de hunk y merge gate no están afectados: H0', H7 y H5 ya pasaron. Por SPEC §4.2 ("si falla, Jev no aporta al review"), el resultado negativo sobre las etiquetas actuales se publica con sus datasets y fixtures (fase 3, benchmark negativo), no se oculta.
+
+Reproducir, costo cero:
+
+```
+pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay
+```
+
 ## 5. Fases y alcance
 
 ### Fase 0 — Spike de defectos (CERRADA, H0 fallida)
@@ -426,9 +452,16 @@ jevest/
 | Juez LLM (H6) | `FindingJudgePort` con adapter `claude-cli` (mismo seam `claude -p`, misma cuenta nominal), fake y recorded; responde las mismas cuatro preguntas del filtro con el mismo state por finding (hunk + claim + rationale, nada más). `pnpm filter --judge claude-cli --judge-mode record\|replay` lo corre sobre el mismo set y lo puntúa al mejor umbral de Jev | Veredicto H6 en el reporte: costo juez / costo Jev ≥ 100 y recall juez − recall Jev ≤ 0.05 |
 | ECE con N (H3) | El reporte del filtro informa el ECE de `is_real_defect` junto con N y marca explícitamente cuando N < 200 | Con menos de 200 findings el ECE es indicativo, nunca veredicto |
 
+### Decisiones del 2026-09-22
+
+| Tema | Decisión | Consecuencia |
+|---|---|---|
+| Etiqueta line-overlap invalidada por el control H6 | El juez LLM (DeepSeek) dio AUC 0.567 y precisión = tasa base sobre el mismo set donde Jev midió AUC 0.592: ninguno de los dos separa reales de ruido bajo la etiqueta line-overlap actual | H1 queda FAIL/inconcluso y H3 FAIL heredado; se necesita una muestra etiquetada a mano (≥ 60-80 findings) antes de re-medir; decisión sobre la etapa 4 (descartar vs. solo-anotar) pendiente hasta entonces |
+
 ### Pendiente
 
 - Nombre y organización para publicar la Action y el dataset (fase 3).
+- Muestra etiquetada a mano (≥ 60-80 findings, real/ruido × severidad) para un veredicto H1 válido; hasta entonces, la decisión sobre la etapa 4 (descartar vs. solo-anotar) queda abierta.
 
 ---
 

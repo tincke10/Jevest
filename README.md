@@ -138,7 +138,7 @@ Jevest is built spike-first: a hypothesis with a pass/fail criterion written dow
 |---|---|---|---|
 | **H0** | "Does this hunk have a defect?" — 100 source hunks, 50/50 | P 0.84 · R 0.72 · F1 0.77 · **confidence ≈ 0** | **FAIL** → pivot: Jev never judges defects |
 | **H0′** | "What kind of change is this? Does it touch error handling / async / public API?" | `change_kind` acc 0.80 (conf 0.97) · `touches_error_handling` F1 0.89 · `touches_async` F1 0.85 | **PARTIAL** → error handling and async in the pipeline, public API via AST instead |
-| **H1** | "Is this LLM finding a real defect?" — the central hypothesis | 14 findings / 100 hunks from a strict reviewer: too little noise to measure | **PENDING** a thorough-mode pass |
+| **H1** | "Is this LLM finding a real defect?" — the central hypothesis | Thorough reviewer, 299 findings (137 real / 162 noise): Jev AUC 0.592 (recall 0.920, noise discarded 0.173 at best threshold); DeepSeek LLM-judge control AUC 0.567 (recall 0.955) — both near chance. Full numbers: [docs/BENCHMARK.md](docs/BENCHMARK.md) | **FAIL** (inconclusive: label invalidated by the LLM-judge control) |
 | **H7** | "Does the PR description match what actually changed?" — 100 PRs, 100 crossed descriptions with exact labels | with an LLM summary of the diff: R 0.99 · P 1.00 · ECE 0.07 · median conf 0.90. Without it: R 0.88, ECE 0.10 | **PASS** with summary → product-aware triage |
 | **H5** | Adversarial PRs: injected instructions in body, title, labels, comments, strings, unicode; secrets; whitespace floods | 14/14: 0 undue green checks, 0 suppressed critical findings, 0 leaks. First run caught a real guard bug, fixed | **PASS** |
 
@@ -173,7 +173,7 @@ pnpm test && pnpm typecheck && pnpm lint
 |---|---|
 | `pnpm spike --mode replay` | H0 report from recorded fixtures (no key) |
 | `pnpm spike:profile --mode replay` | H0′ report |
-| `pnpm filter --findings datasets/findings.jsonl` | H1 finding-filter report |
+| `pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay` | H1 / H6 / H3 finding-filter report (zero cost) |
 | `pnpm findings --provider claude-cli --record` | generate LLM findings over the hunks dataset |
 | `pnpm dataset:prs` · `pnpm coherence:summarize` · `pnpm coherence` | H7: collect PRs, summarize diffs, run the coherence spike |
 | `pnpm review --git main..HEAD` or `--diff <file>` | run the six stages locally on a diff |
@@ -189,7 +189,8 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] Phase 2 · composite GitHub Action, no checkout, partial `.jevest.yml`, spend cap
 - [x] Phase 0c · H7 intent–change coherence (PASS with an LLM diff summary) → product-aware triage: three-layer state, `.jevest/context.yml` read from the base branch, `jevest:description-mismatch` and `jevest:needs-product-owner` labels
 - [x] Phase 3a · adversarial suite H5 (14 cases, PASS, replayed in CI), consolidated [benchmark](docs/BENCHMARK.md), [published datasets](datasets/README.md), changelog and [release guide](docs/RELEASING.md)
-- [ ] Phase 1a · H1 finding filter with enough noise (thorough reviewer pass: 241 findings recorded so far), LLM-judge baseline (H6), calibration (H3) — **in progress**, the central hypothesis
+- [x] Phase 1a · H1 finding filter measured (2026-09-22, thorough reviewer pass, 299 findings): **FAIL / inconclusive** — the DeepSeek LLM-judge control scores AUC 0.567 on the same labels Jev scores 0.592 on, so the line-overlap label doesn't separate real defects from noise either. H6 (judge cost) **PASS**, H3 (calibration) **FAIL** on the same caveat. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
+- [ ] Human-labeled sample (≥ 60 findings) → valid H1 verdict; stage-4 discard vs annotate-only decision
 - [ ] Phase 3b · tagged `v0.1.0` release once H1 has a number
 - [x] In-diff injection detection as a hunk-profile question (`contains_reviewer_instructions`: 0.99 on hidden instructions, 0.01–0.02 elsewhere), H2/H4 instrumented on every run (Efficiency section, action outputs)
 - [ ] Next · near-duplicate crossed descriptions for a harder H7; a verdict on H2 once ≥ 20 real PRs have run

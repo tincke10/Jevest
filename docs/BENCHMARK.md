@@ -22,9 +22,9 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 |---|---|---|---|
 | H0 | Does this hunk contain a defect? | **FAIL** (closed, pivot) | below, `reports/spike-*.md` |
 | H0′ | What kind of change is this hunk, what surface does it touch? | **PARTIAL** | below, `reports/spike-profile-*.md` |
-| H1 | Is this LLM finding a real defect? (central) | **pending** | needs the thorough findings pass |
-| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **pending** | same run as H1 |
-| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **pending** | same run as H1, needs ≥ 200 findings |
+| H1 | Is this LLM finding a real defect? (central) | **FAIL** on current labels, **inconclusive** on the question (2026-09-22): recall 0.920, noise discarded 0.173 at threshold 0.20, AUC 0.592 — near chance, same as the LLM-judge control | below, "Thorough findings pass and finding filter" |
+| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 | same run as H1 |
+| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** (2026-09-22): ECE 0.191 over N=299 — inherits H1's label caveat | same run as H1 |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
@@ -142,13 +142,120 @@ noise by line-overlap with the fix.
 Reading: too little noise to measure H1's "≥ 40% of noise discarded" or H3's
 ECE (SPEC §4.2 asks for ≥ 200 findings). A thorough-prompt pass and an
 LLM-judge baseline are the next runs (`FINDINGS.md`, fixtures under
-`tests/fixtures/findings-thorough/` and `tests/fixtures/filter-judge/`).
+`tests/fixtures/findings-thorough/` and `tests/fixtures/filter-judge/`), see
+below.
 
 Reproducing the pass: `pnpm findings --provider claude-cli --record
 --budget-usd 15` re-runs the reviewer (subscription quota) and rewrites the
 100 fixtures in `tests/fixtures/findings/`; `pnpm findings` has no replay
 mode, so `datasets/findings.jsonl` and `FINDINGS.md` are the record. Filter
 metrics over these 14 findings: **not measured** in a committed report.
+
+## Thorough findings pass and finding filter (H1 / H6 / H3, 2026-09-22)
+
+Source: `datasets/findings-thorough.jsonl`, the 100 hunks in
+`datasets/hunks.jsonl` (v2), thorough reviewer prompt (`claude-cli`,
+`claude-opus-5`). 299 findings, 137 labeled real / 162 noise by
+line-overlap (base rate real = 0.458). Report:
+`reports/filter-2026-09-22T14-36-07-230Z.md`. Fixtures: reviewer
+`tests/fixtures/findings-thorough/`; Jev filter `tests/fixtures/filter/`
+(299); judge (DeepSeek) `tests/fixtures/filter-judge-deepseek/` (294); judge
+(claude-cli) `tests/fixtures/filter-judge/` (223, **frozen** since
+2026-09-22 — the Claude subscription is reserved for reviews, not extended
+further).
+
+### Jev finding filter
+
+| Metric | Value |
+|---|---|
+| Findings answered | 299 / 299 (one per request) |
+| Best threshold (`is_real_defect`) | 0.20 |
+| Precision / Recall / F1 at 0.20 | 0.485 / 0.920 / 0.635 |
+| Noise discarded at 0.20 | 0.173 |
+| ECE (H3) | 0.191 over N = 299 |
+| AUC (real vs. noise) | 0.592 |
+| Severity confidence p10 / p50 / p90 / mean | 0.558 / 0.800 / 0.950 / 0.776 |
+| Cost | USD 0.015425, 367,267 input tokens |
+| Latency p50 / p95 | 252 ms / 331 ms |
+| H1 | **FAIL**: recall 0.920 < 0.95; noise discarded 0.173 < 0.40 |
+| H3 | **FAIL**: ECE 0.191 ≥ 0.10 |
+
+Threshold curve:
+
+| Threshold | Recall | Noise discarded | Precision |
+|---|---|---|---|
+| 0.10 | 0.985 | 0.031 | 0.462 |
+| 0.15 | 0.964 | 0.093 | 0.473 |
+| 0.20 | 0.920 | 0.173 | 0.485 |
+| 0.30 | 0.825 | 0.278 | 0.491 |
+| 0.40 | 0.723 | 0.377 | 0.495 |
+| 0.50 | 0.657 | 0.506 | 0.529 |
+
+### LLM-judge baseline (H6), DeepSeek
+
+`deepseek-v4-pro` via `json_object`, the same state per finding as Jev
+(hunk diff + claim + rationale + file + lines, no label). 294 / 299
+answered (5 truncated: reasoning exceeded the 8192-token `max_tokens`; a
+first attempt at the 1024 default truncated 263/299, fixed in `d12fede`).
+
+| Metric | Jev | Judge (DeepSeek) |
+|---|---|---|
+| Recall at threshold 0.20 | 0.920 | 0.955 |
+| Precision at threshold 0.20 | 0.485 | 0.452 |
+| Noise discarded at threshold 0.20 | 0.173 | 0.043 |
+| AUC | 0.592 | 0.567 |
+| Cost | USD 0.015425 | USD 2.9132 |
+| Latency p50 / p95 | 252 / 331 ms | 32,813 / 85,811 ms |
+
+Cost ratio judge/Jev: 188.9×. Recall gap (judge − Jev): 0.035. **H6: PASS**
+(≥ 100× cheaper, recall within 0.05).
+
+Judge threshold curve: 0.30 R 0.820 ND 0.230 P 0.468 | 0.40 R 0.737
+ND 0.342 P 0.480 | 0.50 R 0.684 ND 0.398 P 0.484 | 0.60 R 0.451 ND 0.671
+P 0.531 | 0.70 R 0.398 ND 0.720 P 0.541 | 0.90 R 0.135 ND 0.901 P 0.529.
+
+Judge severity vs. label: major 67 real / 76 noise, minor 58 / 73, critical
+4 / 10, nit 4 / 2.
+
+### Reading: the label, not the filter, is what failed
+
+Precision of both Jev and the reasoning LLM equals the base rate (0.458) at
+every threshold, and both AUCs sit near 0.5 (0.592 and 0.567). A model that
+reasons for roughly 30 seconds per finding cannot separate the two classes
+either, so the line-overlap label (a finding's lines must intersect the
+fix's lines on a hunk already labeled *defect*; anything on a benign hunk
+is noise — weaknesses listed in `datasets/FINDINGS.md` §3) does not measure
+"is this finding a real defect." The DeepSeek run served as a control on
+the ground truth, not just as a cost baseline.
+
+Verdict: **H1 FAIL on the current labels, inconclusive on the question it
+asks.** H3's FAIL inherits the same caveat — ECE against an invalid label
+is not a calibration verdict. **H6 PASS stands** on cost and latency, but
+"equal recall" here means equal recall at near-chance discrimination.
+
+What a valid H1 verdict needs:
+
+- A human-labeled stratified sample (`datasets/FINDINGS.md` §5 step 2
+  "manual verification"), at least 60–80 findings across real/noise ×
+  severity.
+- Re-score Jev and the judge from the existing fixtures at zero cost
+  (replay) once that sample exists — no new LLM calls needed.
+- An LLM labeler would be circular; the label has to come from a human
+  read.
+
+Pending product decision (not decided here): keep stage 4 (finding filter)
+discarding findings below the confidence band, or switch it to
+annotate-only (publish everything, mark confidence) until H1 has a valid
+verdict. Triage, hunk profile and the merge gate are unaffected: H0′, H7
+and H5 already passed. Per SPEC §4.2 ("si falla, Jev no aporta al review"),
+the negative-on-current-labels result is published with its datasets and
+fixtures (phase 3 "negative benchmark" path), not hidden.
+
+Reproduce, zero cost:
+
+```sh
+pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay
+```
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 
@@ -212,11 +319,14 @@ benchmark. Not replayable.
 
 ## Pending
 
+H1, H6 and H3 ran on 2026-09-22 (see "Thorough findings pass and finding
+filter" above): H1 FAIL / inconclusive, H6 PASS, H3 FAIL. What remains is
+not another run of `pnpm filter` — it is a human-labeled sample to replace
+the line-overlap label before either verdict can be trusted.
+
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
-| H1 · finding filter (recall ≥ 0.95, ≥ 40% noise discarded) | the thorough findings pass scored by `pnpm filter` | `pnpm filter --findings datasets/findings-thorough.jsonl --mode record --judge claude-cli --judge-mode replay` |
-| H6 · Jev vs. LLM judge (≥ 100× cheaper, equal recall) | same run, judge side | same command; judge fixtures first with `--mode dry-run --judge claude-cli --judge-mode record` |
-| H3 · calibration (ECE < 0.1 over ≥ 200 findings) | same run, once ≥ 200 findings exist | same command |
+| H1 · finding filter, re-scored on a human-labeled sample (recall ≥ 0.95, ≥ 40% noise discarded) | ≥ 60–80 hand-verified findings (`datasets/FINDINGS.md` §5 step 2), then a zero-cost replay of the existing Jev and judge fixtures | `pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay` once the labels are patched |
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |

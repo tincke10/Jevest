@@ -1,0 +1,17 @@
+{
+  "judgment": {
+    "isRealDefectProb": 0.95,
+    "severity": "minor",
+    "isStyleOnly": false,
+    "actionable": true
+  },
+  "model": "deepseek-v4-pro",
+  "usage": {
+    "inputTokens": 69,
+    "outputTokens": 2924,
+    "cacheReadInputTokens": 1152,
+    "cacheCreationInputTokens": 0
+  },
+  "latencyMs": 46865,
+  "requestId": "5b118e7f-e70e-4113-959d-6a3fc2699b82"
+}

@@ -191,7 +191,8 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] Phase 3a · adversarial suite H5 (14 cases, PASS, replayed in CI), consolidated [benchmark](docs/BENCHMARK.md), [published datasets](datasets/README.md), changelog and [release guide](docs/RELEASING.md)
 - [ ] Phase 1a · H1 finding filter with enough noise (thorough reviewer pass: 241 findings recorded so far), LLM-judge baseline (H6), calibration (H3) — **in progress**, the central hypothesis
 - [ ] Phase 3b · tagged `v0.1.0` release once H1 has a number
-- [ ] Next · in-diff injection detection as a hunk-profile question (H5 showed triage cannot see instructions hidden in code), near-duplicate crossed descriptions for a harder H7, H2/H4 instrumentation (tokens saved, Jev latency per PR)
+- [x] In-diff injection detection as a hunk-profile question (`contains_reviewer_instructions`: 0.99 on hidden instructions, 0.01–0.02 elsewhere), H2/H4 instrumented on every run (Efficiency section, action outputs)
+- [ ] Next · near-duplicate crossed descriptions for a harder H7; a verdict on H2 once ≥ 20 real PRs have run
 
 ## License
 

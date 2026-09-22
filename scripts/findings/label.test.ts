@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { OracleLabelResult } from "../../src/application/findings/oracle-label.js";
-import { applyOracleLabelToLine, parseArgs } from "./label.js";
+import { applyOracleLabelToLine, evidenceKeyForHunk, parseArgs } from "./label.js";
 
 describe("parseArgs", () => {
   it("requires --labeler", () => {
@@ -112,5 +112,47 @@ describe("applyOracleLabelToLine", () => {
 
   it("returns the line unchanged when there is no result for it", () => {
     expect(applyOracleLabelToLine(LINE, undefined)).toBe(LINE);
+  });
+});
+
+describe("parseArgs dataset selection", () => {
+  it("defaults --hunks and --evidence to the originals", () => {
+    const options = parseArgs(["--labeler", "deepseek"]);
+    expect(options.hunksPath).toMatch(/datasets\/hunks\.jsonl$/);
+    expect(options.evidencePath).toMatch(/datasets\/hunk-evidence\.jsonl$/);
+  });
+
+  it("parses --hunks and --evidence for the reversed dataset", () => {
+    const options = parseArgs([
+      "--labeler",
+      "claude-cli",
+      "--hunks",
+      "datasets/hunks-reversed.jsonl",
+      "--evidence",
+      "/tmp/evidence.jsonl",
+    ]);
+    expect(options.hunksPath).toBe("datasets/hunks-reversed.jsonl");
+    expect(options.evidencePath).toBe("/tmp/evidence.jsonl");
+  });
+
+  it("accepts the claude-cli labeler", () => {
+    expect(parseArgs(["--labeler", "claude-cli", "--mode", "record"]).labeler).toBe("claude-cli");
+  });
+
+  it("throws when --hunks or --evidence is given no value", () => {
+    expect(() => parseArgs(["--labeler", "deepseek", "--hunks"])).toThrow(/--hunks/);
+    expect(() => parseArgs(["--labeler", "deepseek", "--evidence"])).toThrow(/--evidence/);
+  });
+});
+
+describe("evidenceKeyForHunk", () => {
+  it("uses the hunk's own id when it was not reversed", () => {
+    expect(evidenceKeyForHunk({ id: "zod-abc-1" })).toBe("zod-abc-1");
+  });
+
+  it("resolves a reversed hunk back to the id the evidence file is keyed by", () => {
+    expect(evidenceKeyForHunk({ id: "zod-abc-1-rev", reversedFrom: "zod-abc-1" })).toBe(
+      "zod-abc-1",
+    );
   });
 });

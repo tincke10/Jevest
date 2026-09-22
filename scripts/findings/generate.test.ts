@@ -22,6 +22,8 @@ describe("parseArgs", () => {
       seed: 42,
       concurrency: 2,
       prompt: "strict",
+      hunks: null,
+      fixturesDir: null,
     });
   });
 
@@ -97,5 +99,33 @@ describe("parseArgs", () => {
 
   it("throws when a flag requiring a value is given none", () => {
     expect(() => parseArgs(["--provider"])).toThrow(/--provider/);
+  });
+});
+
+describe("parseArgs dataset selection", () => {
+  it("defaults --hunks to datasets/hunks.jsonl and --fixtures-dir to the prompt mode's dir", () => {
+    const options = parseArgs(["--provider", "claude-cli"]);
+    expect(options.hunks).toBeNull();
+    expect(options.fixturesDir).toBeNull();
+  });
+
+  it("parses --hunks and --fixtures-dir", () => {
+    const options = parseArgs([
+      "--provider",
+      "claude-cli",
+      "--hunks",
+      "datasets/hunks-reversed.jsonl",
+      "--fixtures-dir",
+      "tests/fixtures/findings-reversed",
+    ]);
+    expect(options.hunks).toBe("datasets/hunks-reversed.jsonl");
+    expect(options.fixturesDir).toBe("tests/fixtures/findings-reversed");
+  });
+
+  it("throws when --hunks or --fixtures-dir is given no value", () => {
+    expect(() => parseArgs(["--provider", "claude-cli", "--hunks"])).toThrow(/--hunks/);
+    expect(() => parseArgs(["--provider", "claude-cli", "--fixtures-dir"])).toThrow(
+      /--fixtures-dir/,
+    );
   });
 });

@@ -367,12 +367,10 @@ Reading:
    finding, it removes a quarter of the noise; the reasoning judge removes a
    third, at 182× the cost. Neither clears the 40% bar. Calibration is off in
    a known direction — probabilities too high for a 2.8% base rate.
-4. Next step (proposed, not yet approved, no cost incurred): H1b — a
-   reversed-hunk dataset (present after → before, the buggy state as the
-   change), so a real finding is one that flags the bug the fix later
-   removed; reviewer pass on DeepSeek, oracle labeling and Jev/judge scoring
-   all from existing tooling. Estimated ≈ USD 10 of DeepSeek. Requires
-   topping up the DeepSeek balance (exhausted 2026-09-22).
+4. Next step: H1b — a reversed-hunk dataset (present after → before, the
+   buggy state as the change), so a real finding is one that flags the bug
+   the fix later removed. Tooling built and proven by dry run
+   2026-09-22; not yet run for real. See "H1b" below.
 5. Stage 4 stays in annotate mode (`findingFilter.mode: "annotate"`) until
    H1b lands.
 
@@ -385,6 +383,66 @@ pnpm findings:label --findings datasets/findings-thorough.jsonl \
 pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
     --mode replay --judge deepseek --judge-mode replay --label oracle
 ```
+
+### H1b — reversed hunks (tooling built 2026-09-22, not yet run)
+
+The set above is a clean noise benchmark and an unusable recall population,
+for a structural reason: the reviewer was shown the bugfix commit's own diff.
+H1b turns the defect hunks around — the diff runs after → before, so the
+change under review *introduces* the bug and a real finding is one that flags
+it. The benign hunks are copied unchanged, so the set still mixes both kinds
+at 50/50.
+
+What is reversed is only the reviewer's view. `before`, `after`, `label` and
+`evidence` stay in original orientation, so the fix-aware labeler keeps seeing
+`before` = buggy and `after` = fixed and its verdicts mean on this dataset
+exactly what they meant on the last one. No prompt was changed. Design and the
+full protocol: `datasets/FINDINGS.md` §11, `datasets/README.md`
+§ hunks-reversed.
+
+How to reproduce:
+
+```sh
+# 1. Build the reversed reviewer set. Local computation only — no network,
+#    no LLM, no cost, deterministic.
+pnpm dataset:reverse
+
+# 2. Reviewer pass over the reversed hunks. Resumable.
+pnpm findings --provider claude-cli --prompt thorough --record --concurrency 2 \
+              --budget-usd 15 \
+              --hunks datasets/hunks-reversed.jsonl \
+              --fixtures-dir tests/fixtures/findings-reversed \
+              --out datasets/findings-reversed.jsonl
+
+# 3. Fix-aware oracle label, 2 calls per finding. Evidence resolves through
+#    `reversed_from`, so `pnpm dataset:evidence` does not need re-running.
+pnpm findings:label --findings datasets/findings-reversed.jsonl \
+                    --hunks datasets/hunks-reversed.jsonl \
+                    --out datasets/findings-reversed-oracle.jsonl \
+                    --labeler claude-cli --mode record --concurrency 2
+
+# 4. Jev, then the judge baseline. --hunks must match step 2: the hunk diff is
+#    what both are shown, and it has to be the one the reviewer reviewed.
+pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+            --hunks datasets/hunks-reversed.jsonl \
+            --mode record --judge none --label oracle
+pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+            --hunks datasets/hunks-reversed.jsonl \
+            --mode replay --judge claude-cli --judge-mode record --label oracle
+```
+
+Every fixture set keys on something the reversed run changes, so none of the
+frozen originals can be replayed into it (`FINDINGS.md` §11.2 has the table).
+The oracle labeler's key now includes which labeler answered; an absent
+labeler id reproduces the historical key exactly, so the 591 DeepSeek fixtures
+behind the numbers above still replay byte-for-byte.
+
+Cost projection for step 2, computed with zero calls: the reversed set's total
+reviewer input is 1.028× the original's, and the original thorough
+`claude-cli` pass cost USD 8.28 nominal, so H1b projects to ≈ USD 8.5 nominal.
+`pnpm findings --estimate` is not a free check on this path — for `claude-cli`
+it makes 3 real calls, since the subscription path has no token-counting
+endpoint.
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 
@@ -454,11 +512,13 @@ label (see "Re-scored against the fix-aware oracle label" above): H1 FAIL
 (formally — n=7 real is too small to clear the recall bar), H6 PASS, H3 FAIL.
 What remains is not a human-labeled sample — the oracle replaces that need —
 but H1b: a reversed-hunk dataset that can produce a real-finding population
-large enough to measure recall on.
+large enough to measure recall on. Its tooling landed on 2026-09-22 and the
+whole chain is proven by dry run; what is missing is the paid reviewer,
+labeler and judge passes.
 
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
-| H1 · finding filter, re-scored on a reversed-hunk oracle sample (recall ≥ 0.95, ≥ 40% noise discarded) | H1b: present after → before so a real finding is one that flags the bug the fix later removed; reviewer pass, oracle label, Jev/judge scoring (≈ USD 10 of DeepSeek; balance exhausted 2026-09-22) | not yet built |
+| H1 · finding filter, re-scored on a reversed-hunk oracle sample (recall ≥ 0.95, ≥ 40% noise discarded) | H1b: present after → before so a real finding is one that flags the bug the fix later removed; reviewer pass, oracle label, Jev/judge scoring (≈ USD 8.5 nominal on the Claude subscription) | tooling built and dry-run proven 2026-09-22; `pnpm dataset:reverse` then the four commands in "H1b — reversed hunks" above |
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |

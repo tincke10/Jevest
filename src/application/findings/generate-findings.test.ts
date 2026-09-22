@@ -459,3 +459,50 @@ describe("generateFindings promptMode", () => {
     expect(result.records[0]?.reviewer).toEqual({ provider: "claude-cli", model: "claude-opus-5" });
   });
 });
+
+describe("generateFindings orientation", () => {
+  function capturingReviewer(seen: ReviewInput[]): ReviewerPort {
+    return {
+      async review(input: ReviewInput): Promise<ReviewOutput> {
+        seen.push(input);
+        return { findings: [], model: "m", usage: USAGE, latencyMs: 1 };
+      },
+    };
+  }
+
+  it("shows the reviewer the recorded before and header for an original hunk", async () => {
+    const seen: ReviewInput[] = [];
+    await generateFindings({
+      hunks: [hunk({ id: "h1" })],
+      reviewer: capturingReviewer(seen),
+      provider: "anthropic",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 100,
+    });
+    expect(seen[0]?.before).toBe("line10\nline11\nline12");
+    expect(seen[0]?.hunkHeader).toBe("@@ -10,3 +10,3 @@");
+  });
+
+  it("shows the reviewer the FIXED code and the reversed header for a reversed hunk", async () => {
+    const seen: ReviewInput[] = [];
+    await generateFindings({
+      hunks: [
+        hunk({
+          id: "h1-rev",
+          orientation: "reversed",
+          reversedFrom: "h1",
+          diff: "@@ -10,4 +10,3 @@\n line10\n-fixed11\n+line11\n line12",
+        }),
+      ],
+      reviewer: capturingReviewer(seen),
+      provider: "anthropic",
+      pricing: CLAUDE_OPUS_5_PRICING,
+      budgetUsd: 100,
+    });
+    // `after` is the fixed code: on a reversed record the change runs
+    // fixed -> buggy, so that is what sits before the change.
+    expect(seen[0]?.before).toBe("line10\nfixed11\nline12");
+    expect(seen[0]?.hunkHeader).toBe("@@ -10,4 +10,3 @@");
+    expect(seen[0]?.diff).toBe("@@ -10,4 +10,3 @@\n line10\n-fixed11\n+line11\n line12");
+  });
+});

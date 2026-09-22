@@ -11,6 +11,7 @@ malformed line, so "it loads" is a meaningful check.
 | File | Records | Labels | Source repos (license) | Schema (TS type) | Produced by | Known limitations |
 |---|---|---|---|---|---|---|
 | `hunks.jsonl` | 100 (50 defect / 50 benign) | `label.defect`, `label.category`; `touches_security` / `touches_public_api` path heuristics; every record `needs_manual_review: true` | zod, vitest, hono, tRPC (all MIT) | `HunkRecord` in `src/application/spike/hunk-record.ts` | `npx tsx scripts/dataset/collect-hunks.ts --workdir <dir> --target-defect 50 --target-benign 50 --max-scan 800` | Seed labels from commit metadata (`fix:` + issue link), not a line-by-line read; first eligible hunk per commit; `src/*.ts` only; squash-merge assumption (§ hunks 5) |
+| `hunks-reversed.jsonl` | 100 (50 reversed defect / 50 copied benign) | same `label.defect` as `hunks.jsonl` (unchanged), plus `orientation` and `reversed_from`; every record `needs_manual_review: true` | derived from `hunks.jsonl`, no new sources | `HunkRecord` in `src/application/spike/hunk-record.ts` | `pnpm dataset:reverse` (pure local computation, no network, no LLM) | The reviewer's view only: a defect hunk's `diff` runs after → before so the change introduces the bug, while `before`/`after`/`label`/`evidence`/`hunk_header` stay in ORIGINAL orientation for the oracle labeler; line-overlap `label.real` on a reversed hunk measures the reversed change's lines, so score H1b against `label.oracle` (`FINDINGS.md` §11) |
 | `profile-labels.jsonl` | 100 (one per hunk) | `change_kind`, `touches_public_api`, `touches_error_handling`, `touches_async`, `touches_io`, AST-derived on changed lines (labels v2); `needs_manual_review: true` | same hunks as above | `ProfileLabelRecord` in `src/application/profile/profile-label-record.ts` | `pnpm profile:label` | Rule blind spots documented in `docs/analysis/h0-prime-error-analysis.md` (barrel re-exports, declaration merging, `#private` fields, regex literals); 4–14 positives per rare noul |
 | `findings.jsonl` | 14 (strict reviewer pass over the 100 hunks) | `label.real` by line-overlap with the fix, `suggested_severity`; `needs_manual_review: true` | findings over the same four repos' hunks | `FindingRecord` in `src/domain/finding.ts` | `pnpm findings --provider claude-cli --record --budget-usd 15` | Far below the ≥ 200 findings SPEC §4.2 needs for H1/H3; line-overlap misses a correct finding reported a few lines off; a thorough-prompt pass is in progress (`FINDINGS.md`) |
 | `hunk-evidence.jsonl` | 100 (one per hunk; 50 with issue text, 50 pull-request only) | none — it is evidence, not labels | issue and PR text from the same four repos (all MIT, all public) | `HunkEvidenceRecord` in `src/application/findings/hunk-evidence.ts` | `pnpm dataset:evidence` | Bodies capped at 2000 characters with an explicit marker; a deleted or transferred link is silently absent; fetched once, so a later edit upstream is not reflected |
@@ -336,6 +337,72 @@ summarizes it; the script is authoritative). `--repos` accepts an explicit
 comma-separated `owner/name` list to rebalance across repos, and
 `--fallback-repos` to change which repos only get used to top up a shortfall —
 useful for Phase 1's larger (≥500-hunk) dataset.
+
+---
+
+# `hunks-reversed.jsonl` — H1b reviewer set (derived from `hunks.jsonl`)
+
+Same 100 hunks, one thing changed: for the 50 **defect** hunks the `diff` runs
+**after → before**, so the change under review is the one that *introduces* the
+bug rather than the one that fixed it. The 50 benign hunks are copied
+unchanged. Produced by `pnpm dataset:reverse`, pure local computation — no
+network, no LLM, no cost — and it never writes to `hunks.jsonl`.
+
+Why it exists: the original dataset hands the reviewer the bugfix commit's own
+diff, so a finding can only score `real` when it happens to name the defect
+being removed. That produced 7 real findings out of 299 under the fix-aware
+oracle label — a fine noise benchmark and an unusable recall population. See
+`FINDINGS.md` §11 for the full argument and the H1b protocol.
+
+## 1. What changes and what does not
+
+| Field | Reversed defect record | Copied benign record |
+|---|---|---|
+| `id` | `<original id>-rev` | unchanged |
+| `reversed_from` | the original id | absent |
+| `orientation` | `"reversed"` | `"original"` |
+| `diff` | reversed: `-`/`+` swapped, `@@` old/new ranges swapped, each change block regrouped so removals precede additions (what `git diff` would emit for the reverse patch) | unchanged |
+| `before`, `after`, `label`, `evidence`, `hunk_header`, `file`, `language`, `repo`, `commit`, `parent` | **unchanged, original orientation** | unchanged |
+
+`before` stays the buggy code and `after` the fixed code on purpose: the
+fix-aware oracle labeler (`FINDINGS.md` §10) must keep seeing the same thing it
+saw on the original dataset, or its two framings would no longer mean what
+their prompts say. It is the *reviewer's* view that is reversed, never the
+ground truth's.
+
+Because of that split, the reviewer is not simply handed `before`. For a
+reversed hunk `reviewerViewOfHunk` (`src/application/spike/reverse-hunk.ts`)
+shows it the **fixed** code as the pre-image and the reversed `@@` header,
+since that is what sits before a fixed → buggy change. Pairing the recorded
+`before` with a diff that introduces the bug would be a contradiction.
+
+## 2. Known limitations
+
+- **`label.defect` is unchanged and now means the opposite direction.** It
+  still marks the hunks that came from bugfix commits; on a reversed record
+  that is the hunk whose change *adds* the defect. Nothing reads it as
+  "the diff fixes something", but the name is now counter-intuitive.
+- **Line-overlap `label.real` is not meaningful here.** It scores a finding by
+  overlap with the lines the diff touched, computed on the reversed diff's own
+  before-side. Score H1b against `label.oracle` instead.
+- **The evidence is keyed by the original id.** `hunk-evidence.jsonl` is not
+  regenerated; `pnpm findings:label` resolves a reversed hunk through
+  `reversed_from`.
+- **Reversal is syntactic.** It turns the recorded hunk around; it does not
+  re-derive the hunk from the repository, so anything the original record got
+  wrong is carried over unchanged.
+- **`needs_manual_review: true` everywhere**, inherited from `hunks.jsonl`.
+
+## 3. Reproducing
+
+```bash
+# No network, no API key, no cost. Deterministic.
+pnpm dataset:reverse
+```
+
+The reversal is its own inverse, which the test suite asserts on a hand-written
+diff: reversing `hunks-reversed.jsonl` again would give back the original
+diffs. The script refuses an already-reversed file rather than doing it.
 
 ---
 

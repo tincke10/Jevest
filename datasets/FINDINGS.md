@@ -653,16 +653,100 @@ That makes `findings-thorough-oracle.jsonl` two different things at once:
   stays formally FAIL even though the underlying AUC shows real separation
   (§10.6).
 
-**Proposed next step (H1b, not yet approved, no cost incurred): reverse the
-hunks.** Present `after → before` instead of `before → after` — i.e., show
-the reviewer the buggy state as if it were "the change" and hide the fix.
-Under that framing, a real finding is one that flags the bug the fix later
-removed, and every one of the 100 defect hunks becomes a chance to produce a
-real finding instead of 1-in-3 on average. The pipeline is unchanged: a
-reviewer pass on DeepSeek, oracle labeling exactly as in §10, Jev/judge
-scoring exactly as in §9/§10.6 — all existing tooling, no new code. Estimated
-cost ≈ USD 10 of DeepSeek. Blocked on topping up the DeepSeek balance
-(exhausted 2026-09-22, see §10.6).
+### 11.1 H1b: the reversed dataset
+
+**Reverse the hunks.** Present `after → before` instead of `before → after` —
+show the reviewer the buggy state as the change the "PR" introduces, and hide
+the fix. Under that framing a real finding is one that flags the bug the fix
+later removed, so every defect hunk becomes a chance to produce one instead of
+1-in-3 on average.
+
+`pnpm dataset:reverse` builds `datasets/hunks-reversed.jsonl` from
+`datasets/hunks.jsonl` (`datasets/README.md` § hunks-reversed): the 50 defect
+hunks get a reversed `diff` and an id of `<id>-rev`, the 50 benign hunks are
+copied unchanged so the reviewer set still mixes both kinds. Pure local
+computation, no network, no LLM, no cost.
+
+**What stays in original orientation, and why.** `before`, `after`, `label`,
+`evidence` and `hunk_header` are untouched on a reversed record. The oracle
+labeler must keep seeing `before` = buggy and `after` = fixed, or its two
+framings stop meaning what §10.2 says they mean. Only the reviewer's view
+moves.
+
+**The prompts are unchanged, and now read literally.** Both labeler framings
+say the reviewer "wrote about the BEFORE code". On the original dataset that
+was a convention — the reviewer saw a diff leaving that code behind. On the
+reversed dataset it is the plain truth: the reviewer saw a change that
+*introduces* the before-state, so "the problem the finding claims, in the
+BEFORE code" is exactly the problem the change under review adds. Pass A
+("does the finding describe what the fix fixed?") is unaffected: the fix is
+still the original commit, and `before`/`after` still bracket it. No prompt was
+edited for H1b — deliberately, so a verdict means the same thing on both
+datasets and the two runs stay comparable.
+
+**What the reviewer is actually shown.** Not the record's `before`: for a
+reversed hunk the change runs fixed → buggy, so the code before it is the
+FIXED code, and the header is the reversed diff's own. See
+`reviewerViewOfHunk` in `src/application/spike/reverse-hunk.ts`. Pairing the
+buggy pre-image with a diff that introduces the bug would be a contradiction.
+
+### 11.2 H1b protocol (commands in order)
+
+```bash
+# 1. Build the reversed reviewer set. No network, no LLM, no cost.
+pnpm dataset:reverse
+
+# 2. Reviewer pass over the reversed hunks (thorough prompt, same as §7).
+#    Resumable: an existing fixture is served from disk and no call is made.
+pnpm findings --provider claude-cli --prompt thorough --record --concurrency 2 \
+              --budget-usd 15 \
+              --hunks datasets/hunks-reversed.jsonl \
+              --fixtures-dir tests/fixtures/findings-reversed \
+              --out datasets/findings-reversed.jsonl
+
+# 3. Fix-aware oracle label, 2 calls per finding. Evidence resolves through
+#    `reversed_from`, so no new issue/PR fetch is needed.
+pnpm findings:label --findings datasets/findings-reversed.jsonl \
+                    --hunks datasets/hunks-reversed.jsonl \
+                    --out datasets/findings-reversed-oracle.jsonl \
+                    --labeler claude-cli --mode record --concurrency 2
+
+# 4. Jev over the reversed findings. --hunks must match step 2, or Jev would
+#    be scored on diffs the reviewer never saw.
+pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+            --hunks datasets/hunks-reversed.jsonl \
+            --mode record --judge none --label oracle
+
+# 5. Judge baseline (H6) over the same findings, then the final scoring pass.
+pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+            --hunks datasets/hunks-reversed.jsonl \
+            --mode replay --judge claude-cli --judge-mode record --label oracle
+
+# Prove the whole chain at zero cost first (seeded fakes, meaningless verdicts):
+pnpm findings:label --findings <a small findings file over reversed hunk ids> \
+                    --hunks datasets/hunks-reversed.jsonl \
+                    --labeler dry-run --mode dry-run --out /tmp/oracle.jsonl
+pnpm filter --findings /tmp/oracle.jsonl --hunks datasets/hunks-reversed.jsonl \
+            --mode dry-run --judge none --label oracle
+```
+
+Fixtures never collide with the frozen originals, and each set keys on
+something the reversed run changes:
+
+| Fixture set | Key | Why a reversed run cannot replay an original answer |
+|---|---|---|
+| reviewer, `tests/fixtures/findings-reversed/` | sha256 of the whole `ReviewInput` | `-rev` ids and reversed diffs hash differently; `--fixtures-dir` also keeps the files apart |
+| oracle labeler, `tests/fixtures/findings-oracle/` | sha256 of (input, framing, **labeler**) | the labeler is now part of the key, so a DeepSeek label is never served to a `claude-cli` run; an absent labeler id keeps the 591 existing DeepSeek fixtures replaying byte-for-byte |
+| Jev, `tests/fixtures/filter/` | sha256 of (state, questions) — the state carries the hunk diff | the reversed diff changes the state hash |
+| judge, `tests/fixtures/filter-judge/` | sha256 of the whole judge input, which carries the finding id and the hunk diff | both differ; the frozen 223 are untouched |
+
+Cost estimate for step 2, computed without making a single call: the reversed
+set's total reviewer input (system + user prompt over all 100 hunks) is 1.028×
+the original's, and the original thorough `claude-cli` pass cost USD 8.28
+nominal (§7), so H1b projects to **≈ USD 8.5 nominal** (subscription quota,
+not cash). Note that `pnpm findings --estimate` is *not* a free check for
+`claude-cli`: it makes 3 real calls, because there is no token-counting
+endpoint for the subscription path.
 
 Until H1b lands, stage 4 (finding filter) stays in annotate mode
 (`findingFilter.mode: "annotate"`): findings are published with their

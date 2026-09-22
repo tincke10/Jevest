@@ -45,3 +45,25 @@ export function labelerOutputSchemaFor(
 ): typeof fixMatchOutputSchema | typeof claimVerificationOutputSchema {
   return framing === "fix-match" ? fixMatchOutputSchema : claimVerificationOutputSchema;
 }
+
+/** Plain JSON Schema for `claude -p --json-schema`; `$schema` stripped for the same reason as the judge's. */
+function toPlainJsonSchema(framing: LabelerFraming): Record<string, unknown> {
+  const schema = z.toJSONSchema(labelerOutputSchemaFor(framing)) as Record<string, unknown>;
+  const { $schema: _drop, ...rest } = schema;
+  return rest;
+}
+
+const LABELER_OUTPUT_JSON_SCHEMAS: Record<LabelerFraming, Record<string, unknown>> = {
+  "fix-match": toPlainJsonSchema("fix-match"),
+  "claim-verification": toPlainJsonSchema("claim-verification"),
+};
+
+/**
+ * The framing's schema as plain JSON, for the claude-cli labeler's
+ * `--json-schema`. One per framing, so the CLI itself enforces the separation
+ * the zod schemas enforce for DeepSeek: a pass cannot answer in the other's
+ * vocabulary even by accident.
+ */
+export function labelerOutputJsonSchemaFor(framing: LabelerFraming): Record<string, unknown> {
+  return LABELER_OUTPUT_JSON_SCHEMAS[framing];
+}

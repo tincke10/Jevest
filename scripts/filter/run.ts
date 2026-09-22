@@ -6,9 +6,18 @@
  * pipeline). Mirrors `scripts/spike/run.ts`'s mode structure.
  *
  * Usage:
- *   pnpm filter [--findings <path>] [--batch-size N] [--mode live|record|replay|dry-run]
+ *   pnpm filter [--findings <path>] [--hunks <path>] [--batch-size N]
+ *              [--mode live|record|replay|dry-run]
  *              [--judge none|deepseek|claude-cli|dry-run] [--judge-mode record|replay]
  *              [--judge-concurrency N] [--label line-overlap|oracle]
+ *
+ * `--hunks` must name the same dataset the reviewer ran against, because the
+ * hunk diff is what Jev and the judge are both shown. For the H1b reversed run
+ * (datasets/FINDINGS.md §11) that is `datasets/hunks-reversed.jsonl`, whose
+ * defect hunks carry the reversed diff and the `-rev` ids the findings point
+ * at. Both fixture sets key on what the model was shown — Jev's on the state
+ * hash, the judge's on the whole input — so a reversed run records fresh
+ * entries and can never replay an original hunk's answer.
  *
  * `--label` picks the ground truth. The default, `line-overlap`, is the
  * original heuristic (datasets/FINDINGS.md §2) and keeps every committed
@@ -77,7 +86,7 @@ import type { FindingJudgePort } from "../../src/domain/ports/finding-judge-port
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_FINDINGS_PATH = join(REPO_ROOT, "datasets/findings.jsonl");
-const HUNKS_PATH = join(REPO_ROOT, "datasets/hunks.jsonl");
+const DEFAULT_HUNKS_PATH = join(REPO_ROOT, "datasets/hunks.jsonl");
 const FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter");
 const JUDGE_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter-judge");
 const DEEPSEEK_JUDGE_FIXTURES_DIR = join(REPO_ROOT, "tests/fixtures/filter-judge-deepseek");
@@ -98,6 +107,8 @@ const LABELS: readonly FilterLabelSource[] = ["line-overlap", "oracle"];
 
 export interface CliOptions {
   readonly findingsPath: string;
+  /** Hunks dataset whose diffs Jev and the judge are shown; `datasets/hunks-reversed.jsonl` for H1b. */
+  readonly hunksPath: string;
   readonly batchSize: number;
   readonly mode: Mode | null;
   readonly judge: Judge;
@@ -116,6 +127,7 @@ function requireValue(argv: readonly string[], index: number, flag: string): str
 
 export function parseArgs(argv: readonly string[]): CliOptions {
   let findingsPath = DEFAULT_FINDINGS_PATH;
+  let hunksPath = DEFAULT_HUNKS_PATH;
   let batchSize = 1;
   let mode: Mode | null = null;
   let judge: Judge = "none";
@@ -128,6 +140,9 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     switch (arg) {
       case "--findings":
         findingsPath = requireValue(argv, ++i, "--findings");
+        break;
+      case "--hunks":
+        hunksPath = requireValue(argv, ++i, "--hunks");
         break;
       case "--batch-size": {
         const value = Number(requireValue(argv, ++i, "--batch-size"));
@@ -182,7 +197,7 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     }
   }
 
-  return { findingsPath, batchSize, mode, judge, judgeMode, judgeConcurrency, label };
+  return { findingsPath, hunksPath, batchSize, mode, judge, judgeMode, judgeConcurrency, label };
 }
 
 /**
@@ -316,12 +331,21 @@ async function main(): Promise<number> {
 
   const [findingsRaw, hunksRaw] = await Promise.all([
     readFile(options.findingsPath, "utf8"),
-    readFile(HUNKS_PATH, "utf8"),
+    readFile(options.hunksPath, "utf8"),
   ]);
   const findings = parseFindingRecordsJsonl(findingsRaw);
   const hunks = parseHunkRecordsJsonl(hunksRaw);
 
+  // The diff Jev and the judge are shown must be the exact one the reviewer
+  // reviewed — reversed for an H1b hunk. Reading it from the same file the
+  // reviewer ran against is what keeps the three sides looking at one thing.
   const hunkDiffsById = new Map(hunks.map((h) => [h.id, h.diff]));
+  const reversedCount = hunks.filter((h) => h.orientation === "reversed").length;
+  if (reversedCount > 0) {
+    console.log(
+      `[filter] ${options.hunksPath}: ${reversedCount} reversed hunk(s); Jev and the judge see the same reversed diffs the reviewer saw.`,
+    );
+  }
   const { groundTruth: realByFindingId, counts: labelCounts } = groundTruthFromLabel(
     findings,
     options.label,

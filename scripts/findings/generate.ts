@@ -9,6 +9,21 @@
  *   pnpm findings --provider anthropic|openai|deepseek|claude-cli [--limit N]
  *                 [--budget-usd N] [--estimate] [--out path] [--record]
  *                 [--seed N] [--concurrency N] [--prompt strict|thorough]
+ *                 [--hunks path] [--fixtures-dir path]
+ *
+ * `--hunks` reviews a different hunks dataset, `datasets/hunks-reversed.jsonl`
+ * in particular (H1b, datasets/FINDINGS.md §11): there the 50 defect hunks
+ * carry a REVERSED diff, so the change under review introduces the bug the
+ * real fix removed, and a real finding is one that flags it. A reversed hunk
+ * is shown to the reviewer with the FIXED code as its pre-image and with its
+ * own reversed `@@` header (see `reviewerViewOfHunk`), because that is what
+ * sits before a fixed -> buggy change.
+ *
+ * `--fixtures-dir` overrides where `--record` writes. Reviewer fixtures are
+ * keyed by the whole ReviewInput, so the reversed run's `-rev` ids and
+ * reversed diffs already hash differently from the frozen originals; the flag
+ * exists so a second dataset's fixtures can still be kept in their own
+ * directory rather than mixed into the one a past run froze.
  *
  * `--estimate` never spends real per-token API money: for `anthropic`, it
  * uses `client.messages.countTokens` on a small sample (a free endpoint —
@@ -100,6 +115,10 @@ export interface CliOptions {
   readonly seed: number;
   readonly concurrency: number;
   readonly prompt: ReviewPromptMode;
+  /** Hunks dataset override; null means `datasets/hunks.jsonl`. */
+  readonly hunks: string | null;
+  /** Reviewer-fixtures dir override; null means the prompt mode's default dir. */
+  readonly fixturesDir: string | null;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -120,6 +139,8 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let seed = DEFAULT_SAMPLE_SEED;
   let concurrency = DEFAULT_CONCURRENCY;
   let prompt: ReviewPromptMode = "strict";
+  let hunks: string | null = null;
+  let fixturesDir: string | null = null;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -185,6 +206,12 @@ export function parseArgs(argv: readonly string[]): CliOptions {
         prompt = value as ReviewPromptMode;
         break;
       }
+      case "--hunks":
+        hunks = requireValue(argv, ++i, "--hunks");
+        break;
+      case "--fixtures-dir":
+        fixturesDir = requireValue(argv, ++i, "--fixtures-dir");
+        break;
       default:
         throw new Error(`unknown flag "${arg}"`);
     }
@@ -194,7 +221,19 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     throw new Error(`--provider is required (one of ${PROVIDERS.map((p) => `"${p}"`).join(", ")})`);
   }
 
-  return { provider, limit, budgetUsd, estimate, out, record, seed, concurrency, prompt };
+  return {
+    provider,
+    limit,
+    budgetUsd,
+    estimate,
+    out,
+    record,
+    seed,
+    concurrency,
+    prompt,
+    hunks,
+    fixturesDir,
+  };
 }
 
 function pricingFor(provider: Provider): ModelPricing {
@@ -225,6 +264,7 @@ function buildReviewer(
   provider: Provider,
   record: boolean,
   promptMode: ReviewPromptMode,
+  fixturesDir: string | null,
 ): ReviewerPort {
   const systemPrompt = reviewSystemPromptFor(promptMode);
   let underlying: ReviewerPort;
@@ -259,7 +299,7 @@ function buildReviewer(
     return underlying;
   }
   return createRecordedReviewer({
-    fixturesDir: FIXTURES_DIR_BY_PROMPT[promptMode],
+    fixturesDir: fixturesDir ?? FIXTURES_DIR_BY_PROMPT[promptMode],
     mode: "record",
     underlying,
   });
@@ -344,8 +384,15 @@ async function writeFindingsAppendDedupe(
 async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));
 
-  const raw = await readFile(DATASET_PATH, "utf8");
+  const hunksPath = options.hunks ?? DATASET_PATH;
+  const raw = await readFile(hunksPath, "utf8");
   const allHunks = parseHunkRecordsJsonl(raw);
+  const reversedCount = allHunks.filter((h) => h.orientation === "reversed").length;
+  if (reversedCount > 0) {
+    console.log(
+      `[findings] ${hunksPath}: ${reversedCount} of ${allHunks.length} hunk(s) are REVERSED (the diff introduces the bug the real fix removed, H1b).`,
+    );
+  }
 
   if (options.estimate) {
     if (options.provider === "anthropic") {
@@ -367,7 +414,12 @@ async function main(): Promise<number> {
     );
   }
 
-  const reviewer = buildReviewer(options.provider, options.record, options.prompt);
+  const reviewer = buildReviewer(
+    options.provider,
+    options.record,
+    options.prompt,
+    options.fixturesDir,
+  );
   const pricing = pricingFor(options.provider);
 
   console.log(

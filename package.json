@@ -22,6 +22,7 @@
     "review": "tsx scripts/review/run.ts",
     "dataset:prs": "tsx scripts/dataset/collect-prs.ts",
     "dataset:evidence": "tsx scripts/dataset/collect-evidence.ts",
+    "dataset:reverse": "tsx scripts/dataset/reverse-hunks.ts",
     "coherence:summarize": "tsx scripts/coherence/summarize.ts",
     "coherence": "tsx scripts/coherence/run.ts",
     "adversarial": "tsx scripts/adversarial/run.ts"

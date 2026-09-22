@@ -11,6 +11,7 @@ import type { FindingRecord, ReviewPromptMode, ReviewerProvider } from "../../do
 import { computeFixChangedLines, labelFinding } from "../../domain/line-overlap.js";
 import type { ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { HunkRecord } from "../spike/hunk-record.js";
+import { reviewerViewOfHunk } from "../spike/reverse-hunk.js";
 import { type ModelPricing, reviewCostUsd } from "./pricing.js";
 
 export interface GenerateFindingsFailure {
@@ -83,15 +84,19 @@ export async function generateFindings(
   let nextIndex = 0;
 
   async function reviewWithRetry(hunk: HunkRecord): Promise<ReviewOutput> {
+    // Orientation-aware: on a reversed hunk (H1b) the change runs fixed ->
+    // buggy, so the code "before the change" is `after`, and the header is
+    // the reversed diff's own. See reviewerViewOfHunk.
+    const view = reviewerViewOfHunk(hunk);
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         return await options.reviewer.review({
           hunkId: hunk.id,
           file: hunk.file,
           language: hunk.language,
-          hunkHeader: hunk.hunkHeader,
-          before: hunk.before,
-          diff: hunk.diff,
+          hunkHeader: view.hunkHeader,
+          before: view.before,
+          diff: view.diff,
         });
       } catch (error) {
         if (!(error instanceof ReviewerRateLimitError) || attempt === maxAttempts) {

@@ -145,3 +145,19 @@ describe("groundTruthFromLabel", () => {
     expect(() => groundTruthFromLabel([withoutOracle], "oracle")).toThrow(/pnpm findings:label/);
   });
 });
+
+describe("parseArgs --hunks", () => {
+  it("defaults to datasets/hunks.jsonl", () => {
+    expect(parseArgs([]).hunksPath).toMatch(/datasets\/hunks\.jsonl$/);
+  });
+
+  it("parses --hunks so Jev and the judge see the same reversed diffs the reviewer saw", () => {
+    expect(parseArgs(["--hunks", "datasets/hunks-reversed.jsonl"]).hunksPath).toBe(
+      "datasets/hunks-reversed.jsonl",
+    );
+  });
+
+  it("throws when --hunks is given no value", () => {
+    expect(() => parseArgs(["--hunks"])).toThrow(/--hunks/);
+  });
+});

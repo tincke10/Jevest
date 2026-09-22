@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   claimVerificationOutputSchema,
   fixMatchOutputSchema,
+  labelerOutputJsonSchemaFor,
   labelerOutputSchemaFor,
 } from "./labeler-output-schema.js";
 
@@ -59,5 +60,26 @@ describe("labelerOutputSchemaFor", () => {
   it("picks the schema by framing", () => {
     expect(labelerOutputSchemaFor("fix-match")).toBe(fixMatchOutputSchema);
     expect(labelerOutputSchemaFor("claim-verification")).toBe(claimVerificationOutputSchema);
+  });
+});
+
+describe("labelerOutputJsonSchemaFor", () => {
+  it("emits a plain JSON schema per framing, with $schema stripped for `claude -p --json-schema`", () => {
+    const schema = labelerOutputJsonSchemaFor("fix-match");
+    expect(schema).not.toHaveProperty("$schema");
+    expect(schema).toHaveProperty("properties.verdict");
+    expect(schema).toHaveProperty("properties.confidence");
+    expect(schema).toHaveProperty("properties.reason");
+  });
+
+  it("carries each framing's own verdict vocabulary, so one can never answer as the other", () => {
+    const fixMatch = labelerOutputJsonSchemaFor("fix-match") as {
+      properties: { verdict: { enum: string[] } };
+    };
+    const claim = labelerOutputJsonSchemaFor("claim-verification") as {
+      properties: { verdict: { enum: string[] } };
+    };
+    expect(fixMatch.properties.verdict.enum).toEqual(["real", "not-this", "unclear"]);
+    expect(claim.properties.verdict.enum).toEqual(["present", "absent", "unclear"]);
   });
 });

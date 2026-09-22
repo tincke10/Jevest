@@ -160,3 +160,66 @@ describe("createRecordedFindingLabeler", () => {
     );
   });
 });
+
+describe("fixtureKeyForLabelerInput labelerId", () => {
+  it("keeps the historical key when no labelerId is given, so the 591 DeepSeek fixtures still replay", () => {
+    expect(fixtureKeyForLabelerInput(INPUT, "fix-match", undefined)).toBe(
+      fixtureKeyForLabelerInput(INPUT, "fix-match"),
+    );
+  });
+
+  it("changes the key per labeler, so a DeepSeek label never replays for a claude-cli run", () => {
+    const unkeyed = fixtureKeyForLabelerInput(INPUT, "fix-match");
+    const claudeCli = fixtureKeyForLabelerInput(INPUT, "fix-match", "claude-cli");
+    const other = fixtureKeyForLabelerInput(INPUT, "fix-match", "deepseek");
+    expect(claudeCli).not.toBe(unkeyed);
+    expect(claudeCli).not.toBe(other);
+  });
+});
+
+describe("createRecordedFindingLabeler labelerId", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "labeler-id-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("records under the labeler-specific key, leaving the unkeyed fixture untouched", async () => {
+    await createRecordedFindingLabeler({
+      fixturesDir: dir,
+      mode: "record",
+      underlying: scripted(),
+    }).labelFixMatch(INPUT);
+
+    const recorded = await createRecordedFindingLabeler({
+      fixturesDir: dir,
+      mode: "record",
+      labelerId: "claude-cli",
+      underlying: scripted({ verdict: "not-this" }),
+    }).labelFixMatch(INPUT);
+
+    expect(recorded.verdict).toBe("not-this");
+    const files = await readdir(dir);
+    expect(files).toHaveLength(2);
+    expect(files).toContain(`${fixtureKeyForLabelerInput(INPUT, "fix-match")}.json`);
+    expect(files).toContain(`${fixtureKeyForLabelerInput(INPUT, "fix-match", "claude-cli")}.json`);
+  });
+
+  it("refuses to replay another labeler's fixture for the same input", async () => {
+    await createRecordedFindingLabeler({
+      fixturesDir: dir,
+      mode: "record",
+      underlying: scripted(),
+    }).labelFixMatch(INPUT);
+
+    await expect(
+      createRecordedFindingLabeler({
+        fixturesDir: dir,
+        mode: "replay",
+        labelerId: "claude-cli",
+      }).labelFixMatch(INPUT),
+    ).rejects.toThrow(MissingLabelFixtureError);
+  });
+});

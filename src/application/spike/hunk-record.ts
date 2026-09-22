@@ -1,5 +1,6 @@
 /**
- * Type and loud-failing parser for one line of `datasets/hunks.jsonl`
+ * Type and loud-failing parser for one line of `datasets/hunks.jsonl` and of
+ * its reversed twin `datasets/hunks-reversed.jsonl`
  * (see datasets/README.md §1-3 for the schema and labeling protocol).
  * Zero SDK imports: this is application-layer data loading, not a port.
  */
@@ -18,6 +19,20 @@ export interface HunkRecordEvidence {
   readonly prUrl: string | null;
 }
 
+/**
+ * Which direction the record's `diff` runs. Absent on `datasets/hunks.jsonl`,
+ * where every diff is the bugfix commit's own change (before -> after).
+ *
+ * - `"original"`: `diff` goes before -> after, same as an absent field.
+ * - `"reversed"`: `diff` goes after -> before, i.e. the change INTRODUCES the
+ *   buggy state (H1b, datasets/FINDINGS.md §11). `before`, `after`, `label`
+ *   and `evidence` stay in original orientation on purpose, so the fix-aware
+ *   oracle labeler keeps seeing `before` = buggy and `after` = fixed.
+ */
+export type HunkOrientation = "original" | "reversed";
+
+export const HUNK_ORIENTATIONS: readonly HunkOrientation[] = ["original", "reversed"];
+
 export interface HunkRecord {
   readonly id: string;
   readonly repo: string;
@@ -35,6 +50,10 @@ export interface HunkRecord {
   readonly needsManualReview: boolean;
   /** Dataset schema/content version. Optional in the source file; defaults to 1 when absent. */
   readonly datasetVersion: number;
+  /** Absent on `hunks.jsonl`; set by `pnpm dataset:reverse`. See {@link HunkOrientation}. */
+  readonly orientation?: HunkOrientation;
+  /** The id of the original record this one was derived from, on a reversed record only. */
+  readonly reversedFrom?: string;
 }
 
 export class HunkRecordParseError extends Error {
@@ -100,6 +119,31 @@ function expectOptionalNumber(
   return value;
 }
 
+function expectOptionalString(
+  value: unknown,
+  field: string,
+  lineNumber: number,
+): string | undefined {
+  if (value === undefined) return undefined;
+  return expectString(value, field, lineNumber);
+}
+
+function expectOptionalOrientation(
+  value: unknown,
+  field: string,
+  lineNumber: number,
+): HunkOrientation | undefined {
+  if (value === undefined) return undefined;
+  const text = expectString(value, field, lineNumber);
+  if (!HUNK_ORIENTATIONS.includes(text as HunkOrientation)) {
+    throw new HunkRecordParseError(
+      lineNumber,
+      `field "${field}" must be one of ${HUNK_ORIENTATIONS.join(", ")}, got "${text}"`,
+    );
+  }
+  return text as HunkOrientation;
+}
+
 function describe(value: unknown): string {
   if (value === undefined) return "undefined (missing)";
   if (value === null) return "null";
@@ -118,6 +162,10 @@ export function parseHunkRecordLine(line: string, lineNumber: number): HunkRecor
   const obj = expectObject(raw, "<record>", lineNumber);
   const label = expectObject(obj.label, "label", lineNumber);
   const evidence = expectObject(obj.evidence, "evidence", lineNumber);
+  // Spread-when-present rather than `: undefined`, so a record from
+  // hunks.jsonl parses to exactly the object it always did (exactOptionalPropertyTypes).
+  const orientation = expectOptionalOrientation(obj.orientation, "orientation", lineNumber);
+  const reversedFrom = expectOptionalString(obj.reversed_from, "reversed_from", lineNumber);
 
   return {
     id: expectString(obj.id, "id", lineNumber),
@@ -153,6 +201,8 @@ export function parseHunkRecordLine(line: string, lineNumber: number): HunkRecor
     },
     needsManualReview: expectBoolean(obj.needs_manual_review, "needs_manual_review", lineNumber),
     datasetVersion: expectOptionalNumber(obj.dataset_version, "dataset_version", lineNumber, 1),
+    ...(orientation === undefined ? {} : { orientation }),
+    ...(reversedFrom === undefined ? {} : { reversedFrom }),
   };
 }
 

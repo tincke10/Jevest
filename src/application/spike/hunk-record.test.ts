@@ -121,6 +121,43 @@ describe("parseHunkRecordLine", () => {
   it("throws when the top-level value is not an object", () => {
     expect(() => parseHunkRecordLine("[1,2,3]", 4)).toThrow(/line 4/);
   });
+
+  it("omits orientation and reversedFrom entirely when the record has neither (hunks.jsonl)", () => {
+    const record = parseHunkRecordLine(validRecordJson(), 1);
+    expect("orientation" in record).toBe(false);
+    expect("reversedFrom" in record).toBe(false);
+  });
+
+  it("parses the reversed-dataset fields (hunks-reversed.jsonl)", () => {
+    const record = parseHunkRecordLine(
+      validRecordJson({
+        id: "repo-abc123-1-rev",
+        orientation: "reversed",
+        reversed_from: "repo-abc123-1",
+      }),
+      1,
+    );
+    expect(record.orientation).toBe("reversed");
+    expect(record.reversedFrom).toBe("repo-abc123-1");
+  });
+
+  it('parses orientation "original" on a copied benign record', () => {
+    const record = parseHunkRecordLine(validRecordJson({ orientation: "original" }), 1);
+    expect(record.orientation).toBe("original");
+    expect("reversedFrom" in record).toBe(false);
+  });
+
+  it("throws on an orientation outside the known vocabulary", () => {
+    expect(() => parseHunkRecordLine(validRecordJson({ orientation: "sideways" }), 8)).toThrow(
+      /"orientation"/,
+    );
+  });
+
+  it("throws when reversed_from has the wrong type", () => {
+    expect(() => parseHunkRecordLine(validRecordJson({ reversed_from: 7 }), 9)).toThrow(
+      /"reversed_from"/,
+    );
+  });
 });
 
 describe("parseHunkRecordsJsonl", () => {

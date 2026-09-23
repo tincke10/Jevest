@@ -25,7 +25,7 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 | H1 | Is this LLM finding a real defect? (central) | **PASS** on H1b (2026-09-23, reversed hunks vs. the fix-aware oracle, n=55 real / 154 noise): recall 0.964 (53/55) at threshold 0.45, 51.9% of noise discarded, AUC 0.792. The FAIL on the original (before → after) hunks stands as history — line-overlap AUC 0.592 (near chance), and the original oracle sample had only n=7 real, too small for a recall verdict. Caveats on the PASS: n=55 gives a wide recall interval, the oracle labeler and the H6 judge share a model, and the reversed diff is an artificial recall population (§ H1b) | below, "Thorough findings pass and finding filter" and "H1b — reversed hunks" |
 | H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** vs. the original oracle: 182× cheaper; **PASS** on H1b (2026-09-23): 704.7× cheaper, and Jev's recall exceeds the judge's at Jev's own threshold (gap −0.218); at the judge's own best threshold it only matches Jev's recall, at ~700× the cost and ~25× the latency | same run as H1; H1b below |
 | H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** raw, every time measured: ECE 0.191 vs. line-overlap (N=299, 2026-09-22); 0.504 vs. the original oracle sample (base rate 0.028); 0.284 on H1b (2026-09-23, base rate 0.263) — Jev's probabilities keep running above the true real rate. **FAIL post-hoc too** (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 there, well inside the bar, but carries 0.216 to the thorough set, whose base rate is ten times lower. Calibration is available and **off by default** | same run as H1; H1b and "Post-hoc calibration study" below |
-| H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
+| H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90 — **PASS**, also on near-duplicate crossings (2026-09-23): recall 0.97, precision 1.00, ECE 0.082. **PARTIAL** without-summary both times: recall 0.88 / ECE 0.102 random, recall 0.83 / ECE 0.178 near-duplicate | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`, `reports/spike-coherence-2026-09-23T14-22-36-776Z.md`; replay `pnpm coherence --variant all --mode replay`, `pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
 
@@ -738,13 +738,12 @@ dataset with a real-finding population of 55: H1 now **PASS** (recall 0.964,
 calibration study" above) closed H3 as far as it can be closed for now: a
 fitted map reaches a held-out ECE of 0.071 on the set it was fitted on and
 0.216 on a set with a different base rate, so the feature ships off by default
-and H3 stays FAIL. What remains below is H7's harder near-duplicate variant,
-H5's suite (already recorded, see below), and the H2/H4 real-PR collection.
+and H3 stays FAIL. What remains below is H5's suite (already recorded, see
+below) and the H2/H4 real-PR collection.
 
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
-| H7 hard · near-duplicate crossed pairs (same criteria, harder negative — see datasets/README.md §4b) | full 200-pair run over `coherence-pairs-hard.jsonl`, both variants; numbers pending | `pnpm dataset:pairs --strategy hard --out datasets/coherence-pairs-hard.jsonl` (already generated, no network) then `TYPESAFE_API_KEY=… pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode record`; replay with `pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |
 | H4 · Jev latency per PR (p95 < 2 s for ≤ 50 hunks) | same ≥ 20 PRs, `jev-latency-p95-ms` and total Jev time per run | instrumented on every run; no collection command yet |
@@ -760,10 +759,36 @@ the product-aware triage adopts it. Caveats: descriptions were crossed within
 the same repo but not chosen to be near-duplicates, so this measures the easy
 half of the problem; 6 of 100 incoherent pairs carry a basename leak (listed
 in datasets/README.md) and none of them appears among the worst pairs. The
-harder near-duplicate half (`coherence-pairs-hard.jsonl`, generated, not yet
-run against live Jev — see the "H7 hard" row above and datasets/README.md
-§4b) crosses each PR with its most-similar same-repo PR by change footprint
-instead of a random one.
+harder near-duplicate half (`coherence-pairs-hard.jsonl`, crossing each PR
+with its most-similar same-repo PR by change footprint instead of a random
+one, see datasets/README.md §4b) ran against live Jev on 2026-09-23 — see the
+subsection below.
+
+### H7 hard — near-duplicate crossed descriptions (2026-09-23)
+
+`coherence-pairs-hard.jsonl` crosses the same 100 PRs with the most similar
+same-repo PR by directory Jaccard (p10 0.25 / p50 0.75 / p90 1.00, seed 42,
+donor reuse capped at 2) instead of a random donor; 23 of 100 incoherent
+pairs carry a basename leak, against 6 for the random set (`pnpm dataset:pairs
+--strategy hard`, pure local computation, no network — datasets/README.md
+§4b). Recorded against live Jev, 400 requests (200 per variant),
+`reports/spike-coherence-2026-09-23T14-22-36-776Z.md`.
+
+| Variant | Threshold | Recall | Precision | F1 | ECE | Verdict |
+|---|---|---|---|---|---|---|
+| with-summary | 0.65 (best F1) | 0.970 | 1.000 | 0.985 | 0.082 | **PASS** |
+| without-summary | 0.15 (best F1) | 0.830 | 0.830 | 0.830 | 0.178 | **PARTIAL** |
+
+Against the random set (with-summary at 0.65: recall 0.990, precision 1.000,
+ECE 0.070; without-summary at its best threshold: recall 0.880, ECE 0.102 —
+see the paragraph above), near-duplicate donors cost the with-summary variant
+2 points of recall and the without-summary variant 5, while with-summary
+precision holds at 1.000. Latency p50 ~380 ms, p95 ~460 ms per variant; 200
+pairs run in about 78 s wall time. Reading: the LLM change summary is what
+makes the harder crossing survivable and remains the load-bearing input for
+product-aware triage — without it, recall on near-duplicate donors falls to
+0.83, below the 0.90 bar. Reproduce at zero cost with `pnpm coherence --pairs
+datasets/coherence-pairs-hard.jsonl --mode replay`.
 
 H5 was recorded against live Jev on 2026-09-21
 (`reports/adversarial-2026-09-21T21-38-55-741Z.md`, fixtures under

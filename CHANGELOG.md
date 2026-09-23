@@ -9,6 +9,16 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Hard crossing strategy for H7** (docs/SPEC.md §4.4, docs/BENCHMARK.md "H7
+  hard"): `pnpm dataset:pairs --strategy hard` builds
+  `coherence-pairs-hard.jsonl` by crossing each PR with the most similar
+  same-repo PR by directory Jaccard instead of a random donor (seed 42, donor
+  reuse capped at 2), a harder near-duplicate negative for H7. `pnpm coherence
+  --pairs <file>` runs the coherence spike over any pairs file, record or
+  replay. Measured against live Jev on 2026-09-23 (400 requests): with-summary
+  recall 0.970, precision 1.000, ECE 0.082 (**PASS**); without-summary recall
+  0.830, precision 0.830, ECE 0.178 (**PARTIAL**) — near-duplicate donors cost
+  2 points of recall with the LLM summary and 5 without it.
 - **Post-hoc calibration of `is_real_defect`** (H3, docs/SPEC.md §4.6.3,
   docs/BENCHMARK.md "Post-hoc calibration study"), **off by default**. New
   `pnpm calibrate` CLI fits and cross-validates four monotone maps (identity,

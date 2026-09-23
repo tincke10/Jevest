@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The finding actually describes the AFTER code's conditional `if (!current) map.set(...)`; the BEFORE code unconditionally calls `map.set(expect, results)` every time, so the claimed skipped write / reliance on identity mutation does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 553,
+    "cacheReadInputTokens": 3918,
+    "cacheCreationInputTokens": 2134
+  },
+  "latencyMs": 6683,
+  "nominalCostUsd": 0.037144
+}

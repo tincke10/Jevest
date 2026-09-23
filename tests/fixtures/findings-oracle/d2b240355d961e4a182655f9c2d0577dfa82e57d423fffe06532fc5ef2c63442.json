@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "The linked issue documents that the BEFORE code calls `DIRTY_MOCK_STATES.add(...)` on every mock invocation (that's exactly the recursion source), so the set is actively written and is not dead state; the change only adds a bound `add` alias rather than removing any writer.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 502,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3358
+  },
+  "latencyMs": 6598,
+  "nominalCostUsd": 0.046695
+}

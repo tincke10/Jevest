@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.88,
+  "reason": "The change fixed the inability to distinguish number formats at the type level (adding a `Format` generic to ZodNumberFormat), while the finding only speculates about assignability/compile issues from missing `as ZodInt` casts — an incidental side-effect of the fix, not the defect it addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 625,
+    "cacheReadInputTokens": 6024,
+    "cacheCreationInputTokens": 4318
+  },
+  "latencyMs": 8071,
+  "nominalCostUsd": 0.061837
+}

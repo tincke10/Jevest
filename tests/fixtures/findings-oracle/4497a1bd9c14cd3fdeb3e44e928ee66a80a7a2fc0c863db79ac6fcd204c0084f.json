@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The BEFORE code contains no `inferSubscriptionInput`/`inferSubscriptionOutput` re-export at all — the claim concerns symbols introduced by the change (whose PR also adds the core definitions), so the alleged broken re-export is not a defect in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 727,
+    "cacheReadInputTokens": 4057,
+    "cacheCreationInputTokens": 2447
+  },
+  "latencyMs": 9287,
+  "nominalCostUsd": 0.044693500000000004
+}

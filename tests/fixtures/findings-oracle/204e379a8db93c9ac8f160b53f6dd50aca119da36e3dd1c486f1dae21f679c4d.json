@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The entire intersection-folding mechanism (`ctx.intersections`, `foldIntersection`, the finalize fold pass) is introduced by this bugfix commit, so the BEFORE code has no such context field or loop that could be left dead by an absent push.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 875,
+    "cacheReadInputTokens": 4804,
+    "cacheCreationInputTokens": 3343
+  },
+  "latencyMs": 11607,
+  "nominalCostUsd": 0.057726999999999994
+}

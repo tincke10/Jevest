@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The claim asserts a `jwt?` member is being removed from the BEFORE code, but the BEFORE `Authorizer` interface contains only `iam` and no `jwt` at all — the commit, issue, and PR all confirm `jwt`/`lambda` were missing and are being added, so there is no removal or regression.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 384,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2890
+  },
+  "latencyMs": 4811,
+  "nominalCostUsd": 0.039065
+}

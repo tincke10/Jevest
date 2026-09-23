@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.72,
+  "reason": "Despite odd framing (it reads the change as a removal), the finding's substantive claim matches the fixed defect: without a per-operation AbortController raced into the request, unsubscribing the observable never cancels the in-flight batched JSONL stream — exactly what the commit adds.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 915,
+    "cacheReadInputTokens": 5188,
+    "cacheCreationInputTokens": 3753
+  },
+  "latencyMs": 11396,
+  "nominalCostUsd": 0.063019
+}

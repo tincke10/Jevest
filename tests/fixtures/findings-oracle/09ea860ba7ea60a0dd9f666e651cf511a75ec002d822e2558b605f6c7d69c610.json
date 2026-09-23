@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The finding is written backwards: `addDirtyMock` does not exist in the BEFORE code (it is introduced by the change), so there is no removal and no dangling/unbound reference to break; the real BEFORE defect is recursion from invoking the spied `DIRTY_MOCK_STATES.add`, not a receiver TypeError.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 942,
+    "cacheReadInputTokens": 5651,
+    "cacheCreationInputTokens": 4290
+  },
+  "latencyMs": 12260,
+  "nominalCostUsd": 0.0692955
+}

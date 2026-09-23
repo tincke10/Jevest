@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a performance refactor replacing the Reflect.ownKeys + propertyIsEnumerable per-key walk with an emitOwnKeys snapshot helper, not a bugfix; the finding instead speculates about a hypothetical duplicate `let` declaration introduced by that new helper, which the commit neither reports nor fixes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 628,
+    "cacheReadInputTokens": 5040,
+    "cacheCreationInputTokens": 3320
+  },
+  "latencyMs": 8277,
+  "nominalCostUsd": 0.05144
+}

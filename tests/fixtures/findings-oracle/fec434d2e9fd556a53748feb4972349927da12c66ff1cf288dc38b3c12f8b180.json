@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "In the BEFORE code `processedSet` is declared inside the per-handlerSet loop, so it is reset for each handler set and scores can never collide across sets; the claimed hazard requires a hypothetical hoisting that is not present, and the fix replacing the flag with `!i` confirms the original already meant \"first key only\".",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1320,
+    "cacheReadInputTokens": 4777,
+    "cacheCreationInputTokens": 3739
+  },
+  "latencyMs": 16270,
+  "nominalCostUsd": 0.07279849999999999
+}

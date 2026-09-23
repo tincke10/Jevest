@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code contains no user-supplied `title` option at all — the `title: string` field on `JobSummaryOptions` is introduced by this very commit, so the claimed unescaped-title interpolation risk cannot exist in the before state (the title was hardcoded 'Vitest Test Report').",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 408,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1953
+  },
+  "latencyMs": 4993,
+  "nominalCostUsd": 0.030295000000000002
+}

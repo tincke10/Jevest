@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code calls the existing `experimental_parseSpecifications` and contains no defect; the finding critiques the post-change call site, and the commit/PR explicitly states the method was renamed with the old name retained as a deprecated alias, so neither the TypeError nor the silent public-API removal it posits exists.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 562,
+    "cacheReadInputTokens": 3736,
+    "cacheCreationInputTokens": 1941
+  },
+  "latencyMs": 6857,
+  "nominalCostUsd": 0.035348
+}

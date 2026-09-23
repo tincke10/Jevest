@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.62,
+  "reason": "The claim treats the empty-`path` case as arising from the absent coercion block, but that block tests `lastOfPath === 'valueOf'|'toString'|'toJSON'`, which requires a non-empty path (e.g. `proxy.toString()` gives path `['toString']`), so it never short-circuited direct root-proxy calls; the empty-path behavior is unchanged before and after the commit.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 2564,
+    "cacheReadInputTokens": 4934,
+    "cacheCreationInputTokens": 5148
+  },
+  "latencyMs": 31158,
+  "nominalCostUsd": 0.118067
+}

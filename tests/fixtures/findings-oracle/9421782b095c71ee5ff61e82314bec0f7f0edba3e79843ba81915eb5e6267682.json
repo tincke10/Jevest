@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a pure rename of experimental_parseSpecifications to parseSpecifications (an API promotion, not a bugfix), while the finding speculates about undefined concurrency default handling, which the change does not touch.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 359,
+    "cacheReadInputTokens": 3568,
+    "cacheCreationInputTokens": 1621
+  },
+  "latencyMs": 7651,
+  "nominalCostUsd": 0.026989
+}

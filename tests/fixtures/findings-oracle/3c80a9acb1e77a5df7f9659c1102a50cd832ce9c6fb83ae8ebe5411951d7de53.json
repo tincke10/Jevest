@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The commit restores `env = {}` as a perf improvement (consistent object shape/hidden class at construction), whereas the finding argues the opposite — that the initializer is itself a per-request allocation regression — so it contradicts rather than names the problem fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 501,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1259
+  },
+  "latencyMs": 8196,
+  "nominalCostUsd": 0.025684
+}

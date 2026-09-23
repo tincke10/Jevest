@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.72,
+  "reason": "The before code literally holds a hand-written `version = '1.0.0-beta.5'` string that gates cache-key validity, and this very commit had to manually bump it to beta.6 because the key material changed — directly demonstrating the manual-sync dependency (and thus the stale-hit hazard if forgotten) that the finding describes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 500,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2279
+  },
+  "latencyMs": 6867,
+  "nominalCostUsd": 0.035855
+}

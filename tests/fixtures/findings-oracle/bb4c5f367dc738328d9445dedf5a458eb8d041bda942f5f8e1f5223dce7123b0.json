@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.57,
+  "reason": "Despite inverting the diff direction (it imagines the alias being deleted rather than added), the finding pins the exact defect the fix addresses — `TRPCUnwrap` missing from the `@trpc/server` entrypoint's exported type surface, breaking declaration emit for downstream inferred types — which is precisely what the commit adds.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1638,
+    "cacheReadInputTokens": 5143,
+    "cacheCreationInputTokens": 4404
+  },
+  "latencyMs": 20525,
+  "nominalCostUsd": 0.0875815
+}

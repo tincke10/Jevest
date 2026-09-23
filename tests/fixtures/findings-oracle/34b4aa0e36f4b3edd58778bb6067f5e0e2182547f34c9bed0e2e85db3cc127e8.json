@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.68,
+  "reason": "The fix swapped `mayOutputUndefined` for `mayOmitUndefined` so defaulted/prefaulted fields with required output retain their key when undefined; the finding targets the same predicate but only as a breadth/perf concern plus a speculative flag-vs-per-key mismatch, never naming the actual defect of undefined-valued keys being dropped.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1603,
+    "cacheReadInputTokens": 4216,
+    "cacheCreationInputTokens": 5672
+  },
+  "latencyMs": 19929,
+  "nominalCostUsd": 0.09892300000000001
+}

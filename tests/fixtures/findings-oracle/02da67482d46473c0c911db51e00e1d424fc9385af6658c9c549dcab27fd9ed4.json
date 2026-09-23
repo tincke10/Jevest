@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The claim describes a regression introduced by the AFTER alias (`Plugins.HeyApiTypeScript.Resolvers`); the BEFORE code at lines 14-20 explicitly wraps the `~resolvers` lookup in `Exclude<..., undefined>`, so the asserted problem does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 416,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2568
+  },
+  "latencyMs": 5623,
+  "nominalCostUsd": 0.036645
+}

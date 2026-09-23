@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a pure performance optimization (lazy error construction), not a bugfix, and the finding actually critiques a behavioral risk introduced by the new getter rather than naming any defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 305,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2767
+  },
+  "latencyMs": 3995,
+  "nominalCostUsd": 0.035864
+}

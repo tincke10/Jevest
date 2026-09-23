@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "The claim targets `chUaHighEntropyValues`, a token that does not exist in the BEFORE code at all (it is only introduced by the change), so the alleged problem cannot be present in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 918,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1982
+  },
+  "latencyMs": 11089,
+  "nominalCostUsd": 0.043335
+}

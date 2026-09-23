@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The finding describes a consequence of making `error` lazy (error maps/config resolved at first `.error` read instead of at parse time), but the BEFORE code eagerly calls `finalizeIssue` with `core.config()` inside `_safeParse`, so the deferred-snapshot behavior it flags belongs to the AFTER code, not the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1340,
+    "cacheReadInputTokens": 4991,
+    "cacheCreationInputTokens": 4020
+  },
+  "latencyMs": 16584,
+  "nominalCostUsd": 0.07621549999999999
+}

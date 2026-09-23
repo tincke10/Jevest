@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.94,
+  "reason": "The BEFORE effect uses an empty dependency array, so the subscription is created once and never swapped when `subscribe` identity changes — exactly the bug described in linked issue #5162 and fixed by adding `[subscribe]` deps; only the claim's incidental historical framing (\"was changed from [subscribe]\", \"removed comment\") is unsupported, not the substantive defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 397,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2641
+  },
+  "latencyMs": 5305,
+  "nominalCostUsd": 0.0369
+}

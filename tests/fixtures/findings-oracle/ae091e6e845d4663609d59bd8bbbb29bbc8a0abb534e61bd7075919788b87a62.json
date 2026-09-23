@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.94,
+  "reason": "The change is a feature adding `+json` structured media-type support (and a `replacer` option), while the finding concerns untrimmed leading whitespace in the Content-Type header — an unrelated concern that the new regex still doesn't address.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 233,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1760
+  },
+  "latencyMs": 3255,
+  "nominalCostUsd": 0.023994
+}

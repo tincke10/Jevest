@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The hunk's only change is a reworded comment; the actual fix concerned defaulted discriminators producing ambiguous `undefined` entries in the shared map builder, whereas the finding raises unrelated SameValueZero/-0/object-identity equality concerns in the `claimed` Set.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 277,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2980
+  },
+  "latencyMs": 4111,
+  "nominalCostUsd": 0.037294
+}

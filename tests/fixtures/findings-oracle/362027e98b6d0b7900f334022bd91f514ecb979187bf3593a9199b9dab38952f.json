@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.82,
+  "reason": "The fix's sole change was making the memoizer state weak (buckets → WeakMap, backEdges → WeakSet) so a schema-cached bucket no longer pins the parsed graph, and the finding names exactly that defect for the `backEdges` field, correctly reasoning that `State` outlives the parse via the schema-cached bucket.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 409,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3190
+  },
+  "latencyMs": 7049,
+  "nominalCostUsd": 0.042693999999999996
+}

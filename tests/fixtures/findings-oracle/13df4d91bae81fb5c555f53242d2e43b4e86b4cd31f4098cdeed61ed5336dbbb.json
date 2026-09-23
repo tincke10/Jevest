@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a pure performance optimization (pre-joining static header arrays), not a bugfix; the finding instead speculates about an empty-array vs. undefined regression the new code might introduce, which is not a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 513,
+    "cacheReadInputTokens": 4159,
+    "cacheCreationInputTokens": 2341
+  },
+  "latencyMs": 8955,
+  "nominalCostUsd": 0.0383345
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.72,
+  "reason": "The claim is explicitly conditional on file content outside the shown hunk (a runtime `as const` array, validation Set, or the sibling `ResponseHeader` union), and the reviewer even admits they cannot verify it; nothing in the hunk, commit message, or PR description confirms or refutes the existence of such a parallel runtime list.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 905,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2003
+  },
+  "latencyMs": 10977,
+  "nominalCostUsd": 0.043219999999999995
+}

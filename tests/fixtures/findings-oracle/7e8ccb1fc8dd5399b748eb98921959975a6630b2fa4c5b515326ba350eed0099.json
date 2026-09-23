@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a deliberate feature redesign (z.properties() becomes a real schema, re-exported in its new form) rather than a bugfix, and the finding only objects to the intentional export removal, naming no defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 565,
+    "cacheReadInputTokens": 4301,
+    "cacheCreationInputTokens": 2532
+  },
+  "latencyMs": 7420,
+  "nominalCostUsd": 0.0416155
+}

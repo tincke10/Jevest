@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "In the BEFORE code the get trap returns a nested callable proxy for every string key, so toString/valueOf/toJSON calls fall through to the apply trap and invoke callback with a path ending in those keys instead of returning a primitive — precisely the coercion breakage documented in the linked issue and fixed by the added guard.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1223,
+    "cacheReadInputTokens": 5117,
+    "cacheCreationInputTokens": 4039
+  },
+  "latencyMs": 14219,
+  "nominalCostUsd": 0.0735435
+}

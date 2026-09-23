@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "In the BEFORE code the `_properties as properties` export is present, so the claimed missing-symbol compile error / classic-mini asymmetry cannot exist; the finding describes a consequence of removal, i.e. a property of the after state, not a defect in the code as shown.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 883,
+    "cacheReadInputTokens": 4267,
+    "cacheCreationInputTokens": 2843
+  },
+  "latencyMs": 12431,
+  "nominalCostUsd": 0.0526585
+}

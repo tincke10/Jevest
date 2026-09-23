@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.93,
+  "reason": "The before code reads only `(blob)[implSymbol]._buffer`, which is undefined on jsdom 28+ where the field was renamed to `_bytes`, producing a Blob whose content is the string \"undefined\" — precisely the silent corruption documented in the linked issue and addressed by the `_bytes ?? _buffer` fallback, despite the reviewer's inverted \"removing the fallback\" framing.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 591,
+    "cacheReadInputTokens": 5018,
+    "cacheCreationInputTokens": 3257
+  },
+  "latencyMs": 7370,
+  "nominalCostUsd": 0.049874
+}

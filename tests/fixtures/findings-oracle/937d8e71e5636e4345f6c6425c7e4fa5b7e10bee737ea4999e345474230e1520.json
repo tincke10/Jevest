@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.62,
+  "reason": "The identity check against `emptyParams` is literally in the before code and would indeed yield a different `handlerSet.params` shape for an empty-but-non-sentinel object, but whether any caller actually passes such an object (all call sites and the `nodeParams` signature live outside this hunk, and in the shown code params objects are only created and then populated before being passed) cannot be verified from what is shown, making the claim's triggering condition unconfirmed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3420,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2611
+  },
+  "latencyMs": 43411,
+  "nominalCostUsd": 0.112175
+}

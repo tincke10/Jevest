@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The claim is about a collision caused by the *added* `inferSubscriptionInput`/`inferSubscriptionOutput` exports, which do not exist in the BEFORE code at all — the before hunk exports only procedure/router inference helpers, so no duplicate or ambiguous export is present there.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 572,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1815
+  },
+  "latencyMs": 8766,
+  "nominalCostUsd": 0.033015
+}

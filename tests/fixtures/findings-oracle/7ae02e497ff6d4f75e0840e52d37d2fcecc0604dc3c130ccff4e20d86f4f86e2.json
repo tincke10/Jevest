@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.68,
+  "reason": "Zod's `propValues` is typed as `Record<string, Set<Primitive>>` (literal/enum values only), so structurally-equal object/array discriminators cannot appear and the \"missed collision\" case is unreachable; the `0`/`-0` case collapses identically in the interpreter's own discriminator Map (which itself throws on duplicates at construction), so the Set's SameValueZero semantics here match, rather than diverge from, the authoritative behavior, and `String(value)` handles `undefined`/symbols without error.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1694,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2980
+  },
+  "latencyMs": 20637,
+  "nominalCostUsd": 0.072715
+}

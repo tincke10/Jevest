@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The BEFORE code rebuilds the cached body with a bare `new Response(body)`, which carries no content-type, so a later `formData()` after `text()`/`arrayBuffer()` throws — precisely the TypeError reported in the linked issue and fixed by passing the original Content-Type; the finding's inverted \"regression\" framing and its incidental inclusion of blob() don't negate the defect's presence.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 672,
+    "cacheReadInputTokens": 5470,
+    "cacheCreationInputTokens": 3791
+  },
+  "latencyMs": 8306,
+  "nominalCostUsd": 0.057465
+}

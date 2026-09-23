@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.58,
+  "reason": "The finding names the stale/cached-snapshot defect (snapshot stored in useState and only advanced by subscription callbacks instead of read each render), which is precisely one of the problems the diff fixes by reading the snapshot during render and re-checking it after subscribing, although it misses the headline resubscribe-when-`subscribe`-changes aspect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1310,
+    "cacheReadInputTokens": 4869,
+    "cacheCreationInputTokens": 3841
+  },
+  "latencyMs": 19536,
+  "nominalCostUsd": 0.0736145
+}

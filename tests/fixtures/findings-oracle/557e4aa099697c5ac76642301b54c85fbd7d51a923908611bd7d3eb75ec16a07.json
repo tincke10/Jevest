@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.62,
+  "reason": "The finding names exactly the missing guards the fix restored — that non-GET and non-ok responses are no longer short-circuited before ETag handling — even though it frames the consequence as body buffering/streaming breakage rather than the spec-incorrect 304, the root cause it identifies is the one the commit addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 834,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1797
+  },
+  "latencyMs": 10364,
+  "nominalCostUsd": 0.039389
+}

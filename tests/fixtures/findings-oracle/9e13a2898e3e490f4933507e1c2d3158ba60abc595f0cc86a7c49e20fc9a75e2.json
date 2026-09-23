@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The claim's premise (\"the documented default now advertises 'QUERY'\") is true only of the AFTER code; the BEFORE JSDoc omits QUERY and is consistent with the pre-change runtime default, so the alleged docs/implementation mismatch does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 968,
+    "cacheReadInputTokens": 4306,
+    "cacheCreationInputTokens": 2933
+  },
+  "latencyMs": 11497,
+  "nominalCostUsd": 0.055703
+}

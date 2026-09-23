@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.76,
+  "reason": "The commit fixed suffix-wildcard (/foo*) route matching in TrieRouter, while this hunk merely replaces the per-handlerSet processedSet[score] bookkeeping with the behaviorally equivalent !i index check; the finding describes a self-admitted latent, hypothetical hazard rather than the 404 defect that was fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1308,
+    "cacheReadInputTokens": 4793,
+    "cacheCreationInputTokens": 3749
+  },
+  "latencyMs": 16221,
+  "nominalCostUsd": 0.07260649999999999
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The before code's `useEffect(..., [])` runs once, so the `subscribe(() => setState(getSnapshot()))` closure permanently captures the first-render `getSnapshot`; the linked PR explicitly states it additionally \"handles changes to `getSnapshot`\" by reading the snapshot during render, confirming the stale-getter behavior.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 427,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2634
+  },
+  "latencyMs": 6221,
+  "nominalCostUsd": 0.03758
+}

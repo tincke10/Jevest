@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.68,
+  "reason": "Despite mis-framing the direction (it imagines `jwt?` being deleted rather than absent), the finding identifies exactly the defect fixed: `Authorizer` lacks a `jwt` member so user code reading `requestContext.authorizer.jwt.claims`/`.scopes` fails to compile, and the commit adds precisely that member (plus `lambda`).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 675,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2890
+  },
+  "latencyMs": 8968,
+  "nominalCostUsd": 0.046344
+}

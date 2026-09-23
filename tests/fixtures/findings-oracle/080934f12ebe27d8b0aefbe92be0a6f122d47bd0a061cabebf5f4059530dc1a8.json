@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.68,
+  "reason": "The finding reads the diff backwards: the BEFORE code never contained the per-operation `ac` AbortController (it is introduced by the AFTER code), so nothing was \"removed\", no teardown can reference an undefined `ac`, and there is no compile break — the claim's premise misdescribes the before state (whose actual defect, per the issue, is a noop teardown on a different, pre-existing controller).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1467,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2952
+  },
+  "latencyMs": 18089,
+  "nominalCostUsd": 0.06676
+}

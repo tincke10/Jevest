@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "In the BEFORE code there is a single `Reflect.ownKeys` loop and the numeric retry is explicitly guarded by `typeof ${kVar} === \"string\"`, so symbol keys can never reach `Number(...)`; the finding's own rationale concedes this and only speculates about a hypothetical `emitOwnKeys` helper that does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 442,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2827
+  },
+  "latencyMs": 5352,
+  "nominalCostUsd": 0.039885000000000004
+}

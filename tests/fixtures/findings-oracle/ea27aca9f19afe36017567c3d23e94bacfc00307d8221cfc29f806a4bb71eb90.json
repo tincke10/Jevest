@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.75,
+  "reason": "The fix adds `MarkOptions`/`BrowserTraceEntryKind` to `vitest/browser` precisely because the generated `plugin.d.ts` imported a `MarkOptions` member that the public browser entry did not export; the finding, despite framing it as a deletion, names exactly that absence and the resulting dangling reference / lost `stack`+`kind` typing as the defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 760,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2681
+  },
+  "latencyMs": 8581,
+  "nominalCostUsd": 0.046379
+}

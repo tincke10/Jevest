@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a deliberate perf optimization that adds `abortEarly: true` to the validate-only context; the finding speculates that this flag might leak through the shared compiled `fallbackRun` artifact — a hypothetical risk of the new code rather than the (non-existent) defect the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 645,
+    "cacheReadInputTokens": 4590,
+    "cacheCreationInputTokens": 2870
+  },
+  "latencyMs": 8133,
+  "nominalCostUsd": 0.04714
+}

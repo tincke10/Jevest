@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The BEFORE code's lines 9-13 contain `@experimental` tags, not `@default os.availableParallelism()` — that doc text only appears in the AFTER version, so the claimed doc imprecision does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 286,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1497
+  },
+  "latencyMs": 3556,
+  "nominalCostUsd": 0.022685
+}

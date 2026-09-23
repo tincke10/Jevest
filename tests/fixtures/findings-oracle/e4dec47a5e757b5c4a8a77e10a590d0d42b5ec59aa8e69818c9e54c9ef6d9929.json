@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The finding describes code that exists only in the AFTER version — the BEFORE hunk contains no `browserTraceDomSnapshotPromise` assignment and no \"a load failure surfaces in the tester\" comment, so the claimed mechanism is not in the before code at all.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 555,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1542
+  },
+  "latencyMs": 9522,
+  "nominalCostUsd": 0.02986
+}

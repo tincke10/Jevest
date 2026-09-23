@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The fix added enforcement of minProperties/maxProperties (and other silently dropped keywords), whereas the finding is a speculative refactor-safety flag about whether checkPropertyNames preserves wrapper semantics/type inference — it never claims the property-count keywords are unenforced.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 378,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3758
+  },
+  "latencyMs": 4946,
+  "nominalCostUsd": 0.047599
+}

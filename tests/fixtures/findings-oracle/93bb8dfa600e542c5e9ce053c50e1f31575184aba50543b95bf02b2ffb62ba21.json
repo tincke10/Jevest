@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a pure performance optimization (lazy error construction), not a bugfix, and the finding does not describe a defect in the BEFORE code — it describes the behavioral risk the change itself introduces (config/error-map snapshot timing), which the PR explicitly acknowledges as an accepted trade-off.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 350,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2771
+  },
+  "latencyMs": 4064,
+  "nominalCostUsd": 0.037029
+}

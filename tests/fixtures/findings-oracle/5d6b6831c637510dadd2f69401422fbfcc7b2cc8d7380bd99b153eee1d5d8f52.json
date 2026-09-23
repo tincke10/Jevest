@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.82,
+  "reason": "The change is a chore that removes the cwd-dependent workspaceRoot/isWithinPath logic (making fixture output deterministic), while the finding argues the opposite — that removing it is a regression that suppresses JSDoc for workspace packages — so it does not name a defect in the BEFORE code that this non-bugfix change addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 625,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2013
+  },
+  "latencyMs": 7602,
+  "nominalCostUsd": 0.036324
+}

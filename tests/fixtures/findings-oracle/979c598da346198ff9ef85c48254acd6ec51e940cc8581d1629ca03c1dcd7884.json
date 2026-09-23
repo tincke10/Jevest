@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.88,
+  "reason": "The finding names the exact defect the commit fixed — the missing `addEventListener('abort', ...)`/`signal.aborted` handling so an abort never completes the observable, never runs teardown, and never sends `subscription.stop` — even though it is phrased as if the registration had been deleted rather than absent.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 442,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2664
+  },
+  "latencyMs": 7535,
+  "nominalCostUsd": 0.038259
+}

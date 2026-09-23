@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The finding inverts the diff direction — the BEFORE code never had `as ZodInt` casts (they were *added* in the after version because the new `ZodNumberFormat<Format>` generic made `core._int`'s return no longer directly assignable); in the before code `ZodInt` is structurally identical to the unparameterized `ZodNumberFormat`, so the assignability/compile concern it describes does not exist there.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 661,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3788
+  },
+  "latencyMs": 9999,
+  "nominalCostUsd": 0.054970000000000005
+}

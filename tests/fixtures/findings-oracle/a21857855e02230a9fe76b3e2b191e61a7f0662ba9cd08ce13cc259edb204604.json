@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The BEFORE code is the shipped/main-branch state of trpc and compiled fine without passing `prefix`, so `prefix` cannot have been a required field of `trpcMutationOptions`' argument type; the claim also inverts the diff direction (it treats the pre-change absence of `prefix` as a \"removal\"), and the real bug was a runtime/behavioral one (missing keyPrefix in mutationKey), not a type error.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 738,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2829
+  },
+  "latencyMs": 10529,
+  "nominalCostUsd": 0.047305
+}

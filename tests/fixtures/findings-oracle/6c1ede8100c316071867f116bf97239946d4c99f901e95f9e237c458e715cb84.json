@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The BEFORE code contains no `validate`/`validateAsync` declarations at all — both lines were introduced by this commit — so the claimed sync/async asymmetry cannot exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 517,
+    "cacheReadInputTokens": 4695,
+    "cacheCreationInputTokens": 2896
+  },
+  "latencyMs": 7966,
+  "nominalCostUsd": 0.0442525
+}

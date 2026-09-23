@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The finding inverts the actual direction of the change — the BEFORE code is the one calling `checkPropertyNames(zodSchema, keySchema)` and `checkObjectGuards` with `{keySchema, minProperties, maxProperties}` is what the fix introduces — so the asserted regression (\"checkPropertyNames replaces checkObjectGuards\", losing min/maxProperties wrapper semantics) describes no defect that exists in the before code; it is a request-to-verify, not an identified problem.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 587,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3758
+  },
+  "latencyMs": 7830,
+  "nominalCostUsd": 0.05282
+}

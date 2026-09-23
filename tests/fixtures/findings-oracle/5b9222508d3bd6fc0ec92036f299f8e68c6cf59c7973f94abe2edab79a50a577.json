@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The `?.length` guard the finding criticizes exists only in the AFTER code (the newly added pre-join lines); the BEFORE snippet contains no such expression, and Hono's existing per-request handler already guarded emission with `opts.exposeHeaders?.length`, so no behavior distinction was lost.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 682,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1923
+  },
+  "latencyMs": 7980,
+  "nominalCostUsd": 0.036845
+}

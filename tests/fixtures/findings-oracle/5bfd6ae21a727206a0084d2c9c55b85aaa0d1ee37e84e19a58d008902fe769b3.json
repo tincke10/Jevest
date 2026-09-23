@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.72,
+  "reason": "The hunk itself shows the asymmetry claimed: the `If-None-Match: '*'` branch gates on method (GET/HEAD) and `res.ok`, while the `etagMatches(etag, ifNoneMatch)` branch has no method check, so a POST/PUT with a matching concrete ETag would still get a 304.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1468,
+    "cacheReadInputTokens": 3667,
+    "cacheCreationInputTokens": 2774
+  },
+  "latencyMs": 20450,
+  "nominalCostUsd": 0.0662935
+}

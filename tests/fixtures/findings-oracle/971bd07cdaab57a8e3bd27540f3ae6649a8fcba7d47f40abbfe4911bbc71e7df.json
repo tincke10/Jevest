@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.94,
+  "reason": "The fix changed Map/Set to WeakMap/WeakSet to stop the memoizer pinning a finished parse's object graph (OOM regression), whereas the finding hallucinates the opposite direction (WeakMap→Map) and worries about API-shape/TypeError semantics, never naming the memory-retention defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 391,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3227
+  },
+  "latencyMs": 5784,
+  "nominalCostUsd": 0.042614
+}

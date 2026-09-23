@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The change removed the cwd-dependent `workspaceRoot`/`isWithinPath` workspace check (making JSDoc extraction independent of the working directory), while the finding merely speculates that the `normalize` helper could become an unused local — a hypothetical lint concern, not the defect addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 598,
+    "cacheReadInputTokens": 4187,
+    "cacheCreationInputTokens": 2417
+  },
+  "latencyMs": 7592,
+  "nominalCostUsd": 0.0412335
+}

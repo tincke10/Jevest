@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.62,
+  "reason": "The re-export of inference helpers from `unstable-core-do-not-import` through the root `index.ts` is tRPC's deliberate, pre-existing pattern (the module name exists to stop consumers deep-importing, not to mark the curated re-exports as unstable), and the claim otherwise describes the additive change itself rather than a defect present in the BEFORE code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 784,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1794
+  },
+  "latencyMs": 10037,
+  "nominalCostUsd": 0.038105
+}

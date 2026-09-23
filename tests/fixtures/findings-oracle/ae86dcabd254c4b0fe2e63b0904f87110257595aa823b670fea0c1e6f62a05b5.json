@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The line `domSnapshot.catch(() => {})` that the finding critiques exists only in the AFTER code; the BEFORE hunk contains no dynamic import or no-op catch, so the claimed problem is not present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 398,
+    "cacheReadInputTokens": 3741,
+    "cacheCreationInputTokens": 1844
+  },
+  "latencyMs": 5089,
+  "nominalCostUsd": 0.030280500000000002
+}

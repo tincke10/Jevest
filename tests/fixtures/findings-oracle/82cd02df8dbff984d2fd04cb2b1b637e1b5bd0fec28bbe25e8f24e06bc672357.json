@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code correctly calls the then-existing `experimental_clearCache()`; the claim only describes hypothetical risks of the rename, and the linked PR states `clearCache` was added while `experimental_clearCache` remains as a deprecated alias, so neither the runtime TypeError nor the breaking-removal concern applies.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 782,
+    "cacheReadInputTokens": 3754,
+    "cacheCreationInputTokens": 2173
+  },
+  "latencyMs": 8617,
+  "nominalCostUsd": 0.043177
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change tightened `properties()` so unknown keys and incompatible property schemas become type errors, while the finding instead critiques the new constraint's optional members possibly not satisfying `$ZodShape` — a different concern, and it describes the AFTER code rather than the defect fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 519,
+    "cacheReadInputTokens": 4383,
+    "cacheCreationInputTokens": 2543
+  },
+  "latencyMs": 10520,
+  "nominalCostUsd": 0.0406165
+}

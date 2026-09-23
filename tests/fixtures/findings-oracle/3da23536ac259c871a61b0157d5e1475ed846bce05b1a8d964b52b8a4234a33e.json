@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change fixed a missing-directory failure by adding `fs.mkdirSync(..., { recursive: true })`, whereas the finding is about the absence of a `.catch()` on `void main()` (unhandled rejection output/exit-code cosmetics) — a different, pre-existing concern the fix does not address.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 334,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2149
+  },
+  "latencyMs": 6931,
+  "nominalCostUsd": 0.030409
+}

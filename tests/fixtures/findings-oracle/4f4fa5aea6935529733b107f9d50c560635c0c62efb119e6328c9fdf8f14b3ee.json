@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a performance refactor (replacing the Reflect.ownKeys + propertyIsEnumerable walk with snapshot-based getOwnPropertyNames/getOwnPropertySymbols loops), while the finding speculates about `accessor` being re-evaluated by the new helper — a different (and post-change) concern, not the defect this commit addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 319,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2810
+  },
+  "latencyMs": 4037,
+  "nominalCostUsd": 0.036643999999999996
+}

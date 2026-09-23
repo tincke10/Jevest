@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.72,
+  "reason": "The hunk only shows the `version` field declaration; whether stale version-scoped cache directories are purged elsewhere in the class (e.g. via `metadataFilePath` handling) is not verifiable from the shown code, as the reviewer themselves concedes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 932,
+    "cacheReadInputTokens": 4509,
+    "cacheCreationInputTokens": 3108
+  },
+  "latencyMs": 11619,
+  "nominalCostUsd": 0.056654499999999997
+}

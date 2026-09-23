@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code contains no `validate` type-predicate declaration at all (it goes straight from `spa` to the encoding/decoding members), so the claimed assignability problem is not present in it; the PR also notes `util.ProtoOf<T>` maps a predicate's `infer R` to plain `boolean`, so no implementer is forced to redeclare the predicate.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 879,
+    "cacheReadInputTokens": 4774,
+    "cacheCreationInputTokens": 3278
+  },
+  "latencyMs": 10582,
+  "nominalCostUsd": 0.057162000000000004
+}

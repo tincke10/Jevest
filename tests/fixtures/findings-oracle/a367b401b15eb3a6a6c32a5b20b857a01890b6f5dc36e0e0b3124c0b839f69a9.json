@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The fix's defect is that the stream's AbortController was never aborted on unsubscribe; the finding instead reasons about an `isDone` guard as if it were being removed (it was actually added by the fix) and never identifies the missing abort-on-teardown.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 602,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2886
+  },
+  "latencyMs": 9302,
+  "nominalCostUsd": 0.044479
+}

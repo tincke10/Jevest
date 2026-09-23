@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The finding describes the `failure` closure retaining `issues`/`ctx`, which only exists in the AFTER code; the BEFORE code eagerly constructs the error inline and drops the raw issues and ctx when `safeParse` returns — the claim itself concedes this (\"Previously the raw issues and ctx were dropped as soon as `safeParse` returned\").",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 410,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2762
+  },
+  "latencyMs": 6712,
+  "nominalCostUsd": 0.038435000000000004
+}

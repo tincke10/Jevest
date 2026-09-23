@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The finding critiques the `abortEarly: true` override that this change itself introduced as a deliberate perf optimization, rather than naming the pre-existing behavior the commit addressed (validate walking the whole schema after the boolean was already settled).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 525,
+    "cacheReadInputTokens": 4632,
+    "cacheCreationInputTokens": 2869
+  },
+  "latencyMs": 7145,
+  "nominalCostUsd": 0.044150999999999996
+}

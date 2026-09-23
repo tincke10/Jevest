@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.78,
+  "reason": "The change is a perf/feature commit that newly exposes a typed `checks` option on the string factories (with a defensive snapshot), not a bugfix to pre-existing aliasing; the finding critiques the scope/consistency of the new snapshot helper rather than naming a defect in the BEFORE code that this change repaired (BEFORE, no factory accepted a caller `checks` array at all).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 721,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2873
+  },
+  "latencyMs": 8682,
+  "nominalCostUsd": 0.047324000000000005
+}

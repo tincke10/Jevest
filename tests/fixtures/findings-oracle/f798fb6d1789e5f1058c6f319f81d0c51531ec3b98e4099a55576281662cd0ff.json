@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is a pure performance optimization (lazy construction of the error on first read), not a bugfix, and the finding's concern about the `failure` helper's `any` return type describes a typing weakness introduced by the new code rather than any defect the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 278,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2716
+  },
+  "latencyMs": 5546,
+  "nominalCostUsd": 0.034679
+}

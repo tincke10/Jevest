@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding names the strong-reference Map retention of parse entries via the bucket cached on the long-lived schema instance — exactly the memory-pinning defect the commit fixed by making buckets/backEdges WeakMap/WeakSet.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 469,
+    "cacheReadInputTokens": 5577,
+    "cacheCreationInputTokens": 3744
+  },
+  "latencyMs": 6183,
+  "nominalCostUsd": 0.05197349999999999
+}

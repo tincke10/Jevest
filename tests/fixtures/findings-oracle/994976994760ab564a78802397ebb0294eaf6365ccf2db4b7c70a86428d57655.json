@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance-motivated restoration of the `= {}` initializer (stable object shape), not a bugfix, and the finding actually argues against that initializer's type safety — the opposite of and unrelated to what the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 479,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1354
+  },
+  "latencyMs": 5827,
+  "nominalCostUsd": 0.026084
+}

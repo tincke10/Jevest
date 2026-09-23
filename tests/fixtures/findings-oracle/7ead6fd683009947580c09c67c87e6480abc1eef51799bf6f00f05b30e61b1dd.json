@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The BEFORE code only applies its safe default when both `toFake` and `toNotFake` are undefined, so passing only `toNotFake` falls through to sinon's fake-everything default and fakes `queueMicrotask` (and `nextTick` outside forks) — exactly the bug documented in the linked issue and fixed by the added `else if` branch.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 776,
+    "cacheReadInputTokens": 5634,
+    "cacheCreationInputTokens": 4042
+  },
+  "latencyMs": 11691,
+  "nominalCostUsd": 0.06265699999999999
+}

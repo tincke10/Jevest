@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.67,
+  "reason": "The BEFORE code proceeds unconditionally from `await next()` into the ETag-generation path for every response (the PR confirms method/status checks existed only in the `If-None-Match: '*'` branch), and ETag generation in this middleware must consume the cloned response body, so a streamed/large response from e.g. a POST route is read to completion (tee-buffered) before the response is emitted — the named condition is genuinely reachable, even though the generating code itself lies outside the shown hunk.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 3493,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1797
+  },
+  "latencyMs": 40406,
+  "nominalCostUsd": 0.10586
+}

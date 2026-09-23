@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "The finding critiques the `import type { Document, OperationObject, ... } from './types'` statement, which exists only in the AFTER code; the BEFORE hunk has no such import, so the alleged unused-import/import-cycle problem is not present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 610,
+    "cacheReadInputTokens": 4892,
+    "cacheCreationInputTokens": 3166
+  },
+  "latencyMs": 7419,
+  "nominalCostUsd": 0.049375999999999996
+}

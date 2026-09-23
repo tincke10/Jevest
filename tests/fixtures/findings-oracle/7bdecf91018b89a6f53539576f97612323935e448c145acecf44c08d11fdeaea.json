@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The issue and PR explicitly state that `abort` (the function returned by `batchSend`) was never registered via `addEventListener`, so the `removeEventListener('abort', abort)` in the before code was a silent no-op — exactly the mechanism the finding names, and the fix adds the missing `onAbort` registration.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 351,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2642
+  },
+  "latencyMs": 4288,
+  "nominalCostUsd": 0.03576
+}

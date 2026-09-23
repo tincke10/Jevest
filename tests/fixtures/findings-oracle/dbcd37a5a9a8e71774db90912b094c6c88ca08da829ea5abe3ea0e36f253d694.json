@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The finding describes a problem with the *new* mapped-type constraint (optional `?:` members possibly breaking `$ZodShape`), but the BEFORE code declares `Shape extends core.$ZodShape`, which by definition satisfies that constraint and has no optional/undefined entries, so the claimed defect does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 577,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2147
+  },
+  "latencyMs": 7309,
+  "nominalCostUsd": 0.03646
+}

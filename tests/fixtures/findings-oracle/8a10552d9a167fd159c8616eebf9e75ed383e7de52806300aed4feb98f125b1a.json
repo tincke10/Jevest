@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "In the BEFORE code all normalized-def caches uniformly use `util.cached`, so the alleged mixed-semantics inconsistency does not exist there; moreover the PR states all three schema call sites were migrated to `cachedInternal`, refuting the \"only this one call site\" premise.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 721,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2140
+  },
+  "latencyMs": 8657,
+  "nominalCostUsd": 0.03999
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "In the BEFORE code the binding is `results` and it is actually consumed by the unconditional `map.set(expect, results)`; the claimed unused-`next`-binding/side-effect-only pattern only exists in the AFTER code, so the finding misdescribes the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 509,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1662
+  },
+  "latencyMs": 7566,
+  "nominalCostUsd": 0.02991
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The finding describes the AFTER refactor's re-basing of `HeyApiConfig` onto `Plugins.HeyApiClientFetch.Client` rather than any defect in the BEFORE code, which simply derives the type from the valid `FetchClient` export in a type-import-path chore that preserves the public API.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 646,
+    "cacheReadInputTokens": 4821,
+    "cacheCreationInputTokens": 3120
+  },
+  "latencyMs": 9627,
+  "nominalCostUsd": 0.0497805
+}

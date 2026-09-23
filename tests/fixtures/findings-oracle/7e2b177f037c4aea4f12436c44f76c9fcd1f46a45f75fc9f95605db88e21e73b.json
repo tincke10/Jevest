@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.88,
+  "reason": "The change is a performance opt-out (adding `prewarmModules: false` to the node environment), not a bugfix, and the finding merely flags that the `Environment` type must declare the new optional property — a verification note about the change itself rather than the defect it addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 370,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1651
+  },
+  "latencyMs": 4751,
+  "nominalCostUsd": 0.026328999999999998
+}

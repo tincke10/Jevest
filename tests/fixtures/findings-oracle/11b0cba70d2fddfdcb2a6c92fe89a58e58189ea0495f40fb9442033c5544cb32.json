@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The fixed defect is buildWildcardRegExp not recognizing a suffix `*` lacking a preceding slash; this hunk only adds `export` to shared constants so router.ts can reuse them, while the finding inverts the direction (claiming exports were removed) and raises an unrelated API-breakage concern.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 628,
+    "cacheReadInputTokens": 5399,
+    "cacheCreationInputTokens": 3689
+  },
+  "latencyMs": 8175,
+  "nominalCostUsd": 0.0553095
+}

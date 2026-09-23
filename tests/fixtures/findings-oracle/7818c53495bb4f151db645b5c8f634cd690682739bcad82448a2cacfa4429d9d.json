@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The fix adds a writeMetadata helper so `_metadata.json` is rewritten after clearCache, preventing stale cache entries from surviving a later lockfile change; the finding instead worries about ENOENT on rootCache creation and unused imports, an unrelated (and inverted) concern.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 384,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3075
+  },
+  "latencyMs": 6951,
+  "nominalCostUsd": 0.040919
+}

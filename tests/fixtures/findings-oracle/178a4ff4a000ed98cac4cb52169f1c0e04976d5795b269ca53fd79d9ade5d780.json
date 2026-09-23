@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim is about the `failure` helper's `any` return type, but that helper does not exist in the BEFORE code — it is introduced by the change; the BEFORE code returns an inline object literal, so the described type-checking loss is not present beforehand.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 465,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2716
+  },
+  "latencyMs": 5858,
+  "nominalCostUsd": 0.039349999999999996
+}

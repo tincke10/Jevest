@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim is premised on the help text advertising `--server-url`, but that line exists only in the AFTER code; the BEFORE hunk's doc comment has no `--server-url` entry, so the alleged doc/implementation drift does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 380,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1971
+  },
+  "latencyMs": 4934,
+  "nominalCostUsd": 0.029775000000000003
+}

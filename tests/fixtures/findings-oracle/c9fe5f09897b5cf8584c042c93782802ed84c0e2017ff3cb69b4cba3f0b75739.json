@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.8,
+  "reason": "The finding identifies that with the `sharedServer` branch checked before `isBrowserEnabled`, a browser project falls into the shared-server path and receives defines for runtime injection instead of `{}`, so values get substituted twice — exactly the double-quoting bug the commit fixes by reordering the branches and forcing `defines = {}` in browser mode.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 909,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3694
+  },
+  "latencyMs": 10850,
+  "nominalCostUsd": 0.060233999999999996
+}

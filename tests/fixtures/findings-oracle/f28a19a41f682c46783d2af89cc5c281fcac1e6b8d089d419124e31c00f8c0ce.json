@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.92,
+  "reason": "The finding identifies the absence of `lambda?: Record<string, unknown> | null` on `Authorizer` as leaving no typed path to the REQUEST authorizer context — exactly the TS2339 gap this commit fixes by adding `lambda` (and `jwt`), despite the reviewer mistakenly framing it as a removal.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 707,
+    "cacheReadInputTokens": 5128,
+    "cacheCreationInputTokens": 3460
+  },
+  "latencyMs": 8955,
+  "nominalCostUsd": 0.054859000000000005
+}

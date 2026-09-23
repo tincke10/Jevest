@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.7,
+  "reason": "The before code rebuilds a cached body with a bare `new Response(body)`, genuinely dropping the request's media type (the exact defect the commit/issue documents), so a blob() derived from a cached json() does not carry `application/json`; the claim's detail that the type would be exactly '' is imprecise (a string body yields text/plain;charset=UTF-8), but the asserted mechanism and observable media-type loss are real.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1532,
+    "cacheReadInputTokens": 5377,
+    "cacheCreationInputTokens": 4554
+  },
+  "latencyMs": 19478,
+  "nominalCostUsd": 0.0865485
+}

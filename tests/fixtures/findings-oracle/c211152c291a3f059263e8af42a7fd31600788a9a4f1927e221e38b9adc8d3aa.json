@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The finding critiques `snapshotChecks`, a helper that exists only in the AFTER code; the BEFORE code at lines 67-70 is just `new Class({ type: \"string\", ...util.normalizeParams(params) })` with no checks option or snapshot at all, so the described shallow-copy problem cannot be present there.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 898,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2836
+  },
+  "latencyMs": 11230,
+  "nominalCostUsd": 0.051375000000000004
+}

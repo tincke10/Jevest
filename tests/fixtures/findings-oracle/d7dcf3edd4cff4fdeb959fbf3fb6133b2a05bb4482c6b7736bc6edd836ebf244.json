@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.97,
+  "reason": "The before code slices at `testName.length` without verifying the key starts with `testName`, and the unanchored `/ \\d+$| > /` then matches virtually any snapshot key — exactly the regression described in issue #11157 and fixed by adding `startsWith` plus anchors.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 206,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3145
+  },
+  "latencyMs": 3752,
+  "nominalCostUsd": 0.037165
+}

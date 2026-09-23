@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change added fs.mkdirSync so the CLI no longer fails when the output directory is missing, while the finding takes that call as already present and complains only that it lacks try/catch error handling — a different concern.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 524,
+    "cacheReadInputTokens": 4467,
+    "cacheCreationInputTokens": 2690
+  },
+  "latencyMs": 7180,
+  "nominalCostUsd": 0.0422535
+}

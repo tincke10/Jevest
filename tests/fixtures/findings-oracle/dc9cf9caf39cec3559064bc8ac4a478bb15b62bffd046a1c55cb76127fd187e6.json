@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.97,
+  "reason": "The finding identifies the ignored `writer.write()` return value / missing drain handling that buffers the whole body — exactly the backpressure defect the commit fixes by replacing the manual loop with `pipeline()`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 197,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3104
+  },
+  "latencyMs": 2647,
+  "nominalCostUsd": 0.036534
+}

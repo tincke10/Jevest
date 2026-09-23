@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.75,
+  "reason": "JS evaluates `!!(buildData[0][4] && getServerSnapshot)` at every render since it's a non-lazy `useState` argument, and useState keeps only the mount-time value, so the frozen-on-mount semantics and per-render cost the reviewer describes are genuinely in the BEFORE code — and the AFTER code indeed drops the useState and computes the branch per render.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 646,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2662
+  },
+  "latencyMs": 8780,
+  "nominalCostUsd": 0.043335
+}

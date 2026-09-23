@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.96,
+  "reason": "The finding identifies the empty dependency array preventing re-subscription when `subscribe` (or `getSnapshot`) identity changes — exactly the defect the commit/issue fixes by making the effect depend on `subscribe` and re-reading the snapshot.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 262,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2641
+  },
+  "latencyMs": 3635,
+  "nominalCostUsd": 0.033529
+}

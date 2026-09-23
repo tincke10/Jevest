@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding identifies precisely the defect this hunk fixes — that `{ ...this._zod.def }` eagerly invokes the lazy `shape` getter (materializing/re-minting the recursive subtree, risking stack overflow) whereas `util.mergeDefs` copies descriptors without triggering them — matching the fix's replacement of the spread with `mergeDefs` and its explanatory comment.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 592,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3667
+  },
+  "latencyMs": 7025,
+  "nominalCostUsd": 0.052039
+}

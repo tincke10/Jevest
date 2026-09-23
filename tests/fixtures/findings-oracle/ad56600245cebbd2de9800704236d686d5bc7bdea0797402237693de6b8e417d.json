@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.62,
+  "reason": "The fix reuses a cached formData entry to avoid the re-serialized multipart boundary mismatching the original Content-Type header, while the finding claims a different scenario — a previously cached arrayBuffer not being reused (which HonoRequest's #cachedBody already handles) — so it lands on the same line for a different reason.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1051,
+    "cacheReadInputTokens": 4793,
+    "cacheCreationInputTokens": 3468
+  },
+  "latencyMs": 12562,
+  "nominalCostUsd": 0.0633715
+}

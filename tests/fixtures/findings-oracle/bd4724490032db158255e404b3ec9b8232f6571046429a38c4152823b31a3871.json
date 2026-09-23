@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The linked issue demonstrates exactly the claimed mismatch — `trpc.foo.bar.mutationKey()` includes the prefix while `mutationOptions().mutationKey` does not — and the fix is precisely passing `prefix` into `trpcMutationOptions`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 315,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2950
+  },
+  "latencyMs": 3938,
+  "nominalCostUsd": 0.03794
+}

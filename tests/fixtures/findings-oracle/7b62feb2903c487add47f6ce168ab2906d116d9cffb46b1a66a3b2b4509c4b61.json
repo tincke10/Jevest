@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim describes a restriction (\"shape keys are now restricted to `keyof T`, values pinned to `T[k]`\") that exists only in the AFTER code; the BEFORE signature is `Shape extends core.$ZodShape`, which accepts arbitrary keys and therefore can still augment `T` via the returned intersection, so the described collapse/API break is not a property of the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 649,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2100
+  },
+  "latencyMs": 7956,
+  "nominalCostUsd": 0.03779
+}

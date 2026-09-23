@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The finding describes a construct (`import type { Plugins }` with dotted `Plugins.HeyApiTypeScript.Resolvers` access) that exists only in the AFTER code — the BEFORE code imports `FetchClient`/`UserConfig` and derives resolvers via indexed access types, so the alleged problem is not present in the code under review (and the merged commit shows the new namespace access typechecks fine).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 499,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2545
+  },
+  "latencyMs": 8672,
+  "nominalCostUsd": 0.038489999999999996
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.62,
+  "reason": "The before code does dereference `(blob as any)[implSymbol]` with no null check, but whether a non-jsdom-backed Blob can actually reach `makeCompatBlob` depends on caller guards outside this hunk (and the fix kept the same unguarded dereference), so the claimed throw isn't demonstrably reachable.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1167,
+    "cacheReadInputTokens": 4903,
+    "cacheCreationInputTokens": 3742
+  },
+  "latencyMs": 16016,
+  "nominalCostUsd": 0.0690665
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The finding targets the `sharedViteServer` option, which does not exist in the BEFORE code at all — it is added by this very change — so the alleged defect cannot be present in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 751,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1711
+  },
+  "latencyMs": 10010,
+  "nominalCostUsd": 0.036449999999999996
+}

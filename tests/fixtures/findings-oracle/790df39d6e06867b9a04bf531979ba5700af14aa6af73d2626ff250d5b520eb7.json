@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The claim targets the optional `definite?: boolean | undefined` field, which exists only in the AFTER version of `CompiledFn`; the BEFORE type contains only `code?: string | undefined`, so the described tri-state/falsy-check ambiguity does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 774,
+    "cacheReadInputTokens": 4586,
+    "cacheCreationInputTokens": 3048
+  },
+  "latencyMs": 9982,
+  "nominalCostUsd": 0.052143
+}

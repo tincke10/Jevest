@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a feature migration to forked `@vitest/istanbuljs` packages, not a bugfix, and the finding merely speculates about downstream typing risk introduced by that migration rather than naming a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 286,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2588
+  },
+  "latencyMs": 4960,
+  "nominalCostUsd": 0.033599000000000004
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code has no `title` member in `JobSummaryOptions` at all; the claim describes a hazard introduced by the change itself (the newly added required `title`), so the asserted problem does not exist in the pre-change code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 748,
+    "cacheReadInputTokens": 4308,
+    "cacheCreationInputTokens": 2762
+  },
+  "latencyMs": 13505,
+  "nominalCostUsd": 0.048493999999999995
+}

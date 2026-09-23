@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "In the BEFORE code `CONFIG_EXTENSIONS` is explicitly exported, so the claimed \"no longer exported / consumers fail to import\" problem does not exist there; it describes the after-state, and the PR's knip analysis confirms the symbol had no consumers outside its own module.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 953,
+    "cacheReadInputTokens": 3886,
+    "cacheCreationInputTokens": 2490
+  },
+  "latencyMs": 12415,
+  "nominalCostUsd": 0.050688
+}

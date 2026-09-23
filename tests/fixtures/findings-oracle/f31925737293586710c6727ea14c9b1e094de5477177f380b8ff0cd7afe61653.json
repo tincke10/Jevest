@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding identifies the absent `refCleanupMap.get(container)?.()` invocation in the `key === 'ref'` branch and the resulting leak of the previous ref's cleanup when the ref prop changes — exactly the line the commit adds and the bug the linked issue describes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 816,
+    "cacheReadInputTokens": 5024,
+    "cacheCreationInputTokens": 3481
+  },
+  "latencyMs": 9010,
+  "nominalCostUsd": 0.057742
+}

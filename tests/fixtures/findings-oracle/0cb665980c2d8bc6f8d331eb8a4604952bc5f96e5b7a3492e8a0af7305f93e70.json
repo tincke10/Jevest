@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.72,
+  "reason": "The finding is an inverted, speculative note about an import supposedly being *removed* (a hypothetical dangling-reference/build break), whereas the change *added* the `toRollupError` import; it never identifies the actual defect — `serializeError` reading esbuild's `e.text`/`e.location` fields that are undefined under Vite 8's oxc — and only coincidentally gestures at the symptom while asking for verification.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 981,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3154
+  },
+  "latencyMs": 13748,
+  "nominalCostUsd": 0.056634000000000004
+}

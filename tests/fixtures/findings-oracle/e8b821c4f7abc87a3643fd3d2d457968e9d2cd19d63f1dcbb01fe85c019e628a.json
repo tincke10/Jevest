@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature (reimplementing z.properties() as a schema, so the check re-export is dropped here), not a bugfix, and the finding merely speculates about downstream re-export breakage rather than naming a defect the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 396,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2047
+  },
+  "latencyMs": 7138,
+  "nominalCostUsd": 0.030939
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The BEFORE code neither imports `sha256` nor declares a `CacheKeyRequest` type with `digest: string` — both exist only in the AFTER code, so the claimed null-digest/type-narrowness problem cannot be present in the code under review.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 485,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1945
+  },
+  "latencyMs": 6093,
+  "nominalCostUsd": 0.03214
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.7,
+  "reason": "The BEFORE regex genuinely contains two capturing groups (`([A-Za-z0-9_'+\\-\\.]*)` and `([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+`), so `exec()` returned a length-3 array, while the AFTER form makes both non-capturing — the capture-shape difference the claim asserts for this publicly exported RegExp is directly verifiable in the hunk.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1502,
+    "cacheReadInputTokens": 5055,
+    "cacheCreationInputTokens": 4162
+  },
+  "latencyMs": 19407,
+  "nominalCostUsd": 0.0817175
+}

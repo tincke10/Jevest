@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The BEFORE code only treats GET/HEAD as eligible for the `If-None-Match: *` 304 path, so it never returns a bodyless 304 for QUERY; the finding actually describes a risk introduced by the AFTER change, not a defect in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 391,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1351
+  },
+  "latencyMs": 4897,
+  "nominalCostUsd": 0.02385
+}

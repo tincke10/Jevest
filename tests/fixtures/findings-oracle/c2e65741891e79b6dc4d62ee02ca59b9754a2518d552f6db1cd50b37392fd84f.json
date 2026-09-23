@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.6,
+  "reason": "The finding is directionally inverted: `mayOutputUndefined` is the pre-existing predicate in the BEFORE code (the fix narrows it to `mayOmitUndefined`), so there is no \"widening\", no newly-lost fast path, and no introduced aggregate/per-key predicate mismatch — the real defect the commit fixes is that the broader predicate wrongly dropped defaulted-undefined keys, not the perf/consistency regression claimed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1550,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3098
+  },
+  "latencyMs": 19467,
+  "nominalCostUsd": 0.070295
+}

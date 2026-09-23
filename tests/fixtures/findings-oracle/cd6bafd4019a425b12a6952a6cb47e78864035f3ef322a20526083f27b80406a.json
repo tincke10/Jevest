@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The PR explicitly redesigns `z.properties()` into a real schema (with `.properties()` on `ZodInstanceOf` and the spread form preserved), so the dropped check re-export is a deliberate API change with a replacement export, not the unintentional deletion of a public export the claim describes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 667,
+    "cacheReadInputTokens": 4285,
+    "cacheCreationInputTokens": 2637
+  },
+  "latencyMs": 8346,
+  "nominalCostUsd": 0.0452075
+}

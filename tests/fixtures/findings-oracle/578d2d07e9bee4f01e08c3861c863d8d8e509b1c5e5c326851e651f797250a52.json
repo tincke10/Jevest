@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.88,
+  "reason": "The before code omits `prefix` when calling `trpcMutationOptions`, so mutation keys lacked the keyPrefix that query keys (and `mutationKey()`) carried — exactly the inconsistency the linked issue reproduces and the fix (adding `prefix`) confirms.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 345,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2785
+  },
+  "latencyMs": 8147,
+  "nominalCostUsd": 0.03704
+}

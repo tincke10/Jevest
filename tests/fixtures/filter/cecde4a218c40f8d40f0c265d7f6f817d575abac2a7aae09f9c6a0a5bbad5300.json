@@ -1,0 +1,40 @@
+{
+  "requestId": "req_01a0cb7bdbb57e8cbe8d5edf89211640",
+  "model": "jev-1.13.0",
+  "latencyMs": 395,
+  "usage": {
+    "inputTokens": 1175,
+    "outputTokens": 156
+  },
+  "answers": {
+    "vitest-455466c-1-rev::claude-cli::1__is_real_defect": {
+      "type": "noul",
+      "noul": 0.33
+    },
+    "vitest-455466c-1-rev::claude-cli::1__severity": {
+      "type": "score",
+      "score": 1.99,
+      "confidence": 0.96,
+      "legend": {
+        "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
+        "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
+        "2": "Major: an issue that plausibly causes incorrect behavior for realistic inputs, or a genuine correctness or maintainability risk.",
+        "3": "Critical: an issue that would cause a crash, data loss, a security vulnerability, or clearly incorrect behavior in the common case."
+      },
+      "probabilities": {
+        "0": 0,
+        "1": 0.02,
+        "2": 0.96,
+        "3": 0.02
+      }
+    },
+    "vitest-455466c-1-rev::claude-cli::1__is_style_only": {
+      "type": "noul",
+      "noul": 0.02
+    },
+    "vitest-455466c-1-rev::claude-cli::1__actionable": {
+      "type": "noul",
+      "noul": 0.17
+    }
+  }
+}

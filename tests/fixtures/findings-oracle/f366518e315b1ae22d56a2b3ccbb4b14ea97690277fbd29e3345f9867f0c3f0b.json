@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.97,
+  "reason": "The finding raises a speculative unused-import/lint concern about `isSubsetEqualityTester`, while the fix was about filtering subset-equality testers out before handing them to asymmetric matchers so `toMatchObject` + `arrayContaining` compares correctly.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 567,
+    "cacheReadInputTokens": 5300,
+    "cacheCreationInputTokens": 3509
+  },
+  "latencyMs": 7117,
+  "nominalCostUsd": 0.051934999999999995
+}

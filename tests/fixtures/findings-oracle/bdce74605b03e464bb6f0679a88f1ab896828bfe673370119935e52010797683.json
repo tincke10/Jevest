@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "In the BEFORE code the re-read `setState(getSnapshot())` is gated on `serverSnapshotIsUsed`, so on the pure client path no snapshot re-check happens between the lazy `useState` initializer and the `subscribe` call in the effect — exactly the gap the PR closes with its unconditional `Object.is(snapshot, getSnapshot())` check (\"Re-check the latest snapshot after subscribing to avoid missing an update between render and effect execution\"); only the claim's stray \"the old code covered this unconditionally\" aside is inaccurate.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 983,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2644
+  },
+  "latencyMs": 12824,
+  "nominalCostUsd": 0.05158
+}

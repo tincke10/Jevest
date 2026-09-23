@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.75,
+  "reason": "The finding pinpoints the missing `ctx.intersections.push(allOf)` registration — the exact line the fix adds — and names the resulting wrong behavior (intersections emitted as a raw `allOf: [...]` instead of a folded single object), which is the unsatisfiable-schema bug this commit fixes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 948,
+    "cacheReadInputTokens": 4967,
+    "cacheCreationInputTokens": 3622
+  },
+  "latencyMs": 12187,
+  "nominalCostUsd": 0.0624235
+}

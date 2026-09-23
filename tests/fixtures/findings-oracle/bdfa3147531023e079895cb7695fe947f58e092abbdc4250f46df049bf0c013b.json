@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.94,
+  "reason": "The finding inverts the diff: the BEFORE code has no `regexes` import at all — the change *adds* `import * as regexes from \"./regexes.js\"` (for the new numeric-key pattern), so there is no removal and no possibility of orphaned `regexes.*` references in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 417,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2840
+  },
+  "latencyMs": 5663,
+  "nominalCostUsd": 0.03939
+}

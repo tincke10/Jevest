@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding names the exact mechanism the fix addresses — subsetEquality-style testers being forwarded into `asymmetricMatch` so subset semantics leak into asymmetric matchers like `arrayContaining`/`objectContaining` — and the fix is precisely to filter subset testers out before calling the matcher, even though the reviewer's illustrative example states the symptom direction imprecisely.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 664,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3207
+  },
+  "latencyMs": 7724,
+  "nominalCostUsd": 0.049239000000000005
+}

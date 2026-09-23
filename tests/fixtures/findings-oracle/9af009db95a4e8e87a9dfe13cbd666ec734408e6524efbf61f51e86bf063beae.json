@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.75,
+  "reason": "The finding identifies that the function resolves right after `writer.end()` without waiting for `finish`, which is explicitly one of the two defects the PR fixed by switching to `pipeline()` (the other being backpressure), and it even names the same remedy of awaiting stream completion.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 398,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3084
+  },
+  "latencyMs": 5245,
+  "nominalCostUsd": 0.041359
+}

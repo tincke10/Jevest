@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The expression `getConfig().browser.traceView.enabled` does not exist anywhere in the BEFORE code — it was introduced by this commit in the AFTER version — so the finding describes code that was not present in the reviewed state (and Vitest's resolved browser config populates traceView defaults anyway).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 608,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1580
+  },
+  "latencyMs": 7634,
+  "nominalCostUsd": 0.031565
+}

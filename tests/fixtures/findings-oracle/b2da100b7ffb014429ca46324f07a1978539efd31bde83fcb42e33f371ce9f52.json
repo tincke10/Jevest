@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.76,
+  "reason": "The claim is predicated on a `HTTPBatchStreamLinkOptions` type that does not exist in the BEFORE code at all — it is introduced (unexported) only by this commit, and the before code simply uses the separately-defined `HTTPBatchLinkOptions`, so the described type-surface problem cannot be present beforehand.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 797,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2563
+  },
+  "latencyMs": 9509,
+  "nominalCostUsd": 0.046119999999999994
+}

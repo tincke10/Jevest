@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.97,
+  "reason": "The BEFORE code decrements `this.indent` only after `fn(this)` returns normally, so a throw from a child generator (caught by `compileChild`, which keeps writing to the same Doc) leaves the indent raised — exactly the bug the commit, issue #6561 and the PR describe and fix with a `finally`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 293,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2997
+  },
+  "latencyMs": 4895,
+  "nominalCostUsd": 0.037860000000000005
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.92,
+  "reason": "The finding identifies the missing GET/HEAD/QUERY method guard allowing 304s on unsafe methods, and the fix adds exactly that guard (plus a `res.ok` check) before the ETag logic.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 294,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1850
+  },
+  "latencyMs": 4130,
+  "nominalCostUsd": 0.026419
+}

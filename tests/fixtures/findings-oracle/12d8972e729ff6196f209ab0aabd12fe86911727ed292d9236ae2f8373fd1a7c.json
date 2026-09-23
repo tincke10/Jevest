@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.82,
+  "reason": "Despite framing the issue as if a generic had been removed, the finding's substance — that without a `Format` type parameter on `ZodNumberFormat`, `_zod.def.format` widens to the `$ZodNumberFormats` union so `ZodInt`/`ZodInt32`/etc. cannot be narrowed or distinguished at the type level — is precisely the defect the commit fixed by adding `ZodNumberFormat<Format>` and `ZodInt extends ZodNumberFormat<\"safeint\">`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 484,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3888
+  },
+  "latencyMs": 8192,
+  "nominalCostUsd": 0.051549
+}

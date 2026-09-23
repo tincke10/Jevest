@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The fix replaced the `processedSet`/score bookkeeping and the `nodeParams !== emptyParams` guard to make suffix-wildcard routes match, while the `params?.[key] &&` truthiness test the finding complains about is preserved verbatim in the after code — the finding itself admits it is pre-existing and unchanged.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 347,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2530
+  },
+  "latencyMs": 4692,
+  "nominalCostUsd": 0.034544000000000005
+}

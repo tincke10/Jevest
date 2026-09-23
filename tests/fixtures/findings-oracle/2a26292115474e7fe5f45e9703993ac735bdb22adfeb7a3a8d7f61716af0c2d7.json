@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code contains no `isDone` flag (and no AbortController/teardown abort) at all — both were introduced by this change, so the claimed \"removal of a guard\" is inverted and describes nothing present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 748,
+    "cacheReadInputTokens": 5106,
+    "cacheCreationInputTokens": 3568
+  },
+  "latencyMs": 9400,
+  "nominalCostUsd": 0.056953000000000004
+}

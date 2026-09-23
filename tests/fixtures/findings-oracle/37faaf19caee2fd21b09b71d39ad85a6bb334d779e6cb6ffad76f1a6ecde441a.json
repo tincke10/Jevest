@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding identifies that mutationOptions omits the prefix that queries use, leaving mutation keys at a different key root — exactly the missing `prefix` argument the commit added.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 256,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2785
+  },
+  "latencyMs": 4101,
+  "nominalCostUsd": 0.034819
+}

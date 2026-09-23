@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The finding inverts the diff direction — no helper was removed; the AFTER code *adds* `getRelativeDistDir`, and the linked issue shows the BEFORE code actively used both `normalizedDistDir.slice(root.length)` and `relativeIds[root]` inline inside `getCachedVitestImport`, so neither is dead or half-wired state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 492,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3050
+  },
+  "latencyMs": 8072,
+  "nominalCostUsd": 0.043365
+}

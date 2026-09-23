@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.72,
+  "reason": "The finding names the exact defect fixed: the exact-match DOM_ENVIRONMENTS allowlist fails to recognize environment names it doesn't literally list (custom/aliased DOM environments), dropping vm pool candidates — which is precisely why the fix inverted it into the ENVIRONMENTS_WITHOUT_VM_UPSIDE denylist.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1004,
+    "cacheReadInputTokens": 4601,
+    "cacheCreationInputTokens": 3213
+  },
+  "latencyMs": 12213,
+  "nominalCostUsd": 0.059550500000000006
+}

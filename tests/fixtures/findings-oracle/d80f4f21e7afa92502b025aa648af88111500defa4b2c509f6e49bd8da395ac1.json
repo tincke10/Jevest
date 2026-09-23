@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The claim describes a hypothetical CJS-interop risk arising from the AFTER code's namespace imports; the BEFORE code uses plain default imports of the standard istanbul CJS packages, which work correctly, so the asserted problem is not in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 657,
+    "cacheReadInputTokens": 4810,
+    "cacheCreationInputTokens": 3131
+  },
+  "latencyMs": 8852,
+  "nominalCostUsd": 0.05016
+}

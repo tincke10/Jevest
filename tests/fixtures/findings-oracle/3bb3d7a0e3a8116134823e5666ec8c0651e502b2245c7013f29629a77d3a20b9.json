@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.72,
+  "reason": "The finding names the exact mechanism the fix addressed — rebuilding a cached body with a bare `Response` drops the request's Content-Type so media-type-dependent consumers misbehave — though it illustrates it via `blob().type` rather than the `formData()` TypeError.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 887,
+    "cacheReadInputTokens": 5393,
+    "cacheCreationInputTokens": 3982
+  },
+  "latencyMs": 11889,
+  "nominalCostUsd": 0.0647115
+}

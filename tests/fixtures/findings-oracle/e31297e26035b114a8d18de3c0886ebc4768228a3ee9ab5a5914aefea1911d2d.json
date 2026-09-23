@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The hunk is a pure feature addition introducing the new `sharedViteServer` CLI option, not a bugfix, and the finding's speculation that the option might not be honoured by config resolution is not the problem this change addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 585,
+    "cacheReadInputTokens": 3946,
+    "cacheCreationInputTokens": 2188
+  },
+  "latencyMs": 7257,
+  "nominalCostUsd": 0.038498000000000004
+}

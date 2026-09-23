@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.92,
+  "reason": "The finding names exactly the fixed defect — when only `toNotFake` is set the safe-default branch is skipped and sinon fakes everything, including `nextTick`/`queueMicrotask` — even though it mistakenly frames it as a removed `else if`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 537,
+    "cacheReadInputTokens": 5650,
+    "cacheCreationInputTokens": 3835
+  },
+  "latencyMs": 7075,
+  "nominalCostUsd": 0.05462
+}

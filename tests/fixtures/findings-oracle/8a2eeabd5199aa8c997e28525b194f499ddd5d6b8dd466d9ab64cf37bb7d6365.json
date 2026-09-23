@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.68,
+  "reason": "The commit title and PR explicitly cover \"snapshot changes\" — the fix reads the snapshot during render and stores the latest `getSnapshot` in a ref precisely because the once-only effect's callback closed over the first-render `getSnapshot`, which is the stale-getter defect the finding names (a secondary but genuinely fixed part of this change, alongside the `subscribe` re-subscription).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 771,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2634
+  },
+  "latencyMs": 9426,
+  "nominalCostUsd": 0.046184
+}

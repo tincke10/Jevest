@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.62,
+  "reason": "JS spread semantics genuinely copy an own `type` property whose value is `undefined`, so `{ type: \"string\", ...schema.propertyNames }` does clobber the injected default in exactly the case the guard `schema.propertyNames.type === undefined` admits, and such an object is constructible by a caller (e.g. spreading another schema); the code's own comment confirms the resulting key schema would degrade to `z.any()`, though this edge case is unlikely for JSON-parsed input and remains unchanged after the fix.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 979,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3742
+  },
+  "latencyMs": 14245,
+  "nominalCostUsd": 0.06246
+}

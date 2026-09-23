@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.55,
+  "reason": "The finding pinpoints the exact broken conjunction the fix rewrote — noting `typeof obj !== 'string'` is dead once `typeof obj === 'number'` holds and concluding the boolean refactor was not semantics-preserving — which is the same inverted-logic defect that let non-NaN invalid ids pass, though it never names the resulting acceptance of booleans/objects/undefined.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1898,
+    "cacheReadInputTokens": 4986,
+    "cacheCreationInputTokens": 4490
+  },
+  "latencyMs": 25925,
+  "nominalCostUsd": 0.09486299999999999
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim is about a `streamHeader` option that exists only in the AFTER code (it is introduced by this very commit via the new `HTTPBatchStreamLinkOptions` type); the BEFORE code takes plain `HTTPBatchLinkOptions` and accepts no such option, so the described \"silently accepted and ignored\" problem cannot exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 346,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2647
+  },
+  "latencyMs": 4493,
+  "nominalCostUsd": 0.035685
+}

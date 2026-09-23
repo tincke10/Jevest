@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding inverts the diff direction, claiming `relaxedCookieNameRegEx` was deleted leaving a dangling identifier, while the change actually added that relaxed regex so parsing stops rejecting real-world cookie names like `paraglide:lang` — a different, non-existent defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 515,
+    "cacheReadInputTokens": 4853,
+    "cacheCreationInputTokens": 3035
+  },
+  "latencyMs": 6559,
+  "nominalCostUsd": 0.0456715
+}

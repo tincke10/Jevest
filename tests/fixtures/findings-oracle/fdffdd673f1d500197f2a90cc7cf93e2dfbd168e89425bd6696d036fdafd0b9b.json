@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.88,
+  "reason": "The commit is a non-bugfix refactor swapping istanbuljs dependencies for @vitest/-scoped forks, and the finding only speculates that the `istanbul-reports` import removal (part of that refactor) leaves an unresolved identifier — not a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 537,
+    "cacheReadInputTokens": 4818,
+    "cacheCreationInputTokens": 3054
+  },
+  "latencyMs": 7359,
+  "nominalCostUsd": 0.046394000000000005
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The reviewer inverted the diff direction: `raceAbortSignals` is *added* in the AFTER code, not dropped; the BEFORE code never imported or used it, so neither the TS2304 dangling-reference nor the \"racing behaviour deleted\" scenario exists in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 363,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3137
+  },
+  "latencyMs": 4746,
+  "nominalCostUsd": 0.041010000000000005
+}

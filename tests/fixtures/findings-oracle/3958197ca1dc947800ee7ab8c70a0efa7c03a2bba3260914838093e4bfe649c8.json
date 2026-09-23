@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code does not export the type at all — the claim describes a speculative downside of adding the export (i.e., the change itself), naming no actual collision or defect present beforehand.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 505,
+    "cacheReadInputTokens": 4200,
+    "cacheCreationInputTokens": 2454
+  },
+  "latencyMs": 6786,
+  "nominalCostUsd": 0.039284999999999994
+}

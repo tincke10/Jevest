@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.82,
+  "reason": "The change is a feature addition (adding QUERY to the safe-method check for conditional requests), while the finding complains about case-sensitivity and duplication of the method list / possible inconsistency in *other* files, not about QUERY being absent from this condition.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 488,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1398
+  },
+  "latencyMs": 7104,
+  "nominalCostUsd": 0.026749
+}

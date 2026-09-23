@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.87,
+  "reason": "The change is a deliberate feature/breaking change making static parsing the default (with JSDoc updated accordingly), not a bugfix; the finding merely questions whether the new `@default true` doc and dropped `@experimental` tag are accurate, which is not the defect this change addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 319,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1503
+  },
+  "latencyMs": 3821,
+  "nominalCostUsd": 0.023573999999999998
+}

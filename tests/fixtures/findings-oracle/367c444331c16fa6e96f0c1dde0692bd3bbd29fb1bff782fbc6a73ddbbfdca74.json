@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change merely exports existing regex-string constants so router.ts can reuse them as part of fixing wildcard middleware association, whereas the finding speculates about unused-local/lint fallout from \"de-exporting\" — an unrelated (and directionally inverted) concern that says nothing about the wildcard matching defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 358,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3067
+  },
+  "latencyMs": 6807,
+  "nominalCostUsd": 0.040189
+}

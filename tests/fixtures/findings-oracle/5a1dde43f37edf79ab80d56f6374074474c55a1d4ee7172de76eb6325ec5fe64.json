@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "In the BEFORE code these three constants are local, but node.ts itself references them when building regexp strings during `insert` (LABEL_REG_EXP_STR as the default `:param` pattern, ONLY_WILDCARD/TAIL_WILDCARD for `*` and `/*` tokens), so they are not unused locals — and the file as shipped compiles/lints in this repo; moreover the claim inverts the change's direction (the commit added `export`, it did not de-export), so no TS6133/no-unused-vars problem exists in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1764,
+    "cacheReadInputTokens": 5287,
+    "cacheCreationInputTokens": 3686
+  },
+  "latencyMs": 24220,
+  "nominalCostUsd": 0.0836235
+}

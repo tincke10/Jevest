@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a perf optimization (hashing the invariant key part once), with the version bump merely invalidating old caches; the finding's complaint about the hardcoded version literal being manually maintained is not the defect fixed — indeed this commit exercises exactly that manual bump correctly.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 282,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2279
+  },
+  "latencyMs": 4203,
+  "nominalCostUsd": 0.030409000000000002
+}

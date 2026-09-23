@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.72,
+  "reason": "The change's entire content in this hunk is adding `ctx.intersections.push(allOf)`, which is what makes the `foldIntersection` pass in `finalize` actually merge object members; the finding names exactly that missing write and the resulting no-op fold, i.e. the mechanism by which intersections stayed as unsatisfiable `allOf`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1709,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2584
+  },
+  "latencyMs": 22515,
+  "nominalCostUsd": 0.069134
+}

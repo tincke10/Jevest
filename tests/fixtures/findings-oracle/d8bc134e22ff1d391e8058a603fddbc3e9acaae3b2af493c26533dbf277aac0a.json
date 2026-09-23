@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "`queryRepresentationMetadataHeaders` does not exist in the BEFORE code at all — it is introduced by this commit — so the claimed omission cannot be a problem in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 528,
+    "cacheReadInputTokens": 4139,
+    "cacheCreationInputTokens": 2412
+  },
+  "latencyMs": 6931,
+  "nominalCostUsd": 0.0394095
+}

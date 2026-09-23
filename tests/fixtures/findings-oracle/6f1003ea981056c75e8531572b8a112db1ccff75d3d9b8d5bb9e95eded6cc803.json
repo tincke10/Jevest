@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.92,
+  "reason": "The finding (though phrased in reversed diff direction) asserts the before code has no abort listener registration so an abort never completes the observable and an already-aborted signal isn't handled — exactly the bug the issue/PR describe (a `removeEventListener` with no matching `addEventListener`), and the after code adds precisely that `onAbort` wiring.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 379,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2664
+  },
+  "latencyMs": 6010,
+  "nominalCostUsd": 0.036680000000000004
+}

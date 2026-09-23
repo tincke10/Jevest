@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.6,
+  "reason": "The BEFORE code calls `fs.writeFileSync(outputPath, ...)` with no check that the resolved path is not an existing directory, so passing e.g. `--output ./dist` genuinely throws EISDIR (as an unhandled rejection from `void main()`); the claim's substantive assertion holds, even though it is phrased partly in terms of the newly added `mkdirSync`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 930,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2162
+  },
+  "latencyMs": 12149,
+  "nominalCostUsd": 0.045435
+}

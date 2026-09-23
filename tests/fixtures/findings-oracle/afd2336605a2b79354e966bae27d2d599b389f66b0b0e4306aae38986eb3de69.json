@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The BEFORE code uses `util.cachedInternal`, and the finding describes a hypothetical regression from switching to `util.cached` — a property of the AFTER code, not a defect in the BEFORE code; moreover the commit/PR explicitly state that the collapsed `cached` is the same prototype-backed lazy box (`_getter`/`_value` with inherited `value`), so spreading/enumeration does not force `normalizeDef(def)` and `util.cached` demonstrably still exists.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 807,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2173
+  },
+  "latencyMs": 10033,
+  "nominalCostUsd": 0.042469999999999994
+}

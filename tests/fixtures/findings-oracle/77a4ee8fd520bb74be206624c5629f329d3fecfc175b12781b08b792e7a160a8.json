@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The claim describes a defect introduced by the change (removal of the `_Err ?? errors.$ZodError` fallback in the new `failure()` helper); the BEFORE code shown still contains that guard, so the described problem does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 537,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2861
+  },
+  "latencyMs": 6197,
+  "nominalCostUsd": 0.0426
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.93,
+  "reason": "The finding states that using the strict RFC 6265 token regex on the parse path silently drops cookies with names like \"paraglide:lang\", which is precisely the defect the commit fixes by introducing relaxedCookieNameRegEx for parsing (issue #3189).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 265,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2609
+  },
+  "latencyMs": 3410,
+  "nominalCostUsd": 0.033284
+}

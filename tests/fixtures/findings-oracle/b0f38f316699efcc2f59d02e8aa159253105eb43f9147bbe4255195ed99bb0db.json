@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.68,
+  "reason": "The BEFORE `streamToNodeStream` is a bare async loop with no try/catch/finally and no `error` listener, so a rejection from `reader.read()` propagates out with the web-stream reader never cancelled and `writer.end()` skipped in this function — the cleanup gap the fix closes by delegating to `pipeline`; only the reviewer's historical framing and the \"hang until timeout\" consequence depend on caller code not shown.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1855,
+    "cacheReadInputTokens": 5367,
+    "cacheCreationInputTokens": 4860
+  },
+  "latencyMs": 24612,
+  "nominalCostUsd": 0.0976785
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The claim's premise — that this code invokes the shared `fallbackRun` with `abortEarly: true` — is true only of the AFTER code; the BEFORE code builds the context as `{ ..._ctx, async: false }` with no `abortEarly` flag at all, so the described flag-leak scenario has no mechanism in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 787,
+    "cacheReadInputTokens": 4574,
+    "cacheCreationInputTokens": 3037
+  },
+  "latencyMs": 11663,
+  "nominalCostUsd": 0.052351999999999996
+}

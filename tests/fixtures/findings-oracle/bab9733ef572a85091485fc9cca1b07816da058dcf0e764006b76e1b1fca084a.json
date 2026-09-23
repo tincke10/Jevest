@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The claim asserts a type error at call sites passing an object, but in the BEFORE code the only call site (quoted in the issue) is `Object.assign(new UnknownCauseError(), cause)` with no argument, so nothing fails to compile; the claim reads as a misframed description of the post-change state rather than a defect in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 810,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2692
+  },
+  "latencyMs": 9920,
+  "nominalCostUsd": 0.047735
+}

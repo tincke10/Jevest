@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a performance optimization (adding a `definite` flag so z.validate can skip the interpreted pass), not a bugfix; the finding instead critiques the optionality/tri-state nature of the newly added `definite` property, which is not the defect this commit addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 344,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2366
+  },
+  "latencyMs": 4649,
+  "nominalCostUsd": 0.032829
+}

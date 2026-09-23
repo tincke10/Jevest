@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.82,
+  "reason": "The BEFORE code forwards the full `customTesters` array (which for `toMatchObject` includes `subsetEquality` and its contextual closures) into `a.asymmetricMatch(b, customTesters)`, so subset semantics do leak into the matcher's recursive `equals` calls — exactly the defect the commit/issue/PR document and that the added `isSubsetEqualityTester` filter removes; only the reviewer's `toEqual` example is imprecise since subsetEquality is injected only by `toMatchObject`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1309,
+    "cacheReadInputTokens": 5427,
+    "cacheCreationInputTokens": 4344
+  },
+  "latencyMs": 15692,
+  "nominalCostUsd": 0.0788985
+}

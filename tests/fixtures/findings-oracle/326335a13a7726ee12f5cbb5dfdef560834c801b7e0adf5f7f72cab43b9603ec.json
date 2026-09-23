@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The reviewer inverted the diff direction: `writeMetadata` does not exist in the BEFORE code — it is newly added in the AFTER code — so nothing was deleted and the claimed dangling call site cannot arise.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 626,
+    "cacheReadInputTokens": 5326,
+    "cacheCreationInputTokens": 3626
+  },
+  "latencyMs": 7880,
+  "nominalCostUsd": 0.054593
+}

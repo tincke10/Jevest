@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The finding critiques the AFTER code's added `checks` intersection and `snapshotChecks` cast; the BEFORE code's `$ZodStringParams` is plain `TypeParams<schemas.$ZodString<string>, \"coerce\">` with no `checks` property and no cast, so the described problem does not exist there.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 315,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2960
+  },
+  "latencyMs": 3683,
+  "nominalCostUsd": 0.038040000000000004
+}

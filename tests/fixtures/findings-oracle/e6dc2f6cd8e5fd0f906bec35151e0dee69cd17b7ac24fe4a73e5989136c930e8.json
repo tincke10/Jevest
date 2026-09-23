@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The claimed defect depends on the mapped type `{ [k in keyof T as ...]?: ... }`, which appears only in the AFTER code; the BEFORE signature is `properties<Shape extends core.$ZodShape>`, where `T` never enters the constraint and schema values are still required.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1064,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2124
+  },
+  "latencyMs": 12088,
+  "nominalCostUsd": 0.048405000000000004
+}

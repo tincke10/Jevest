@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.97,
+  "reason": "The finding states that without try/finally `this.indent` is never decremented when `fn` throws, leaving the Doc over-indented for all subsequent writes — exactly the defect the commit fixes by moving the decrement into a `finally`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 258,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2997
+  },
+  "latencyMs": 3545,
+  "nominalCostUsd": 0.036989
+}

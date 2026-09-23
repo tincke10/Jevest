@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The finding describes a risk introduced by the change (use of `util.cachedInternal`), not any defect in the BEFORE code, which simply calls the existing `util.cached`; moreover the PR description confirms `cachedInternal` exists as a drop-in `{value}` box used by the three schema call sites.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 361,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2161
+  },
+  "latencyMs": 4238,
+  "nominalCostUsd": 0.0312
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a feature addition (registering the new `sharedViteServer` CLI option for the shared Vite server feature), not a bugfix, and the finding's concern about root-only option scoping is not what the diff addresses.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 352,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1648
+  },
+  "latencyMs": 4188,
+  "nominalCostUsd": 0.025848999999999997
+}

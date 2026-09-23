@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code shown contains `import reports from 'istanbul-reports'` and is internally consistent; the claim describes a hypothetical consequence of the change (a missing import in the AFTER code), not a defect existing in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 671,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2582
+  },
+  "latencyMs": 8480,
+  "nominalCostUsd": 0.043160000000000004
+}

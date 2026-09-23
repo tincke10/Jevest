@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.82,
+  "reason": "In the BEFORE code the `sharedServer` branch precedes the `isBrowserEnabled` branch, so a browser-enabled project with a shared server receives `sharedServer.defines`/`_scriptDefines` for runtime injection on top of Vite's transform-time substitution — precisely the double-substitution (\"BAR\" → \"\"BAR\"\") reported in the linked issue and fixed by hoisting the browser branch to set `defines = {}`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1178,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3694
+  },
+  "latencyMs": 13685,
+  "nominalCostUsd": 0.066955
+}

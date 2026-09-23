@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The finding targets the `sharedViteServer` CLI entry, which does not exist in the BEFORE code (it is added by this change), so the claimed dangling/ignored flag cannot be a problem in the before state; the PR also confirms `sharedViteServer` is a real top-level option honoured by config resolution.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 834,
+    "cacheReadInputTokens": 3930,
+    "cacheCreationInputTokens": 2410
+  },
+  "latencyMs": 10251,
+  "nominalCostUsd": 0.046935000000000004
+}

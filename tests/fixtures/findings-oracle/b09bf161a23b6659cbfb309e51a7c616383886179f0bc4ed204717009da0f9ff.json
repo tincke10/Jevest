@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "The finding describes a weakness introduced by the `snapshotChecks` generic helper, which exists only in the AFTER code; in the BEFORE code the object literal is passed directly to `new Class(...)`, so excess-property checking against the constructor parameter is intact — the claim even concedes this (\"Previously the literal was checked directly\").",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 436,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2878
+  },
+  "latencyMs": 5603,
+  "nominalCostUsd": 0.040245
+}

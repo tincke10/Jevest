@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a performance refactor (hoisting rrweb-snapshot loading into the orchestrator once per worker), not a bugfix, and the finding critiques a missing optional chain on a line that only exists in the AFTER code, so it cannot describe a defect this change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 346,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1580
+  },
+  "latencyMs": 4653,
+  "nominalCostUsd": 0.025019
+}

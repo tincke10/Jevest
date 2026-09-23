@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change adds a configurable `realm` option (with quote escaping) to replace the hardcoded request-URL realm, whereas the finding only questions whether `realm` should also accept a ctx-resolver function — a separate API-design/doc consistency point the commit does not address.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 504,
+    "cacheReadInputTokens": 5192,
+    "cacheCreationInputTokens": 3373
+  },
+  "latencyMs": 6218,
+  "nominalCostUsd": 0.048945999999999996
+}

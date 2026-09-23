@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a pure performance optimization (pre-joining static header arrays once at init), not a bugfix, and the finding describes a speculative behavioral side-effect of that caching rather than a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 475,
+    "cacheReadInputTokens": 4133,
+    "cacheCreationInputTokens": 2270
+  },
+  "latencyMs": 6078,
+  "nominalCostUsd": 0.0366615
+}

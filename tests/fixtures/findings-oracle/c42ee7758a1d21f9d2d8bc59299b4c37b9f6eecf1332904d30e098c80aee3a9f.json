@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The BEFORE code builds the context as `{ ..._ctx, async: false }` with no `abortEarly` at all — the `abortEarly: true` override the finding quotes and criticizes only exists in the AFTER code, so the described override of a caller-supplied `abortEarly` cannot occur in the before version.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 490,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2396
+  },
+  "latencyMs": 5706,
+  "nominalCostUsd": 0.036775
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.98,
+  "reason": "The finding names the missing `uncheckedKey.startsWith(testName)` prefix check and the unanchored regex letting unrelated keys ending in ` <digits>` be dropped from `_uncheckedKeys`, which is exactly the defect the commit fixes by restoring the prefix guard and anchoring the regex.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 496,
+    "cacheReadInputTokens": 5381,
+    "cacheCreationInputTokens": 3508
+  },
+  "latencyMs": 5825,
+  "nominalCostUsd": 0.0501905
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The finding reads the diff backwards: `relaxedCookieNameRegEx` is introduced by the change (it exists only in the AFTER code), so the BEFORE code contains no deletion and no dangling reference — it simply never had that identifier, and the commit/issue confirm the relaxed regex is new parsing logic being added.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 386,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2617
+  },
+  "latencyMs": 5097,
+  "nominalCostUsd": 0.036385
+}

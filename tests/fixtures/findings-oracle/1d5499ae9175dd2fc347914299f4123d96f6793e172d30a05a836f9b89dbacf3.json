@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.92,
+  "reason": "The issue/PR explicitly state that `Vitest.collect()` only set `process.exitCode` in the `collectTests` branch while the static-parse branch returned without it, and the fix adds exactly the `hasFailed` → `process.exitCode = 1` check the reviewer's inconsistency claim points at.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 356,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2739
+  },
+  "latencyMs": 6673,
+  "nominalCostUsd": 0.036855
+}

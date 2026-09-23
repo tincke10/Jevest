@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The BEFORE `defaultMatch` sorts all accepts without any `q > 0` filter, so a `q=0` entry can be returned by `supports.find(...)` — exactly the bug described in the linked issue and fixed by adding `.filter((accept) => accept.q > 0)`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 291,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2746
+  },
+  "latencyMs": 3883,
+  "nominalCostUsd": 0.0353
+}

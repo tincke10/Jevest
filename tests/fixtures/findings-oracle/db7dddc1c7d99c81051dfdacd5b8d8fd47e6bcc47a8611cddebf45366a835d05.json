@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The BEFORE code returns an object literal with `error` as an eagerly-constructed plain data property; the accessor/getter semantics the finding complains about are introduced only by the AFTER code's `failure()` helper, so the described reflection/serialization problem does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 420,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2755
+  },
+  "latencyMs": 6050,
+  "nominalCostUsd": 0.038615000000000003
+}

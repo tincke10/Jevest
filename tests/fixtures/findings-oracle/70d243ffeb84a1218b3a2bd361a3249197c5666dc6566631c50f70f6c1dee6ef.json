@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The finding describes a hypothetical consequence of the change (a dangling `istanbulDefaults` reference after the import is dropped) rather than a defect in the BEFORE code, where the import exists and is consistent; the merged PR swapping to @vitest/istanbuljs packages shows the file works without it.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 741,
+    "cacheReadInputTokens": 4833,
+    "cacheCreationInputTokens": 3256
+  },
+  "latencyMs": 9250,
+  "nominalCostUsd": 0.0535215
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The finding reads the diff backwards: `getMessage` does not exist in the BEFORE code at all (it is newly introduced by this change), so nothing was deleted and no guarded `String(cause.message)` coercion was lost.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 706,
+    "cacheReadInputTokens": 4886,
+    "cacheCreationInputTokens": 3266
+  },
+  "latencyMs": 8273,
+  "nominalCostUsd": 0.052773
+}

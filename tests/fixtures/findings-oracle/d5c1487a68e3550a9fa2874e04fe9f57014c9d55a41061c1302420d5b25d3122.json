@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "Though the reviewer states the diff direction backwards, the state it flags as defective is exactly the BEFORE code — only `propertyNames` handled while `minProperties`/`maxProperties` are silently dropped so `{type:\"object\",minProperties:1}` accepts `{}` — which is precisely the defect the commit fixes by adding `checkObjectGuards` with min/maxProperties.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 908,
+    "cacheReadInputTokens": 6047,
+    "cacheCreationInputTokens": 4559
+  },
+  "latencyMs": 10539,
+  "nominalCostUsd": 0.0713335
+}

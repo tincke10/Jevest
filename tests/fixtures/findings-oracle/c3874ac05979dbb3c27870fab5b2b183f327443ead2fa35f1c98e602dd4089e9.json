@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.93,
+  "reason": "The before code's static-parse branch returns early without any hasFailed/process.exitCode = 1 assignment, which is exactly the exit-0-on-parse-failure behavior documented in issue #11145 and fixed by the added check.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 464,
+    "cacheReadInputTokens": 5013,
+    "cacheCreationInputTokens": 3187
+  },
+  "latencyMs": 5694,
+  "nominalCostUsd": 0.045996499999999996
+}

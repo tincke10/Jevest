@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.62,
+  "reason": "The before code's `key: string` annotation is erased at runtime while `this.#var.set(key, value)` stores any key into a Map — exactly the type-only gap the issue itself states (\"The runtime has no such restriction... purely a type-level gap\"), so the claim is factually true of the before code even though it is trivial and misframes the string typing as intentional safety.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1093,
+    "cacheReadInputTokens": 4601,
+    "cacheCreationInputTokens": 3361
+  },
+  "latencyMs": 14011,
+  "nominalCostUsd": 0.06325549999999999
+}

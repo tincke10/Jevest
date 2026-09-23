@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.88,
+  "reason": "The finding identifies exactly the defect the fix addressed — the missing `done` guard means `value` can be `undefined` and the `as PromiseChunk` cast hides it, which is the precise cause of the TypeError on destructuring; only the reviewer's before/after framing is inverted, not the substance.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 378,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2938
+  },
+  "latencyMs": 5143,
+  "nominalCostUsd": 0.039399
+}

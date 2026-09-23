@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The claim's asserted defect (no workspaceRoot/isWithinPath guard, so any path containing node_modules is treated as external and its JSDoc dropped) describes the post-change code; the BEFORE hunk explicitly defines and uses `isWithinPath` and `workspaceRoot = normalize(process.cwd())`, so the guard the claim says is missing is present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1558,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2013
+  },
+  "latencyMs": 19765,
+  "nominalCostUsd": 0.059645000000000004
+}

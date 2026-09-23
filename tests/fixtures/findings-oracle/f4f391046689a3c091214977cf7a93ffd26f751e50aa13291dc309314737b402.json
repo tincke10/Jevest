@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.68,
+  "reason": "Zod v4's `$ZodIssueInvalidUnion` carries `errors` (with `note`/`discriminator` on a discriminator miss) and never an `options` array — `options` was a v3-only field on `invalid_union_discriminator`/`invalid_enum_value` — so the guarded branch cannot fire during normal parsing and the reworded string falls through to the generic \"Вуруди нодуруст\"; the read only compiles because `$ZodRawIssue` admits arbitrary properties, and the commit is a pure wording tweak that neither confirms nor changes reachability.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 4288,
+    "cacheReadInputTokens": 4780,
+    "cacheCreationInputTokens": 3016
+  },
+  "latencyMs": 56367,
+  "nominalCostUsd": 0.13977
+}

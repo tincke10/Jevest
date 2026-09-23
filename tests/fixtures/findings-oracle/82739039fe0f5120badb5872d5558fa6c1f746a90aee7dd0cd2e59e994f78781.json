@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The BEFORE code has no `import * as regexes from \"../core/regexes.js\"` at all — that import is introduced by the change — so the claimed problem cannot exist in the before code, and the commit message indicates the direct module import improves rather than defeats tree-shaking.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 534,
+    "cacheReadInputTokens": 4414,
+    "cacheCreationInputTokens": 2652
+  },
+  "latencyMs": 7236,
+  "nominalCostUsd": 0.042096999999999996
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.72,
+  "reason": "The finding notices the same type/runtime divergence but frames it as the string type being unenforced at runtime (cosmetic narrowing, no safety), whereas the fix addressed the opposite defect — the type being too narrow so legitimate symbol keys fail to compile; it never mentions the compile-time rejection of symbol keys.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 671,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2381
+  },
+  "latencyMs": 8373,
+  "nominalCostUsd": 0.041153999999999996
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.87,
+  "reason": "The change is a feature addition (first-class QUERY request support in the cache middleware), not a bugfix, and the finding instead speculates about a nullable/async `sha256` return type in the newly added code rather than naming a defect the change repaired.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 331,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1945
+  },
+  "latencyMs": 4054,
+  "nominalCostUsd": 0.028294
+}

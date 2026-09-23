@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding names precisely the defect the commit fixed — `removeEventListener('abort', abort)` with no corresponding `addEventListener`, making the signal wiring a silent no-op — which is exactly the root cause described in the issue and remedied by registering an `onAbort` listener.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 284,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2642
+  },
+  "latencyMs": 3407,
+  "nominalCostUsd": 0.034089
+}

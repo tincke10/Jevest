@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The BEFORE code contains no `prewarmModules` property at all — the hard-coded `prewarmModules: false` the finding critiques is introduced by the change itself, so the described problem cannot be present in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 469,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1701
+  },
+  "latencyMs": 5716,
+  "nominalCostUsd": 0.0293
+}

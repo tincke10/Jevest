@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The fix swapped the spread for `util.mergeDefs` because spreading eagerly reads the lazy `shape` getter (minting fresh recursive subtrees and exhausting the stack), while the finding concerns `catchall: undefined` leaving an own key / structural def difference — the same lines but a different defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 681,
+    "cacheReadInputTokens": 5687,
+    "cacheCreationInputTokens": 4005
+  },
+  "latencyMs": 8327,
+  "nominalCostUsd": 0.0599385
+}

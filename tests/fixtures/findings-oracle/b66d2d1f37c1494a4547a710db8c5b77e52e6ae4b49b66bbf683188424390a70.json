@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The critiqued `@param [options.realm]` line does not exist in the BEFORE code (it is added by this change), and the PR description explicitly confirms the default was deliberately kept as `ctx.req.url` rather than `''`, so the alleged doc/implementation mismatch is refuted rather than merely unverifiable.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 781,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3029
+  },
+  "latencyMs": 9870,
+  "nominalCostUsd": 0.05038
+}

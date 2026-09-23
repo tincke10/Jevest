@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The fix replaced the `mayOutputUndefined` predicate with `mayOmitUndefined` so that defaulted/prefaulted required fields keep their key when the value is undefined; the finding merely raises a mechanical compile/lint concern about symbol existence and unused identifiers, not the wrong key-omission behavior the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 435,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 4131
+  },
+  "latencyMs": 5649,
+  "nominalCostUsd": 0.052195
+}

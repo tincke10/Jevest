@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "In the BEFORE code `processedSet` is allocated fresh each outer iteration (and before the `handlerSet !== undefined` guard), and since `handlerSet.score` is constant within the inner loop the lookup is false only on the first inner iteration — exactly the `!i` test the AFTER code restores, so the score-keyed map is indeed dead weight plus a per-iteration allocation.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1175,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2688
+  },
+  "latencyMs": 13659,
+  "nominalCostUsd": 0.056819999999999996
+}

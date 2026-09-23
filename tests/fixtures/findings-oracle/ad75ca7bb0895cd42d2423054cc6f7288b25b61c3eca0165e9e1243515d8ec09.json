@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.68,
+  "reason": "The PR explicitly states it fixed unescaped `\"` in the interpolated `realm`/`error_description` of the `WWW-Authenticate` quoted-string by applying `.replace(/\"/g, '\\\\\"')`, which is precisely the defect the finding names, even though the commit's headline change was the additive realm option.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 830,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3009
+  },
+  "latencyMs": 10838,
+  "nominalCostUsd": 0.051408999999999996
+}

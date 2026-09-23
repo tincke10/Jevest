@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.68,
+  "reason": "Whether `issue.options` can ever contain objects or symbols — the precondition for `[object Object]` output or a TypeError — cannot be established from this hunk, and the commit/issue trail concerns only Tajik grammar wording, giving no evidence about the runtime shape of `options`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1441,
+    "cacheReadInputTokens": 4665,
+    "cacheCreationInputTokens": 3818
+  },
+  "latencyMs": 18017,
+  "nominalCostUsd": 0.0765575
+}

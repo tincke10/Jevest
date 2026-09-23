@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The finding is predicated on the `sharedViteServer` CLI option entry, which does not exist in the BEFORE code at all (it is introduced by this change between `strictTags` and `experimental`), so the claimed root-level-vs-project-level exposure problem cannot be present in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 588,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1648
+  },
+  "latencyMs": 7173,
+  "nominalCostUsd": 0.031744999999999995
+}

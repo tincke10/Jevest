@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.8,
+  "reason": "The BEFORE code exposes no caller-supplied `realm` option — the realm was hardcoded to `ctx.req.url`, and the `realm` parameter is only introduced by this commit — so the user-controlled quoted-string injection the claim describes is not reachable in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 924,
+    "cacheReadInputTokens": 5229,
+    "cacheCreationInputTokens": 3842
+  },
+  "latencyMs": 10839,
+  "nominalCostUsd": 0.0641545
+}

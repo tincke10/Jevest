@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.88,
+  "reason": "The change is a feature adding `+json` structured-suffix support (and a replacer option), while the finding critiques the new regex for excluding `text/json` prefixes — a different, unaddressed concern about the post-change code rather than the defect the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 474,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1823
+  },
+  "latencyMs": 6344,
+  "nominalCostUsd": 0.030649
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The commit was a pure perf rewrite dropping the `(?!\\.)(?!.*\\.\\.)` lookaheads while explicitly preserving the accepted language; the finding instead flags capturing-to-non-capturing group numbering, an incidental side effect of that rewrite rather than a defect in the BEFORE code it fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 610,
+    "cacheReadInputTokens": 5071,
+    "cacheCreationInputTokens": 3300
+  },
+  "latencyMs": 8802,
+  "nominalCostUsd": 0.0508055
+}

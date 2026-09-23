@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The BEFORE code contains no reference to `raceAbortSignals` — it is introduced by this change — so the claim's premise that line 187 is its call site and the import is therefore dead misdescribes the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1054,
+    "cacheReadInputTokens": 5039,
+    "cacheCreationInputTokens": 3830
+  },
+  "latencyMs": 13659,
+  "nominalCostUsd": 0.0671895
+}

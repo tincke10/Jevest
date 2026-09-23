@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.97,
+  "reason": "The finding identifies exactly the defect fixed: `prefix` was not passed to `trpcMutationOptions`, so mutation keys from `mutationOptions()` lacked the key prefix while `mutationKey()` included it.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 198,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2950
+  },
+  "latencyMs": 3947,
+  "nominalCostUsd": 0.035018999999999995
+}

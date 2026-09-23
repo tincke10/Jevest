@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.72,
+  "reason": "The finding flags the same missing `input: arg1` line but claims the defect is that subscriptions fire with undefined input (wrong request/server validation error), whereas the fix addressed `enabled` incorrectly being true because `skipToken` is stripped when recovering input from the queryKey — the finding never mentions skipToken or the enabled flag, and even concedes deriving input from the queryKey would make it safe.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 872,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3002
+  },
+  "latencyMs": 12688,
+  "nominalCostUsd": 0.052389
+}

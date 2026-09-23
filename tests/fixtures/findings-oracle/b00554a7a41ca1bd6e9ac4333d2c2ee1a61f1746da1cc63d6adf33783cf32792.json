@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.97,
+  "reason": "The BEFORE code assigns `bag.minimum = minimum; bag.maximum = maximum;` unconditionally in onattach, which is precisely the bug described in the linked issue/PR (`z.number().min(0).max(23).int()` emitting the safe-integer range), and the fix adds the narrowing guards the reviewer names.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 312,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2888
+  },
+  "latencyMs": 3755,
+  "nominalCostUsd": 0.037245
+}

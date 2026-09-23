@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.6,
+  "reason": "The finding says the guard never protects `queueMicrotask` so it can still end up faked when `toNotFake` is supplied, and proposes exactly the applied fix (force `nextTick`/`queueMicrotask` into `toNotFake`), matching the defect the commit fixed, though it attributes it to the child-process guard rather than the skipped default-`toFake` computation.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1218,
+    "cacheReadInputTokens": 5598,
+    "cacheCreationInputTokens": 4482
+  },
+  "latencyMs": 14116,
+  "nominalCostUsd": 0.07808899999999999
+}

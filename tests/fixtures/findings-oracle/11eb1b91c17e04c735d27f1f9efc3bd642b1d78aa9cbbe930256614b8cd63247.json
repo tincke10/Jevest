@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "unclear",
+  "confidence": 0.62,
+  "reason": "The literal observation that a possibly-undefined `options.staticParseConcurrency` is forwarded is trivially true, but the actual asserted problem — that the callee's default handling could differ/break — depends on `parseSpecifications`' signature which is outside this hunk, and the PR describes only a rename with a deprecated alias, so no defect in the before code is demonstrable from what is shown.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 994,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1332
+  },
+  "latencyMs": 15746,
+  "nominalCostUsd": 0.038735000000000006
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature adding `+json` structured content-type support (plus a replacer option), not a bugfix, whereas the finding critiques the character class of the newly-introduced regex for exotic RFC 6838 edge cases — a concern the change does not address.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 505,
+    "cacheReadInputTokens": 4080,
+    "cacheCreationInputTokens": 2232
+  },
+  "latencyMs": 6325,
+  "nominalCostUsd": 0.037004999999999996
+}

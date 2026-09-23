@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The claim describes the AFTER state (types sourced from @vitest/istanbul-lib-*); the BEFORE code imports CoverageMap/Instrumenter from the upstream istanbul-lib-coverage/-instrument packages, so the alleged fork-vs-upstream type incompatibility does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 558,
+    "cacheReadInputTokens": 4808,
+    "cacheCreationInputTokens": 3040
+  },
+  "latencyMs": 6964,
+  "nominalCostUsd": 0.046773999999999996
+}

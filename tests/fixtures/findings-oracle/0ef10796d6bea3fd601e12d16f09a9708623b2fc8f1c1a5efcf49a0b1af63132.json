@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding pinpoints the removed `bodyCache.formData` fast path as the cause of parseBody() failing after a prior formData() read — precisely the regression this commit fixes by restoring that early return, differing only in the exact failure mode described.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 537,
+    "cacheReadInputTokens": 4922,
+    "cacheCreationInputTokens": 3172
+  },
+  "latencyMs": 7189,
+  "nominalCostUsd": 0.047626
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The finding inverts the direction of the change: the BEFORE code contains no `hasFailed` call at all (it is introduced by the fix), and the fix adds that call without any import change shown, indicating `hasFailed` was already imported and used elsewhere in core.ts (e.g. the collectTests/run exit-code path referenced in the issue), so there is no unused-import problem in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1097,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2703
+  },
+  "latencyMs": 13511,
+  "nominalCostUsd": 0.05502
+}

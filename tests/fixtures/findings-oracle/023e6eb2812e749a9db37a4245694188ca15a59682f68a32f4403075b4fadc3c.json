@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The finding reads the diff backwards: `getRelativeDistDir` is introduced by the change (present only in the AFTER code), so the BEFORE code neither defines nor deletes it, and no compile error or lost semantics exists there.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 297,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3175
+  },
+  "latencyMs": 3771,
+  "nominalCostUsd": 0.03974
+}

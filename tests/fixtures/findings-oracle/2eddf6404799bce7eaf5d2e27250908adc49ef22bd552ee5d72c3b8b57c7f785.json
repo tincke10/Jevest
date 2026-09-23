@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The BEFORE code merely declares and exports `JsonSchema`, which is not a defect; the claimed breakage is a consequence of the intentional refactor to the official OpenAPI `SchemaObject` types, not a problem present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 813,
+    "cacheReadInputTokens": 4887,
+    "cacheCreationInputTokens": 3401
+  },
+  "latencyMs": 10772,
+  "nominalCostUsd": 0.056798499999999995
+}

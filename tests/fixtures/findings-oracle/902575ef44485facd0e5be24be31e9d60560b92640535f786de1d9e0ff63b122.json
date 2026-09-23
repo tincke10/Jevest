@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.75,
+  "reason": "In the BEFORE hunk the comparator returns 1 whenever `a` is either wildcard, so for a pair of wildcard keys (`.*` vs `(?:|/.*)`, which can be siblings for route sets like `/a*` plus `/a/*`) compare(a,b) and compare(b,a) both say \"greater\", leaving their relative order to sort-stability/insertion order — exactly the ambiguity the AFTER code removes by explicitly placing `.*` before the tail wildcard, confirming the alternation order (and thus which route wins) was previously not pinned.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 8701,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2323
+  },
+  "latencyMs": 104097,
+  "nominalCostUsd": 0.24132000000000003
+}

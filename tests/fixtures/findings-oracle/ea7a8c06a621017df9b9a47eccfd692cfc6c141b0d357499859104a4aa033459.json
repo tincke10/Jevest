@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The BEFORE code contains no `prewarmModules` property at all, so no excess-property compile error exists there; the claim is a conditional requirement about the new field (which the PR explicitly added as optional `prewarmModules?: boolean` on `Environment`), not a defect in the code under review.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 907,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1651
+  },
+  "latencyMs": 13068,
+  "nominalCostUsd": 0.03975
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.78,
+  "reason": "The finding's primary concern — that in browser mode the defines are handed to the runtime while Vite still performs compile-time replacement, causing double application — is exactly the defect the fix addressed by forcing `resolvedTestConfig.defines = {}` for browser-enabled projects (the double-quoting bug).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 657,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3731
+  },
+  "latencyMs": 8641,
+  "nominalCostUsd": 0.054304
+}

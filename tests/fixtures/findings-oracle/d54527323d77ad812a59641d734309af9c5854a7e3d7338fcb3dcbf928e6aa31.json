@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.9,
+  "reason": "The linked issue reproduces exactly the claimed behavior — `getCookie` silently omits `paraglide:lang=en` because the parse path applied the strict `validCookieNameRegEx`, and the fix adds `relaxedCookieNameRegEx` for consumption, confirming the before code dropped such cookies.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 437,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2609
+  },
+  "latencyMs": 8301,
+  "nominalCostUsd": 0.03758
+}

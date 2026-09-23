@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.6,
+  "reason": "The finding describes the missed store update between the initial render's snapshot read and the effect's subscribe on the client path, which the fix explicitly addresses by unconditionally re-checking `Object.is(snapshot, getSnapshot())` after subscribing (PR bullet \"Re-check the latest snapshot after subscribing to avoid missing an update between render and effect execution\"), though it does not mention the headline resubscribe-on-`subscribe`-change defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1087,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2644
+  },
+  "latencyMs": 14316,
+  "nominalCostUsd": 0.054184
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.88,
+  "reason": "The change is a feature — z.properties() becomes a real schema, so its check re-export is removed — not a fix for an unused/dead `_properties` import, which is what the finding speculates about.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 489,
+    "cacheReadInputTokens": 4279,
+    "cacheCreationInputTokens": 2482
+  },
+  "latencyMs": 7238,
+  "nominalCostUsd": 0.0392045
+}

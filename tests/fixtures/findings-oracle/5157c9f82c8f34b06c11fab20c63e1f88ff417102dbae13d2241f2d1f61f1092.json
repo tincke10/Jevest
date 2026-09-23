@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.55,
+  "reason": "Despite mis-describing the mechanism (it imagines a call site passing `cause` as the Error arg, whereas the real code did `Object.assign(new UnknownCauseError(), cause)` yielding an empty message), the finding pinpoints the exact defect the fix addresses: `UnknownCauseError` lacking a constructor that derives `message` from `cause.message`, which the change adds.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1129,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2737
+  },
+  "latencyMs": 15506,
+  "nominalCostUsd": 0.056164
+}

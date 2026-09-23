@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.75,
+  "reason": "The fix addressed the runtime loss of the cause's `message` (non-enumerable, so not copied by Object.assign) for cross-realm/VM errors, while the finding's substantive claim is a hypothetical TypeScript compile error at `new UnknownCauseError(someObject)` call sites — which doesn't exist in the BEFORE code (the call site is `new UnknownCauseError()`), with only a vague backwards-framed mention of `message`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 923,
+    "cacheReadInputTokens": 4928,
+    "cacheCreationInputTokens": 3492
+  },
+  "latencyMs": 11640,
+  "nominalCostUsd": 0.060479000000000005
+}

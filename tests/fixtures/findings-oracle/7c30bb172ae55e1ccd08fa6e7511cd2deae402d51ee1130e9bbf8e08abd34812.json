@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.92,
+  "reason": "In the BEFORE code the five interfaces are empty extensions of the same non-generic `ZodNumberFormat`, so they are structurally identical and mutually assignable — exactly the indistinguishability the linked issue and the generic `<Format>` fix confirm.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 363,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3708
+  },
+  "latencyMs": 4050,
+  "nominalCostUsd": 0.04672
+}

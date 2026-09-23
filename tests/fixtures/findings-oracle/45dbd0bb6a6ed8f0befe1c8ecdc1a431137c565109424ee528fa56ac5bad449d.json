@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.75,
+  "reason": "The AFTER code's `setVersion((version) => version + 1)` confirms Hono's useState setter treats a function argument as a functional updater, so the BEFORE code's `setState(getSnapshot())` would invoke a function-valued snapshot with the previous state instead of storing it — a real, if niche, mechanism in the shown code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1283,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2623
+  },
+  "latencyMs": 15752,
+  "nominalCostUsd": 0.058870000000000006
+}

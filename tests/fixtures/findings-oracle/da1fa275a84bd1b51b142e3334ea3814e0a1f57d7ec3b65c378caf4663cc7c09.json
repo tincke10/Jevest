@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.78,
+  "reason": "The BEFORE `CompiledFn` type has only `code?`; the `definite` flag the finding warns about is introduced by this very change, so the claimed propagation hazard for `definite` cannot exist in the before code (and the claim is a speculative design critique rather than an identified defect).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 669,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2219
+  },
+  "latencyMs": 8889,
+  "nominalCostUsd": 0.03948
+}

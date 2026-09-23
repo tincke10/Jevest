@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.88,
+  "reason": "The before code computes/attaches an ETag and can return 304 immediately after `await next()` with no status or method gate, and the commit/PR explicitly state the method-and-status check only applied when If-None-Match was `*`, confirming 4xx/5xx responses got ETags and 304s in the non-* path.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 443,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1799
+  },
+  "latencyMs": 5758,
+  "nominalCostUsd": 0.029629999999999997
+}

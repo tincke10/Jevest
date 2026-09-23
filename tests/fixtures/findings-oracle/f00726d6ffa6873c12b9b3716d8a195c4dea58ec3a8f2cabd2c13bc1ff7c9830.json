@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The before code has no method/status gate before the ETag generation and If-None-Match comparison (the PR states the method/status check existed only in the `*` branch), so a POST with a matching non-`*` If-None-Match could be answered 304 — exactly the behavior the commit \"skip unsafe methods or error responses on non-* case\" fixes; the reviewer's framing of it as a \"removal\" is historically confused but the substantive claim about the before code is true.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1254,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1850
+  },
+  "latencyMs": 16115,
+  "nominalCostUsd": 0.050415
+}

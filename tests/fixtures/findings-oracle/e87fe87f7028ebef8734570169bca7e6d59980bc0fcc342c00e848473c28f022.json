@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The change is an intentional chore/refactor un-exporting internals flagged by knip, not a bugfix, and the finding merely objects to that un-exporting (asserting hypothetical broken consumers) rather than naming a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 314,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1666
+  },
+  "latencyMs": 5214,
+  "nominalCostUsd": 0.025079
+}

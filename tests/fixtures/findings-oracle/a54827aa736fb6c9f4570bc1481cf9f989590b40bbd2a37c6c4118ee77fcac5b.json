@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "In the BEFORE code `void main();` discards the promise with no `.catch()`, and the `fs.writeFileSync` call sits outside the earlier try/catch (which ends at `process.exit(1)`), so a throw — e.g. the very ENOENT-on-missing-directory case the PR notes as a bug — rejects the floating promise as an unhandled rejection rather than a controlled error exit.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 591,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2149
+  },
+  "latencyMs": 7246,
+  "nominalCostUsd": 0.03683
+}

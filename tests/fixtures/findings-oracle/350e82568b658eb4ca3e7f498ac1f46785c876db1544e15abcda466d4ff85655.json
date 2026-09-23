@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.85,
+  "reason": "The after-code's own comment (\"`mergeDefs` rather than a spread: spreading reads `shape`, and resolving it can mint a whole fresh subtree\") plus the PR describing factory-built recursive schemas blowing the stack confirm that the before code's `{ ...this._zod.def }` eagerly triggers the lazy `shape` getter in catchall/passthrough/loose/strict/strip, exactly the mechanism claimed (the non-enumerable-descriptor sub-point is extra speculation, but the core claim holds).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1105,
+    "cacheReadInputTokens": 5887,
+    "cacheCreationInputTokens": 4597
+  },
+  "latencyMs": 12985,
+  "nominalCostUsd": 0.0765585
+}

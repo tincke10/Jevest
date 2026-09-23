@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.6,
+  "reason": "The after code keeps `_scriptDefines` unset in the browser branch (only zeroing `defines`), showing that leaving `_scriptDefines` undefined in browser mode is intended and harmless; the actual defect was that `defines` was populated at all (causing double-applied defines/quotes), which is the opposite of the claim's diagnosis.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1746,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3561
+  },
+  "latencyMs": 22102,
+  "nominalCostUsd": 0.07982500000000001
+}

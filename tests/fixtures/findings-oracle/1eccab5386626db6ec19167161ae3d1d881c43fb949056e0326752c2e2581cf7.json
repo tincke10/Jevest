@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.6,
+  "reason": "The reviewer read the diff direction backwards (ZodNumberFormat was never generic before, so the \"now fails as not generic\" sub-claim is wrong), but the substantive defect it describes — `ZodInt`/`ZodInt32`/etc. all extend a non-parameterized `ZodNumberFormat` so `_zod.def.format` is the full `$ZodNumberFormats` union with no literal narrowing — is exactly the state of the BEFORE code and precisely the bug the linked issue and commit fix.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1287,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3888
+  },
+  "latencyMs": 16939,
+  "nominalCostUsd": 0.07161999999999999
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The BEFORE signature is `properties<Shape extends core.$ZodShape>`, imposing no per-key input constraint; the `core.$ZodType<unknown, T[k]>` pinning that the claim attacks exists only in the AFTER code, so the described over-constraining problem is not in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 757,
+    "cacheReadInputTokens": 4363,
+    "cacheCreationInputTokens": 2766
+  },
+  "latencyMs": 9389,
+  "nominalCostUsd": 0.0487865
+}

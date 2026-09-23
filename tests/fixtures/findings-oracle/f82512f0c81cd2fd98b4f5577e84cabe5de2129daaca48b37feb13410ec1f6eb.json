@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding identifies that `slice(testName.length)` is applied without verifying the key actually starts with `testName`, causing the regex to match unrelated mid-string fragments — exactly the missing prefix check that the fix restored via `uncheckedKey.startsWith(testName)`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 281,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3010
+  },
+  "latencyMs": 3667,
+  "nominalCostUsd": 0.037694000000000005
+}

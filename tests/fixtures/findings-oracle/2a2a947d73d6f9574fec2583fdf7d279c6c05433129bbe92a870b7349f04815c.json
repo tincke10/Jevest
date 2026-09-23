@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The claim of broken importers is refuted by the commit being a knip unused-export cleanup that explicitly \"unexports internals only used within their own modules\" — `CONFIG_NAMES` is consumed solely by the local `configFiles` in the same file, which stays exported.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 867,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1712
+  },
+  "latencyMs": 11037,
+  "nominalCostUsd": 0.03936
+}

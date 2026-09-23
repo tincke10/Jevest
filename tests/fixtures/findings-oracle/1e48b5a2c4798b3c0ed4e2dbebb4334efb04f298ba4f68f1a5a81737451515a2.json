@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.88,
+  "reason": "The BEFORE `Authorizer` interface declares only `iam`, so `requestContext.authorizer.lambda` (the payload format 2.0 path to a REQUEST authorizer's context) is a TS error without casts — exactly the bug in the linked issue that the commit fixes by adding `lambda?: Record<string, unknown> | null`; the finding's \"removing\" framing is just inverted-diff phrasing of that same missing-member problem.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 538,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2892
+  },
+  "latencyMs": 7093,
+  "nominalCostUsd": 0.042935
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The claim critiques the regex `/^application\\/(?:[a-z0-9._-]+\\+)?json.../` at line 27, but that regex does not exist in the BEFORE code — it was introduced by this very commit (visible only in the AFTER snippet), so the finding describes the post-change code rather than a problem in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 514,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1844
+  },
+  "latencyMs": 6691,
+  "nominalCostUsd": 0.031854999999999994
+}

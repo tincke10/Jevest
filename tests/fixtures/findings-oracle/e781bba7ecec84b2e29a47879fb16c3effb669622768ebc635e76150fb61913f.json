@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The claim describes the post-change state (string factories snapshotting while others alias), but in the BEFORE code no factory snapshots and `checks` isn't even an exposed option on `$ZodStringParams` (TypeParams omits \"checks\"), so the asserted inconsistency does not exist in the before code — and the commit message states typed `checks` were added to string *and* number factories together.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1253,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2873
+  },
+  "latencyMs": 15935,
+  "nominalCostUsd": 0.06062000000000001
+}

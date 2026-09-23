@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.82,
+  "reason": "The finding explicitly states that `Record<string, any>` in the `IsAny<E>` fallback wrongly rejects symbol keys in the untyped context case, which is precisely the type-level defect the commit fixed by widening to `PropertyKey`/`string | symbol` for both the variable map and the `set` key parameter.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 378,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2481
+  },
+  "latencyMs": 4918,
+  "nominalCostUsd": 0.034829
+}

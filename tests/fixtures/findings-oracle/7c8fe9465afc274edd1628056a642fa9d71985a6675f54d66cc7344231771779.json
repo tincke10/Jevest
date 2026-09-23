@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.85,
+  "reason": "The finding identifies the missing `preventAbort: true` (destination aborted on source error, writes dead afterward) and explicitly ties it to the absent `finally`/re-acquired writer — exactly the two-part defect the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 383,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2518
+  },
+  "latencyMs": 5399,
+  "nominalCostUsd": 0.035323999999999994
+}

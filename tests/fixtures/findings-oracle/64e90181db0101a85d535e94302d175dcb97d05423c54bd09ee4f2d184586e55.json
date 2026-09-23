@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The commit is a feature migration to the forked @vitest/istanbuljs packages, not a bugfix; the finding only raises a speculative CJS-interop risk about the new namespace imports rather than naming a defect the change repaired.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 557,
+    "cacheReadInputTokens": 4826,
+    "cacheCreationInputTokens": 3047
+  },
+  "latencyMs": 6513,
+  "nominalCostUsd": 0.046828
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.9,
+  "reason": "The finding names the missing valueOf/toString/toJSON coercion guard and the resulting fall-through to callback / non-primitive return, which is precisely the React 19 proxy-coercion defect this commit fixed by adding that short-circuit.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 676,
+    "cacheReadInputTokens": 5133,
+    "cacheCreationInputTokens": 3466
+  },
+  "latencyMs": 9003,
+  "nominalCostUsd": 0.0541465
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a pure performance refactor (lookahead removal, language unchanged, explicitly not a bugfix), and the finding critiques the post-change pattern's potential backtracking rather than naming any defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 323,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2819
+  },
+  "latencyMs": 4499,
+  "nominalCostUsd": 0.036834
+}

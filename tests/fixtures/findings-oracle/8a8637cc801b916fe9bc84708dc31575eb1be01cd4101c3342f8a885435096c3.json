@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change fixed the CLI failing when the output file's parent directory does not exist (adding recursive mkdirSync), while the finding raises a different edge case — the output path itself being an existing directory causing EISDIR — which the fix neither addresses nor was about.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 463,
+    "cacheReadInputTokens": 4398,
+    "cacheCreationInputTokens": 2542
+  },
+  "latencyMs": 5985,
+  "nominalCostUsd": 0.039214
+}

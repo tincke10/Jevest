@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.98,
+  "reason": "The before predicate requires `typeof obj === 'number' && isNaN(obj)`, so only NaN throws and all other invalid types (booleans, objects, undefined) pass silently — exactly what the commit message, issue, and fix confirm.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 295,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2854
+  },
+  "latencyMs": 4774,
+  "nominalCostUsd": 0.036480000000000005
+}

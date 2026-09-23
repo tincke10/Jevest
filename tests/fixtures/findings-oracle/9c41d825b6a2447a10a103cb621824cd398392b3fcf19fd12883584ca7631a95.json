@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The finding inverts the diff direction: in the BEFORE code the three constants are already non-exported (module-local), and the change *adds* `export` rather than removing it, so there is no removal of a public surface and no broken importers in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 630,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3163
+  },
+  "latencyMs": 8565,
+  "nominalCostUsd": 0.047945
+}

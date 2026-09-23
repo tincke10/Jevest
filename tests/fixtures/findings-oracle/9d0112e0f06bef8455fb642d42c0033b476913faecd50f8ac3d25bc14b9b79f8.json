@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding states that without the optional-in guard the input JSON Schema marks enum/literal record keys as required even though parse accepts them omitted (e.g. `.default()`/`.optional()` values), which is precisely the input-mode JSON Schema defect the added `omittableOnInput` check fixes.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 304,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2432
+  },
+  "latencyMs": 4259,
+  "nominalCostUsd": 0.032489000000000004
+}

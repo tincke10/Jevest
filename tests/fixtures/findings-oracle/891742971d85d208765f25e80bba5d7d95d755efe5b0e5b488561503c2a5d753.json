@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.95,
+  "reason": "The finding is about a supposed removal of the `Seen` type import (which is actually being added), not about records with numeric keys emitting invalid `propertyNames`/`required` values, which is the bug the commit fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 385,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2771
+  },
+  "latencyMs": 5076,
+  "nominalCostUsd": 0.037904
+}

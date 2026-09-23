@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "In the BEFORE code `_properties` is actively re-exported as `properties`, so it is neither unused nor dead there; the claim describes a hypothetical consequence of the change (an after-state concern), not a defect present before it.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 532,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2043
+  },
+  "latencyMs": 8715,
+  "nominalCostUsd": 0.034295
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The finding asserts `withParser` is newly re-exported and may clash with star exports, but `withParser` (and `INVALID`) appear only in the AFTER code — the BEFORE hunk contains no such export, so the described problem does not exist in the code under review.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 379,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2023
+  },
+  "latencyMs": 5170,
+  "nominalCostUsd": 0.030270000000000002
+}

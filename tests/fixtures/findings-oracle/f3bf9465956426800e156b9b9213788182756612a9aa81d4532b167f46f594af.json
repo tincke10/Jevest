@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The before code slices by `testName.length` with no prefix check, so non-prefix keys are tested as arbitrary mid-string fragments against the unanchored regex — exactly the mechanism the issue/PR identify and the fix's added `startsWith` guard addresses.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 381,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3010
+  },
+  "latencyMs": 4511,
+  "nominalCostUsd": 0.040190000000000003
+}

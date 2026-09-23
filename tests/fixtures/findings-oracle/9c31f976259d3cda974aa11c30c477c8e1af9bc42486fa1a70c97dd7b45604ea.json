@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "The BEFORE line is just `util.cached(...)` bound to a local const with no defect, and the claim's mechanism is contradicted by the PR, which says the internal box exposes enumerable own props `[\"_getter\",\"_value\"]` with the accessor moved to a prototype (not a non-enumerable cached property), and that only the internal schema call sites like this `_normalized` were switched because their surface is unobservable.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1638,
+    "cacheReadInputTokens": 4404,
+    "cacheCreationInputTokens": 3697
+  },
+  "latencyMs": 20888,
+  "nominalCostUsd": 0.080142
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code explicitly contains both the `__proto__` continue and the `propertyIsEnumerable` continue, so there is no defect in it; the finding actually speculates about the new `emitOwnKeys` helper introduced by the change, and the commit message confirms that helper rechecks each key's enumerability and drops `__proto__` \"the same as the record walk already does\".",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 795,
+    "cacheReadInputTokens": 5123,
+    "cacheCreationInputTokens": 3547
+  },
+  "latencyMs": 9950,
+  "nominalCostUsd": 0.0579265
+}

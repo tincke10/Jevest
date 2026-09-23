@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.75,
+  "reason": "In the BEFORE code the symbol `mayOmitUndefined` does not exist at all (it is introduced only by the change), so the \"unused symbol\" half of the claim is vacuous, and `mayOutputUndefined` is the actual helper used by the shipped, compiling code — no missing-definition/compile problem exists in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 717,
+    "cacheReadInputTokens": 0,
+    "cacheCreationInputTokens": 4123
+  },
+  "latencyMs": 9832,
+  "nominalCostUsd": 0.059165
+}

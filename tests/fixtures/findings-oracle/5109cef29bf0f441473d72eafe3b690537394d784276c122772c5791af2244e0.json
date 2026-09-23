@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.87,
+  "reason": "The before code's `key === 'ref'` branch computes and stores a new cleanup without ever invoking the previously stored `refCleanupMap` entry, which is precisely the leak the commit/issue/PR describe and fix by adding `refCleanupMap.get(container)?.()`; only the secondary \"or is removed\" part is already covered by the deletion loop.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 457,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2788
+  },
+  "latencyMs": 5817,
+  "nominalCostUsd": 0.03987
+}

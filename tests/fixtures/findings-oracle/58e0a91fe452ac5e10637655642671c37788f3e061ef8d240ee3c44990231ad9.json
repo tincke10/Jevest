@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.96,
+  "reason": "The fix captured a bound reference to the original `Set.prototype.add` to stop infinite recursion when that method is spied on, while the finding speculates about dead code / strong-reference retention in `DIRTY_MOCK_STATES` — a different concern entirely.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 267,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3358
+  },
+  "latencyMs": 3860,
+  "nominalCostUsd": 0.040824
+}

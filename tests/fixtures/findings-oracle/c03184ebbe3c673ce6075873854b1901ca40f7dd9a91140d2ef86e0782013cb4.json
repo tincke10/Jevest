@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.97,
+  "reason": "The BEFORE regex `^[\\p{Extended_Pictographic}\\p{Emoji_Component}]+$` matches strings composed solely of Emoji_Component code points (digits, #, *, ZWJ, VS16, skin-tone modifiers), and the linked issue/PR and the added anchor lookahead in AFTER confirm exactly this accepted-non-emoji behavior.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 602,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3290
+  },
+  "latencyMs": 7232,
+  "nominalCostUsd": 0.048514999999999996
+}

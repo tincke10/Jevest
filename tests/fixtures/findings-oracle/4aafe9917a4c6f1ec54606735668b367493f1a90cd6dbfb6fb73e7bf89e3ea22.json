@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The claim describes the AFTER code's ternary and asserts compareKey(TAIL, TAIL) === -1, but the BEFORE code unconditionally returns 1 in that branch, so the named mechanism and result are not in the before code (and compareKey sorts unique object keys, making a === b unreachable).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1005,
+    "cacheReadInputTokens": 4619,
+    "cacheCreationInputTokens": 3304
+  },
+  "latencyMs": 12072,
+  "nominalCostUsd": 0.06049449999999999
+}

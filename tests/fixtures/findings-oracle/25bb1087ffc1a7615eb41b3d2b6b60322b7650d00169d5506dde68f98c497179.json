@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.78,
+  "reason": "The fix targeted ignored writable backpressure and resolving before the stream finished, whereas the finding is about missing error handling/cleanup (uncancelled reader, skipped `writer.end()`, unhandled writer 'error'), a different defect that `pipeline` only incidentally also covers.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 498,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3147
+  },
+  "latencyMs": 7213,
+  "nominalCostUsd": 0.044489
+}

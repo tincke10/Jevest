@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The reviewer inverted the diff direction: the `toRollupError` import is absent in BEFORE and added in AFTER, so the before code has no removed import, no dangling reference, and never had the normalization the claim says was lost.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 457,
+    "cacheReadInputTokens": 5374,
+    "cacheCreationInputTokens": 3539
+  },
+  "latencyMs": 6783,
+  "nominalCostUsd": 0.049522
+}

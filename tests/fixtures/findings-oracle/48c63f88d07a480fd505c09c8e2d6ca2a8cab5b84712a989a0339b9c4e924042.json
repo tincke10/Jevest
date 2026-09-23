@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.85,
+  "reason": "The fix added a bound `addDirtyMock` alias so mock bookkeeping uses the original `Set.prototype.add` and avoids infinite recursion when that method is spied; the finding instead reads the hunk backwards as a removal and worries about an unbound-receiver TypeError, never naming the spy-recursion/stack-overflow defect.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 492,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3431
+  },
+  "latencyMs": 6155,
+  "nominalCostUsd": 0.047179
+}

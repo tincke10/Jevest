@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.78,
+  "reason": "Despite inverted framing (calling the types \"removed\"), the finding names exactly the fixed defect: `vitest/browser` does not export `MarkOptions`/`BrowserTraceEntryKind`, so `import type { MarkOptions } from 'vitest/browser'` fails to compile — and the change adds those exports.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 869,
+    "cacheReadInputTokens": 4898,
+    "cacheCreationInputTokens": 3427
+  },
+  "latencyMs": 10135,
+  "nominalCostUsd": 0.058464
+}

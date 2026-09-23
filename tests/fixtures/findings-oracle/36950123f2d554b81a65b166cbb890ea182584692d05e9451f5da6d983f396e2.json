@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The reviewer inverted the diff: the BEFORE code never exported `TRPCUnwrap` — the change adds it (per the PR's \"Export a stable `TRPCUnwrap` alias from `@trpc/server`\"), so no export is being removed and the claimed TS2305 breakage cannot occur.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 806,
+    "cacheReadInputTokens": 5127,
+    "cacheCreationInputTokens": 3638
+  },
+  "latencyMs": 9168,
+  "nominalCostUsd": 0.05911349999999999
+}

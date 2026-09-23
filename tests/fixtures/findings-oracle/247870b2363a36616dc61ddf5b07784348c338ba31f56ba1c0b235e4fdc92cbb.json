@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a feature addition of missing W3C directives (adding `chUaHighEntropyValues` to the type union), while the finding speculates about a runtime lookup table needing matching entries — a different, unaddressed concern, and the commit is not a bugfix.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 350,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 1790
+  },
+  "latencyMs": 4703,
+  "nominalCostUsd": 0.027219
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.86,
+  "reason": "The BEFORE code contains no `getConfig()` call at all — it reads config solely via `getBrowserState().config`; the claim targets the line introduced by the change, so the alleged missing-import/initialization-order defect is not present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 556,
+    "cacheReadInputTokens": 3774,
+    "cacheCreationInputTokens": 2032
+  },
+  "latencyMs": 6845,
+  "nominalCostUsd": 0.036127
+}

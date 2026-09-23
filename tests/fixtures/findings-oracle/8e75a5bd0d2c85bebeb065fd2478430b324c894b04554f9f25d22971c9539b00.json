@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.72,
+  "reason": "The fix removes only subset-equality testers before handing them to asymmetric matchers, while the finding explicitly scopes itself \"beyond the subset tester\" to user-registered custom testers — exactly the testers the fix deliberately keeps forwarding (iterableEquality, toStrictEqual testers), so it names a different, speculative concern on the same call path.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 823,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3098
+  },
+  "latencyMs": 9673,
+  "nominalCostUsd": 0.052124000000000004
+}

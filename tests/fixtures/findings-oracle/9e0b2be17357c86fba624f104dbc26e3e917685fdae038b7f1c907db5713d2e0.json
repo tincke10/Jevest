@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.9,
+  "reason": "The change is a deliberate feature (adding QUERY to the default allowMethods, doc line updated to match), not a bugfix; the finding merely speculates about a possible doc/runtime mismatch that the commit itself introduces-and-resolves in tandem.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 360,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2086
+  },
+  "latencyMs": 4455,
+  "nominalCostUsd": 0.030429000000000005
+}

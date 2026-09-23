@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.73,
+  "reason": "The commit fixes suffix-wildcard (`/foo*`) routes returning 404 due to trie matching/node-structure handling, whereas the finding only flags the `processedSet` map as redundant/wasteful (and correctly notes it is behaviorally identical to the `!i` it was replaced with) — a perf/cleanup nit, not the 404 matching defect the change addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1303,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2688
+  },
+  "latencyMs": 16057,
+  "nominalCostUsd": 0.060023999999999994
+}

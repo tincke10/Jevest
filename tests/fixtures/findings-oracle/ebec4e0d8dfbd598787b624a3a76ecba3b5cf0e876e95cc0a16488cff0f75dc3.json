@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The reviewer identifies the absent clientSubscriptions.delete(id) in the subscription .catch() handler versus the happy path's delete, and the resulting stale AbortController entry / id-reuse lockout — exactly the defect the one-line fix addressed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 621,
+    "cacheReadInputTokens": 5058,
+    "cacheCreationInputTokens": 3328
+  },
+  "latencyMs": 7145,
+  "nominalCostUsd": 0.051354
+}

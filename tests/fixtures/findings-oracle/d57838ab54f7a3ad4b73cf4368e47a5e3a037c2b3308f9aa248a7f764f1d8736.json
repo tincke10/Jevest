@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding identifies exactly the fixed defect — on jsdom 28+ `_buffer` is undefined (renamed to `_bytes`), so `new NodeBlob_([undefined])` yields a Blob containing the string \"undefined\" — and prescribes the `_bytes ?? _buffer` fallback the commit added; its \"removal/regression\" framing is just an artifact of seeing only the pre-fix code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 384,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2798
+  },
+  "latencyMs": 7540,
+  "nominalCostUsd": 0.038149
+}

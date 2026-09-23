@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.88,
+  "reason": "The BEFORE code contains no `Accept-Query` member at all (it was added by this change), and the union already deliberately includes response-only names like Accept-Patch/Accept-Post/Accept-Ranges, so the claimed mis-listing does not exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 869,
+    "cacheReadInputTokens": 4230,
+    "cacheCreationInputTokens": 2757
+  },
+  "latencyMs": 10458,
+  "nominalCostUsd": 0.05143
+}

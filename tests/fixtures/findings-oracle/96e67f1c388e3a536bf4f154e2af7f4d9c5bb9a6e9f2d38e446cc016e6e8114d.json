@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.88,
+  "reason": "The BEFORE code destructures `value as PromiseChunk` without checking `done`, so the cast hides the `undefined` value returned on a cleanly closed stream — exactly the TypeError documented in the linked issue and fixed by adding the `done` guard (the finding's rationale has its before/after direction reversed, but its substantive claim about the unguarded cast matches the before code).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 460,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2938
+  },
+  "latencyMs": 7305,
+  "nominalCostUsd": 0.041444999999999996
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.92,
+  "reason": "The finding says the allowlist `DOM_ENVIRONMENTS` ('jsdom','happy-dom') drops custom environments from the VM-pool candidate set even when they implement setupVM — precisely the bug the commit fixes by switching to the `ENVIRONMENTS_WITHOUT_VM_UPSIDE` denylist, despite the finding's oddly inverted framing.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 758,
+    "cacheReadInputTokens": 4731,
+    "cacheCreationInputTokens": 3099
+  },
+  "latencyMs": 9258,
+  "nominalCostUsd": 0.0523255
+}

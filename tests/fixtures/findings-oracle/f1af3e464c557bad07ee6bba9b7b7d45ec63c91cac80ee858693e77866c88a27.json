@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The finding describes a regression of the AFTER code (\"now passed into a helper\", emitOwnKeys emitting two loops); the BEFORE code has no helper at all — it inlines `accessor` into a single author-controlled for-of loop — so the claimed problem does not exist in the before state.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1021,
+    "cacheReadInputTokens": 5030,
+    "cacheCreationInputTokens": 3764
+  },
+  "latencyMs": 13128,
+  "nominalCostUsd": 0.0657
+}

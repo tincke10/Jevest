@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The BEFORE code has no `@default true` tag and still carries `@experimental`; the claim describes the post-change JSDoc, and the commit/PR confirm static parsing does become the default, so the alleged mismatch and stability-signal problem are not present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 701,
+    "cacheReadInputTokens": 3723,
+    "cacheCreationInputTokens": 2118
+  },
+  "latencyMs": 8334,
+  "nominalCostUsd": 0.0405865
+}

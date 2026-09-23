@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The BEFORE code constructs ctx as `{ ..._ctx, async: false }` with no `abortEarly` flag anywhere; the \"forced abortEarly\" the finding critiques is introduced only by the AFTER code, so the described divergence cannot be a problem in the before version.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 535,
+    "cacheReadInputTokens": 4597,
+    "cacheCreationInputTokens": 2820
+  },
+  "latencyMs": 7019,
+  "nominalCostUsd": 0.0438935
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The BEFORE code uses the fully lazy `util.cached`, so no eager-evaluation/recursion defect exists there; the claim is a conditional about a hypothetical `cachedInternal`, and the PR explicitly states \"Both boxes defer the getter to the first read, memoize the result including `undefined`, and retry if it throws,\" so the named condition never holds.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 525,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2252
+  },
+  "latencyMs": 6261,
+  "nominalCostUsd": 0.03621
+}

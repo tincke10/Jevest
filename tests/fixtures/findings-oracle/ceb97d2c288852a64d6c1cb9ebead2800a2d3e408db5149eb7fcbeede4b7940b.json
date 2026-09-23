@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.87,
+  "reason": "The finding pinpoints exactly the defect the fix addressed — the use of `mayOutputUndefined` instead of `mayOmitUndefined`, so a defaulted/required key whose output is undefined and whose input key was absent gets dropped from the result object, which is the `prefault(undefined)` drops-key bug the commit fixed (along with restoring that very comment).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 719,
+    "cacheReadInputTokens": 4270,
+    "cacheCreationInputTokens": 4892
+  },
+  "latencyMs": 10723,
+  "nominalCostUsd": 0.06905
+}

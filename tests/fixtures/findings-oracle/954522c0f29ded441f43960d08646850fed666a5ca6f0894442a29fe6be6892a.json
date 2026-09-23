@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.9,
+  "reason": "The finding describes the head fast-path with its `!isNodeString(first)` guard and the resulting duplicated predicate — constructs that exist only in the AFTER code; the BEFORE code has a single `findIndex` predicate and no duplication, so the claimed problem is not present in the code under review.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 408,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2506
+  },
+  "latencyMs": 5148,
+  "nominalCostUsd": 0.035824999999999996
+}

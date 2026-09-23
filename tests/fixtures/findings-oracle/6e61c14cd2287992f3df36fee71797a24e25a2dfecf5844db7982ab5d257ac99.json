@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.95,
+  "reason": "The before code's loop calls `writer.write(readResult.value)` discarding the boolean return and never awaits `drain`, exactly the backpressure defect the linked issue/PR documents and that the switch to `pipeline()` fixes; the reviewer's only error is framing it as a regression rather than a pre-existing bug.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 301,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3104
+  },
+  "latencyMs": 4102,
+  "nominalCostUsd": 0.03913
+}

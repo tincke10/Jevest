@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a feature sync that ADDS `Accept-Query` to the RequestHeader union, whereas the finding argues that listing `Accept-Query` as a request header is semantically wrong — it objects to the change itself rather than naming a defect the change fixed.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 557,
+    "cacheReadInputTokens": 4246,
+    "cacheCreationInputTokens": 2482
+  },
+  "latencyMs": 7293,
+  "nominalCostUsd": 0.040888
+}

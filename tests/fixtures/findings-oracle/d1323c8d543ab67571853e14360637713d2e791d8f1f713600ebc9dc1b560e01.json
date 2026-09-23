@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.93,
+  "reason": "The finding says the missing `!c.res.ok` status check lets error/bodyless responses get ETags and be converted to 304 — precisely the defect the commit fixes by adding the `!c.res.ok` and safe-method guard.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 488,
+    "cacheReadInputTokens": 4035,
+    "cacheCreationInputTokens": 2240
+  },
+  "latencyMs": 6861,
+  "nominalCostUsd": 0.036637499999999996
+}

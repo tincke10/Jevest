@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.95,
+  "reason": "The finding names precisely the fixed defect — missing `done` check before destructuring `value`, yielding an opaque TypeError instead of an explicit 'Stream closed unexpectedly' error on a prematurely closed stream.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 522,
+    "cacheReadInputTokens": 5303,
+    "cacheCreationInputTokens": 3485
+  },
+  "latencyMs": 6050,
+  "nominalCostUsd": 0.0505715
+}

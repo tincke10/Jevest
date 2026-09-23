@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.95,
+  "reason": "The `snapshotChecks` helper with its in-place `def.checks = [...def.checks]` assignment appears only in the AFTER code; the BEFORE hunk has no such function, so the alleged mutation footgun cannot exist in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 525,
+    "cacheReadInputTokens": 5168,
+    "cacheCreationInputTokens": 3391
+  },
+  "latencyMs": 6307,
+  "nominalCostUsd": 0.049638999999999996
+}

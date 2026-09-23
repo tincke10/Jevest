@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The change is a deliberate perf optimization (opting the `node` environment out of vm module prewarm), not a bugfix, and the finding critiques the newly added `prewarmModules: false` line rather than naming a defect in the BEFORE code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 543,
+    "cacheReadInputTokens": 3937,
+    "cacheCreationInputTokens": 2131
+  },
+  "latencyMs": 6663,
+  "nominalCostUsd": 0.036873500000000003
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.92,
+  "reason": "The linked issue and PR confirm the exact mechanism: the strong `Map` buckets cached on the schema instance by `attach` outlived the parse and pinned the entire parsed graph (8 GiB OOM; 10.1 MB vs 2.2 MB retained), fixed by making the state weak throughout — the claim only slightly overstates scope (last parse rather than every parse ever).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 763,
+    "cacheReadInputTokens": 5561,
+    "cacheCreationInputTokens": 4004
+  },
+  "latencyMs": 10288,
+  "nominalCostUsd": 0.0619155
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.93,
+  "reason": "The claim describes a hazard created by the lazy getter in the AFTER code; the BEFORE code builds the error eagerly inside safeParse, so any finalizeIssue/constructor throw surfaces at the parse call and JSON.stringify triggers no getter.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 514,
+    "cacheReadInputTokens": 4987,
+    "cacheCreationInputTokens": 3221
+  },
+  "latencyMs": 6820,
+  "nominalCostUsd": 0.047573500000000005
+}

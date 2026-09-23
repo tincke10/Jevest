@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.72,
+  "reason": "In the BEFORE code the field carries an explicit `Record<string, Node>` annotation that fully governs all reads/writes of `#children`; the only untyped part is the trivially-empty `Object.create(null)` initializer, and the \"hole\" the finding describes is contingent on a `createNullObject()` helper that does not exist in the before code at all.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1267,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2025
+  },
+  "latencyMs": 16247,
+  "nominalCostUsd": 0.052489999999999995
+}

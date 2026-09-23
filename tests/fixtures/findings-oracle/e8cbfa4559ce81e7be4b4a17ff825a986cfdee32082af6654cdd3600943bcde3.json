@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The BEFORE code declares `properties<Shape extends core.$ZodShape>` with no key remapping at all; the `T[k] extends Function ? never : k` filter the finding criticizes exists only in the AFTER code, so the alleged over-filtering of function-typed data properties cannot be present in the before version.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 463,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2097
+  },
+  "latencyMs": 5682,
+  "nominalCostUsd": 0.03311
+}

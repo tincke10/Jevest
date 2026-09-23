@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.6,
+  "reason": "The finding identifies the unanchored regex over-matching so another test's snapshot key is wrongly marked as checked — exactly the anchoring half of this fix (\"anchors the remainder, so a skipped `foo` no longer claims `foobar 1` either\") and the same defect of keys being wrongly dropped from the unchecked set, though it explicitly assumes away the missing prefix check that is the primary driver.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 1371,
+    "cacheReadInputTokens": 5284,
+    "cacheCreationInputTokens": 4254
+  },
+  "latencyMs": 17065,
+  "nominalCostUsd": 0.07947699999999999
+}

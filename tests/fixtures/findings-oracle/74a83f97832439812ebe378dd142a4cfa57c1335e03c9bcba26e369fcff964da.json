@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.6,
+  "reason": "The finding's substantive assertion — that the `IsAny<E>` fallback typed as `Record<string, any>` with a `key: string` parameter rejects symbol keys in the untyped `Context<any>` case even though the underlying `Map` accepts them — is exactly the defect the issue/PR/commit confirm and fix, though its secondary speculation about `get`/`var` disagreeing is not borne out (both sides used `string` before the change).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1492,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 2481
+  },
+  "latencyMs": 20416,
+  "nominalCostUsd": 0.06267500000000001
+}

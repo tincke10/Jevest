@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.96,
+  "reason": "The before code's `streamToNodeStream` calls `writer.end()` and returns, so the promise resolves without awaiting `finish`; the linked PR/issue explicitly documents this (\"Resolves too early... could resolve while responseStream.writableFinished was still false\") and the fix replaces it with `pipeline`.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 288,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3084
+  },
+  "latencyMs": 4145,
+  "nominalCostUsd": 0.038605
+}

@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.78,
+  "reason": "The fix adds `prefix` so mutationKey includes the keyPrefix, whereas the finding (which appears to read the diff in reverse) only speculates about a possible TypeScript compile error if `prefix` were a required parameter — right lines, different and conditional concern, and it never identifies the missing-prefix-in-mutation-key behavior.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 633,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2829
+  },
+  "latencyMs": 8314,
+  "nominalCostUsd": 0.044684
+}

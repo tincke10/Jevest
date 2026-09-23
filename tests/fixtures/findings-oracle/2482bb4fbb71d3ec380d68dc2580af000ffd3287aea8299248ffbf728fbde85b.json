@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.82,
+  "reason": "The linked PR states the record emitter \"now reads the same optionality helper the object and tuple emitters already use,\" so `inputOptin` already had other call sites in json-schema-processors.ts and the import is not dead in the BEFORE code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 868,
+    "cacheReadInputTokens": 4506,
+    "cacheCreationInputTokens": 3044
+  },
+  "latencyMs": 10337,
+  "nominalCostUsd": 0.05441299999999999
+}

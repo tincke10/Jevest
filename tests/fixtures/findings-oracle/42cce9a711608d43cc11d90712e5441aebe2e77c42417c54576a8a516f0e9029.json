@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.85,
+  "reason": "The linked PR shows `trpcSubscriptionOptions` already recovered the input via `readQueryKey(queryKey)?.args?.input` in the BEFORE code, so user-supplied input was not dropped from the subscription request; the only defect was that `getQueryKeyInternal` strips `skipToken`, breaking the `enabled` computation.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 915,
+    "cacheReadInputTokens": 5222,
+    "cacheCreationInputTokens": 3770
+  },
+  "latencyMs": 10603,
+  "nominalCostUsd": 0.063206
+}

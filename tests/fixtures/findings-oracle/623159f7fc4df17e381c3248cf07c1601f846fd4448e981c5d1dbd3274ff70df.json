@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "absent",
+  "confidence": 0.92,
+  "reason": "The finding describes the new `cloneRawRequest` value import from `../../request`, which only exists in the AFTER code; the BEFORE hunk contains solely `import type` statements, so the runtime-coupling/circular-import hazard it alleges is not present in the before code.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 377,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 1928
+  },
+  "latencyMs": 4974,
+  "nominalCostUsd": 0.029269999999999997
+}

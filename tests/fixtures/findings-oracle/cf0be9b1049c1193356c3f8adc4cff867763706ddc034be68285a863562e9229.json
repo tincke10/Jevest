@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.92,
+  "reason": "The finding critiques the newly introduced mapped-type constraint (arguing `keyof unknown = never` loses safety) instead of naming the defect the commit addressed — the old `$ZodShape` constraint allowing unknown keys and mismatched property schemas — and the change was a type-only feature, not a bugfix.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 4,
+    "outputTokens": 523,
+    "cacheReadInputTokens": 4360,
+    "cacheCreationInputTokens": 2553
+  },
+  "latencyMs": 10343,
+  "nominalCostUsd": 0.040805
+}

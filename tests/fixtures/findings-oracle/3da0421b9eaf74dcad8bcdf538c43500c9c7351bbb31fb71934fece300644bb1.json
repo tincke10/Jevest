@@ -1,0 +1,15 @@
+{
+  "framing": "claim-verification",
+  "verdict": "present",
+  "confidence": 0.8,
+  "reason": "Although the finding is phrased with the diff direction reversed, its substantive claim about the BEFORE code — that keys are included only if present on input or if output is not undefined, so a required-output defaulted field yielding `undefined` for an absent key loses its key — is exactly the bug reported in the linked issue (`prefault(undefined)` makes `parse({})` return `{}`) and fixed by replacing `mayOutputUndefined` with `mayOmitUndefined` plus the new comment \"defaulted required outputs keep their keys even when undefined\".",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 781,
+    "cacheReadInputTokens": 1110,
+    "cacheCreationInputTokens": 3152
+  },
+  "latencyMs": 10597,
+  "nominalCostUsd": 0.05161
+}

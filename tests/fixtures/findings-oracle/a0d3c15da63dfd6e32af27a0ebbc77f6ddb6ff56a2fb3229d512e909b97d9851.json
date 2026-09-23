@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "not-this",
+  "confidence": 0.93,
+  "reason": "The change is a feature addition (adding `.validate()`/`.validateAsync()` to ZodType), not a bugfix, and the PR explicitly states input-side narrowing is the deliberate design — so the finding's concern about predicate narrowing to `core.input<this>` is not a defect this change fixed (it describes the added code itself).",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 375,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 2562
+  },
+  "latencyMs": 4812,
+  "nominalCostUsd": 0.035564
+}

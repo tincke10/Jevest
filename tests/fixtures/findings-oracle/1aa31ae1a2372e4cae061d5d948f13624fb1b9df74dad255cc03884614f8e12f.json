@@ -1,0 +1,15 @@
+{
+  "framing": "fix-match",
+  "verdict": "real",
+  "confidence": 0.65,
+  "reason": "The fix adds a writeMetadata helper so the lockfile hash is re-persisted after the cache directory (and `_metadata.json`) is wiped; the finding's core claim — the metadata is not persisted, so the integrity check sees missing metadata and fails to invalidate stale cache after a lockfile change — names that same defect and its user-visible consequence, despite its slightly confused \"removing the only writer\" framing.",
+  "model": "claude-opus-5",
+  "usage": {
+    "inputTokens": 2,
+    "outputTokens": 1799,
+    "cacheReadInputTokens": 1118,
+    "cacheCreationInputTokens": 3091
+  },
+  "latencyMs": 22756,
+  "nominalCostUsd": 0.076454
+}

@@ -1,6 +1,6 @@
 {
   "name": "jevest",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Automated PR review pipeline using Jev (TypeSafe AI) as a decision layer over an LLM reviewer.",
   "type": "module",

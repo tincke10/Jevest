@@ -5,7 +5,11 @@ All notable changes to Jevest are documented here. The format follows
 [Semantic Versioning](https://semver.org/). How a release is cut, and which
 tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
-## [0.1.0] - unreleased
+## [Unreleased]
+
+Nothing yet.
+
+## [0.1.0] - 2026-09-23
 
 First tagged release. Everything below exists on `main` today; nothing here
 has been published under a version tag before.

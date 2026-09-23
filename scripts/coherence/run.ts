@@ -1,13 +1,25 @@
 #!/usr/bin/env -S npx tsx
 /**
  * Phase 0c intent–change coherence spike CLI (H7, SPEC §4.2, §5 Fase 0c):
- * asks Jev the coherence question set about every pair in
- * `datasets/coherence-pairs.jsonl`, in one or both variants, and writes the
- * H7 report. Mirrors `scripts/spike/run-profile.ts`'s modes and flags.
+ * asks Jev the coherence question set about every pair in a coherence-pairs
+ * JSONL file (`datasets/coherence-pairs.jsonl` by default, or `--pairs
+ * <path>` — e.g. `datasets/coherence-pairs-hard.jsonl` for the near-duplicate
+ * variant, see datasets/README.md §4b), in one or both variants, and writes
+ * the H7 report. Mirrors `scripts/spike/run-profile.ts`'s modes and flags.
+ *
+ * The 100 PRs are the same regardless of which pairs file is used, so the
+ * with-summary change summaries (`tests/fixtures/coherence/summaries/`, keyed
+ * by PR id) and the Jev decision fixtures (`tests/fixtures/coherence/
+ * decisions/<variant>/`, keyed by a content hash of the request) are shared
+ * and reused across pairs files without collision or a separate directory:
+ * a hard pair has a different (intent, change) combination than any random
+ * pair referencing the same two PRs, so it hashes to a different fixture
+ * file automatically.
  *
  * Usage:
  *   pnpm coherence [--variant with-summary|without-summary|all] [--limit N]
  *                  [--seed N] [--mode live|record|replay|dry-run]
+ *                  [--pairs <path>]
  *
  * The with-summary variant replays the summary fixtures written by
  * `pnpm coherence:summarize` (tests/fixtures/coherence/summaries/) and
@@ -40,6 +52,7 @@ import {
 } from "../../src/application/coherence/coherence-runner.js";
 import { generateDryRunCoherenceScript } from "../../src/application/coherence/dry-run-coherence-script.js";
 import {
+  type CoherenceCrossingStrategy,
   type CoherencePair,
   type PrRecord,
   parseCoherencePairsJsonl,
@@ -68,6 +81,8 @@ interface CliOptions {
   readonly limit: number | null;
   readonly mode: Mode | null;
   readonly seed: number;
+  /** Path to the coherence-pairs JSONL file; null means the default (datasets/coherence-pairs.jsonl). */
+  readonly pairsPath: string | null;
 }
 
 function requireValue(argv: readonly string[], index: number, flag: string): string {
@@ -83,10 +98,15 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   let limit: number | null = null;
   let mode: Mode | null = null;
   let seed = DEFAULT_SAMPLE_SEED;
+  let pairsPath: string | null = null;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     switch (arg) {
+      case "--pairs": {
+        pairsPath = requireValue(argv, ++i, "--pairs");
+        break;
+      }
       case "--variant": {
         const value = requireValue(argv, ++i, "--variant");
         if (value !== "all" && !COHERENCE_VARIANTS.includes(value as CoherenceVariant)) {
@@ -123,7 +143,23 @@ export function parseArgs(argv: readonly string[]): CliOptions {
     }
   }
 
-  return { variant, limit, mode, seed };
+  return { variant, limit, mode, seed, pairsPath };
+}
+
+/**
+ * The crossing strategy(ies) recorded on a pairs file's incoherent pairs.
+ * "random (no crossing metadata)" covers both today's `coherence-pairs.jsonl`
+ * (the "random" strategy never records `crossing`, to stay byte-identical to
+ * pre-existing files) and any legacy file predating the field.
+ */
+export function describePairsStrategy(pairs: readonly CoherencePair[]): string {
+  const strategies = new Set<CoherenceCrossingStrategy>();
+  for (const p of pairs) {
+    if (p.crossing !== undefined) strategies.add(p.crossing.strategy);
+  }
+  if (strategies.size === 0) return "random (no crossing metadata)";
+  if (strategies.size > 1) return `mixed (${[...strategies].sort().join(", ")})`;
+  return [...strategies][0] as string;
 }
 
 async function hasEntries(dir: string): Promise<boolean> {
@@ -214,13 +250,16 @@ async function main(): Promise<number> {
   const variants: readonly CoherenceVariant[] =
     options.variant === "all" ? COHERENCE_VARIANTS : [options.variant];
   const mode = await resolveMode(options.mode, variants);
+  const pairsPath = options.pairsPath ?? PAIRS_PATH;
 
   const [prsRaw, pairsRaw] = await Promise.all([
     readFile(PRS_PATH, "utf8"),
-    readFile(PAIRS_PATH, "utf8"),
+    readFile(pairsPath, "utf8"),
   ]);
   const records = parsePrRecordsJsonl(prsRaw);
-  let pairs = parseCoherencePairsJsonl(pairsRaw);
+  let pairs = parseCoherencePairsJsonl(pairsRaw, pairsPath);
+  const pairsStrategy = describePairsStrategy(pairs);
+  console.log(`[coherence] pairs file: ${pairsPath} (strategy: ${pairsStrategy})`);
 
   if (options.limit !== null) {
     pairs = stratifiedSampleBy(pairs, (p) => p.label === "incoherent", {
@@ -272,6 +311,7 @@ async function main(): Promise<number> {
 
   const report: CoherenceSpikeReport = buildCoherenceReport(runs, records, {
     ...(summarizerPass !== undefined ? { summarizer: summarizerPass } : {}),
+    pairsSource: { path: pairsPath, strategy: pairsStrategy },
   });
   const markdown = renderCoherenceReportMarkdown(report);
 
@@ -291,9 +331,12 @@ async function main(): Promise<number> {
   return 0;
 }
 
-main()
-  .then((code) => process.exit(code))
-  .catch((error: unknown) => {
-    console.error("[coherence] error:", error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
+// Guard so importing parseArgs / describePairsStrategy (unit tests) never triggers a run.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main()
+    .then((code) => process.exit(code))
+    .catch((error: unknown) => {
+      console.error("[coherence] error:", error instanceof Error ? error.message : error);
+      process.exit(1);
+    });
+}

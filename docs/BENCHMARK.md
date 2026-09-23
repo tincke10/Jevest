@@ -611,6 +611,7 @@ suite (already recorded, see below), and the H2/H4 real-PR collection.
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
+| H7 hard · near-duplicate crossed pairs (same criteria, harder negative — see datasets/README.md §4b) | full 200-pair run over `coherence-pairs-hard.jsonl`, both variants; numbers pending | `pnpm dataset:pairs --strategy hard --out datasets/coherence-pairs-hard.jsonl` (already generated, no network) then `TYPESAFE_API_KEY=… pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode record`; replay with `pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |
 | H4 · Jev latency per PR (p95 < 2 s for ≤ 50 hunks) | same ≥ 20 PRs, `jev-latency-p95-ms` and total Jev time per run | instrumented on every run; no collection command yet |
@@ -625,7 +626,11 @@ ECE 0.102. Reading: the summary is what turns "code" into text Jev can judge;
 the product-aware triage adopts it. Caveats: descriptions were crossed within
 the same repo but not chosen to be near-duplicates, so this measures the easy
 half of the problem; 6 of 100 incoherent pairs carry a basename leak (listed
-in datasets/README.md) and none of them appears among the worst pairs.
+in datasets/README.md) and none of them appears among the worst pairs. The
+harder near-duplicate half (`coherence-pairs-hard.jsonl`, generated, not yet
+run against live Jev — see the "H7 hard" row above and datasets/README.md
+§4b) crosses each PR with its most-similar same-repo PR by change footprint
+instead of a random one.
 
 H5 was recorded against live Jev on 2026-09-21
 (`reports/adversarial-2026-09-21T21-38-55-741Z.md`, fixtures under

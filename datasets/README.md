@@ -19,7 +19,8 @@ malformed line, so "it loads" is a meaningful check.
 | `findings-reversed.jsonl` | 246 (thorough reviewer findings over `hunks-reversed.jsonl`) | `label.real` by line-overlap on the reversed diff, `suggested_severity`; `needs_manual_review: true` | findings over the 100 reversed/benign hunks | `FindingRecord` in `src/domain/finding.ts` | `pnpm findings --provider claude-cli --prompt thorough --record --hunks datasets/hunks-reversed.jsonl --fixtures-dir tests/fixtures/findings-reversed --out datasets/findings-reversed.jsonl` (`FINDINGS.md` §11.2–§11.3) | line-overlap on a reversed hunk measures the reversed diff's own lines, not the original defect — score against `label.oracle` instead; fixtures at `tests/fixtures/findings-reversed/` |
 | `findings-reversed-oracle.jsonl` | 246 (`findings-reversed.jsonl` + `label.oracle`) | `label.oracle.verdict`: 55 real / 154 noise / 37 unknown, fix-aware, labeled by `claude-cli`/`claude-opus-5`, two framings with agreement required; `needs_manual_review: true` | same findings, labeled with `claude-cli` | `FindingRecord` (`label.oracle: FindingOracleLabel`) in `src/application/filter/finding-record.ts` | `pnpm findings:label --hunks datasets/hunks-reversed.jsonl --labeler claude-cli --mode record` (`FINDINGS.md` §11.3) | the real-finding population (H1b): Jev recall 0.964, 51.9% noise discarded at threshold 0.45, AUC 0.792 — H1 **PASS**; n=55 recall interval is wide; oracle labeler and the H6 judge share a model (`FINDINGS.md` §11.3) |
 | `prs.jsonl` | 100 merged PRs (25 per repo) | none (source records; title/body/files after template stripping and redaction) | zod, vitest, hono, tRPC (all MIT) | `PrRecord` in `src/application/coherence/pr-record.ts` | `pnpm dataset:prs` (defaults `--per-repo 25 --max-scan 400 --seed 42`) | Recency bias (`updated desc`); uneven description quality; `containsSecret` over-rejects (21 PRs dropped, all false positives) |
-| `coherence-pairs.jsonl` | 200 (100 coherent / 100 incoherent) | `label` exact by construction: own description vs. a seeded same-repo foreign description | derived from `prs.jsonl` | `CoherencePair` in `src/application/coherence/pr-record.ts` | same `pnpm dataset:prs` run (Sattolo cycle, seed 42) | Same-repo crossing only; 6 pairs leak a file basename into the foreign description; "wrong PR", never "subtly wrong" |
+| `coherence-pairs.jsonl` | 200 (100 coherent / 100 incoherent) | `label` exact by construction: own description vs. a seeded same-repo foreign description | derived from `prs.jsonl` | `CoherencePair` in `src/application/coherence/pr-record.ts` | same `pnpm dataset:prs` run (Sattolo cycle, seed 42); regenerable alone with `pnpm dataset:pairs` | Same-repo crossing only; 6 pairs leak a file basename into the foreign description; "wrong PR", never "subtly wrong" |
+| `coherence-pairs-hard.jsonl` | 200 (100 coherent / 100 incoherent) | same shape as `coherence-pairs.jsonl`, plus `crossing: {strategy, similarity, donor_pr}` on incoherent pairs | derived from `prs.jsonl` (same 100 PRs) | `CoherencePair` in `src/application/coherence/pr-record.ts` | `pnpm dataset:pairs --strategy hard --out datasets/coherence-pairs-hard.jsonl` (seed 42, pure local computation, no network) | H7's harder near-duplicate variant, see § below; directory-Jaccard similarity p10/p50/p90 = 0.250/0.750/1.000; 31 of 69 donors reused twice (the cap); 23 pairs leak a file basename (vs 6 for the random crossing) since a near-duplicate donor is more likely to share a touched file's name |
 | `adversarial/*.json` | 14 cases (13 attack families + 1 benign control) | `attackFamily`, `plantedFinding` (one critical defect per case), `expect.attacked`, `expect.forbiddenPublishedText` | hand-written, no external source | `AdversarialCase` in `src/application/adversarial/adversarial-case.ts` | written by hand; hunk headers and planted line numbers computed from the diff bodies | Synthetic and small; the LLM reviewer is held constant (it reports exactly the planted finding), so the suite measures the Jev-driven stages, not the reviewer |
 
 How each spike consumes these files, and the recorded Jev answers that let
@@ -548,16 +549,76 @@ regenerates `coherence-pairs.jsonl` byte-for-byte.
 - **Recency bias.** Sorting by `updated desc` favours PRs touched recently;
   the 484 scanned PRs are all from the months before 2026-09-21.
 
+## 4b. `coherence-pairs-hard.jsonl` — near-duplicate crossing (`--strategy hard`)
+
+`coherence-pairs.jsonl`'s Sattolo cycle picks the foreign description
+uniformly at random within a repo, which is the "wrong PR" limitation above:
+most crossed descriptions are about a visibly different area, so a shortcut
+that only skims vocabulary can still do well. The `"hard"` strategy in
+`generateCoherencePairs` (`src/application/coherence/pr-selection.ts`)
+targets that gap by crossing each PR with the **most similar** other PR of
+the same repo instead of a random one:
+
+1. **Primary signal — directory Jaccard.** For every file, take its
+   directory and every ancestor of that directory (basename removed, all
+   depths), and union those across a PR's files. Similarity between two PRs
+   is the Jaccard index of their directory sets. This is the `similarity`
+   recorded on the pair and is 0 for two PRs that share no directory chain.
+2. **Tie-break 1 — file-kind distribution.** Histogram intersection (sum of
+   per-kind minimums) of each PR's normalized `classifyFileKind`
+   distribution (`change-facts.ts`): a test-heavy PR ranks closer to another
+   test-heavy PR than to a docs-only one at equal directory overlap.
+3. **Tie-break 2 — title token overlap.** Jaccard of lowercased title tokens
+   (template-stripped via `stripPrTemplate`).
+4. **Tie-break 3 — seeded tiebreak.** A deterministic pseudo-random value
+   derived from `seed` and the `(pr, candidate)` id pair, used only when the
+   first three are exactly equal; `Array.prototype.sort`'s stability then
+   makes the seed the sole source of ordering among true ties.
+
+Selection is greedy and per-PR: rank every other same-repo PR by the above,
+then take the best-ranked donor whose foreign-description count so far is
+below **2**. A description can be donated to at most 2 PRs — with ~25 PRs
+per repo, a strict derangement under "most similar" is not always
+achievable (the most-similar PR for several PRs can coincide), and capping
+reuse at 2 keeps the negative from concentrating on a single donor. The cap
+is always satisfiable: each PR has `group.length - 1` candidates with total
+capacity `2 * (group.length - 1)`, which is `>= group.length` for any repo
+group of 2 or more, so a donor with spare capacity always exists regardless
+of processing order (proof in `assignHardCrossing`'s docstring). Self is
+excluded from the candidate list outright, so — like the random
+strategy — no PR is ever paired with its own description.
+
+Each incoherent pair records `crossing: {strategy: "hard", similarity,
+donor_pr}` (the `similarity` is the directory Jaccard against the chosen
+donor); coherent pairs and pairs from the `"random"` strategy have no
+`crossing` field, so old readers of `coherence-pairs.jsonl` are unaffected.
+Same seed, same `prs.jsonl` → same assignment; the seed only breaks exact
+ties.
+
+Reproducibility numbers for the seed-42 run over the same 100 PRs as
+`coherence-pairs.jsonl`: directory-Jaccard similarity p10/p50/p90 =
+0.250/0.750/1.000 (half the pairs are near-exact directory matches); 69
+distinct donors used across 100 incoherent pairs (38 used once, 31 used
+twice — the cap); 23 of the 100 incoherent pairs leak a file basename into
+the foreign description (vs 6 for the random crossing), which is expected —
+a more-similar donor is more likely to touch a file with the same name.
+
 ## 5. Reproducing
 
 ```bash
 # Requires: gh (authenticated) or GITHUB_TOKEN, Node 20+, pnpm install.
 pnpm dataset:prs            # defaults: --per-repo 25 --max-scan 400 --seed 42
+
+# Regenerate only the pairs (no GitHub calls) once prs.jsonl exists:
+pnpm dataset:pairs                                                        # -> coherence-pairs.jsonl (random, byte-identical)
+pnpm dataset:pairs --strategy hard --out datasets/coherence-pairs-hard.jsonl  # -> coherence-pairs-hard.jsonl
 pnpm dataset:prs --repos owner/name,owner/name --per-repo 50 --out datasets/prs.jsonl
 ```
 
-The script prints per-repo counts, rejections by reason, the distributions
-above and the basename-leak count at the end of every run.
+The `dataset:prs` script prints per-repo counts, rejections by reason, the
+distributions above and the basename-leak count at the end of every run.
+`dataset:pairs` prints the strategy, seed, basename-leak count and — for
+`--strategy hard` — the similarity distribution and donor reuse counts.
 
 ---
 

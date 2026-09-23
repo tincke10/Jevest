@@ -225,6 +225,95 @@ describe("generateCoherencePairs", () => {
       /lonely\/repo/,
     );
   });
+
+  it('defaults to "random" and stays byte-identical to an explicit "random" call', () => {
+    const withDefault = generateCoherencePairs(records, 42);
+    const explicit = generateCoherencePairs(records, 42, "random");
+    expect(withDefault).toEqual(explicit);
+    for (const p of withDefault) expect(p.crossing).toBeUndefined();
+  });
+});
+
+describe('generateCoherencePairs("hard")', () => {
+  const group: PrRecord[] = [
+    record("h/h", 1, {
+      title: "fix(router): trailing slash",
+      files: [file("src/router/index.ts"), file("src/router/index.test.ts")],
+    }),
+    record("h/h", 2, {
+      title: "fix(router): query params",
+      files: [file("src/router/query.ts")],
+    }),
+    record("h/h", 3, { title: "docs: update readme", files: [file("docs/guide.md")] }),
+    record("h/h", 4, { title: "chore: bump deps", files: [file("package.json")] }),
+  ];
+
+  it("never crosses a PR with its own description, across many seeds", () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const pairs = generateCoherencePairs(group, seed, "hard");
+      for (const p of pairs.filter((p) => p.label === "incoherent")) {
+        expect(p.descriptionPrId).not.toBe(p.prId);
+      }
+    }
+  });
+
+  it("picks the most similar same-repo PR by directory footprint", () => {
+    const pairs = generateCoherencePairs(group, 1, "hard");
+    const router1 = pairs.find((p) => p.prId === "h/h#1" && p.label === "incoherent");
+    // #2 shares the src/router directory chain; #3 and #4 share nothing with #1.
+    expect(router1?.descriptionPrId).toBe("h/h#2");
+  });
+
+  it("records crossing metadata only on incoherent pairs, matching the donor", () => {
+    const pairs = generateCoherencePairs(group, 1, "hard");
+    for (const p of pairs) {
+      if (p.label === "coherent") {
+        expect(p.crossing).toBeUndefined();
+      } else {
+        expect(p.crossing).toEqual({
+          strategy: "hard",
+          similarity: expect.any(Number),
+          donorPr: p.descriptionPrId,
+        });
+        expect(p.crossing?.similarity).toBeGreaterThanOrEqual(0);
+        expect(p.crossing?.similarity).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("caps donor reuse within a repo", () => {
+    const many = Array.from({ length: 9 }, (_, i) =>
+      record("many/many", i + 1, { files: [file("src/area/a.ts")] }),
+    );
+    const pairs = generateCoherencePairs(many, 3, "hard");
+    const donorCounts = new Map<string, number>();
+    for (const p of pairs.filter((p) => p.label === "incoherent")) {
+      donorCounts.set(p.descriptionPrId, (donorCounts.get(p.descriptionPrId) ?? 0) + 1);
+    }
+    expect(donorCounts.size).toBeGreaterThan(0);
+    for (const count of donorCounts.values()) expect(count).toBeLessThanOrEqual(2);
+  });
+
+  it("is deterministic for a seed and changes with the seed", () => {
+    const first = generateCoherencePairs(group, 5, "hard");
+    expect(generateCoherencePairs(group, 5, "hard")).toEqual(first);
+    const seeds = [1, 2, 3, 4, 6, 7, 8];
+    const distinct = new Set(
+      seeds.map((s) => JSON.stringify(generateCoherencePairs(group, s, "hard"))),
+    );
+    expect(distinct.size).toBeGreaterThan(1);
+  });
+
+  it("works for a repo with exactly two PRs", () => {
+    const two = [record("c/c", 1), record("c/c", 2)];
+    const incoherent = generateCoherencePairs(two, 1, "hard").filter(
+      (p) => p.label === "incoherent",
+    );
+    expect(incoherent.map((p) => [p.prId, p.descriptionPrId]).sort()).toEqual([
+      ["c/c#1", "c/c#2"],
+      ["c/c#2", "c/c#1"],
+    ]);
+  });
 });
 
 describe("countBasenameLeaks", () => {

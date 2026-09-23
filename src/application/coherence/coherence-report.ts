@@ -164,10 +164,17 @@ export interface SummarizerPassSummary {
   readonly totalLatencyMs: number;
 }
 
+/** Which coherence-pairs file fed the run and what crossing strategy it carries (see run.ts `describePairsStrategy`). */
+export interface PairsSource {
+  readonly path: string;
+  readonly strategy: string;
+}
+
 export interface CoherenceSpikeReport {
   readonly generatedAt: string;
   readonly datasetVersion: number;
   readonly summarizer: SummarizerPassSummary | null;
+  readonly pairsSource: PairsSource | null;
   readonly variants: VariantCoherenceReport[];
 }
 
@@ -179,6 +186,7 @@ export interface BuildCoherenceReportOptions {
   readonly summarizer?: SummarizerPassSummary;
   readonly now?: () => Date;
   readonly datasetVersion?: number;
+  readonly pairsSource?: PairsSource;
 }
 
 function incoherentScore(result: CoherencePairResult): number {
@@ -372,6 +380,7 @@ export function buildCoherenceReport(
     generatedAt: now().toISOString(),
     datasetVersion: options.datasetVersion ?? records[0]?.datasetVersion ?? DEFAULT_DATASET_VERSION,
     summarizer: options.summarizer ?? null,
+    pairsSource: options.pairsSource ?? null,
     variants: runs.map((run) =>
       buildVariantReport(run, recordsById, thresholds, criteria, leakPairIds),
     ),
@@ -399,6 +408,11 @@ export function renderCoherenceReportMarkdown(report: CoherenceSpikeReport): str
   lines.push("");
   lines.push(`Generated: ${report.generatedAt}`);
   lines.push(`Dataset version: ${report.datasetVersion}`);
+  if (report.pairsSource) {
+    lines.push(
+      `Pairs file: \`${report.pairsSource.path}\` (strategy: ${report.pairsSource.strategy})`,
+    );
+  }
   lines.push("");
   lines.push(
     "H7 does not block any phase (SPEC §4.2): it decides whether triage (stage 1) receives a " +

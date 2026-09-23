@@ -82,4 +82,28 @@ describe("CoherencePair jsonl", () => {
     const different = JSON.stringify({ pr_id: "x#1", description_pr_id: "x#2", label: "coherent" });
     expect(() => parseCoherencePairsJsonl(different)).toThrow(/label/);
   });
+
+  it("round-trips a pair with hard-strategy crossing metadata", () => {
+    const pair: CoherencePair = {
+      prId: "honojs/hono#1",
+      descriptionPrId: "honojs/hono#2",
+      label: "incoherent",
+      crossing: { strategy: "hard", similarity: 0.6, donorPr: "honojs/hono#2" },
+    };
+    const line = stringifyCoherencePair(pair);
+    expect(JSON.parse(line)).toEqual({
+      pr_id: "honojs/hono#1",
+      description_pr_id: "honojs/hono#2",
+      label: "incoherent",
+      crossing: { strategy: "hard", similarity: 0.6, donor_pr: "honojs/hono#2" },
+    });
+    expect(parseCoherencePairsJsonl(line)).toEqual([pair]);
+  });
+
+  it("parses a legacy pair with no crossing field (pre-existing datasets)", () => {
+    const legacy = JSON.stringify({ pr_id: "x#1", description_pr_id: "x#2", label: "incoherent" });
+    expect(parseCoherencePairsJsonl(legacy)).toEqual([
+      { prId: "x#1", descriptionPrId: "x#2", label: "incoherent" },
+    ]);
+  });
 });

@@ -119,6 +119,19 @@ describe("buildCoherenceReport", () => {
     expect(v.matchesIntent.confidence?.p50).toBeCloseTo(0.93, 5);
   });
 
+  it("defaults pairsSource to null and carries it through when given", () => {
+    const withoutSource = buildCoherenceReport([run(PERFECT)], RECORDS);
+    expect(withoutSource.pairsSource).toBeNull();
+
+    const withSource = buildCoherenceReport([run(PERFECT)], RECORDS, {
+      pairsSource: { path: "datasets/coherence-pairs-hard.jsonl", strategy: "hard" },
+    });
+    expect(withSource.pairsSource).toEqual({
+      path: "datasets/coherence-pairs-hard.jsonl",
+      strategy: "hard",
+    });
+  });
+
   it("verdict PASS when recall, precision, ECE and median confidence all meet SPEC H7", () => {
     const report = buildCoherenceReport([run(PERFECT)], RECORDS);
     expect(report.variants[0]!.h7).toEqual({ verdict: "PASS", reasons: [] });
@@ -260,5 +273,21 @@ describe("renderCoherenceReportMarkdown", () => {
     expect(md).toContain("Gamma title");
     expect(md).toContain("## Totals");
     expect(md).toContain("0.500000");
+  });
+
+  it("prints the pairs file and strategy when pairsSource is set, omits the line otherwise", () => {
+    const withSource = renderCoherenceReportMarkdown(
+      buildCoherenceReport([run(PERFECT)], RECORDS, {
+        pairsSource: { path: "datasets/coherence-pairs-hard.jsonl", strategy: "hard" },
+      }),
+    );
+    expect(withSource).toContain(
+      "Pairs file: `datasets/coherence-pairs-hard.jsonl` (strategy: hard)",
+    );
+
+    const withoutSource = renderCoherenceReportMarkdown(
+      buildCoherenceReport([run(PERFECT)], RECORDS),
+    );
+    expect(withoutSource).not.toContain("Pairs file:");
   });
 });

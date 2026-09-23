@@ -44,12 +44,31 @@ export interface PrRecord {
 
 export type CoherenceLabel = "coherent" | "incoherent";
 
+/**
+ * How an incoherent pair's foreign description was chosen (§ generateCoherencePairs
+ * in pr-selection.ts): `"random"` is a seeded same-repo derangement (an easy
+ * negative — the description is usually about a different area); `"hard"`
+ * picks the most similar same-repo PR by change footprint, a near-duplicate
+ * negative. Absent on coherent pairs and on any pair predating this field.
+ */
+export type CoherenceCrossingStrategy = "random" | "hard";
+
+export interface CoherenceCrossing {
+  readonly strategy: CoherenceCrossingStrategy;
+  /** Jaccard similarity over touched-directory sets between the pair's two PRs. */
+  readonly similarity: number;
+  /** The PR whose description was crossed in; equals `descriptionPrId`. */
+  readonly donorPr: string;
+}
+
 export interface CoherencePair {
   /** The PR whose files/diff form the CHANGE side of the state. */
   readonly prId: string;
   /** The PR whose title/body form the INTENT side; equals `prId` iff coherent. */
   readonly descriptionPrId: string;
   readonly label: CoherenceLabel;
+  /** Present only for incoherent pairs produced by a strategy that records it (currently "hard"). */
+  readonly crossing?: CoherenceCrossing;
 }
 
 export class PrRecordParseError extends Error {
@@ -82,11 +101,18 @@ const prRecordSchema = z.object({
   dataset_version: z.number().int().positive().default(1),
 });
 
+const coherenceCrossingSchema = z.object({
+  strategy: z.enum(["random", "hard"]),
+  similarity: z.number(),
+  donor_pr: z.string().min(1),
+});
+
 const coherencePairSchema = z
   .object({
     pr_id: z.string().min(1),
     description_pr_id: z.string().min(1),
     label: z.enum(["coherent", "incoherent"]),
+    crossing: coherenceCrossingSchema.optional(),
   })
   .refine((p) => (p.pr_id === p.description_pr_id) === (p.label === "coherent"), {
     path: ["label"],
@@ -181,12 +207,22 @@ export function parseCoherencePairsJsonl(
   return parseLines(content, file, (raw) => {
     const result = coherencePairSchema.safeParse(raw);
     if (!result.success) return result;
+    const d = result.data;
     return {
       success: true,
       data: {
-        prId: result.data.pr_id,
-        descriptionPrId: result.data.description_pr_id,
-        label: result.data.label,
+        prId: d.pr_id,
+        descriptionPrId: d.description_pr_id,
+        label: d.label,
+        ...(d.crossing !== undefined
+          ? {
+              crossing: {
+                strategy: d.crossing.strategy,
+                similarity: d.crossing.similarity,
+                donorPr: d.crossing.donor_pr,
+              },
+            }
+          : {}),
       },
     };
   });
@@ -197,5 +233,14 @@ export function stringifyCoherencePair(pair: CoherencePair): string {
     pr_id: pair.prId,
     description_pr_id: pair.descriptionPrId,
     label: pair.label,
+    ...(pair.crossing !== undefined
+      ? {
+          crossing: {
+            strategy: pair.crossing.strategy,
+            similarity: pair.crossing.similarity,
+            donor_pr: pair.crossing.donorPr,
+          },
+        }
+      : {}),
   });
 }

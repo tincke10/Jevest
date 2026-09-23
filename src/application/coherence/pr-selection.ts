@@ -18,12 +18,25 @@
  *    `pulls.listFiles` call per candidate.
  * 3. `generateCoherencePairs` — the crossed-description protocol. For every
  *    PR we emit a coherent pair (its own description) and an incoherent
- *    pair (the description of another PR from the SAME repo). The foreign
- *    description is assigned by a seeded Sattolo cycle per repo: a single
- *    n-cycle has no fixed points by construction, so no PR ever gets its own
- *    description, and every description is used exactly once as a foreign
- *    one. Same-repo crossing matters: a zod description on a hono diff would
- *    be trivially incoherent from vocabulary alone.
+ *    pair (the description of another PR from the SAME repo). Two crossing
+ *    strategies, selected per call:
+ *      - `"random"` (default): the foreign description is assigned by a
+ *        seeded Sattolo cycle per repo — a single n-cycle has no fixed
+ *        points by construction, so no PR ever gets its own description,
+ *        and every description is used exactly once as a foreign one. This
+ *        is an EASY negative: the crossed description is usually about a
+ *        different area entirely.
+ *      - `"hard"`: the foreign description comes from the most similar
+ *        same-repo PR by change footprint (Jaccard over touched
+ *        directories, tie-broken by file-kind distribution then by title
+ *        token overlap), excluding itself. A description can be reused by
+ *        up to 2 PRs — with ~25 PRs per repo, a strict derangement under
+ *        "most similar" is not always achievable, so reuse is capped and
+ *        the assignment falls back to the next most similar donor. This is
+ *        a near-duplicate negative: the crossed description is plausible
+ *        for the change's neighborhood, just not for the change itself.
+ *    Same-repo crossing matters either way: a zod description on a hono
+ *    diff would be trivially incoherent from vocabulary alone.
  *
  * `countBasenameLeaks` and `describeDistribution` are reporting helpers the
  * collector prints and the README quotes; they are here (not in the script)
@@ -31,7 +44,8 @@
  */
 import { containsSecret } from "../../domain/redact.js";
 import { hashString, mulberry32 } from "../spike/prng.js";
-import type { CoherencePair, PrFile, PrRecord } from "./pr-record.js";
+import { FILE_KINDS, type FileKind, classifyFileKind } from "./change-facts.js";
+import type { CoherenceCrossingStrategy, CoherencePair, PrFile, PrRecord } from "./pr-record.js";
 
 export const MIN_BODY_LENGTH = 200;
 export const MIN_FILES = 1;
@@ -188,9 +202,163 @@ function sattoloCycle(n: number, rng: () => number): number[] {
   return perm;
 }
 
+// ---------------------------------------------------------------------------
+// "hard" strategy: most-similar-by-footprint crossing
+// ---------------------------------------------------------------------------
+
+/** Cap on how many PRs may share the same foreign-description donor under the "hard" strategy. */
+export const MAX_HARD_DONOR_REUSE = 2;
+
+/** Every ancestor directory of every file's path, basename removed, all depths. Root-level files contribute nothing. */
+function touchedDirectories(files: readonly PrFile[]): Set<string> {
+  const dirs = new Set<string>();
+  for (const f of files) {
+    const parts = f.path.split("/");
+    parts.pop(); // drop the basename
+    let acc = "";
+    for (const part of parts) {
+      acc = acc === "" ? part : `${acc}/${part}`;
+      dirs.add(acc);
+    }
+  }
+  return dirs;
+}
+
+/** Jaccard similarity of two sets; 0 for two empty sets (no shared signal, not "identical"). */
+function jaccard(a: ReadonlySet<string>, b: ReadonlySet<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const x of a) if (b.has(x)) intersection++;
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/** Normalized (sums to 1) distribution of `classifyFileKind` over a PR's files. */
+function kindDistribution(files: readonly PrFile[]): Map<FileKind, number> {
+  const dist = new Map<FileKind, number>();
+  if (files.length === 0) return dist;
+  for (const f of files) {
+    const kind = classifyFileKind(f.path);
+    dist.set(kind, (dist.get(kind) ?? 0) + 1);
+  }
+  for (const [kind, count] of dist) dist.set(kind, count / files.length);
+  return dist;
+}
+
+/** Histogram intersection of two normalized kind distributions; in [0, 1], 1 iff identical. */
+function kindOverlap(a: ReadonlyMap<FileKind, number>, b: ReadonlyMap<FileKind, number>): number {
+  let overlap = 0;
+  for (const kind of FILE_KINDS) overlap += Math.min(a.get(kind) ?? 0, b.get(kind) ?? 0);
+  return overlap;
+}
+
+/** Lowercased word tokens of a title, template noise stripped first (harmless no-op on most titles). */
+function titleTokens(title: string): Set<string> {
+  const tokens = stripPrTemplate(title)
+    .toLowerCase()
+    .match(/[a-z0-9]+/g);
+  return new Set(tokens ?? []);
+}
+
+/** Deterministic pseudo-random tiebreak for one ordered (pr, candidate) pair, given a global seed. */
+function seededTiebreak(seed: number, prId: string, candidateId: string): number {
+  const rng = mulberry32((seed ^ hashString(`${prId}|${candidateId}`)) >>> 0);
+  return rng();
+}
+
+interface HardCandidateScore {
+  readonly candidate: PrRecord;
+  readonly dirJaccard: number;
+  readonly kindOverlap: number;
+  readonly titleOverlap: number;
+  readonly tiebreak: number;
+}
+
+/**
+ * Ranks every OTHER PR in `group` as a foreign-description candidate for
+ * each PR in it, best (most similar) first: primarily by Jaccard over
+ * touched directories, then by file-kind distribution overlap, then by
+ * title token overlap, then by a seeded deterministic tiebreak. `sort` is
+ * stable, so the seed is the only source of ordering among exact ties.
+ */
+function rankHardCandidates(
+  group: readonly PrRecord[],
+  seed: number,
+): Map<string, HardCandidateScore[]> {
+  const dirsById = new Map(group.map((r) => [r.id, touchedDirectories(r.files)] as const));
+  const kindsById = new Map(group.map((r) => [r.id, kindDistribution(r.files)] as const));
+  const titlesById = new Map(group.map((r) => [r.id, titleTokens(r.title)] as const));
+
+  const rankedByPr = new Map<string, HardCandidateScore[]>();
+  for (const pr of group) {
+    const prDirs = dirsById.get(pr.id) ?? new Set<string>();
+    const prKinds = kindsById.get(pr.id) ?? new Map<FileKind, number>();
+    const prTitle = titlesById.get(pr.id) ?? new Set<string>();
+
+    const scored: HardCandidateScore[] = group
+      .filter((other) => other.id !== pr.id)
+      .map((candidate) => ({
+        candidate,
+        dirJaccard: jaccard(prDirs, dirsById.get(candidate.id) ?? new Set()),
+        kindOverlap: kindOverlap(prKinds, kindsById.get(candidate.id) ?? new Map()),
+        titleOverlap: jaccard(prTitle, titlesById.get(candidate.id) ?? new Set()),
+        tiebreak: seededTiebreak(seed, pr.id, candidate.id),
+      }));
+
+    scored.sort((a, b) => {
+      if (b.dirJaccard !== a.dirJaccard) return b.dirJaccard - a.dirJaccard;
+      if (b.kindOverlap !== a.kindOverlap) return b.kindOverlap - a.kindOverlap;
+      if (b.titleOverlap !== a.titleOverlap) return b.titleOverlap - a.titleOverlap;
+      return b.tiebreak - a.tiebreak;
+    });
+    rankedByPr.set(pr.id, scored);
+  }
+  return rankedByPr;
+}
+
+interface HardCrossingAssignment {
+  readonly donorPr: string;
+  readonly similarity: number;
+}
+
+/**
+ * Greedily assigns each PR in `group` its most similar other PR as a
+ * foreign-description donor, capped at {@link MAX_HARD_DONOR_REUSE} uses per
+ * donor. Feasible by construction: each PR has `group.length - 1`
+ * candidates with total capacity `2 * (group.length - 1)`, which is always
+ * >= `group.length` for group.length >= 2, so a donor with spare capacity
+ * always exists regardless of processing order.
+ */
+function assignHardCrossing(
+  group: readonly PrRecord[],
+  seed: number,
+): Map<string, HardCrossingAssignment> {
+  const rankedByPr = rankHardCandidates(group, seed);
+  const usage = new Map<string, number>();
+  const assignment = new Map<string, HardCrossingAssignment>();
+
+  for (const pr of group) {
+    const ranked = rankedByPr.get(pr.id) ?? [];
+    const pick = ranked.find((s) => (usage.get(s.candidate.id) ?? 0) < MAX_HARD_DONOR_REUSE);
+    if (pick === undefined) {
+      throw new Error(
+        `unreachable: no donor with spare capacity for ${pr.id} (cap ${MAX_HARD_DONOR_REUSE})`,
+      );
+    }
+    usage.set(pick.candidate.id, (usage.get(pick.candidate.id) ?? 0) + 1);
+    assignment.set(pr.id, { donorPr: pick.candidate.id, similarity: pick.dirJaccard });
+  }
+  return assignment;
+}
+
+// ---------------------------------------------------------------------------
+// Pair generation
+// ---------------------------------------------------------------------------
+
 export function generateCoherencePairs(
   records: readonly PrRecord[],
   seed: number,
+  strategy: CoherenceCrossingStrategy = "random",
 ): CoherencePair[] {
   const byRepo = new Map<string, PrRecord[]>();
   for (const r of records) {
@@ -200,19 +368,35 @@ export function generateCoherencePairs(
   }
 
   const foreignFor = new Map<string, string>();
+  const crossingFor = new Map<
+    string,
+    { strategy: CoherenceCrossingStrategy; similarity: number }
+  >();
+
   for (const [repo, group] of byRepo) {
     if (group.length < 2) {
       throw new Error(
         `repo ${repo} has ${group.length} PR(s); at least 2 are needed to cross descriptions`,
       );
     }
-    const rng = mulberry32((seed ^ hashString(repo)) >>> 0);
-    const perm = sattoloCycle(group.length, rng);
-    for (const [index, pr] of group.entries()) {
-      const target = perm[index];
-      const donor = target === undefined ? undefined : group[target];
-      if (donor === undefined) throw new Error("unreachable: permutation index inside group");
-      foreignFor.set(pr.id, donor.id);
+
+    if (strategy === "random") {
+      const rng = mulberry32((seed ^ hashString(repo)) >>> 0);
+      const perm = sattoloCycle(group.length, rng);
+      for (const [index, pr] of group.entries()) {
+        const target = perm[index];
+        const donor = target === undefined ? undefined : group[target];
+        if (donor === undefined) throw new Error("unreachable: permutation index inside group");
+        foreignFor.set(pr.id, donor.id);
+      }
+    } else {
+      const assignment = assignHardCrossing(group, seed);
+      for (const pr of group) {
+        const picked = assignment.get(pr.id);
+        if (picked === undefined) throw new Error(`unreachable: no donor assigned for ${pr.id}`);
+        foreignFor.set(pr.id, picked.donorPr);
+        crossingFor.set(pr.id, { strategy, similarity: picked.similarity });
+      }
     }
   }
 
@@ -221,7 +405,21 @@ export function generateCoherencePairs(
     const foreign = foreignFor.get(r.id);
     if (foreign === undefined) throw new Error(`unreachable: no foreign description for ${r.id}`);
     pairs.push({ prId: r.id, descriptionPrId: r.id, label: "coherent" });
-    pairs.push({ prId: r.id, descriptionPrId: foreign, label: "incoherent" });
+    const crossing = crossingFor.get(r.id);
+    pairs.push({
+      prId: r.id,
+      descriptionPrId: foreign,
+      label: "incoherent",
+      ...(crossing !== undefined
+        ? {
+            crossing: {
+              strategy: crossing.strategy,
+              similarity: crossing.similarity,
+              donorPr: foreign,
+            },
+          }
+        : {}),
+    });
   }
   return pairs;
 }

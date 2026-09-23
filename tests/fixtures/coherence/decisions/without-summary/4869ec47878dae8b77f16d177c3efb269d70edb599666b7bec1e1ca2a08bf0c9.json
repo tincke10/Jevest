@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c661fbb37baa8f56b385d8cb71d4",
+  "requestId": "req_01a0cea480b0782c88ee16f5e854be03",
   "model": "jev-1.13.0",
-  "latencyMs": 222,
+  "latencyMs": 387,
   "usage": {
     "inputTokens": 1466,
     "outputTokens": 123
@@ -9,30 +9,30 @@
   "answers": {
     "matches_intent": {
       "type": "noul",
-      "noul": 0.86
+      "noul": 0.87
     },
     "user_facing": {
       "type": "noul",
-      "noul": 0.94
+      "noul": 0.93
     },
     "breaking": {
       "type": "noul",
-      "noul": 0.21
+      "noul": 0.19
     },
     "needs_product_owner": {
       "type": "noul",
-      "noul": 0.13
+      "noul": 0.14
     },
     "risk_level": {
       "type": "choice",
       "choice": "medium",
-      "confidence": 0.84,
+      "confidence": 0.83,
       "probabilities": {
-        "high": 0.11,
-        "medium": 0.88,
         "critical": 0,
+        "none": 0,
+        "high": 0.12,
         "low": 0.01,
-        "none": 0
+        "medium": 0.87
       }
     }
   }

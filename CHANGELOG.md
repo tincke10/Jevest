@@ -7,7 +7,27 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Post-hoc calibration of `is_real_defect`** (H3, docs/SPEC.md §4.6.3,
+  docs/BENCHMARK.md "Post-hoc calibration study"), **off by default**. New
+  `pnpm calibrate` CLI fits and cross-validates four monotone maps (identity,
+  Platt, isotonic/PAV, temperature) over oracle-labeled findings sets, all from
+  replayed Jev fixtures at zero cost, and reports held-out ECE (5-fold,
+  stratified, mean ± sd and pooled out-of-fold), Brier, AUC and cross-set
+  generalization, with reliability tables before and after. Exit code 2 on a
+  FAIL verdict, like `pnpm filter`. Stage 4 can apply a fitted map to
+  `is_real_defect` before computing the confidence band and the predicted-real
+  cut, via `findingFilter.calibration` (`none` by default, or `file`) and
+  `findingFilter.calibrationPath` (default `.jevest/calibration.json`, read
+  from the PR's base commit like `.jevest/context.yml`); Jev's raw answer is
+  kept on every finding as `rawIsRealDefectProb`, and the summary comment shows
+  both. Jevest's own fitted map ships at
+  `config/calibration/is_real_defect.json` with its caveats in
+  `config/calibration/README.md` — as a worked example to copy, not as a
+  default. **H3 remains FAIL**: the map reaches a held-out ECE of 0.071 on the
+  set it was fitted on (from 0.284 raw) with the ranking untouched, but carries
+  0.216 to a set whose base rate is ten times lower.
 
 ## [0.1.0] - 2026-09-23
 

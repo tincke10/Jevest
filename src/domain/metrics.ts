@@ -107,12 +107,65 @@ export function h0Verdict(
   return { verdict: reasons.length === 0 ? "PASS" : "FAIL", reasons };
 }
 
+/** One equal-width bucket of a reliability diagram; see {@link reliabilityBins}. */
+export interface ReliabilityBin {
+  /** Inclusive lower edge of the bucket. */
+  readonly lower: number;
+  /** Upper edge; inclusive only for the last bucket, which owns prob = 1. */
+  readonly upper: number;
+  readonly count: number;
+  /** Mean predicted probability inside the bucket ("confidence"); 0 when empty. */
+  readonly meanPredicted: number;
+  /** Fraction of the bucket that is actually positive ("accuracy"); 0 when empty. */
+  readonly observedRate: number;
+}
+
+/**
+ * Reliability diagram for a binary probability: `bins` equal-width buckets
+ * over [0, 1], each carrying its mean predicted probability and its observed
+ * positive rate. Out-of-range probabilities are clamped into the nearest
+ * bucket rather than throwing. Empty buckets are returned too (count 0), so a
+ * report can print a fixed-height table.
+ *
+ * This is the binning {@link expectedCalibrationError} is defined on — ECE is
+ * the count-weighted mean gap between `meanPredicted` and `observedRate` over
+ * the non-empty buckets — so a reliability table and an ECE figure printed
+ * side by side can never disagree.
+ */
+export function reliabilityBins(
+  items: readonly { prob: number; actual: boolean }[],
+  bins = 10,
+): ReliabilityBin[] {
+  const buckets = Array.from({ length: bins }, () => ({ sumProb: 0, sumActual: 0, count: 0 }));
+  for (const { prob, actual } of items) {
+    const clamped = Math.min(1, Math.max(0, prob));
+    const index = Math.min(bins - 1, Math.floor(clamped * bins));
+    const bucket = buckets[index];
+    if (!bucket) {
+      // Unreachable: index is always within [0, bins - 1].
+      throw new Error("reliabilityBins: bucket index out of range");
+    }
+    bucket.sumProb += clamped;
+    bucket.sumActual += actual ? 1 : 0;
+    bucket.count += 1;
+  }
+
+  return buckets.map((bucket, index) => ({
+    lower: index / bins,
+    upper: (index + 1) / bins,
+    count: bucket.count,
+    meanPredicted: bucket.count === 0 ? 0 : bucket.sumProb / bucket.count,
+    observedRate: bucket.count === 0 ? 0 : bucket.sumActual / bucket.count,
+  }));
+}
+
 /**
  * Expected Calibration Error for a binary probability (e.g. a `noul` answer):
  * bins predictions into `bins` equal-width buckets over [0, 1], and for each
  * non-empty bucket compares its average predicted probability ("confidence")
  * against its actual positive rate ("accuracy"), weighting each bucket's
- * contribution by its share of the total sample count.
+ * contribution by its share of the total sample count. Defined on
+ * {@link reliabilityBins} so the number and the diagram share one binning.
  */
 export function expectedCalibrationError(
   items: readonly { prob: number; actual: boolean }[],
@@ -122,28 +175,57 @@ export function expectedCalibrationError(
     return 0;
   }
 
-  const buckets = Array.from({ length: bins }, () => ({ sumProb: 0, sumActual: 0, count: 0 }));
-  for (const { prob, actual } of items) {
-    const clamped = Math.min(1, Math.max(0, prob));
-    const index = Math.min(bins - 1, Math.floor(clamped * bins));
-    const bucket = buckets[index];
-    if (!bucket) {
-      // Unreachable: index is always within [0, bins - 1].
-      throw new Error("expectedCalibrationError: bucket index out of range");
-    }
-    bucket.sumProb += clamped;
-    bucket.sumActual += actual ? 1 : 0;
-    bucket.count += 1;
-  }
-
   let ece = 0;
-  for (const bucket of buckets) {
+  for (const bucket of reliabilityBins(items, bins)) {
     if (bucket.count === 0) continue;
-    const avgConfidence = bucket.sumProb / bucket.count;
-    const avgAccuracy = bucket.sumActual / bucket.count;
-    ece += (bucket.count / items.length) * Math.abs(avgConfidence - avgAccuracy);
+    ece += (bucket.count / items.length) * Math.abs(bucket.meanPredicted - bucket.observedRate);
   }
   return ece;
+}
+
+/**
+ * Brier score: the mean squared error of a probability against its 0/1
+ * outcome. Lower is better, 0 is perfect, 0.25 is what always answering 0.5
+ * gets. Unlike ECE it is a proper scoring rule — it punishes a map that buys
+ * calibration by flattening every probability towards the base rate — so the
+ * two are always reported together. 0 for an empty input, like
+ * {@link expectedCalibrationError}.
+ */
+export function brierScore(items: readonly { prob: number; actual: boolean }[]): number {
+  if (items.length === 0) {
+    return 0;
+  }
+  let sum = 0;
+  for (const { prob, actual } of items) {
+    const error = prob - (actual ? 1 : 0);
+    sum += error * error;
+  }
+  return sum / items.length;
+}
+
+/**
+ * Area under the ROC curve, computed as the Mann-Whitney statistic: the
+ * probability that a randomly drawn positive outscores a randomly drawn
+ * negative, with a tie counting as half. Ranking only, so ANY strictly
+ * increasing map of the score leaves it untouched — which is exactly why a
+ * calibration study reports it: it proves the map moved the probabilities
+ * without reordering the findings. `null` when either class is missing, since
+ * AUC is undefined there.
+ */
+export function rocAuc(items: readonly { score: number; actual: boolean }[]): number | null {
+  const positives = items.filter((i) => i.actual).map((i) => i.score);
+  const negatives = items.filter((i) => !i.actual).map((i) => i.score);
+  if (positives.length === 0 || negatives.length === 0) {
+    return null;
+  }
+  let wins = 0;
+  for (const positive of positives) {
+    for (const negative of negatives) {
+      if (positive > negative) wins += 1;
+      else if (positive === negative) wins += 0.5;
+    }
+  }
+  return wins / (positives.length * negatives.length);
 }
 
 /**

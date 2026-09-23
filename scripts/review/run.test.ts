@@ -2,7 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseArgs, resolveConfig, resolveLocalProductContext } from "./run.js";
+import type { JevestConfig } from "../../src/adapters/config/jevest-config.js";
+import {
+  parseArgs,
+  resolveConfig,
+  resolveLocalCalibration,
+  resolveLocalProductContext,
+} from "./run.js";
 
 describe("parseArgs (scripts/review/run.ts)", () => {
   it("throws when neither --diff nor --git is given", () => {
@@ -149,5 +155,92 @@ describe("resolveLocalProductContext (scripts/review/run.ts)", () => {
         gitRange: null,
       }),
     ).rejects.toThrow(/\.jevest\/context\.yml/);
+  });
+});
+
+describe("resolveLocalCalibration (scripts/review/run.ts)", () => {
+  let dir: string;
+
+  const VALID = JSON.stringify({
+    version: 1,
+    question: "is_real_defect",
+    map: { method: "platt", a: 0.95, b: -1.65 },
+  });
+
+  function findingFilter(
+    overrides: Partial<JevestConfig["findingFilter"]> = {},
+  ): JevestConfig["findingFilter"] {
+    return {
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+      ...overrides,
+    };
+  }
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-review-calib-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('is the identity, reading nothing, when calibration is "none"', async () => {
+    const map = await resolveLocalCalibration({
+      repoDir: dir,
+      findingFilter: findingFilter(),
+      gitRange: null,
+    });
+    expect(map).toEqual({ method: "none" });
+  });
+
+  it("reads the map from the working tree in --diff mode", async () => {
+    await mkdir(join(dir, ".jevest"), { recursive: true });
+    await writeFile(join(dir, ".jevest/calibration.json"), VALID, "utf8");
+
+    const map = await resolveLocalCalibration({
+      repoDir: dir,
+      findingFilter: findingFilter({ calibration: "file" }),
+      gitRange: null,
+    });
+    expect(map).toEqual({ method: "platt", a: 0.95, b: -1.65 });
+  });
+
+  it("reads it from the BASE ref in --git mode, never the working tree", async () => {
+    const seen: { path: string; sha: string }[] = [];
+    const map = await resolveLocalCalibration({
+      repoDir: dir,
+      findingFilter: findingFilter({ calibration: "file" }),
+      gitRange: { base: "main", head: "HEAD" },
+      fetchFileAt: async (path, sha) => {
+        seen.push({ path, sha });
+        return VALID;
+      },
+    });
+    expect(map).toEqual({ method: "platt", a: 0.95, b: -1.65 });
+    expect(seen).toEqual([{ path: ".jevest/calibration.json", sha: "main" }]);
+  });
+
+  it("throws naming the path when the config asks for a map that is not there", async () => {
+    await expect(
+      resolveLocalCalibration({
+        repoDir: dir,
+        findingFilter: findingFilter({ calibration: "file" }),
+        gitRange: null,
+      }),
+    ).rejects.toThrow(/calibration\.json/);
+  });
+
+  it("throws on an invalid map instead of falling back to the identity", async () => {
+    await mkdir(join(dir, ".jevest"), { recursive: true });
+    await writeFile(join(dir, ".jevest/calibration.json"), "{ not json", "utf8");
+    await expect(
+      resolveLocalCalibration({
+        repoDir: dir,
+        findingFilter: findingFilter({ calibration: "file" }),
+        gitRange: null,
+      }),
+    ).rejects.toThrow(/calibration\.json/);
   });
 });

@@ -9,7 +9,18 @@
  * dataset provenance) purely so the exact same `runFilter` can process
  * them. One Jev request per finding (NFR-14, already `runFilter`'s
  * default).
+ *
+ * `is_real_defect` may pass through a post-hoc calibration map before
+ * anything reads it (SPEC §4.6.3, `findingFilter.calibration`, default
+ * "none"). The map is monotone, so it cannot reorder findings — what it
+ * changes is where the fixed thresholds in `.jevest.yml` fall on the curve.
+ * The raw answer is kept on every record as `rawIsRealDefectProb`.
  */
+import {
+  type CalibrationMap,
+  NO_CALIBRATION,
+  applyCalibration,
+} from "../../../domain/calibration.js";
 import {
   type ConfidencePolicyConfig,
   createConfidencePolicy,
@@ -29,7 +40,19 @@ export interface FilteredFinding {
   readonly lineEnd: number;
   readonly claim: string;
   readonly rationale: string;
+  /**
+   * The probability everything downstream uses: the band, the predicted-real
+   * cut, the summary comment. Equal to {@link rawIsRealDefectProb} unless a
+   * calibration map is configured (`findingFilter.calibration: file`).
+   */
   readonly isRealDefectProb: number;
+  /**
+   * What Jev actually answered, kept whatever the calibration does to it. A
+   * calibrated 0.42 next to a raw 0.85 is the difference between "Jev was
+   * unsure" and "Jev was sure and has been wrong at that level before" — a
+   * report that only carried the first could never tell you which.
+   */
+  readonly rawIsRealDefectProb: number;
   /** Jev's own continuous severity score (0..3, nit..critical), independent of the LLM's suggestedSeverity. */
   readonly jevSeverityScore: number;
   readonly isStyleOnlyProb: number;
@@ -57,6 +80,14 @@ export interface FindingFilterStageInput {
   readonly policyConfig: ConfidencePolicyConfig;
   readonly riskLevel: RiskLevel;
   readonly mode: FindingFilterMode;
+  /**
+   * Post-hoc map applied to `is_real_defect` BEFORE the band and the
+   * predicted-real cut (SPEC §4.6.3). Default: the identity, so a caller that
+   * knows nothing about calibration gets exactly the behavior every committed
+   * benchmark measured. Resolved by run-pipeline.ts from
+   * `findingFilter.calibration`.
+   */
+  readonly calibration?: CalibrationMap;
 }
 
 export interface FindingFilterStageResult {
@@ -150,9 +181,17 @@ export async function runFindingFilterStage(
   const discarded: FilteredFinding[] = [];
   const lowConfidence: FilteredFinding[] = [];
 
+  const calibration = input.calibration ?? NO_CALIBRATION;
+
   for (const result of run.results) {
     const record = findingsById.get(result.findingId);
     if (!record) continue;
+
+    // Calibration happens HERE, before anything reads the probability: the
+    // band, the predicted-real cut and the summary comment must all see one
+    // number, or the "confidence" in a comment would not be the confidence
+    // that routed the finding.
+    const calibratedProb = applyCalibration(calibration, result.isRealDefectProb);
 
     const filtered: FilteredFinding = {
       findingId: result.findingId,
@@ -162,7 +201,8 @@ export async function runFindingFilterStage(
       lineEnd: record.lineEnd,
       claim: record.claim,
       rationale: record.rationale,
-      isRealDefectProb: result.isRealDefectProb,
+      isRealDefectProb: calibratedProb,
+      rawIsRealDefectProb: result.isRealDefectProb,
       jevSeverityScore: result.severity,
       isStyleOnlyProb: result.isStyleOnlyProb,
       actionableProb: result.actionableProb,
@@ -170,9 +210,9 @@ export async function runFindingFilterStage(
       unverified: false,
     };
 
-    const confidence = noulConfidence(result.isRealDefectProb);
+    const confidence = noulConfidence(calibratedProb);
     const band = policy.band("finding_filter", input.riskLevel, confidence);
-    const predictedReal = result.isRealDefectProb >= 0.5;
+    const predictedReal = calibratedProb >= 0.5;
     // FR-5.4: "critical" by EITHER source. The reviewer's suggested severity
     // counts as much as Jev's own score: H0 showed Jev cannot judge whether
     // a defect is real, so letting its "not real" verdict silently drop a
@@ -211,7 +251,11 @@ export async function runFindingFilterStage(
       lineEnd: record.lineEnd,
       claim: record.claim,
       rationale: record.rationale,
+      // Jev never answered, so there is no probability to calibrate: both
+      // stay NaN and the finding is routed by the fail-closed rule, not by a
+      // number.
       isRealDefectProb: Number.NaN,
+      rawIsRealDefectProb: Number.NaN,
       jevSeverityScore: Number.NaN,
       isStyleOnlyProb: Number.NaN,
       actionableProb: Number.NaN,

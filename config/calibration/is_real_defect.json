@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "question": "is_real_defect",
+  "map": {
+    "method": "platt",
+    "a": 0.9523266507090191,
+    "b": -1.646124138187125
+  },
+  "meta": {
+    "source": "datasets/findings-reversed-oracle.jsonl",
+    "set": "findings-reversed-oracle",
+    "fittedAt": "2026-09-23T14:21:22.555Z",
+    "fittedOn": 209,
+    "baseRate": 0.2632,
+    "heldOutEce": 0.0708,
+    "heldOutBrier": 0.1592,
+    "crossSetEce": 0.216,
+    "rawEce": 0.2839,
+    "verdict": "FAIL"
+  }
+}

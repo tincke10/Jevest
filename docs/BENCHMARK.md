@@ -24,7 +24,7 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 | H0′ | What kind of change is this hunk, what surface does it touch? | **PARTIAL** | below, `reports/spike-profile-*.md` |
 | H1 | Is this LLM finding a real defect? (central) | **PASS** on H1b (2026-09-23, reversed hunks vs. the fix-aware oracle, n=55 real / 154 noise): recall 0.964 (53/55) at threshold 0.45, 51.9% of noise discarded, AUC 0.792. The FAIL on the original (before → after) hunks stands as history — line-overlap AUC 0.592 (near chance), and the original oracle sample had only n=7 real, too small for a recall verdict. Caveats on the PASS: n=55 gives a wide recall interval, the oracle labeler and the H6 judge share a model, and the reversed diff is an artificial recall population (§ H1b) | below, "Thorough findings pass and finding filter" and "H1b — reversed hunks" |
 | H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** vs. the original oracle: 182× cheaper; **PASS** on H1b (2026-09-23): 704.7× cheaper, and Jev's recall exceeds the judge's at Jev's own threshold (gap −0.218); at the judge's own best threshold it only matches Jev's recall, at ~700× the cost and ~25× the latency | same run as H1; H1b below |
-| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL**, every time measured: ECE 0.191 vs. line-overlap (N=299, 2026-09-22); ECE 0.504 vs. the original oracle sample (base rate 0.028); ECE 0.284 on H1b (2026-09-23, base rate 0.263) — Jev's probabilities keep running above the true real rate | same run as H1; H1b below |
+| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** raw, every time measured: ECE 0.191 vs. line-overlap (N=299, 2026-09-22); 0.504 vs. the original oracle sample (base rate 0.028); 0.284 on H1b (2026-09-23, base rate 0.263) — Jev's probabilities keep running above the true real rate. **FAIL post-hoc too** (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 there, well inside the bar, but carries 0.216 to the thorough set, whose base rate is ten times lower. Calibration is available and **off by default** | same run as H1; H1b and "Post-hoc calibration study" below |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
@@ -536,6 +536,135 @@ now includes which labeler answered; an absent labeler id reproduces the
 historical key exactly, so the DeepSeek fixtures behind the earlier numbers
 still replay byte-for-byte.
 
+## Post-hoc calibration study (H3, 2026-09-23)
+
+H3 asks whether `is_real_defect` is calibrated (ECE < 0.1 over ≥ 200 labeled
+findings). Raw, it is not, and never has been: 0.191 against line-overlap,
+0.504 on the thorough oracle sample, 0.284 on H1b. Every one of those is the
+same failure — the probabilities run above the rate at which the findings are
+really defects.
+
+This section asks the next question. The ranking is good (AUC 0.792 on H1b,
+which is what H1's recall rides on); only the scale is wrong. Can a monotone
+map fitted after the fact fix the scale without touching the ranking?
+
+Source: `scripts/filter/calibrate.ts`, `src/application/filter/calibration-study.ts`,
+`src/domain/calibration.ts`. Report: `reports/calibration-2026-09-23T14-21-22-555Z.md`.
+Ground truth is the fix-aware oracle label; `unknown` findings are excluded.
+Reproduce (replay only, no API call, zero cost):
+
+```sh
+pnpm calibrate
+```
+
+**Every number below is held out.** Fitting a map and reporting the ECE of the
+same points is circular — isotonic can drive it near zero on any sample by
+memorizing it. So the study uses 5-fold cross-validation, stratified on the
+label, seed 20260923: fit on 4 folds, score the fold left out, pool every
+out-of-fold prediction. And then it does the thing that actually decides
+whether a map is worth shipping: fit on one whole set, score the other.
+
+### The two sets
+
+| Set | N | Real | Noise | Base rate | Raw ECE | Raw Brier | Raw AUC |
+|---|---|---|---|---|---|---|---|
+| `findings-reversed-oracle` (H1b, primary) | 209 | 55 | 154 | 0.263 | 0.284 | 0.242 | 0.792 |
+| `findings-thorough-oracle` | 246 | 7 | 239 | 0.028 | 0.504 | 0.341 | 0.708 |
+
+### Held-out cross-validation on the H1b set
+
+| Method | Held-out ECE (mean ± sd) | Pooled held-out ECE | Pooled held-out Brier | AUC after the map | Order kept | Distinct values |
+|---|---|---|---|---|---|---|
+| none (identity) | 0.303 ± 0.035 | 0.284 | 0.242 | 0.792 | yes | 75 of 75 |
+| platt | 0.150 ± 0.034 | **0.071** | 0.159 | 0.792 | yes | 75 of 75 |
+| isotonic | 0.086 ± 0.038 | **0.030** | 0.159 | 0.811 | yes | 9 of 75 |
+| temperature | 0.264 ± 0.024 | 0.264 | 0.228 | 0.792 | yes | 75 of 75 |
+
+Both Platt and isotonic clear H3's 0.1 bar on held-out data. The Brier score
+drops with the ECE (0.242 to 0.159), which is what rules out the cheap way to
+win: a map that bought calibration by flattening everything towards the base
+rate would improve ECE and leave Brier alone or worse.
+
+**Temperature barely moves.** It has a slope and no intercept, so it can only
+sharpen or flatten around 0.5. That it fails while Platt succeeds IS the
+diagnosis: Jev's problem is not overconfidence in shape, it is a shift. The
+fitted Platt map is `a = 0.952, b = −1.646` — a slope of essentially 1 and an
+intercept doing all the work. Jev's log-odds are about 1.65 too high, flat
+across the range.
+
+**On the AUC column.** Platt and temperature are strictly increasing, so their
+AUC matches the raw one to the last digit: the map moved the probabilities and
+reordered nothing, and H1's recall at a rank cut is untouched. Isotonic is only
+non-decreasing — it POOLS adjacent probabilities into one value (75 distinct
+raw probabilities become 9), and a losing pair that becomes a tie counts as
+half a win, so its AUC comes out *higher* at 0.811 without a single inversion.
+That is not an improvement in judgment and it is not free either: findings that
+share a calibrated value can no longer be separated by any threshold
+downstream. The study checks the order directly rather than trusting AUC
+equality.
+
+### Cross-set: does the map travel?
+
+| Method | Fitted on | Scored on | N | ECE | Brier |
+|---|---|---|---|---|---|
+| none | H1b | thorough | 246 | 0.504 | 0.341 |
+| none | thorough | H1b | 209 | 0.284 | 0.242 |
+| platt | H1b | thorough | 246 | 0.216 | 0.103 |
+| platt | thorough | H1b | 209 | 0.233 | 0.240 |
+| isotonic | H1b | thorough | 246 | 0.221 | 0.109 |
+| isotonic | thorough | H1b | 209 | 0.233 | 0.239 |
+| temperature | H1b | thorough | 246 | 0.489 | 0.282 |
+| temperature | thorough | H1b | 209 | 0.237 | 0.250 |
+
+It travels halfway. Platt fitted on H1b cuts the thorough set's ECE from 0.504
+to 0.216 and its Brier from 0.341 to 0.103 — a large improvement, and still
+double the 0.1 bar. The reason is not subtle: the base rates are 0.263 and
+0.028. An intercept fitted against one base rate is the wrong intercept for the
+other, and an intercept is exactly what this map is.
+
+### Reliability, before and after (H1b, 10 bins)
+
+| Bin | Before: mean predicted | Before: observed | N | After (out-of-fold Platt): mean predicted | After: observed | N |
+|---|---|---|---|---|---|---|
+| 0.0–0.1 | 0.076 | 0.000 | 5 | 0.052 | 0.014 | 70 |
+| 0.1–0.2 | 0.158 | 0.000 | 32 | 0.145 | 0.310 | 29 |
+| 0.2–0.3 | 0.240 | 0.048 | 21 | 0.254 | 0.208 | 24 |
+| 0.3–0.4 | 0.342 | 0.000 | 16 | 0.347 | 0.360 | 25 |
+| 0.4–0.5 | 0.434 | 0.267 | 15 | 0.443 | 0.520 | 25 |
+| 0.5–0.6 | 0.546 | 0.417 | 12 | 0.553 | 0.545 | 22 |
+| 0.6–0.7 | 0.651 | 0.238 | 21 | 0.660 | 0.385 | 13 |
+| 0.7–0.8 | 0.748 | 0.333 | 30 | 0.721 | 1.000 | 1 |
+| 0.8–0.9 | 0.849 | 0.533 | 45 | — | — | 0 |
+| 0.9–1.0 | 0.918 | 0.500 | 12 | — | — | 0 |
+
+The "before" column is the whole finding in one table: Jev puts 57 findings
+above 0.8 and barely half of them are real, while the bin it labels 0.3–0.4
+contains no real defects at all. After the map, the mass moves down to where
+the evidence is, and predicted tracks observed within roughly 0.1 in the
+populated bins.
+
+### Verdict
+
+**H3 post-hoc: FAIL.** The bar the study sets is pooled held-out ECE < 0.1 on
+the H1b set AND cross-set ECE < 0.15. The first is met (Platt 0.071, isotonic
+0.030); the second is not (0.216). What can be said honestly:
+
+- A post-hoc map fixes the scale **on the distribution it was fitted on**, and
+  it does so without touching the ranking. H3's own bar is clearable that way.
+- It does **not** transfer across distributions with different base rates. A
+  map shipped with Jevest and applied to somebody else's repo would be a guess.
+- SPEC §4.2's H3, which is about Jev's RAW output, stays **FAIL**. Nothing here
+  changes that.
+
+**What shipped.** `findingFilter.calibration` (default `"none"`, i.e. the
+identity), `findingFilter.calibrationPath` (default `.jevest/calibration.json`,
+read from the PR's base commit like `.jevest/context.yml`), and Jevest's own
+fitted map at `config/calibration/is_real_defect.json` with its caveats in
+`config/calibration/README.md`. Turned on, stage 4 maps `is_real_defect` before
+computing the band and the predicted-real cut, keeps Jev's raw answer on the
+record as `rawIsRealDefectProb`, and the summary comment shows both. **The
+default is off, and this study is the reason.**
+
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 
 Source: `src/application/pipeline/run-metrics.ts`, computed on every run
@@ -605,8 +734,12 @@ label (see "Re-scored against the fix-aware oracle label" above): H1 FAIL
 H1b (see "H1b — reversed hunks" above) ran on 2026-09-23 on a reversed-hunk
 dataset with a real-finding population of 55: H1 now **PASS** (recall 0.964,
 51.9% of noise discarded), H6 **PASS** again (704.7×), H3 stays **FAIL**
-(ECE 0.284). What remains below is H7's harder near-duplicate variant, H5's
-suite (already recorded, see below), and the H2/H4 real-PR collection.
+(ECE 0.284). The post-hoc calibration study (2026-09-23, see "Post-hoc
+calibration study" above) closed H3 as far as it can be closed for now: a
+fitted map reaches a held-out ECE of 0.071 on the set it was fitted on and
+0.216 on a set with a different base rate, so the feature ships off by default
+and H3 stays FAIL. What remains below is H7's harder near-duplicate variant,
+H5's suite (already recorded, see below), and the H2/H4 real-PR collection.
 
 | Hypothesis | What will fill the row | Command |
 |---|---|---|

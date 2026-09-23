@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createFakeDecisionAdapter } from "../../../adapters/fake-decision-adapter.js";
+import { type CalibrationMap, applyCalibration } from "../../../domain/calibration.js";
 import type { ConfidencePolicyConfig } from "../../../domain/confidence-policy.js";
 import type { Decision } from "../../../domain/decision.js";
 import type { ReviewFindingCandidate } from "../../../domain/ports/reviewer-port.js";
@@ -272,5 +273,120 @@ describe("runFindingFilterStage", () => {
     });
     expect(result.totalRequests).toBe(2);
     expect(result.published).toHaveLength(2);
+  });
+});
+
+describe("runFindingFilterStage with a calibration map", () => {
+  it("defaults to the identity: no map given, the raw probability is what bands the finding", async () => {
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.95, 2, 0.05, 0.9));
+    const result = await runFindingFilterStage({
+      reviews: [makeReview()],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "discard",
+    });
+
+    expect(result.published).toHaveLength(1);
+    expect(result.published[0]!.isRealDefectProb).toBeCloseTo(0.95, 10);
+    expect(result.published[0]!.rawIsRealDefectProb).toBeCloseTo(0.95, 10);
+  });
+
+  it("keeps the raw probability on the record and bands on the calibrated one", async () => {
+    // Platt with a = 1, b = -1.65 (Jevest's own fitted map, rounded): 0.95
+    // carries far less evidence than it claims, and lands near 0.66.
+    const calibration: CalibrationMap = { method: "platt", a: 1, b: -1.65 };
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.95, 2, 0.05, 0.9));
+
+    const result = await runFindingFilterStage({
+      reviews: [makeReview()],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "discard",
+      calibration,
+    });
+
+    const filtered = [
+      ...result.published,
+      ...result.needsHuman,
+      ...result.lowConfidence,
+      ...result.discarded,
+    ][0];
+    expect(filtered?.rawIsRealDefectProb).toBeCloseTo(0.95, 10);
+    expect(filtered?.isRealDefectProb).toBeCloseTo(applyCalibration(calibration, 0.95), 10);
+    expect(filtered?.isRealDefectProb).toBeLessThan(0.95);
+  });
+
+  it("moves a finding out of the auto band when calibration says the confidence was borrowed", async () => {
+    // Raw 0.95 -> confidence 0.90 -> auto band -> published.
+    // Calibrated to ~0.66 -> confidence 0.32 -> below confirmMin 0.6 -> escalate.
+    const calibration: CalibrationMap = { method: "platt", a: 1, b: -1.65 };
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.95, 1, 0.05, 0.9));
+
+    const uncalibrated = await runFindingFilterStage({
+      reviews: [makeReview({ findings: [candidate({ suggestedSeverity: "minor" })] })],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+    });
+    const calibrated = await runFindingFilterStage({
+      reviews: [makeReview({ findings: [candidate({ suggestedSeverity: "minor" })] })],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+      calibration,
+    });
+
+    expect(uncalibrated.published).toHaveLength(1);
+    expect(calibrated.published).toHaveLength(0);
+    expect(calibrated.lowConfidence).toHaveLength(1);
+  });
+
+  it("can also promote: a raw 0.55 that calibrates up crosses into a higher band", async () => {
+    // A map that pushes everything up, to prove the wiring is not one-directional.
+    const calibration: CalibrationMap = { method: "platt", a: 1, b: 3 };
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.55, 1, 0.05, 0.9));
+
+    const result = await runFindingFilterStage({
+      reviews: [makeReview({ findings: [candidate({ suggestedSeverity: "minor" })] })],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+      calibration,
+    });
+
+    expect(result.published).toHaveLength(1);
+    expect(result.published[0]!.rawIsRealDefectProb).toBeCloseTo(0.55, 10);
+    expect(result.published[0]!.isRealDefectProb).toBeGreaterThan(0.9);
+  });
+
+  it("leaves an unverified (failed) finding's probabilities NaN, with nothing to calibrate", async () => {
+    const calibration: CalibrationMap = { method: "platt", a: 1, b: -1.65 };
+    // An empty script makes every Jev call fail, which is the fail-closed path.
+    const port = createFakeDecisionAdapter({});
+
+    const result = await runFindingFilterStage({
+      reviews: [makeReview()],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "discard",
+      calibration,
+    });
+
+    expect(result.needsHuman).toHaveLength(1);
+    expect(result.needsHuman[0]!.unverified).toBe(true);
+    expect(Number.isNaN(result.needsHuman[0]!.isRealDefectProb)).toBe(true);
+    expect(Number.isNaN(result.needsHuman[0]!.rawIsRealDefectProb)).toBe(true);
   });
 });

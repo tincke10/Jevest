@@ -348,7 +348,11 @@ describe("loadJevestConfigFromString", () => {
 describe("findingFilter config (stage 4 mode)", () => {
   it('defaults findingFilter.mode to "annotate" when omitted', async () => {
     const config = await loadJevestConfigFromString("", "<config>");
-    expect(config.findingFilter).toEqual({ mode: "annotate" });
+    expect(config.findingFilter).toEqual({
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+    });
   });
 
   it('accepts an explicit findingFilter.mode: "discard"', async () => {
@@ -356,7 +360,11 @@ describe("findingFilter config (stage 4 mode)", () => {
       "findingFilter:\n  mode: discard\n",
       "<config>",
     );
-    expect(config.findingFilter).toEqual({ mode: "discard" });
+    expect(config.findingFilter).toEqual({
+      mode: "discard",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+    });
   });
 
   it("rejects an unknown findingFilter.mode", async () => {
@@ -370,7 +378,53 @@ describe("findingFilter config (stage 4 mode)", () => {
     const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
     const config = await loadJevestConfig(filePath);
     expect(config.findingFilter).toEqual(defaults.findingFilter);
-    expect(config.findingFilter).toEqual({ mode: "annotate" });
+    expect(config.findingFilter).toEqual({
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+    });
+  });
+
+  it('defaults calibration to "none" — the identity, H3 pending (SPEC §4.6.3)', async () => {
+    const config = await loadJevestConfigFromString("", "<config>");
+    expect(config.findingFilter.calibration).toBe("none");
+  });
+
+  it('accepts calibration: "file" with the default path', async () => {
+    const config = await loadJevestConfigFromString(
+      "findingFilter:\n  calibration: file\n",
+      "<config>",
+    );
+    expect(config.findingFilter.calibration).toBe("file");
+    expect(config.findingFilter.calibrationPath).toBe(".jevest/calibration.json");
+  });
+
+  it("accepts a custom calibrationPath", async () => {
+    const config = await loadJevestConfigFromString(
+      "findingFilter:\n  calibration: file\n  calibrationPath: .jevest/my-map.json\n",
+      "<config>",
+    );
+    expect(config.findingFilter.calibrationPath).toBe(".jevest/my-map.json");
+  });
+
+  it("rejects an unknown calibration source", async () => {
+    await expect(
+      loadJevestConfigFromString("findingFilter:\n  calibration: auto\n", "<config>"),
+    ).rejects.toThrow(JevestConfigError);
+  });
+
+  it("rejects an empty calibrationPath", async () => {
+    await expect(
+      loadJevestConfigFromString('findingFilter:\n  calibrationPath: ""\n', "<config>"),
+    ).rejects.toThrow(JevestConfigError);
+  });
+
+  it("keeps mode and calibration independent: setting one leaves the other at its default", async () => {
+    const config = await loadJevestConfigFromString(
+      "findingFilter:\n  calibration: file\n",
+      "<config>",
+    );
+    expect(config.findingFilter.mode).toBe("annotate");
   });
 });
 

@@ -130,6 +130,26 @@ findingFilter:
   # discard - the original behavior: low-confidence findings are dropped.
   #   Opt in only once H1 has a valid verdict for your data.
   mode: annotate
+  # Post-hoc calibration of is_real_defect (H3, see docs/SPEC.md §4.6.3 and
+  # docs/BENCHMARK.md "Post-hoc calibration study"). Jev's raw probability
+  # runs well above the rate at which its findings are really defects
+  # (ECE 0.284 on the H1b set at a 26.3% base rate), so the number that
+  # reaches the thresholds above does not mean what it says.
+  #   none (default) - the identity. Nothing is applied; the behavior is
+  #     exactly what every committed benchmark measured.
+  #   file - read a calibration map from `calibrationPath` and apply it to
+  #     is_real_defect BEFORE the band and the predicted-real cut. The raw
+  #     probability is kept alongside it, and the summary comment shows both.
+  # The default stays "none" because the study's cross-set verdict is FAIL: a
+  # map fitted on one repo's findings carried an ECE of 0.216 to another
+  # distribution. Fit your own on your own labeled findings (`pnpm calibrate`)
+  # before turning this on; config/calibration/is_real_defect.json is Jevest's,
+  # published as a starting point, not as a default.
+  calibration: none
+  # Read from the PR's BASE commit, exactly like triage.productContextPath: a
+  # PR must not be able to rewrite the map that decides which of its findings
+  # get published. Missing file = an error only when calibration is "file".
+  calibrationPath: .jevest/calibration.json
 
 # FR-7 publish behavior.
 publish:

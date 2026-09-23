@@ -176,11 +176,36 @@ const triageSchema = z
 export const FINDING_FILTER_MODES = ["annotate", "discard"] as const;
 export type FindingFilterMode = (typeof FINDING_FILTER_MODES)[number];
 
+/**
+ * Where stage 4 gets its calibration map for `is_real_defect` (SPEC §4.6.3,
+ * docs/BENCHMARK.md "Post-hoc calibration study"). "none" (the default) is the
+ * identity: Jev's raw probability is used exactly as it always was. "file"
+ * reads the map from `calibrationPath` in the consumer repo, at the PR's BASE
+ * sha — same rule as `.jevest/context.yml` and `.jevest.yml`, since a map is a
+ * knob that decides which findings get published and a PR must not be able to
+ * rewrite it.
+ *
+ * The default stays "none" on purpose: the study's verdict is H3 FAIL
+ * cross-set (a map fitted on one distribution carries an ECE of 0.216 to
+ * another), so a calibration is something a consumer opts into for THEIR data,
+ * never something that turns itself on.
+ */
+export const FINDING_FILTER_CALIBRATION_SOURCES = ["none", "file"] as const;
+export type FindingFilterCalibrationSource = (typeof FINDING_FILTER_CALIBRATION_SOURCES)[number];
+
+const DEFAULT_CALIBRATION_PATH = ".jevest/calibration.json";
+
 const findingFilterSchema = z
   .object({
     mode: z.enum(FINDING_FILTER_MODES).default("annotate"),
+    calibration: z.enum(FINDING_FILTER_CALIBRATION_SOURCES).default("none"),
+    calibrationPath: z.string().min(1).default(DEFAULT_CALIBRATION_PATH),
   })
-  .default({ mode: "annotate" });
+  .default({
+    mode: "annotate",
+    calibration: "none",
+    calibrationPath: DEFAULT_CALIBRATION_PATH,
+  });
 
 const jevestConfigSchema = z
   .object({
@@ -225,7 +250,13 @@ export interface JevestConfig {
     readonly productContextPath: string;
     readonly changeSummary: ChangeSummaryMode;
   };
-  readonly findingFilter: { readonly mode: FindingFilterMode };
+  readonly findingFilter: {
+    readonly mode: FindingFilterMode;
+    /** "none" (default) = identity; "file" = read the map from `calibrationPath` at the PR's base sha. */
+    readonly calibration: FindingFilterCalibrationSource;
+    /** Repo-relative path of the calibration artifact; ignored when `calibration` is "none". */
+    readonly calibrationPath: string;
+  };
 }
 
 function toConfidencePolicyConfig(

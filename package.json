@@ -16,6 +16,7 @@
     "spike:profile": "tsx scripts/spike/run-profile.ts",
     "profile:label": "tsx scripts/profile/label.ts",
     "filter": "tsx scripts/filter/run.ts",
+    "calibrate": "tsx scripts/filter/calibrate.ts",
     "findings": "tsx scripts/findings/generate.ts",
     "findings:label": "tsx scripts/findings/label.ts",
     "action": "tsx src/action/main.ts",

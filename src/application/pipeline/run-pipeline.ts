@@ -30,6 +30,7 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * The metrics are computed once BEFORE publish, so the summary comment
  * can carry them, and once after, so `metrics.wallTime` includes publish.
  */
+import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
@@ -92,6 +93,14 @@ export interface RunPipelineInput {
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
   /** Parsed `.jevest/context.yml` from the PR's BASE sha (see context/product-context.ts). Default: empty. */
   readonly productContext?: ProductContext;
+  /**
+   * Parsed calibration map for `is_real_defect`, fetched from the PR's BASE
+   * sha by the caller (src/action/main.ts, scripts/review/run.ts). Applied by
+   * stage 4 ONLY when `config.findingFilter.calibration` is `"file"` — the
+   * config is what decides, so a map that arrived some other way can never
+   * turn calibration on behind the config's back. Default: the identity.
+   */
+  readonly calibration?: CalibrationMap;
   /** Injectable clock for the spend cap's period key, ledger timestamps and the per-stage wall time in `metrics`. Default: `new Date()`. */
   readonly now?: () => Date;
 }
@@ -500,6 +509,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         policyConfig: config.thresholds,
         riskLevel: triage.riskLevel,
         mode: config.findingFilter.mode,
+        calibration:
+          config.findingFilter.calibration === "file"
+            ? (input.calibration ?? NO_CALIBRATION)
+            : NO_CALIBRATION,
       }),
     );
   } catch {

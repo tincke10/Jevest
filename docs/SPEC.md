@@ -342,6 +342,73 @@ pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
             --mode replay --judge claude-cli --judge-mode replay --label oracle
 ```
 
+### 4.6.3 H3: calibración post-hoc (2026-09-23)
+
+H3 pide ECE < 0.1 sobre `is_real_defect`. En crudo nunca la cumplió: 0.191
+contra line-overlap, 0.504 contra la muestra oráculo original (tasa base
+0.028), 0.284 sobre H1b (tasa base 0.263). Siempre la misma falla — las
+probabilidades corren por encima de la tasa real.
+
+Pero el *ranking* está bien (AUC 0.792 en H1b, que es de donde sale el recall
+de H1). Lo que está mal es la *escala*. Así que este estudio pregunta otra
+cosa: ¿un mapa monótono ajustado después arregla la escala sin tocar el
+ranking? CLI: `pnpm calibrate` (solo replay, sin llamadas, costo cero).
+Reporte completo con todas las tablas: `docs/BENCHMARK.md` § "Post-hoc
+calibration study". Implementación: `src/domain/calibration.ts`,
+`src/application/filter/calibration-fit.ts`,
+`src/application/filter/calibration-study.ts`.
+
+**Todo se mide fuera de muestra.** Ajustar un mapa y reportar el ECE de los
+mismos puntos es circular: isotónica puede llevarlo casi a cero en cualquier
+muestra memorizándola. El estudio usa validación cruzada de 5 pliegues,
+estratificada por etiqueta, semilla fija; y después hace lo que de verdad
+decide si un mapa sirve: ajustar sobre un set entero y puntuar sobre el otro.
+
+| Método | ECE fuera de muestra (media ± sd) | ECE agrupado | Brier | AUC después | Orden preservado |
+|---|---|---|---|---|---|
+| ninguno | 0.303 ± 0.035 | 0.284 | 0.242 | 0.792 | sí |
+| platt | 0.150 ± 0.034 | **0.071** | 0.159 | 0.792 | sí |
+| isotónica | 0.086 ± 0.038 | **0.030** | 0.159 | 0.811 | sí |
+| temperatura | 0.264 ± 0.024 | 0.264 | 0.228 | 0.792 | sí |
+
+Cruzado: platt ajustada sobre H1b puntúa 0.216 sobre el set thorough (contra
+0.504 en crudo); al revés, 0.233.
+
+Tres cosas que salieron de acá y vale la pena guardar:
+
+1. **Temperatura casi no mueve la aguja** (0.284 → 0.264) mientras platt sí.
+   Eso ES el diagnóstico: temperatura tiene pendiente y no tiene ordenada al
+   origen, así que solo puede achatar alrededor de 0.5. El mapa ajustado es
+   `a = 0.952, b = −1.646`: pendiente ≈ 1, la ordenada haciendo todo el
+   trabajo. Jev no está mal *formado*, está *corrido* — sus log-odds vienen
+   como 1.65 demasiado altos, parejo en todo el rango.
+2. **Isotónica subió el AUC (0.792 → 0.811) sin invertir nada.** Un mapa
+   monótono no decreciente puede AGRUPAR probabilidades distintas en un mismo
+   valor (75 valores distintos quedaron en 9), y un par perdido que se vuelve
+   empate cuenta como medio acierto. No es mejor criterio y no es gratis: dos
+   findings con el mismo valor calibrado ya no los separa ningún umbral. Por
+   eso el veredicto verifica el orden directamente y no la igualdad de AUC.
+3. **El Brier baja junto con el ECE** (0.242 → 0.159), que es lo que descarta
+   la trampa: un mapa que comprara calibración aplastando todo contra la tasa
+   base mejoraría el ECE y dejaría el Brier igual o peor.
+
+**Veredicto: H3 post-hoc FAIL.** La barra del estudio es ECE agrupado fuera de
+muestra < 0.1 sobre H1b Y ECE cruzado < 0.15. La primera se cumple (0.071);
+la segunda no (0.216). Las tasas base son 0.263 y 0.028: una ordenada al
+origen ajustada contra una tasa base es la ordenada equivocada para la otra, y
+este mapa es esencialmente una ordenada al origen. **H3 de §4.2, que es sobre
+la salida CRUDA de Jev, sigue FAIL.**
+
+**Qué se implementó**: `findingFilter.calibration` (`"none"` por defecto, o
+sea la identidad) y `findingFilter.calibrationPath` (por defecto
+`.jevest/calibration.json`, leído desde el commit BASE del PR igual que
+`.jevest/context.yml`). Con la calibración prendida, la etapa 4 mapea
+`is_real_defect` ANTES de calcular la banda y el corte de "predicho real",
+guarda la respuesta cruda en el registro como `rawIsRealDefectProb`, y el
+comentario resumen muestra las dos. El mapa propio de Jevest queda publicado
+en `config/calibration/is_real_defect.json` con sus salvedades en el README de
+al lado. **El default queda apagado, y este estudio es la razón.**
+
 ## 5. Fases y alcance
 
 ### Fase 0 — Spike de defectos (CERRADA, H0 fallida)

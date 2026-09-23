@@ -96,6 +96,67 @@ findingFilter:
   mode: discard
 ```
 
+`findingFilter.calibration` decides whether stage 4 maps `is_real_defect`
+through a fitted calibration curve before any of that happens. It is `none`
+(the identity) by default. Set it to `file` and commit a map to
+`calibrationPath`; the file is read from the PR's **base** commit, like
+`.jevest/context.yml`, and a missing or invalid one fails the run rather than
+silently reverting to the identity.
+
+```yaml
+findingFilter:
+  calibration: file
+  calibrationPath: .jevest/calibration.json
+```
+
+Fit your own with `pnpm calibrate --emit .jevest/calibration.json` over your
+own oracle-labeled findings. Jevest's map is published at
+`config/calibration/is_real_defect.json` as a worked example; read
+`config/calibration/README.md` before copying it, because it was fitted at a
+base rate of 0.263 and does not transfer.
+
+**How the measured threshold relates to `thresholds.finding_filter`.** These
+two live on different scales, and the gap is larger than it looks. H1b's sweep
+(see [`docs/BENCHMARK.md`](BENCHMARK.md)) cuts directly on the probability:
+keep a finding when `is_real_defect >= t`, with t = 0.45 giving recall 0.964
+and 51.9% of noise discarded, 0.40 giving 0.982/0.474, 0.30 giving
+0.982/0.370. Stage 4 does not use t. It derives a *confidence*, `|2p − 1|`,
+compares that against `auto_min` / `confirm_min`, and publishes only a finding
+that is in the `auto` band **and** has `p >= 0.5`. Those two conditions
+collapse into one cut: `p >= (1 + auto_min) / 2`. At the shipped defaults that
+is 0.925 at `none` risk, 0.965 at `medium`, 0.995 at `critical`. On the 209
+H1b findings, a cut at 0.925 publishes 5 of them and catches 2 of the 55 real
+ones; a cut at 0.965 publishes **none**. That is not a bug in either number —
+it is `annotate` mode working as designed, with inline publishing reserved for
+near-certainty and everything else visible in the summary comment — but it
+does mean the recall figure in the benchmark is a *keep-for-review* rate, not
+a publish rate. Two consequences worth knowing before touching the
+thresholds: the confidence band is symmetric, so it cannot express any keep
+cut below `p = 0.5` at all (t = 0.45 is simply not reachable from this
+config), and it treats "confidently not real" the same as "confidently real",
+so a finding at `p = 0.05` is in the `auto` band too and lands in the
+low-confidence bucket rather than the human queue.
+
+**What the calibrated map changes.** The fitted Platt map
+(`a = 0.952, b = −1.646`, `config/calibration/is_real_defect.json`) subtracts
+about 1.65 from every log-odds, so calibration moves probabilities **down**:
+raw 0.9 becomes 0.61, raw 0.5 becomes 0.16, and the raw probability whose
+calibrated value crosses 0.5 is 0.849. With `calibration: file` and the
+thresholds untouched, stage 4 therefore publishes strictly less than before —
+at `medium` risk it would need a raw `p >= 0.9946` — and more findings land in
+the low-confidence section. It also puts a floor under the publish cut that no
+threshold can lower: `predictedReal` is `p >= 0.5` in code, so with this map
+nothing below a raw 0.849 can ever be published, whatever `auto_min` says (on
+H1b that floor keeps 36 findings and 18 of the 55 real ones). If you turn
+calibration on, lower the thresholds to match. As a starting point for a
+`medium`-risk repo, `auto_min: 0.55` with `confirm_min: 0.10` puts the publish
+cut near a calibrated 0.775 and queues the band below it; uncalibrated, the
+same pair publishes at raw 0.775, which on H1b is 63 findings and 33 of the 55
+real ones. **These are proposals, not defaults** —
+[`config/jevest.example.yml`](../config/jevest.example.yml) is unchanged, and
+the right values depend on your base rate, which is the whole lesson of the
+calibration study.
+
 ### Choosing a reviewer
 
 `reviewer.provider` selects which LLM writes the findings; Jev's role is

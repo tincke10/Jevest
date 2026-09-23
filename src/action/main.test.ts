@@ -19,6 +19,7 @@ import {
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
+  resolveCalibration,
   resolveConfig,
   resolveProductContext,
   spendCapAnnotations,
@@ -129,7 +130,11 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
     skipChangeKinds: [],
     failClosed: true,
     triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
-    findingFilter: { mode: "annotate" },
+    findingFilter: {
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+    },
   };
 }
 
@@ -320,6 +325,81 @@ describe("resolveProductContext", () => {
     await expect(resolveProductContext(vcs, REF, ".jevest/context.yml")).rejects.toThrow(
       "contents API 500",
     );
+  });
+});
+
+describe("resolveCalibration", () => {
+  const VALID = JSON.stringify({
+    version: 1,
+    question: "is_real_defect",
+    map: { method: "platt", a: 0.95, b: -1.65 },
+  });
+
+  function findingFilter(
+    overrides: Partial<JevestConfig["findingFilter"]> = {},
+  ): JevestConfig["findingFilter"] {
+    return {
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+      ...overrides,
+    };
+  }
+
+  it('does not call the API at all when calibration is "none" (the default)', async () => {
+    const fetchRepoFileContent = vi.fn();
+    const map = await resolveCalibration(makeFakeVcs(fetchRepoFileContent), REF, findingFilter());
+    expect(map).toEqual({ method: "none" });
+    expect(fetchRepoFileContent).not.toHaveBeenCalled();
+  });
+
+  it("fetches the map from the PR BASE sha, never the head", async () => {
+    const fetchRepoFileContent = vi.fn().mockResolvedValue(VALID);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const map = await resolveCalibration(
+      makeFakeVcs(fetchRepoFileContent),
+      REF,
+      findingFilter({ calibration: "file" }),
+    );
+
+    expect(map).toEqual({ method: "platt", a: 0.95, b: -1.65 });
+    expect(fetchRepoFileContent).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest/calibration.json",
+      ref: "base-sha",
+    });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("base-sha"));
+    log.mockRestore();
+  });
+
+  it("throws naming the source when the file is missing but the config asked for it", async () => {
+    const vcs = makeFakeVcs(vi.fn().mockResolvedValue(null));
+    await expect(
+      resolveCalibration(vcs, REF, findingFilter({ calibration: "file" })),
+    ).rejects.toThrow(/tincke10\/jevest@base-sha:\.jevest\/calibration\.json/);
+  });
+
+  it("throws naming the source on an invalid map, rather than silently falling back to the identity", async () => {
+    const vcs = makeFakeVcs(vi.fn().mockResolvedValue('{"version":1,"question":"nope"}'));
+    await expect(
+      resolveCalibration(vcs, REF, findingFilter({ calibration: "file" })),
+    ).rejects.toThrow(/tincke10\/jevest@base-sha:\.jevest\/calibration\.json/);
+  });
+
+  it("honors a custom calibrationPath", async () => {
+    const fetchRepoFileContent = vi.fn().mockResolvedValue(VALID);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    await resolveCalibration(
+      makeFakeVcs(fetchRepoFileContent),
+      REF,
+      findingFilter({ calibration: "file", calibrationPath: "calib/map.json" }),
+    );
+    expect(fetchRepoFileContent).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "calib/map.json" }),
+    );
+    log.mockRestore();
   });
 });
 

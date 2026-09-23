@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { JevestConfig } from "../../adapters/config/jevest-config.js";
 import { createFakeSpendLedger } from "../../adapters/spend-ledger/fake-spend-ledger.js";
+import type { CalibrationMap } from "../../domain/calibration.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { Decision } from "../../domain/decision.js";
 import type {
@@ -12,7 +13,7 @@ import type { ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-por
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../../domain/pull-request.js";
 import { parseProductContext } from "../context/product-context.js";
-import { runPipeline } from "./run-pipeline.js";
+import { type PipelineResult, runPipeline } from "./run-pipeline.js";
 
 const ref: PullRequestRef = {
   owner: "acme",
@@ -76,7 +77,11 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
     skipChangeKinds: ["rename-or-format"],
     failClosed: true,
     triage: { productContextPath: ".jevest/context.yml", changeSummary: "auto" },
-    findingFilter: { mode: "annotate" },
+    findingFilter: {
+      mode: "annotate",
+      calibration: "none",
+      calibrationPath: ".jevest/calibration.json",
+    },
     ...overrides,
   };
 }
@@ -647,7 +652,13 @@ describe("runPipeline finding filter mode (stage 4 annotate vs discard, product 
         decision: lowConfidenceFindingPort(),
         reviewer: fakeReviewer(oneFinding),
       },
-      config: makeConfig({ findingFilter: { mode: "annotate" } }),
+      config: makeConfig({
+        findingFilter: {
+          mode: "annotate",
+          calibration: "none",
+          calibrationPath: ".jevest/calibration.json",
+        },
+      }),
     });
 
     expect(result.findingFilter?.discarded).toEqual([]);
@@ -663,12 +674,66 @@ describe("runPipeline finding filter mode (stage 4 annotate vs discard, product 
         decision: lowConfidenceFindingPort(),
         reviewer: fakeReviewer(oneFinding),
       },
-      config: makeConfig({ findingFilter: { mode: "discard" } }),
+      config: makeConfig({
+        findingFilter: {
+          mode: "discard",
+          calibration: "none",
+          calibrationPath: ".jevest/calibration.json",
+        },
+      }),
     });
 
     expect(result.findingFilter?.lowConfidence).toEqual([]);
     expect(result.findingFilter?.discarded).toHaveLength(1);
     expect(result.findingsLowConfidence).toBe(0);
+  });
+
+  describe("stage 4 calibration (SPEC §4.6.3)", () => {
+    /** Pushes the raw 0.3 well up, so a band change is visible without touching any other stage. */
+    const upward: CalibrationMap = { method: "platt", a: 1, b: 3 };
+
+    function withCalibration(
+      calibration: "none" | "file",
+      map: CalibrationMap | undefined,
+    ): Promise<PipelineResult> {
+      return runPipeline({
+        ref,
+        ports: {
+          vcs: makeVcs(makePr()),
+          decision: lowConfidenceFindingPort(),
+          reviewer: fakeReviewer(oneFinding),
+        },
+        config: makeConfig({
+          findingFilter: {
+            mode: "annotate",
+            calibration,
+            calibrationPath: ".jevest/calibration.json",
+          },
+        }),
+        ...(map ? { calibration: map } : {}),
+      });
+    }
+
+    it("applies the map when the config asks for a file, moving the finding out of lowConfidence", async () => {
+      const result = await withCalibration("file", upward);
+      const filtered = result.findingFilter?.published[0] ?? result.findingFilter?.needsHuman[0];
+      expect(result.findingFilter?.lowConfidence).toEqual([]);
+      expect(filtered?.rawIsRealDefectProb).toBeCloseTo(0.3, 10);
+      expect(filtered?.isRealDefectProb).toBeGreaterThan(0.8);
+    });
+
+    it('ignores a map the caller passed when the config says calibration: "none"', async () => {
+      const result = await withCalibration("none", upward);
+      expect(result.findingFilter?.lowConfidence).toHaveLength(1);
+      expect(result.findingFilter?.lowConfidence[0]?.isRealDefectProb).toBeCloseTo(0.3, 10);
+      expect(result.findingFilter?.lowConfidence[0]?.rawIsRealDefectProb).toBeCloseTo(0.3, 10);
+    });
+
+    it('is the identity when the config says "file" but no map reached the pipeline', async () => {
+      const result = await withCalibration("file", undefined);
+      expect(result.findingFilter?.lowConfidence).toHaveLength(1);
+      expect(result.findingFilter?.lowConfidence[0]?.isRealDefectProb).toBeCloseTo(0.3, 10);
+    });
   });
 });
 

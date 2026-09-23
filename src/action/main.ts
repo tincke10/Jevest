@@ -42,6 +42,12 @@ import {
 } from "../adapters/vcs/github-vcs-adapter.js";
 import { type ProductContext, loadProductContext } from "../application/context/product-context.js";
 import { type PipelineResult, runPipeline } from "../application/pipeline/run-pipeline.js";
+import {
+  CalibrationError,
+  type CalibrationMap,
+  NO_CALIBRATION,
+  parseCalibrationFile,
+} from "../domain/calibration.js";
 import type { ChangeSummarizerPort } from "../domain/ports/change-summarizer-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
@@ -338,6 +344,47 @@ export async function resolveProductContext(
   return context;
 }
 
+/**
+ * Resolves the stage-4 calibration map for `is_real_defect` (SPEC §4.6.3).
+ * Same fetch path and same rule as {@link resolveProductContext}: the PR's
+ * BASE sha via the contents API, never the head and never the local checkout,
+ * because the map decides which of this PR's findings get published and the
+ * PR must not be able to rewrite it.
+ *
+ * Where it deliberately differs: a MISSING file is an ERROR here. An absent
+ * product context means "this repo has no areas yet", which is a real state;
+ * an absent calibration file when the config explicitly says
+ * `calibration: file` means the repo asked for a map and there is none —
+ * falling back to the identity would run the whole PR under a policy nobody
+ * chose, silently. `calibration: "none"` (the default) short-circuits before
+ * any API call. Logs one line either way.
+ */
+export async function resolveCalibration(
+  vcs: GitHubVcsAdapter,
+  ref: PullRequestRef,
+  findingFilter: JevestConfig["findingFilter"],
+): Promise<CalibrationMap> {
+  if (findingFilter.calibration === "none") {
+    return NO_CALIBRATION;
+  }
+  const path = findingFilter.calibrationPath;
+  const label = `${ref.owner}/${ref.repo}@${ref.baseSha}:${path}`;
+  const raw = await vcs.fetchRepoFileContent({
+    owner: ref.owner,
+    repo: ref.repo,
+    path,
+    ref: ref.baseSha,
+  });
+  if (raw === null) {
+    throw new CalibrationError(
+      `${label}: not found, but .jevest.yml sets findingFilter.calibration: file. Commit the map there, or set calibration: none.`,
+    );
+  }
+  const map = parseCalibrationFile(raw, label);
+  console.log(`jevest: calibration map fetched from ${label} (method ${map.method})`);
+  return map;
+}
+
 function isEnoent(error: unknown): boolean {
   return (
     error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT"
@@ -490,6 +537,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     const reviewer = createReviewer(config, inputs);
     const summarizer = createSummarizer(config, inputs);
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
+    const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
     // Same token, same `issues: write` permission the summary comment and
     // labels already need — the ledger is one issue in the consumer repo.
     const spendLedger = createGitHubIssueSpendLedger({
@@ -510,6 +558,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
       },
       config,
       productContext,
+      calibration,
     });
 
     console.log(

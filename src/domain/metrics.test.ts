@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  brierScore,
   confusionMatrix,
   expectedCalibrationError,
   f1,
@@ -7,6 +8,8 @@ import {
   percentile,
   precision,
   recall,
+  reliabilityBins,
+  rocAuc,
   summarizeConfidence,
   thresholdSweep,
 } from "./metrics.js";
@@ -191,5 +194,124 @@ describe("summarizeConfidence", () => {
   it("returns the single value for all percentiles and the mean with one element", () => {
     const summary = summarizeConfidence([0.42]);
     expect(summary).toEqual({ p10: 0.42, p50: 0.42, p90: 0.42, mean: 0.42 });
+  });
+});
+
+describe("reliabilityBins", () => {
+  it("returns one entry per bin, including the empty ones, with their edges", () => {
+    const bins = reliabilityBins([{ prob: 0.05, actual: false }], 10);
+    expect(bins).toHaveLength(10);
+    expect(bins[0]).toEqual({
+      lower: 0,
+      upper: 0.1,
+      count: 1,
+      meanPredicted: 0.05,
+      observedRate: 0,
+    });
+    expect(bins[9]).toEqual({ lower: 0.9, upper: 1, count: 0, meanPredicted: 0, observedRate: 0 });
+  });
+
+  it("averages the predicted probability and the observed rate inside a bin", () => {
+    const bins = reliabilityBins(
+      [
+        { prob: 0.91, actual: true },
+        { prob: 0.99, actual: false },
+      ],
+      10,
+    );
+    expect(bins[9]?.count).toBe(2);
+    expect(bins[9]?.meanPredicted).toBeCloseTo(0.95, 10);
+    expect(bins[9]?.observedRate).toBeCloseTo(0.5, 10);
+  });
+
+  it("agrees with expectedCalibrationError: the weighted gap over non-empty bins IS the ECE", () => {
+    const items = [
+      { prob: 0.05, actual: false },
+      { prob: 0.05, actual: true },
+      { prob: 0.95, actual: true },
+      { prob: 0.45, actual: false },
+    ];
+    const fromBins = reliabilityBins(items, 10).reduce(
+      (sum, bin) =>
+        bin.count === 0
+          ? sum
+          : sum + (bin.count / items.length) * Math.abs(bin.meanPredicted - bin.observedRate),
+      0,
+    );
+    expect(fromBins).toBeCloseTo(expectedCalibrationError(items, 10), 12);
+  });
+});
+
+describe("brierScore", () => {
+  it("is 0 when every probability matches its outcome exactly", () => {
+    expect(
+      brierScore([
+        { prob: 1, actual: true },
+        { prob: 0, actual: false },
+      ]),
+    ).toBe(0);
+  });
+
+  it("is the mean squared error against the 0/1 outcome", () => {
+    // (0.8-1)^2 = 0.04, (0.3-0)^2 = 0.09 -> mean 0.065
+    expect(
+      brierScore([
+        { prob: 0.8, actual: true },
+        { prob: 0.3, actual: false },
+      ]),
+    ).toBeCloseTo(0.065, 12);
+  });
+
+  it("is 0 for an empty input, like expectedCalibrationError", () => {
+    expect(brierScore([])).toBe(0);
+  });
+});
+
+describe("rocAuc", () => {
+  it("is 1 when every positive scores above every negative", () => {
+    expect(
+      rocAuc([
+        { score: 0.9, actual: true },
+        { score: 0.8, actual: true },
+        { score: 0.2, actual: false },
+      ]),
+    ).toBe(1);
+  });
+
+  it("is 0.5 when every score is tied", () => {
+    expect(
+      rocAuc([
+        { score: 0.5, actual: true },
+        { score: 0.5, actual: false },
+      ]),
+    ).toBeCloseTo(0.5, 12);
+  });
+
+  it("counts a tie between a positive and a negative as half a win", () => {
+    // pairs: (0.9,0.5) win, (0.9,0.1) win, (0.5,0.5) tie, (0.5,0.1) win -> (3 + 0.5) / 4
+    expect(
+      rocAuc([
+        { score: 0.9, actual: true },
+        { score: 0.5, actual: true },
+        { score: 0.5, actual: false },
+        { score: 0.1, actual: false },
+      ]),
+    ).toBeCloseTo(0.875, 12);
+  });
+
+  it("is null when one of the two classes is missing (AUC undefined)", () => {
+    expect(rocAuc([{ score: 0.9, actual: true }])).toBeNull();
+    expect(rocAuc([])).toBeNull();
+  });
+
+  it("is unchanged by any strictly increasing transform of the score", () => {
+    const items = [
+      { score: 0.9, actual: true },
+      { score: 0.6, actual: false },
+      { score: 0.4, actual: true },
+      { score: 0.1, actual: false },
+    ];
+    const squashed = items.map((i) => ({ ...i, score: i.score ** 3 }));
+    expect(rocAuc(squashed)).toBeCloseTo(rocAuc(items) as number, 12);
   });
 });

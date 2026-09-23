@@ -55,6 +55,12 @@ import {
   loadProductContext,
 } from "../../src/application/context/product-context.js";
 import { runPipeline } from "../../src/application/pipeline/run-pipeline.js";
+import {
+  CalibrationError,
+  type CalibrationMap,
+  NO_CALIBRATION,
+  parseCalibrationFile,
+} from "../../src/domain/calibration.js";
 import type { Decision } from "../../src/domain/decision.js";
 import type { ChangeSummarizerPort } from "../../src/domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
@@ -403,6 +409,57 @@ export async function resolveLocalProductContext(
   });
 }
 
+export interface LocalCalibrationOptions {
+  readonly repoDir: string;
+  readonly findingFilter: JevestConfig["findingFilter"];
+  readonly gitRange: CliOptions["gitRange"];
+  /** Injectable for tests; default `createGitFileContentFetcher(repoDir)`. Used only in `--git` mode. */
+  readonly fetchFileAt?: (path: string, sha: string) => Promise<string | null>;
+}
+
+/**
+ * The stage-4 calibration map for a local run (SPEC §4.6.3), the local
+ * counterpart of the Action's `resolveCalibration`. Same rules: `--git` mode
+ * reads it from the BASE ref, `--diff` mode from the working tree, and a
+ * missing file is an ERROR whenever the config asked for one — a run that
+ * quietly falls back to the identity would report numbers under a policy
+ * nobody selected.
+ */
+export async function resolveLocalCalibration(
+  options: LocalCalibrationOptions,
+): Promise<CalibrationMap> {
+  if (options.findingFilter.calibration === "none") {
+    return NO_CALIBRATION;
+  }
+  const path = options.findingFilter.calibrationPath;
+
+  if (options.gitRange) {
+    const fetchFile = options.fetchFileAt ?? createGitFileContentFetcher(options.repoDir);
+    const label = `${options.gitRange.base}:${path}`;
+    const raw = await fetchFile(path, options.gitRange.base);
+    if (raw === null) {
+      throw new CalibrationError(
+        `${label}: not found, but findingFilter.calibration is "file". Commit the map, or set calibration: none.`,
+      );
+    }
+    return parseCalibrationFile(raw, label);
+  }
+
+  const filePath = join(options.repoDir, path);
+  let raw: string;
+  try {
+    raw = await readFile(filePath, "utf8");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new CalibrationError(
+        `${filePath}: not found, but findingFilter.calibration is "file". Write the map (\`pnpm calibrate --emit ${path}\`), or set calibration: none.`,
+      );
+    }
+    throw error;
+  }
+  return parseCalibrationFile(raw, filePath);
+}
+
 /**
  * `.jevest.yml` is optional (loadJevestConfig itself falls back to
  * config/jevest.example.yml's built-in defaults when the path is missing);
@@ -467,6 +524,16 @@ async function main(): Promise<number> {
     contextPath: config.triage.productContextPath,
     gitRange: options.gitRange,
   });
+  const calibration = await resolveLocalCalibration({
+    repoDir,
+    findingFilter: config.findingFilter,
+    gitRange: options.gitRange,
+  });
+  if (calibration.method !== "none") {
+    console.log(
+      `[review] calibration: ${calibration.method} map applied to is_real_defect (${config.findingFilter.calibrationPath})`,
+    );
+  }
   if (productContext.areas.length === 0 && productContext.product === null) {
     console.log(`[review] no product context at ${config.triage.productContextPath}`);
   } else if (!options.gitRange) {
@@ -493,6 +560,7 @@ async function main(): Promise<number> {
     },
     config,
     productContext,
+    calibration,
     ...(fetchFileContent ? { fetchFileContent } : {}),
   });
 

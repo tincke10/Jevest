@@ -359,7 +359,14 @@ function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): str
       ? ["No low-confidence findings."]
       : findingFilter.lowConfidence.map((f) => {
           const confidence = noulConfidence(f.isRealDefectProb);
-          return `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (P(real defect)=${f.isRealDefectProb}, confidence=${confidence})`;
+          // `isRealDefectProb` is the CALIBRATED probability when
+          // `findingFilter.calibration` is on (SPEC §4.6.3) — the number that
+          // actually banded this finding, so it is the one shown. Jev's raw
+          // answer follows only when a map moved it, because a reader
+          // comparing this comment with a Jev fixture needs to see both.
+          const raw =
+            f.rawIsRealDefectProb === f.isRealDefectProb ? "" : `, raw=${f.rawIsRealDefectProb}`;
+          return `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (P(real defect)=${f.isRealDefectProb}${raw}, confidence=${confidence})`;
         });
   return [
     "<details>",

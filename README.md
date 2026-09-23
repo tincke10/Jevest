@@ -140,7 +140,7 @@ Jevest is built spike-first: a hypothesis with a pass/fail criterion written dow
 | **H0′** | "What kind of change is this? Does it touch error handling / async / public API?" | `change_kind` acc 0.80 (conf 0.97) · `touches_error_handling` F1 0.89 · `touches_async` F1 0.85 | **PARTIAL** → error handling and async in the pipeline, public API via AST instead |
 | **H1** | "Is this LLM finding a real defect?" — the central hypothesis | On a reversed-hunk dataset built to give the fix-aware oracle label a real-finding population (H1b, 55 real / 154 noise): Jev recall 0.964, 52% of noise discarded at the best threshold, AUC 0.79 vs. 0.87 for an Opus judge at 705× the cost. Full numbers, curves and caveats (n=55, shared-model bias, artificial recall population): [docs/BENCHMARK.md](docs/BENCHMARK.md) | **PASS** on H1b (2026-09-23) |
 | **H6** | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | On H1b: 704.7× cheaper; the judge only matches Jev's recall at its own best threshold, at ~700× the cost and ~25× the latency | **PASS** |
-| **H3** | Is confidence calibrated over findings (ECE < 0.1)? | ECE 0.284 on H1b (base rate 0.263) — Jev's probabilities run above the true real rate, same pattern every time this has been measured | **FAIL** |
+| **H3** | Is confidence calibrated over findings (ECE < 0.1)? | Raw ECE 0.284 on H1b (base rate 0.263) — Jev's probabilities run above the true real rate, same pattern every time this has been measured. A post-hoc Platt map (2026-09-23) reaches a held-out ECE of 0.071 on the set it was fitted on, without touching the ranking, but carries 0.216 to a set with a ten-times-lower base rate — so it ships as an opt-in, default off | **FAIL** (post-hoc, default off) |
 | **H7** | "Does the PR description match what actually changed?" — 100 PRs, 100 crossed descriptions with exact labels | with an LLM summary of the diff: R 0.99 · P 1.00 · ECE 0.07 · median conf 0.90. Without it: R 0.88, ECE 0.10 | **PASS** with summary → product-aware triage |
 | **H5** | Adversarial PRs: injected instructions in body, title, labels, comments, strings, unicode; secrets; whitespace floods | 14/14: 0 undue green checks, 0 suppressed critical findings, 0 leaks. First run caught a real guard bug, fixed | **PASS** |
 
@@ -176,6 +176,7 @@ pnpm test && pnpm typecheck && pnpm lint
 | `pnpm spike --mode replay` | H0 report from recorded fixtures (no key) |
 | `pnpm spike:profile --mode replay` | H0′ report |
 | `pnpm filter --findings datasets/findings-thorough.jsonl --mode replay --judge deepseek --judge-mode replay` | H1 / H6 / H3 finding-filter report (zero cost) |
+| `pnpm calibrate` | H3 post-hoc calibration study over both oracle sets (replay only, zero cost) |
 | `pnpm findings --provider claude-cli --record` | generate LLM findings over the hunks dataset |
 | `pnpm dataset:prs` · `pnpm coherence:summarize` · `pnpm coherence` | H7: collect PRs, summarize diffs, run the coherence spike |
 | `pnpm review --git main..HEAD` or `--diff <file>` | run the six stages locally on a diff |
@@ -197,7 +198,8 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] Phase 3b · `v0.1.0` tagged 2026-09-23, GitHub release with every dataset attached ([docs/RELEASING.md](docs/RELEASING.md))
 - [x] In-diff injection detection as a hunk-profile question (`contains_reviewer_instructions`: 0.99 on hidden instructions, 0.01–0.02 elsewhere), H2/H4 instrumented on every run (Efficiency section, action outputs)
 - [ ] Next · near-duplicate crossed descriptions for a harder H7; a verdict on H2 once ≥ 20 real PRs have run
-- [ ] Next · flip stage 4 to discard after ≥ 20 real PRs; recalibrate `is_real_defect` (H3)
+- [x] H3 post-hoc calibration study (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 (from 0.284) with the ranking and the AUC untouched, but carries 0.216 to a set with a ten-times-lower base rate. Shipped as `findingFilter.calibration`, **default off**, with Jevest's own map published under `config/calibration/`. H3 stays FAIL. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
+- [ ] Next · flip stage 4 to discard after ≥ 20 real PRs; refit `is_real_defect` calibration on real-PR findings, where the base rate is the one that matters
 
 ## License
 

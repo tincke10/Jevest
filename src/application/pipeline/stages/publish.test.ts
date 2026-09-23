@@ -113,6 +113,7 @@ function makeFinding(overrides: Partial<FilteredFinding> = {}): FilteredFinding 
     claim: "off-by-one",
     rationale: "uses <= instead of <",
     isRealDefectProb: 0.95,
+    rawIsRealDefectProb: 0.95,
     jevSeverityScore: 2,
     isStyleOnlyProb: 0.05,
     actionableProb: 0.9,
@@ -610,6 +611,36 @@ describe("runPublishStage low-confidence findings (annotate mode, H1 pending, pr
     // confidence = |0.42-0.5|*2 = 0.16
     expect(section).toMatch(/confidence=0\.16/);
     expect(result.summaryMarkdown).toContain("</details>");
+  });
+
+  it("shows the calibrated probability, and the raw one beside it, when a map was applied", () => {
+    const finding = makeFinding({
+      file: "b.ts",
+      lineStart: 42,
+      claim: "maybe a leak",
+      isRealDefectProb: 0.42,
+      rawIsRealDefectProb: 0.85,
+    });
+    const section =
+      publish(makeFindingFilter({ lowConfidence: [finding] })).summaryMarkdown.split(
+        "<summary>Low-confidence",
+      )[1] ?? "";
+
+    // The calibrated number is the one that routed the finding, so it leads;
+    // the raw one follows, because "Jev said 0.85" is what a reader recognizes.
+    expect(section).toMatch(/P\(real defect\)=0\.42/);
+    expect(section).toMatch(/raw=0\.85/);
+    expect(section).toMatch(/confidence=0\.16/);
+  });
+
+  it("says nothing about a raw probability when no calibration changed it", () => {
+    const section =
+      publish(
+        makeFindingFilter({
+          lowConfidence: [makeFinding({ isRealDefectProb: 0.42, rawIsRealDefectProb: 0.42 })],
+        }),
+      ).summaryMarkdown.split("<summary>Low-confidence")[1] ?? "";
+    expect(section).not.toMatch(/raw=/);
   });
 
   it("shows 'No low-confidence findings.' when the bucket is empty (e.g. mode: discard)", () => {

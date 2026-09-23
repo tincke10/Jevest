@@ -743,12 +743,84 @@ something the reversed run changes:
 Cost estimate for step 2, computed without making a single call: the reversed
 set's total reviewer input (system + user prompt over all 100 hunks) is 1.028×
 the original's, and the original thorough `claude-cli` pass cost USD 8.28
-nominal (§7), so H1b projects to **≈ USD 8.5 nominal** (subscription quota,
-not cash). Note that `pnpm findings --estimate` is *not* a free check for
-`claude-cli`: it makes 3 real calls, because there is no token-counting
-endpoint for the subscription path.
+nominal (§7), so H1b projected to **≈ USD 8.5 nominal** (subscription quota,
+not cash) — the actual reviewer pass (§11.3) came in at USD 6.81, close
+enough that the projection method holds up. Note that `pnpm findings
+--estimate` is *not* a free check for `claude-cli`: it makes 3 real calls,
+because there is no token-counting endpoint for the subscription path.
 
-Until H1b lands, stage 4 (finding filter) stays in annotate mode
-(`findingFilter.mode: "annotate"`): findings are published with their
-confidence, never silently discarded, per the pending product decision in
-§9 and `docs/SPEC.md` §4.6.
+### 11.3 Results (2026-09-23)
+
+All three passes ran on the Claude subscription (`claude-cli`,
+`claude-opus-5`), nominal costs, following the protocol in §11.2 exactly.
+
+**Reviewer** (thorough prompt): 100/100 hunks, 246 findings (99 on reversed
+hunks, 147 on benign), 2.46 findings/hunk, severity nit 33 / minor 107 /
+major 89 / critical 7. Cost USD 6.81 nominal, wall time 1462 s, latency p50
+21 s, cache-hit share 48.7%. Two hunks needed one retry each (transient
+`claude-cli` exit code 1, the same flake class as §7).
+
+**Oracle label** (`FINDINGS.md` §10 protocol, two framings, agreement
+required): real 55 (22.4%, all on reversed hunks), noise 154 (62.6%: 119
+benign + 35 reversed), unknown 37 (15.0%), 0 failures. Framing agreement
+85.0%. Cost USD 22.97 nominal over 492 calls, latency p50 15.5 s per
+finding. Report: `reports/oracle-2026-09-23T00-05-15-536Z.md`. Fixtures:
+`tests/fixtures/findings-oracle/` (the fixture key now mixes in the labeler
+id, per the table above; the DeepSeek keys behind §10's numbers are
+unaffected).
+
+Cross-tab, line-overlap label (on the reversed diff) × oracle label: of the
+99 findings on a reversed hunk, the oracle says 50 real / 29 noise / 20
+unknown; of the 147 on a benign hunk, the oracle says 5 real / 125 noise /
+17 unknown.
+
+**Scoring**
+(`pnpm filter --findings datasets/findings-reversed-oracle.jsonl --hunks datasets/hunks-reversed.jsonl --mode replay --judge claude-cli --judge-mode replay --label oracle`,
+report `reports/filter-2026-09-23T00-14-31-744Z.md`), scored population 209
+(55 real / 154 noise), 37 excluded as `unknown`:
+
+| Metric | Jev vs. oracle | claude-cli judge vs. oracle |
+|---|---|---|
+| Scored | 209 / 209 | 209 / 209 (246 calls) |
+| AUC | 0.792 | 0.868 |
+| Best threshold / recall / noise discarded | 0.45 / 0.964 (53/55) / 0.519 | 0.745 recall / 0.825 ND at 0.45; 0.964 recall / 0.584 ND at its own best (0.20) |
+| ECE (H3) | 0.284 (base rate 0.263) | not computed |
+| Cost | USD 0.0109 | USD 8.99 nominal |
+| Latency p50/p95 | 384 ms / 493 ms | 9.6 s / 25.6 s |
+
+Jev curve: 0.20 R 1.000 ND 0.240 | 0.25 R 1.000 ND 0.312 | 0.30 R 0.982
+ND 0.370 | 0.40 R 0.982 ND 0.474 | 0.45 R 0.964 ND 0.519 | 0.50 R 0.909
+ND 0.545. Judge curve: 0.10 R 1.000 ND 0.071 | 0.20 R 0.964 ND 0.584
+P 0.453 | 0.30 R 0.891 ND 0.721 | 0.40 R 0.764 ND 0.792 | 0.50 R 0.673
+ND 0.844 | 0.60 R 0.618 ND 0.890. Judge severity vs. label: major 40 real /
+51 noise, minor 15/88, critical 0/5, nit 0/10.
+
+**Verdicts**: H1 **PASS** (recall 0.964 and 51.9% of noise discarded at
+once, threshold 0.45 — the first threshold this project has found that
+clears both bars). H6 **PASS** (cost ratio 704.7×; the judge does not even
+reach Jev's recall at Jev's threshold, and only matches it at its own best
+threshold, at ~700× the cost and ~25× the latency). H3 **FAIL** (ECE 0.284
+against a 26.3% base rate — the same "probabilities run high" pattern as
+every earlier run of this label).
+
+**Caveats**: n = 55 real findings gives recall 53/55 a wide confidence
+interval (roughly 0.87–0.99) — the ≥ 0.95 bar is met, not statistically
+secured. The oracle labeler and the H6 judge are the same model
+(`claude-opus-5`), so part of the judge's AUC edge may be shared-model bias;
+Jev is independent of the labeler. The reversed diff is an artificial
+change — a real PR rarely reintroduces a fixed bug verbatim — so H1b
+measures "does the filter keep a finding that flags a known defect while
+dropping speculation", not the distribution of a production PR stream. H3
+remains FAIL regardless of orientation.
+
+Total nominal spend, phase 1a + 1b combined (2026-09-22 thorough reviewer +
+oracle + judge, and 2026-09-23 H1b reviewer + oracle + judge): ≈ USD 39 on
+the Claude subscription, plus the USD 8.28 of the earlier thorough pass.
+Full write-up, both curves and the reading: `docs/BENCHMARK.md`, "H1b —
+reversed hunks (2026-09-23)".
+
+Stage 4 (finding filter) stayed in annotate mode
+(`findingFilter.mode: "annotate"`) until H1b landed, and stays there still:
+H1b gives H1 a verdict, but flipping stage 4 to discard is a separate
+product decision, pending a run on ≥ 20 real PRs, not decided here — see
+§9 and `docs/SPEC.md` §4.6.2.

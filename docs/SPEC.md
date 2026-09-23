@@ -223,8 +223,15 @@ Cruce contra la etiqueta line-overlap anterior: de los 133 findings que line-ove
 1. La etiqueta oráculo queda validada por dos puntuadores independientes que suben con ella (Jev 0.592 → 0.708, juez 0.567 → 0.700): mide algo que line-overlap no medía.
 2. Hallazgo estructural: `datasets/hunks.jsonl` le muestra al revisor el propio diff del commit de fix (before → after). Un revisor que revisa 100 bugs ya arreglados solo puede producir un finding "real" cuando casualmente describe el defecto que el fix corrigió — 7 veces en 299. El set es entonces un benchmark de RUIDO grande y limpio (239) y una población de RECALL inutilizable (n=7, sin intervalo de confianza que valga la pena reportar).
 3. Lo que Jev sí muestra en este set: en el umbral que conserva todos los findings reales, descarta un cuarto del ruido; el juez razonador descarta un tercio, a 182× el costo. Ninguno llega a la barra del 40%. La calibración está desviada en una dirección conocida: probabilidades demasiado altas para una tasa base de 2.8%.
-4. Próximo paso (propuesto, no aprobado, sin costo incurrido): H1b — un dataset de hunks invertidos (mostrar after → before: el estado con el bug como "el cambio"), de forma que un finding real sea uno que señale el bug que el fix luego eliminó; pase de revisor sobre DeepSeek, etiquetado oráculo y puntuación Jev/juez, todo con las herramientas existentes. Estimado ≈ USD 10 de DeepSeek. Requiere recargar el saldo de DeepSeek (agotado el 2026-09-22).
-5. La etapa 4 se mantiene en modo solo-anotar (`findingFilter.mode: "annotate"`) hasta H1b.
+4. Próximo paso, en su momento: H1b — un dataset de hunks invertidos (mostrar
+   after → before: el estado con el bug como "el cambio"), de forma que un
+   finding real sea uno que señale el bug que el fix luego eliminó. Corrió de
+   verdad el 2026-09-23, sobre la suscripción de Claude en vez de DeepSeek
+   (ver §4.6.2): le da a H1 un veredicto PASS.
+5. La etapa 4 se mantuvo en modo solo-anotar (`findingFilter.mode:
+   "annotate"`) hasta H1b, y se mantiene ahí todavía: H1b le da veredicto a
+   H1, pero pasar la etapa 4 a descartar es una decisión de producto aparte,
+   pendiente hasta correr sobre PRs reales (§4.6.2).
 
 Reproducir, costo cero:
 
@@ -234,6 +241,105 @@ pnpm findings:label --findings datasets/findings-thorough.jsonl \
     --labeler deepseek --mode replay
 pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
     --mode replay --judge deepseek --judge-mode replay --label oracle
+```
+
+### 4.6.2 H1b: hunks invertidos (2026-09-23)
+
+El set de la oráculo original es un buen benchmark de ruido pero una
+población de recall inutilizable, por una razón estructural: el revisor veía
+el propio diff del commit de fix. H1b da vuelta los hunks de defecto — el
+diff corre after → before, así el cambio bajo revisión *introduce* el bug y
+un finding real es uno que lo señala. Los hunks benignos se copian sin
+cambios, así el set sigue mezclando ambos tipos. Diseño completo:
+`datasets/FINDINGS.md` §11, `datasets/README.md` § hunks-reversed.
+
+Todo lo de abajo corrió el 2026-09-22/23 sobre la suscripción de Claude
+(`claude-cli`, `claude-opus-5`), costos nominales (cupo de Claude Max, no
+efectivo).
+
+**Dataset**: `pnpm dataset:reverse` construyó `datasets/hunks-reversed.jsonl`
+a partir de `datasets/hunks.jsonl` — cómputo local puro, sin red, sin LLM, sin
+costo.
+
+**Revisor** (prompt thorough): 100/100 hunks, 246 findings (99 sobre hunks
+invertidos, 147 sobre benignos), 2.46 findings/hunk, severidad nit 33 / minor
+107 / major 89 / critical 7. Costo USD 6.81 nominal, wall time 1462 s,
+latencia p50 21 s, cache-hit 48.7%. Dos hunks necesitaron un reintento
+(`claude-cli` exit 1 transitorio).
+
+**Etiqueta oráculo fix-aware**, mismo `claude-cli`/`claude-opus-5`, dos
+framings con acuerdo obligatorio: real 55 (22.4%, TODOS sobre hunks
+invertidos), noise 154 (62.6%: 119 benignos + 35 invertidos), unknown 37
+(15.0%), 0 fallas. Acuerdo entre framings 85.0%. Costo USD 22.97 nominal
+sobre 492 llamadas, latencia p50 15.5 s por finding. Reporte:
+`reports/oracle-2026-09-23T00-05-15-536Z.md`.
+
+Cruce línea-overlap × oráculo: de los 99 findings sobre un hunk invertido,
+el oráculo dice 50 real / 29 ruido / 20 unknown; de los 147 sobre un hunk
+benigno, dice 5 real / 125 ruido / 17 unknown.
+
+**Puntuación**
+(`pnpm filter --findings datasets/findings-reversed-oracle.jsonl --hunks datasets/hunks-reversed.jsonl --mode replay --judge claude-cli --judge-mode replay --label oracle`,
+reporte `reports/filter-2026-09-23T00-14-31-744Z.md`), población puntuada 209
+(55 real / 154 ruido, 37 excluidos como unknown):
+
+- **Jev**: AUC 0.792. Mejor umbral 0.45: precisión 0.417, recall 0.964
+  (53/55), F1 0.582, ruido descartado 0.519. ECE 0.284 (tasa base 0.263).
+  Costo USD 0.0109, latencia p50 384 ms / p95 493 ms. Curva: 0.20 R 1.000 ND
+  0.240 | 0.30 R 0.982 ND 0.370 | 0.40 R 0.982 ND 0.474 | 0.45 R 0.964 ND
+  0.519 | 0.50 R 0.909 ND 0.545.
+- **Juez claude-cli** (`claude-opus-5`, 209/209 puntuados, 246 llamadas):
+  AUC 0.868. En el umbral 0.45 de Jev: recall 0.745, precisión 0.603, ruido
+  descartado 0.825. Costo USD 8.99 nominal, latencia p50 9.6 s / p95 25.6 s.
+  En su propio mejor umbral (0.20): recall 0.964, ruido descartado 0.584.
+
+**Veredictos vs. oráculo**: H1 **PASS** — recall 0.964 (53/55) Y ruido
+descartado 0.519 al mismo umbral (0.45). H6 **PASS** — ratio de costo
+704.7×; en el umbral de Jev el juez ni siquiera alcanza su recall (0.745 vs.
+0.964); en su propio mejor umbral solo lo iguala, a ~700× el costo y ~25× la
+latencia. H3 **FAIL** — ECE 0.284 contra una tasa base de 26.3%.
+
+**Salvedades, dichas sin vueltas**:
+
+- n = 55 findings reales: un recall de 53/55 tiene un intervalo de confianza
+  ancho (aproximadamente 0.87–0.99). La barra de ≥ 0.95 se cumple, no queda
+  asegurada estadísticamente.
+- El etiquetador oráculo y el juez son el mismo modelo (`claude-opus-5`), así
+  que parte de la ventaja de AUC del juez puede ser sesgo de modelo
+  compartido. Jev es independiente del etiquetador.
+- El diff invertido es un cambio artificial — un PR real rara vez reintroduce
+  un bug ya arreglado tal cual. H1b mide "¿el filtro conserva un finding que
+  señala un defecto conocido mientras descarta especulación?", no la
+  distribución de un flujo real de PRs.
+- H3 sigue FAIL de todas formas.
+
+**Veredicto final**: H1 **PASS** sobre H1b (hunks invertidos, etiqueta
+oráculo fix-aware); el FAIL anterior contra line-overlap y contra la muestra
+oráculo sin invertir queda como registro de una etiqueta inválida o
+demasiado chica, no algo que H1b revierta retroactivamente. La etapa 4 se
+mantiene en modo solo-anotar (`findingFilter.mode: "annotate"`) por ahora —
+pasarla a descartar es una decisión de producto aparte, pendiente de una
+corrida sobre PRs reales, no se toma acá.
+
+Gasto nominal total del pase 1a+1b (revisor + oráculo + juez del 2026-09-22
+más el revisor + oráculo + juez de H1b): ≈ USD 39, más los USD 8.28 del pase
+thorough original.
+
+Reproducir, todo replay, costo cero:
+
+```
+pnpm dataset:reverse
+pnpm findings --provider claude-cli --prompt thorough --record \
+              --hunks datasets/hunks-reversed.jsonl \
+              --fixtures-dir tests/fixtures/findings-reversed \
+              --out datasets/findings-reversed.jsonl
+pnpm findings:label --findings datasets/findings-reversed.jsonl \
+                    --hunks datasets/hunks-reversed.jsonl \
+                    --out datasets/findings-reversed-oracle.jsonl \
+                    --labeler claude-cli --mode replay
+pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+            --hunks datasets/hunks-reversed.jsonl \
+            --mode replay --judge claude-cli --judge-mode replay --label oracle
 ```
 
 ## 5. Fases y alcance
@@ -491,12 +597,15 @@ jevest/
 |---|---|---|
 | Etiqueta line-overlap invalidada por el control H6 | El juez LLM (DeepSeek) dio AUC 0.567 y precisión = tasa base sobre el mismo set donde Jev midió AUC 0.592: ninguno de los dos separa reales de ruido bajo la etiqueta line-overlap actual | H1 queda FAIL/inconcluso y H3 FAIL heredado; se necesita una muestra etiquetada a mano (≥ 60-80 findings) antes de re-medir; decisión sobre la etapa 4 (descartar vs. solo-anotar) pendiente hasta entonces |
 | Etiqueta oráculo fix-aware reemplaza a line-overlap como verdad de terreno de H1 | En vez de etiquetar a mano, un labeler LLM ve información que ni Jev ni el juez tuvieron nunca (el código después del fix, el mensaje del commit, el issue/PR vinculado), con dos framings y acuerdo obligatorio (`datasets/FINDINGS.md` §10). Re-puntuados contra ella, Jev sube de AUC 0.592 a 0.708 y el juez de 0.567 a 0.700: la etiqueta mide algo real. Pero el set solo produce 7 findings reales en 299 (el revisor ve el propio diff del fix), población insuficiente para el veredicto de recall de H1 | H1 sigue FAIL formal (no H3/H6): PASS de H6 se sostiene (182×); H3 FAIL (ECE 0.504). Pendiente: H1b con hunks invertidos |
-| Pendiente: H1b con hunks invertidos | Dataset que muestra after → before (el estado con el bug como "el cambio"), para que un finding real sea uno que señale el bug que el fix luego eliminó; mismo pipeline de revisor + etiquetado oráculo + puntuación Jev/juez | Estimado ≈ USD 10 de DeepSeek; requiere recargar el saldo (agotado el 2026-09-22); etapa 4 se mantiene en modo solo-anotar hasta entonces |
+| 2026-09-23: H1 PASS sobre hunks invertidos (H1b) | Dataset que muestra after → before (el estado con el bug como "el cambio"), corrido sobre la suscripción de Claude (`claude-cli`/`claude-opus-5`, no DeepSeek): 55 findings reales / 154 ruido, Jev recall 0.964 y ruido descartado 0.519 en el umbral 0.45, AUC 0.792 (§4.6.2) | H1 **PASS**; H1b adoptado como set de evaluación de H1; la etapa 4 sigue en `annotate` hasta correr sobre PRs reales |
 
 ### Pendiente
 
 - Nombre y organización para publicar la Action y el dataset (fase 3).
-- H1b: dataset de hunks invertidos (after → before) para tener una población de findings reales suficiente y un veredicto H1 válido; hasta entonces, la etapa 4 se mantiene en modo solo-anotar. Requiere recargar el saldo de DeepSeek (agotado el 2026-09-22), estimado ≈ USD 10.
+- Decisión de producto: pasar la etapa 4 a modo `discard` una vez que corra
+  sobre ≥ 20 PRs reales; hasta entonces se mantiene en modo solo-anotar
+  (§4.6.2). H1b ya no está pendiente: corrió el 2026-09-23 y le dio a H1 un
+  veredicto PASS.
 
 ---
 

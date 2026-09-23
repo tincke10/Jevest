@@ -142,6 +142,21 @@ has been published under a version tag before.
   the commit message and the linked issue/PR, none of which the reviewer,
   Jev or the judge ever saw. Design, weaknesses and the 2026-09-22 run:
   `datasets/FINDINGS.md` §10.
+- **Reversed-hunk dataset for H1b** (`pnpm dataset:reverse` →
+  `datasets/hunks-reversed.jsonl`: the 50 defect hunks with their diff
+  reversed after → before, so the change under review introduces the bug
+  instead of fixing it, plus the 50 benign hunks unchanged; pure local
+  computation, no network, no LLM, no cost). `--hunks <file>` added to
+  `pnpm findings`, `pnpm findings:label` and `pnpm filter` so the reviewer,
+  oracle labeler and scorer can all run against a hunk file other than the
+  default. A `claude-cli` oracle labeler adapter next to the existing
+  DeepSeek one, so the fix-aware label can be produced on the Claude
+  subscription instead of a metered API; the oracle fixture key now mixes
+  in which labeler answered. Built to give H1's fix-aware oracle a
+  real-finding population large enough for a recall verdict — the original
+  oracle sample had only 7. Design and the 2026-09-23 run:
+  `datasets/FINDINGS.md` §11, `datasets/README.md` § hunks-reversed,
+  `docs/BENCHMARK.md` "H1b — reversed hunks".
 
 ### Changed
 
@@ -169,11 +184,20 @@ has been published under a version tag before.
   human-labeled sample (`reports/filter-2026-09-22T16-58-00-234Z.md`): AUC
   rises to 0.708 (Jev) and 0.700 (judge), confirming the label carries
   real signal, but only 7 of 299 findings are confirmed real, too few for
-  a recall verdict, so H1 stays **FAIL formally** and H3 stays **FAIL**
-  (ECE 0.504); H6 **PASS** stands (182×). The stage-4 discard-vs-annotate
-  decision stays on annotate until H1b (a reversed-hunk dataset) produces
-  a usable real-finding population. See `docs/BENCHMARK.md`. H0 failed and
-  is closed; H7 passed with an LLM diff summary (partial without one).
+  a recall verdict, so H1 stayed **FAIL formally** and H3 **FAIL**
+  (ECE 0.504); H6 **PASS** stood (182×). H1b, a reversed-hunk dataset built
+  to give that oracle label a real-finding population, ran on 2026-09-23 on
+  the Claude subscription (`reports/filter-2026-09-23T00-14-31-744Z.md`,
+  55 real / 154 noise): H1 **PASS** (recall 0.964, 51.9% of noise discarded
+  at threshold 0.45, AUC 0.792), H6 **PASS** again (704.7× cheaper), H3
+  still **FAIL** (ECE 0.284, base rate 0.263). Caveats: n=55 gives the
+  recall a wide confidence interval, the oracle labeler and the H6 judge
+  share a model, and the reversed diff is an artificial change that rarely
+  matches a real PR. Stage 4 stays in `annotate` mode by default: H1b gives
+  H1 a verdict, but flipping the default to `discard` is a separate,
+  still-pending product decision, gated on a run over real PRs. See
+  `docs/BENCHMARK.md` "H1b — reversed hunks". H0 failed and is closed; H7
+  passed with an LLM diff summary (partial without one).
 - `touches_public_api` is derived by AST only for TypeScript/JavaScript and
   Vue `<script>` blocks; other languages get the Jev questions on the raw
   diff but no AST labels.

@@ -22,9 +22,9 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 |---|---|---|---|
 | H0 | Does this hunk contain a defect? | **FAIL** (closed, pivot) | below, `reports/spike-*.md` |
 | H0′ | What kind of change is this hunk, what surface does it touch? | **PARTIAL** | below, `reports/spike-profile-*.md` |
-| H1 | Is this LLM finding a real defect? (central) | **FAIL** on both labels, but the fix-aware oracle validates the signal (2026-09-22): vs. line-overlap AUC 0.592 (near chance); re-scored vs. the fix-aware oracle label (n=7 real / 239 noise) AUC 0.708 — real separation, but the ≥0.95 recall AND ≥40% noise-discarded bar is unreachable on 7 positives (25.5% discarded at full recall) | below, "Thorough findings pass and finding filter" |
-| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** again vs. oracle: 182× cheaper, recall gap within tolerance | same run as H1 |
-| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** (2026-09-22): ECE 0.191 over N=299 vs. line-overlap; ECE 0.504 vs. oracle (base rate 0.028 — Jev's probabilities run far above the true real rate) — inherits H1's label caveat either way | same run as H1 |
+| H1 | Is this LLM finding a real defect? (central) | **PASS** on H1b (2026-09-23, reversed hunks vs. the fix-aware oracle, n=55 real / 154 noise): recall 0.964 (53/55) at threshold 0.45, 51.9% of noise discarded, AUC 0.792. The FAIL on the original (before → after) hunks stands as history — line-overlap AUC 0.592 (near chance), and the original oracle sample had only n=7 real, too small for a recall verdict. Caveats on the PASS: n=55 gives a wide recall interval, the oracle labeler and the H6 judge share a model, and the reversed diff is an artificial recall population (§ H1b) | below, "Thorough findings pass and finding filter" and "H1b — reversed hunks" |
+| H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** vs. the original oracle: 182× cheaper; **PASS** on H1b (2026-09-23): 704.7× cheaper, and Jev's recall exceeds the judge's at Jev's own threshold (gap −0.218); at the judge's own best threshold it only matches Jev's recall, at ~700× the cost and ~25× the latency | same run as H1; H1b below |
+| H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL**, every time measured: ECE 0.191 vs. line-overlap (N=299, 2026-09-22); ECE 0.504 vs. the original oracle sample (base rate 0.028); ECE 0.284 on H1b (2026-09-23, base rate 0.263) — Jev's probabilities keep running above the true real rate | same run as H1; H1b below |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90. **PARTIAL** without-summary: recall 0.88, ECE 0.102 | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`; replay `pnpm coherence --variant all --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
@@ -367,12 +367,14 @@ Reading:
    finding, it removes a quarter of the noise; the reasoning judge removes a
    third, at 182× the cost. Neither clears the 40% bar. Calibration is off in
    a known direction — probabilities too high for a 2.8% base rate.
-4. Next step: H1b — a reversed-hunk dataset (present after → before, the
-   buggy state as the change), so a real finding is one that flags the bug
-   the fix later removed. Tooling built and proven by dry run
-   2026-09-22; not yet run for real. See "H1b" below.
-5. Stage 4 stays in annotate mode (`findingFilter.mode: "annotate"`) until
-   H1b lands.
+4. Next step, at the time: H1b — a reversed-hunk dataset (present after →
+   before, the buggy state as the change), so a real finding is one that
+   flags the bug the fix later removed. It ran for real on 2026-09-23 and
+   gives H1 a PASS — see "H1b" below.
+5. Stage 4 stayed in annotate mode (`findingFilter.mode: "annotate"`) until
+   H1b landed, and stays there still: H1b gives H1 a verdict, but flipping
+   stage 4 to discard is a separate, still-pending product decision — see
+   "H1b" below.
 
 Reproduce, zero cost:
 
@@ -384,14 +386,14 @@ pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
     --mode replay --judge deepseek --judge-mode replay --label oracle
 ```
 
-### H1b — reversed hunks (tooling built 2026-09-22, not yet run)
+### H1b — reversed hunks (2026-09-23)
 
-The set above is a clean noise benchmark and an unusable recall population,
-for a structural reason: the reviewer was shown the bugfix commit's own diff.
-H1b turns the defect hunks around — the diff runs after → before, so the
-change under review *introduces* the bug and a real finding is one that flags
-it. The benign hunks are copied unchanged, so the set still mixes both kinds
-at 50/50.
+The set behind H1's original FAIL is a clean noise benchmark and an unusable
+recall population, for a structural reason: the reviewer was shown the
+bugfix commit's own diff. H1b turns the defect hunks around — the diff runs
+after → before, so the change under review *introduces* the bug and a real
+finding is one that flags it. The benign hunks are copied unchanged, so the
+set still mixes both kinds at 50/50.
 
 What is reversed is only the reviewer's view. `before`, `after`, `label` and
 `evidence` stay in original orientation, so the fix-aware labeler keeps seeing
@@ -400,49 +402,139 @@ exactly what they meant on the last one. No prompt was changed. Design and the
 full protocol: `datasets/FINDINGS.md` §11, `datasets/README.md`
 § hunks-reversed.
 
-How to reproduce:
+All of the below ran on 2026-09-22/23 against the Claude subscription
+(`claude-cli`, `claude-opus-5`), nominal costs (Claude Max quota, not cash).
+
+**Dataset.** `pnpm dataset:reverse` built `datasets/hunks-reversed.jsonl`:
+the 50 defect hunks with their diff reversed (after → before, the buggy state
+presented as the change; removals before additions per block, self-inverse;
+`before`/`after`/`evidence` kept in original orientation for the labeler, so
+the reviewer is shown the fixed code as the pre-image), plus the 50 benign
+hunks unchanged.
+
+**Reviewer** (thorough prompt, `claude-cli`/`claude-opus-5`): 100/100 hunks,
+246 findings (99 on reversed hunks, 147 on benign), 2.46 findings/hunk,
+severity nit 33 / minor 107 / major 89 / critical 7. Cost USD 6.81 nominal,
+wall time 1462 s, latency p50 21 s, cache-hit share 48.7%. Two hunks needed
+one retry each (transient `claude-cli` exit code 1, same class of flake as
+§7's thorough pass).
+
+**Fix-aware oracle label**, same `claude-cli`/`claude-opus-5`, two framings
+with agreement required (`FINDINGS.md` §10): real 55 (22.4% — every one on a
+reversed hunk), noise 154 (62.6%: 119 benign + 35 reversed), unknown 37
+(15.0%), 0 failures. Framing agreement 85.0%. Cost USD 22.97 nominal over 492
+calls, latency p50 15.5 s per finding. Report:
+`reports/oracle-2026-09-23T00-05-15-536Z.md`. Fixtures:
+`tests/fixtures/findings-oracle/` (the fixture key now mixes in the labeler
+id; the frozen DeepSeek keys are unaffected).
+
+Cross-tab, line-overlap label × oracle label: of the 99 findings on a
+reversed hunk (line-overlap "real" on this orientation), the oracle says 50
+real / 29 noise / 20 unknown; of the 147 on a benign hunk (line-overlap
+"noise"), the oracle says 5 real / 125 noise / 17 unknown.
+
+**Scoring**
+(`pnpm filter --findings datasets/findings-reversed-oracle.jsonl --hunks datasets/hunks-reversed.jsonl --mode replay --judge claude-cli --judge-mode replay --label oracle`,
+report `reports/filter-2026-09-23T00-14-31-744Z.md`), scored population 209
+(55 real / 154 noise), 37 excluded as `unknown`:
+
+| Metric | Jev vs. oracle | claude-cli judge vs. oracle |
+|---|---|---|
+| Scored | 209 / 209 | 209 / 209 (246 calls) |
+| AUC | 0.792 | 0.868 |
+| Best threshold | 0.45 | — (own curve below) |
+| Precision / Recall / F1 at 0.45 | 0.417 / 0.964 (53/55) / 0.582 | 0.603 / 0.745 / — |
+| Noise discarded at 0.45 | 0.519 | 0.825 |
+| ECE (H3) | 0.284 (base rate 0.263) | not computed |
+| Cost | USD 0.0109 | USD 8.99 nominal |
+| Latency p50 / p95 | 384 ms / 493 ms | 9.6 s / 25.6 s |
+
+Jev threshold curve: 0.20 R 1.000 ND 0.240 | 0.25 R 1.000 ND 0.312 | 0.30
+R 0.982 ND 0.370 | 0.40 R 0.982 ND 0.474 | 0.45 R 0.964 ND 0.519 | 0.50
+R 0.909 ND 0.545.
+
+Judge threshold curve: 0.10 R 1.000 ND 0.071 | 0.20 R 0.964 ND 0.584
+P 0.453 | 0.30 R 0.891 ND 0.721 | 0.40 R 0.764 ND 0.792 | 0.50 R 0.673
+ND 0.844 | 0.60 R 0.618 ND 0.890. Judge severity vs. label: major 40 real /
+51 noise, minor 15/88, critical 0/5, nit 0/10.
+
+**H1 vs. oracle, on H1b: PASS** — recall 0.964 (53/55) and 51.9% of noise
+discarded at once, threshold 0.45. **H6 vs. oracle: PASS** — cost ratio
+704.7×; at Jev's own threshold the judge's recall is actually *lower* than
+Jev's (gap −0.218, judge 0.745 vs. Jev 0.964); at the judge's own best
+threshold (0.20) it only reaches Jev's recall, with 58.4% of noise discarded
+against Jev's 51.9% — a modest edge at ~700× the cost and ~25× the latency.
+**H3 vs. oracle: FAIL** — ECE 0.284 against a 26.3% base rate, the same
+"probabilities run high" pattern as every earlier run of this label.
+
+Reading:
+
+1. H1b closes the population gap that made the original oracle sample
+   unusable: reversing the hunks turns every defect hunk into a chance to
+   produce a real finding instead of 1-in-3, and the labeler agrees on 55 of
+   them.
+2. Both scorers separate real from noise convincingly (Jev AUC 0.792, judge
+   AUC 0.868) — well above the 0.708/0.700 the same two scorers reached on
+   the un-reversed oracle sample, and far above line-overlap's ~0.58. The
+   oracle label keeps validating itself as sample size grows.
+3. Jev clears the H1 bar for the first time: recall 0.964 with just over
+   half the noise discarded. The reasoning judge reaches a higher AUC and,
+   at its own threshold, discards more noise for the same recall — but at
+   704.7× the nominal cost and roughly 25× the latency, which is exactly the
+   trade-off H6 asks about.
+
+**Caveats, stated plainly:**
+
+- n = 55 real findings: a recall of 53/55 carries a wide confidence interval
+  (roughly 0.87–0.99). The ≥ 0.95 bar is met, not statistically secured.
+- The oracle labeler and the judge are the same model (`claude-opus-5`), so
+  part of the judge's AUC edge may be shared-model bias. Jev is independent
+  of the labeler.
+- The reversed diff is an artificial change — a real PR rarely reintroduces
+  a fixed bug verbatim. H1b measures "can the filter keep a finding that
+  flags a known defect while dropping speculation", not the distribution of
+  a production PR stream.
+- H3 remains FAIL regardless of orientation.
+
+**Verdict.** H1 **PASS** on H1b (reversed hunks, fix-aware oracle label);
+the earlier FAIL against line-overlap and against the un-reversed oracle
+sample stands as the record of an invalid or too-small label, not something
+H1b overturns retroactively. Stage 4 stays in annotate mode
+(`findingFilter.mode: "annotate"`) for now — flipping it to discard is a
+separate product decision, pending a run on real PRs, not decided here.
+
+Total nominal spend across the H1b run (reviewer + oracle + judge): ≈ USD
+38.77, on top of the USD 8.28 of the original thorough reviewer pass.
+
+Reproduce, all replay, zero cost (`pnpm dataset:reverse` is a deterministic
+local computation, not a replay, but also free):
 
 ```sh
-# 1. Build the reversed reviewer set. Local computation only — no network,
-#    no LLM, no cost, deterministic.
 pnpm dataset:reverse
 
-# 2. Reviewer pass over the reversed hunks. Resumable.
-pnpm findings --provider claude-cli --prompt thorough --record --concurrency 2 \
-              --budget-usd 15 \
+pnpm findings --provider claude-cli --prompt thorough --record \
               --hunks datasets/hunks-reversed.jsonl \
               --fixtures-dir tests/fixtures/findings-reversed \
               --out datasets/findings-reversed.jsonl
 
-# 3. Fix-aware oracle label, 2 calls per finding. Evidence resolves through
-#    `reversed_from`, so `pnpm dataset:evidence` does not need re-running.
 pnpm findings:label --findings datasets/findings-reversed.jsonl \
                     --hunks datasets/hunks-reversed.jsonl \
                     --out datasets/findings-reversed-oracle.jsonl \
-                    --labeler claude-cli --mode record --concurrency 2
+                    --labeler claude-cli --mode replay
 
-# 4. Jev, then the judge baseline. --hunks must match step 2: the hunk diff is
-#    what both are shown, and it has to be the one the reviewer reviewed.
 pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
             --hunks datasets/hunks-reversed.jsonl \
-            --mode record --judge none --label oracle
-pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
-            --hunks datasets/hunks-reversed.jsonl \
-            --mode replay --judge claude-cli --judge-mode record --label oracle
+            --mode replay --judge claude-cli --judge-mode replay --label oracle
 ```
 
-Every fixture set keys on something the reversed run changes, so none of the
-frozen originals can be replayed into it (`FINDINGS.md` §11.2 has the table).
-The oracle labeler's key now includes which labeler answered; an absent
-labeler id reproduces the historical key exactly, so the 591 DeepSeek fixtures
-behind the numbers above still replay byte-for-byte.
-
-Cost projection for step 2, computed with zero calls: the reversed set's total
-reviewer input is 1.028× the original's, and the original thorough
-`claude-cli` pass cost USD 8.28 nominal, so H1b projects to ≈ USD 8.5 nominal.
-`pnpm findings --estimate` is not a free check on this path — for `claude-cli`
-it makes 3 real calls, since the subscription path has no token-counting
-endpoint.
+The second command replays from the fixtures already on disk under
+`tests/fixtures/findings-reversed/` (record mode is resumable and makes no
+call once every hunk has a fixture). Every fixture set keys on something the
+reversed run changes, so none of the frozen originals could be replayed into
+it by accident (`FINDINGS.md` §11.2 has the table). The oracle labeler's key
+now includes which labeler answered; an absent labeler id reproduces the
+historical key exactly, so the DeepSeek fixtures behind the earlier numbers
+still replay byte-for-byte.
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 
@@ -510,15 +602,14 @@ H1, H6 and H3 ran on 2026-09-22 (see "Thorough findings pass and finding
 filter" above) and were re-scored the same day against the fix-aware oracle
 label (see "Re-scored against the fix-aware oracle label" above): H1 FAIL
 (formally — n=7 real is too small to clear the recall bar), H6 PASS, H3 FAIL.
-What remains is not a human-labeled sample — the oracle replaces that need —
-but H1b: a reversed-hunk dataset that can produce a real-finding population
-large enough to measure recall on. Its tooling landed on 2026-09-22 and the
-whole chain is proven by dry run; what is missing is the paid reviewer,
-labeler and judge passes.
+H1b (see "H1b — reversed hunks" above) ran on 2026-09-23 on a reversed-hunk
+dataset with a real-finding population of 55: H1 now **PASS** (recall 0.964,
+51.9% of noise discarded), H6 **PASS** again (704.7×), H3 stays **FAIL**
+(ECE 0.284). What remains below is H7's harder near-duplicate variant, H5's
+suite (already recorded, see below), and the H2/H4 real-PR collection.
 
 | Hypothesis | What will fill the row | Command |
 |---|---|---|
-| H1 · finding filter, re-scored on a reversed-hunk oracle sample (recall ≥ 0.95, ≥ 40% noise discarded) | H1b: present after → before so a real finding is one that flags the bug the fix later removed; reviewer pass, oracle label, Jev/judge scoring (≈ USD 8.5 nominal on the Claude subscription) | tooling built and dry-run proven 2026-09-22; `pnpm dataset:reverse` then the four commands in "H1b — reversed hunks" above |
 | H7 · intent–change coherence (recall ≥ 0.90, precision ≥ 0.85, ECE < 0.1) | full 200-pair run, both variants | `pnpm coherence:summarize --mode record` then `pnpm coherence --mode record`; replay with `pnpm coherence --mode replay` |
 | H5 · adversarial suite (0 undue successes, 0 suppressed critical findings) | Jev's recorded answers on the 14 cases | `pnpm adversarial --mode record`, then `pnpm adversarial --mode replay` (CI gate: `src/application/adversarial/adversarial-suite.test.ts`) |
 | H2 · LLM tokens saved by triage + profile (−30%) | ≥ 20 real PRs' "Efficiency" sections (or `llm-tokens-saved-pct` outputs) collected in a report; the detection-rate half needs H1 | instrumented on every run; no collection command yet |

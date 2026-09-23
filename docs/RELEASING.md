@@ -35,6 +35,16 @@ Run everything from a clean checkout of `main` with `pnpm install` done.
    pnpm coherence --mode replay
    pnpm adversarial --mode replay      # exits 1 on an H5 FAIL
    pnpm review --diff <any small diff> --mode dry-run
+
+   # H1 / H6 / H3, thorough set against the fix-aware oracle label (DeepSeek judge)
+   pnpm filter --findings datasets/findings-thorough-oracle.jsonl \
+       --mode replay --judge deepseek --judge-mode replay --label oracle
+
+   # H1 / H6 / H3, H1b: reversed-hunk set against the fix-aware oracle label
+   # (claude-cli judge) — the numbers quoted in README.md and docs/BENCHMARK.md
+   pnpm filter --findings datasets/findings-reversed-oracle.jsonl \
+       --hunks datasets/hunks-reversed.jsonl \
+       --mode replay --judge claude-cli --judge-mode replay --label oracle
    ```
 
    A replay that fails with `MissingFixtureError` means a case or a dataset
@@ -79,8 +89,14 @@ Run everything from a clean checkout of `main` with `pnpm install` done.
      --title "Jevest v0.1.0" \
      --notes-file <(sed -n '/^## \[0.1.0\]/,/^## \[/p' CHANGELOG.md | sed '$d') \
      datasets/hunks.jsonl \
+     datasets/hunks-reversed.jsonl \
      datasets/profile-labels.jsonl \
      datasets/findings.jsonl \
+     datasets/findings-thorough.jsonl \
+     datasets/findings-thorough-oracle.jsonl \
+     datasets/findings-reversed.jsonl \
+     datasets/findings-reversed-oracle.jsonl \
+     datasets/hunk-evidence.jsonl \
      datasets/prs.jsonl \
      datasets/coherence-pairs.jsonl \
      jevest-adversarial-0.1.0.tar.gz

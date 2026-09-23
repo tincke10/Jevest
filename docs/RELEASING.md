@@ -14,8 +14,8 @@ the tagged commit, so the tag itself is the artifact.
 | `@v0` | yes, to the latest `v0.x.y` | You want fixes without editing the workflow and accept behavior changes within the same major. |
 | `@main` | every commit | You are developing Jevest itself or dogfooding. Not for other repos. |
 
-`docs/ACTION.md` and `README.md` still show `@main` on purpose until the first
-tag exists; once `v0.1.0` is cut, switch both snippets to `@v0`.
+`docs/ACTION.md` and `README.md` show `@v0`; they were switched from `@main`
+when `v0.1.0` was cut.
 
 Datasets are versioned by their own `dataset_version` field inside each file
 (`datasets/README.md`), independent of the package version. A release attaches

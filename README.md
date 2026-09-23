@@ -84,7 +84,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: tincke10/Jevest@main
+      - uses: tincke10/Jevest@v0
         with:
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -106,7 +106,7 @@ spendCap:
   warnAtUsd: 40
 ```
 
-Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml). Pinning to a release tag instead of `@main`: [docs/RELEASING.md](docs/RELEASING.md).
+Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml). `@v0` follows every `v0.x.y`; pinning an exact version such as `@v0.1.0`: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Choose a reviewer
 

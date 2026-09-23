@@ -24,7 +24,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: tincke10/Jevest@main
+      - uses: tincke10/Jevest@v0
         with:
           config-path: .jevest.yml
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
@@ -35,7 +35,7 @@ jobs:
           fail-on: never
 ```
 
-Pin `@main` to a tag once one is cut; `@main` tracks the latest commit.
+`@v0` moves to every `v0.x.y` release; pin `@v0.1.0` for a workflow that never changes under you. `@main` tracks the latest commit and is for developing Jevest itself.
 Which tags will exist and which one to pin is in [RELEASING.md](RELEASING.md).
 Deliberately no `actions/checkout` step — see "Why no checkout" below.
 

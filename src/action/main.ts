@@ -17,6 +17,7 @@
  * to unit test without touching a network or a missing module.
  */
 import { appendFile, readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { Octokit } from "@octokit/rest";
@@ -406,8 +407,11 @@ export async function resolveConfig(
   ref: PullRequestRef,
   configPath: string,
 ): Promise<JevestConfig> {
+  // Relative to the CONSUMER's workspace, not the cwd: the action step runs
+  // in github.action_path, where Jevest's own .jevest.yml would win.
+  const localPath = resolve(process.env.GITHUB_WORKSPACE ?? process.cwd(), configPath);
   try {
-    const raw = await readFile(configPath, "utf8");
+    const raw = await readFile(localPath, "utf8");
     console.log(`jevest: config loaded from the local checkout (${configPath})`);
     return await loadJevestConfigFromString(raw, configPath);
   } catch (error) {

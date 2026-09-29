@@ -460,6 +460,41 @@ describe("resolveConfig", () => {
     log.mockRestore();
   });
 
+  it("resolves a relative config-path against GITHUB_WORKSPACE, never the action's own directory (the step's cwd holds Jevest's own .jevest.yml)", async () => {
+    // cwd here is the Jevest repo root, which HAS a .jevest.yml, exactly like
+    // the composite step whose working-directory is github.action_path.
+    vi.stubEnv("GITHUB_WORKSPACE", dir);
+    const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
+    const vcs = makeFakeVcs(fetchRepoFileContent);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const config = await resolveConfig(vcs, REF, ".jevest.yml");
+
+    expect(config.budgetUsd).toBe(7);
+    expect(fetchRepoFileContent).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      path: ".jevest.yml",
+      ref: "base-sha",
+    });
+    log.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("reads a relative config-path from GITHUB_WORKSPACE when the consumer checked out", async () => {
+    vi.stubEnv("GITHUB_WORKSPACE", dir);
+    await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 4\n", "utf8");
+    const fetchRepoFileContent = vi.fn();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const config = await resolveConfig(makeFakeVcs(fetchRepoFileContent), REF, ".jevest.yml");
+
+    expect(config.budgetUsd).toBe(4);
+    expect(fetchRepoFileContent).not.toHaveBeenCalled();
+    log.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
   it("fetches config-path from the PR BASE sha via the API when it is not on disk (never the head: a PR must not rewrite the rules that judge it)", async () => {
     const configPath = join(dir, "does-not-exist.jevest.yml");
     const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");

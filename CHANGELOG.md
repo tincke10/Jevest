@@ -39,6 +39,15 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   set it was fitted on (from 0.284 raw) with the ranking untouched, but carries
   0.216 to a set whose base rate is ten times lower.
 
+### Fixed
+
+- **`config-path` read Jevest's own `.jevest.yml`** in a workflow without
+  checkout: the action step runs in `github.action_path`, so the relative path
+  found Jevest's dogfood config (`reviewer.provider: none`) and the consumer's
+  file was never fetched. A relative `config-path` now resolves against
+  `GITHUB_WORKSPACE`, falling through to the PR base sha via the API as
+  documented.
+
 ## [0.1.0] - 2026-09-23
 
 First tagged release. Everything below exists on `main` today; nothing here

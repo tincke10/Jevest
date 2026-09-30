@@ -210,6 +210,26 @@ describe("runHunkProfileStage", () => {
     expect(states[0]).not.toContain(secret);
   });
 
+  it("redacts a readable dummy password in a test file without flagging the hunk", async () => {
+    const dummy = `Secret-${"pass-123"}`;
+    const patch = `@@ -1,1 +1,2 @@\n x\n+        'password' => '${dummy}',`;
+    const run = (path: string) =>
+      runHunkProfileStage({
+        pr: makePr([{ path, status: "modified", additions: 1, deletions: 0, patch }]),
+        decisionPort: createFakeDecisionAdapter(scriptFor("add-behavior", 0.99, 0.05, 0.05)),
+        policyConfig,
+        riskLevel: "low",
+        skipChangeKinds: [],
+        maxHunks: 50,
+      });
+    const inTest = (await run("tests/Feature/LoginTest.php")).hunks[0]!;
+    expect(inTest.containsSecret).toBe(false);
+    expect(inTest.diff).not.toContain(dummy);
+    const inApp = (await run("app/Services/Login.php")).hunks[0]!;
+    expect(inApp.containsSecret).toBe(true);
+    expect(inApp.diff).not.toContain(dummy);
+  });
+
   it("still skips a secret hunk whose change kind is in skipChangeKinds at auto band", async () => {
     const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
     const files: PullRequestData["files"] = [

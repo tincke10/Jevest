@@ -27,6 +27,7 @@
     "scripts/review",
     "scripts/dataset",
     "scripts/coherence",
-    "scripts/adversarial"
+    "scripts/adversarial",
+    "scripts/eval"
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { containsSecret, redact, shannonEntropy } from "./redact.js";
+import { containsSecret, isTestPath, redact, shannonEntropy } from "./redact.js";
 
 // Test credentials are built by concatenation so secret scanners never see a
 // live-looking literal in this file.
@@ -248,5 +248,95 @@ describe("containsSecret", () => {
 
   it("is true for text containing a secret", () => {
     expect(containsSecret(`const apiKey = "${OPENAI_LIKE}";`)).toBe(true);
+  });
+});
+
+describe("the secret warning (secrets) for password-like names", () => {
+  // Built by concatenation so secret scanners never see these literals whole.
+  const READABLE = `Secret-${"pass-123"}`;
+  const WORD_JOINED = `correct-horse-${"pass-123"}`;
+  const RANDOM = `kX9#mQ2$${"vL7@pR4!"}`;
+
+  it("still redacts a short readable password but does not warn about it", () => {
+    const result = redact('password: "hunter2hunter2"');
+    expect(result.redactions).toBe(1);
+    expect(result.secrets).toBe(0);
+    expect(containsSecret('password: "hunter2hunter2"')).toBe(false);
+  });
+
+  it("warns about a mixed-class password of length >= 12 outside test paths", () => {
+    const line = `'password' => '${READABLE}',`;
+    expect(redact(line, { path: "app/Services/Login.php" }).secrets).toBe(1);
+    expect(containsSecret(line)).toBe(true);
+  });
+
+  it("warns about a high-entropy password of length >= 12", () => {
+    expect(redact(`password: "${WORD_JOINED}"`).secrets).toBe(1);
+  });
+
+  it("does not warn about a password shorter than 12 even with mixed classes", () => {
+    const result = redact(`password: "Ab1!${"xyzw"}"`);
+    expect(result.redactions).toBe(1);
+    expect(result.secrets).toBe(0);
+  });
+
+  it("warns about an .env password with mixed classes", () => {
+    expect(containsSecret(`DB_PASSWORD=S3cr3t!${"Passw0rd"}`)).toBe(true);
+  });
+
+  describe("in a test file", () => {
+    const testPaths = [
+      "tests/Feature/LoginTest.php",
+      "app/test/login.js",
+      "src/__tests__/login.ts",
+      "src/login.test.ts",
+      "src/login.spec.js",
+      "spec/login_spec.rb",
+      "tests/fixtures/users.json",
+      "e2e/tests/login.ts",
+    ];
+    for (const path of testPaths) {
+      it(`treats a word-joined password as a placeholder in ${path}, still redacted`, () => {
+        const line = `+        'password' => '${READABLE}',`;
+        const result = redact(line, { path });
+        expect(result.redactions).toBe(1);
+        expect(result.text).not.toContain(READABLE);
+        expect(result.secrets).toBe(0);
+        expect(containsSecret(`password: "${WORD_JOINED}"`, { path })).toBe(false);
+      });
+    }
+
+    it("still warns about a random-looking password", () => {
+      expect(redact(`password: "${RANDOM}"`, { path: "tests/a.test.ts" }).secrets).toBe(1);
+    });
+
+    it("still warns about a key-named high-entropy value and a known token format", () => {
+      const path = "tests/a.test.ts";
+      expect(redact(`const apiKey = '${HIGH_ENTROPY_KEY}';`, { path }).secrets).toBe(1);
+      expect(redact(`see ${OPENAI_LIKE} here`, { path }).secrets).toBe(1);
+    });
+  });
+});
+
+describe("isTestPath", () => {
+  it("recognizes test directories and test file names", () => {
+    for (const path of [
+      "tests/a.php",
+      "a/test/b.js",
+      "a/__tests__/b.ts",
+      "a/b.test.ts",
+      "a/b.spec.tsx",
+      "spec/b.rb",
+      "a/fixtures/b.json",
+      "e2e/b.ts",
+    ]) {
+      expect(isTestPath(path), path).toBe(true);
+    }
+  });
+
+  it("rejects production paths that only look similar", () => {
+    for (const path of ["src/testing-utils.ts", "app/latest/b.php", "src/contest.ts", "e2e.md"]) {
+      expect(isTestPath(path), path).toBe(false);
+    }
   });
 });

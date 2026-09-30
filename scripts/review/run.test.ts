@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -8,6 +8,7 @@ import {
   resolveConfig,
   resolveLocalCalibration,
   resolveLocalProductContext,
+  runLocalReview,
 } from "./run.js";
 
 describe("parseArgs (scripts/review/run.ts)", () => {
@@ -248,5 +249,48 @@ describe("resolveLocalCalibration (scripts/review/run.ts)", () => {
         gitRange: null,
       }),
     ).rejects.toThrow(/calibration\.json/);
+  });
+});
+
+describe("runLocalReview (scripts/review/run.ts)", () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-review-local-"));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("runs the pipeline in dry-run over a diff file, with the given title, body and ledger path", async () => {
+    const diffPath = join(dir, "change.diff");
+    await writeFile(
+      diffPath,
+      "diff --git a/src/a.ts b/src/a.ts\n--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1,1 +1,2 @@\n const a = 1;\n+const b = 2;\n",
+      "utf8",
+    );
+    const { config } = await resolveConfig(join(dir, "missing.yml"));
+    const outDir = join(dir, "out");
+    const ledger = join(dir, "ledger", "spend.json");
+    const lines: string[] = [];
+    const result = await runLocalReview({
+      options: { diffFile: diffPath, gitRange: null, mode: "dry-run", outDir },
+      config,
+      configLabel: "defaults",
+      repoDir: dir,
+      title: "Add b",
+      body: "Adds a second constant",
+      spendLedgerPath: ledger,
+      log: (line) => lines.push(line),
+    });
+    expect(result.failedClosed).toBe(false);
+    expect(result.triage).not.toBeNull();
+    const review = JSON.parse(await readFile(join(outDir, "review.json"), "utf8"));
+    expect(review.check).toBeDefined();
+    await expect(stat(join(dir, ".jevest"))).rejects.toThrow();
+    expect(lines.some((l) => l.includes("running pipeline (mode=dry-run, config=defaults)"))).toBe(
+      true,
+    );
   });
 });

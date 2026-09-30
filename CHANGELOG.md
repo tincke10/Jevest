@@ -9,6 +9,22 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Eval harness** (docs/EVAL.md): measures a review variant against a
+  golden set of adjudicated PRs before it ships. `pnpm eval:review` runs a
+  pipeline variant per case (the local `pnpm review` flow, now importable
+  as `runLocalReview`, with a config plus `--overrides`/`--override
+  key=value`, in live, replay or dry-run mode; never posts to GitHub) or
+  imports another review's findings, matches every finding to a golden
+  issue (a deterministic pre-filter, then a new `FindingMatcherPort` with a
+  claude-cli adapter on `claude-sonnet-5` and an on-disk decision cache),
+  and writes `results.json` and a report: recall weighted and unweighted
+  for what was shown and for shown + low-confidence, real issues found by
+  severity, known-false noise shown, unlabeled findings, a precision lower
+  bound, cost, tokens and wall time. `pnpm eval:compare` puts runs side by
+  side, `pnpm eval:label-queue` exports unlabeled findings to adjudicate,
+  and `pnpm eval:import-adjudication` builds a set from adjudication files
+  with merge-base SHAs and resolved locations. Client sets stay outside the
+  repo (`~/.jevest/evals/`).
 - **Author context from the PR description** (`reviewer.descriptionContext`):
   the per-hunk reviewer now takes the PR description into account — design
   decisions, intended behavior changes, what is out of scope, constraints
@@ -143,6 +159,18 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Fixed
 
+- **A readable dummy password in a test file raised the "possible committed
+  secret" warning**: a test payload like `'password' => 'Some-pass-123'`
+  was enough. Redacting and warning are now two decisions. The redaction
+  sent out stays as aggressive as before (NFR-3), but a password/secret
+  name only warns when its value is long and varied enough to be a real
+  credential (12+ characters with entropy ≥ 3.0 bits/char, or with upper,
+  lower, digit and symbol all present), and in a test file (`tests/`,
+  `test/`, `__tests__/`, `spec/`, `fixtures/`, `e2e/`, `*.test.*`,
+  `*.spec.*`) a value made of readable words joined by `-`/`_` is a
+  placeholder. `redact()` takes an optional `{ path }` and reports the
+  warning-worthy count as `secrets`; hunk-profile passes the hunk's file.
+  Known token formats, PEM blocks and key/token names warn as before.
 - **The secret redactor flagged ordinary code and hid it from review**: any
   `name = value` / `name: value` whose name contained key, token, secret or
   password counted as a secret whatever the value, and `key === prev` even

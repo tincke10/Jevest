@@ -73,7 +73,7 @@ import {
   type ProductContext,
   loadProductContext,
 } from "../../src/application/context/product-context.js";
-import { runPipeline } from "../../src/application/pipeline/run-pipeline.js";
+import { type PipelineResult, runPipeline } from "../../src/application/pipeline/run-pipeline.js";
 import {
   CalibrationError,
   type CalibrationMap,
@@ -626,13 +626,33 @@ export async function resolveConfig(
   return { config, usedDefault };
 }
 
-async function main(): Promise<number> {
-  const options = parseArgs(process.argv.slice(2));
-  const { config, usedDefault } = await resolveConfig(options.configPath);
-  if (usedDefault) {
-    console.log("[review] no .jevest.yml found, using defaults");
-  }
-  const repoDir = process.cwd();
+export interface LocalReviewInput {
+  readonly options: Pick<CliOptions, "diffFile" | "gitRange" | "mode" | "outDir">;
+  readonly config: JevestConfig;
+  /** Names the config in the log line; default "<config>". */
+  readonly configLabel?: string;
+  /** The reviewed repo: `git diff`/`git show` run here, and `--diff` mode reads the product context from it. */
+  readonly repoDir: string;
+  /** The local "PR" title and body the pipeline sees (triage, description context, narrative). Default "Local review" and "". */
+  readonly title?: string;
+  readonly body?: string;
+  /** Default `<repoDir>/.jevest/spend-ledger.json` ({@link LOCAL_SPEND_LEDGER_PATH}). */
+  readonly spendLedgerPath?: string;
+  /** Progress lines; default `console.log`. */
+  readonly log?: (line: string) => void;
+}
+
+/**
+ * The local review flow behind `pnpm review`, importable (the eval harness,
+ * scripts/eval/, runs it per golden case): builds the ports for the mode,
+ * resolves the product context and calibration, and runs the pipeline over
+ * a diff file or a git range. Publishing goes through the local-diff VCS
+ * adapter, which only writes `review.md`/`review.json` under `outDir`: this
+ * path never talks to GitHub.
+ */
+export async function runLocalReview(input: LocalReviewInput): Promise<PipelineResult> {
+  const { options, config, repoDir } = input;
+  const log = input.log ?? ((line: string) => console.log(line));
 
   const ref: PullRequestRef = {
     owner: "local",
@@ -660,6 +680,8 @@ async function main(): Promise<number> {
   const vcs = createLocalDiffVcsAdapter({
     source,
     outDir: options.outDir,
+    ...(input.title !== undefined ? { title: input.title } : {}),
+    ...(input.body !== undefined ? { body: input.body } : {}),
   });
 
   const decision = buildDecisionPort(options.mode);
@@ -679,14 +701,14 @@ async function main(): Promise<number> {
     gitRange: options.gitRange,
   });
   if (calibration.method !== "none") {
-    console.log(
+    log(
       `[review] calibration: ${calibration.method} map applied to is_real_defect (${config.findingFilter.calibrationPath})`,
     );
   }
   if (productContext.areas.length === 0 && productContext.product === null) {
-    console.log(`[review] no product context at ${config.triage.productContextPath}`);
+    log(`[review] no product context at ${config.triage.productContextPath}`);
   } else if (!options.gitRange) {
-    console.log(
+    log(
       `[review] product context read from the working tree (${config.triage.productContextPath}); --git mode reads it from the base ref instead`,
     );
   }
@@ -694,11 +716,13 @@ async function main(): Promise<number> {
   // `spendCap` meaningful for `--mode live` runs against a real LLM. The
   // file is git-ignored; delete it to reset (see docs/ACTION.md "Spend cap").
   const spendLedger = createLocalFileSpendLedger({
-    filePath: join(repoDir, LOCAL_SPEND_LEDGER_PATH),
+    filePath: input.spendLedgerPath ?? join(repoDir, LOCAL_SPEND_LEDGER_PATH),
   });
 
-  console.log(`[review] running pipeline (mode=${options.mode}, config=${options.configPath})...`);
-  const result = await runPipeline({
+  log(
+    `[review] running pipeline (mode=${options.mode}, config=${input.configLabel ?? "<config>"})...`,
+  );
+  return runPipeline({
     ref,
     ports: {
       vcs,
@@ -713,6 +737,21 @@ async function main(): Promise<number> {
     productContext,
     calibration,
     ...(fetchFileContent ? { fetchFileContent } : {}),
+  });
+}
+
+async function main(): Promise<number> {
+  const options = parseArgs(process.argv.slice(2));
+  const { config, usedDefault } = await resolveConfig(options.configPath);
+  if (usedDefault) {
+    console.log("[review] no .jevest.yml found, using defaults");
+  }
+
+  const result = await runLocalReview({
+    options,
+    config,
+    configLabel: options.configPath,
+    repoDir: process.cwd(),
   });
 
   console.log("");

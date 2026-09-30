@@ -42,10 +42,19 @@
  * collector prints and the README quotes; they are here (not in the script)
  * so the numbers are reproducible under test.
  */
-import { containsSecret } from "../../domain/redact.js";
+import { redact } from "../../domain/redact.js";
 import { hashString, mulberry32 } from "../spike/prng.js";
 import { FILE_KINDS, type FileKind, classifyFileKind } from "./change-facts.js";
 import type { CoherenceCrossingStrategy, CoherencePair, PrFile, PrRecord } from "./pr-record.js";
+
+/**
+ * Anything the redactor would redact excludes a PR from the dataset: the
+ * aggressive redaction rule, not the stricter warning rule `containsSecret`
+ * uses (a readable password literal still keeps a PR out).
+ */
+function containsSecret(text: string): boolean {
+  return redact(text).redactions > 0;
+}
 
 export const MIN_BODY_LENGTH = 200;
 export const MIN_FILES = 1;

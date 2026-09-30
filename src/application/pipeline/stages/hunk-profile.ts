@@ -227,11 +227,13 @@ export async function runHunkProfileStage(
     // text (identical to the raw text when nothing matched), so Jev, the
     // reviewer and the narrator only ever see `[REDACTED]`. A hunk with a
     // secret is profiled and reviewed like any other; `containsSecret`
-    // only drives the visible warning in the summary comment.
-    const diffRedaction = redact(hunk.diff);
+    // only drives the visible warning in the summary comment, and is
+    // stricter than the redaction (redact.ts: `secrets`, relaxed for a
+    // readable placeholder in a test file).
+    const diffRedaction = redact(hunk.diff, { path: hunk.file });
     const diff = diffRedaction.text;
     const before = redact(hunk.before).text;
-    const secretDetected = diffRedaction.redactions > 0;
+    const secretDetected = diffRedaction.secrets > 0;
 
     const {
       touchesPublicApi: hasPublicApi,

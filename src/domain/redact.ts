@@ -44,11 +44,59 @@
  *    csrfToken, tokenType (any casing: `CACHE_KEY`, `cache_key`). Words
  *    like keyboard, keyof and tokenizer are not whole secret words.
  *    Only the value is replaced; the name and operator stay as written.
+ *
+ * Redacting and warning are two decisions. Everything above is REDACTED
+ * (NFR-3: the text sent out stays as aggressive as it always was), but only
+ * some of it counts in {@link RedactResult.secrets}, the number behind the
+ * "possible committed secret" warning ({@link containsSecret}): a
+ * password-like value must also be long and varied enough to be a real
+ * credential — length ≥ 12 with Shannon entropy ≥ 3.0 bits/char, or with
+ * upper, lower, digit and symbol all present — and, in a test file
+ * ({@link isTestPath}), a value made of readable words joined by `-`/`_`
+ * (`correct-horse-pass-123`) is a test placeholder. Measured on a real PR: a
+ * readable dummy password in a test payload raised the warning for nothing.
+ * Known token formats, PEM blocks and key/token names always warn.
  */
 
 export interface RedactResult {
   readonly text: string;
+  /** Values replaced by `[REDACTED]` (NFR-3). */
   readonly redactions: number;
+  /** The redactions that also warrant the "possible committed secret" warning; ≤ `redactions`. */
+  readonly secrets: number;
+}
+
+export interface RedactOptions {
+  /** The file the text comes from; a test path relaxes the warning (never the redaction). */
+  readonly path?: string;
+}
+
+const TEST_DIR_RE = /(?:^|\/)(?:tests?|__tests__|specs?|fixtures|e2e)\//;
+const TEST_FILE_RE = /\.(?:test|spec)\.[^/]+$/;
+
+/** Whether `path` is a test file: under tests/, test/, __tests__/, spec/, fixtures/, e2e/, or named *.test.* / *.spec.*. */
+export function isTestPath(path: string): boolean {
+  return TEST_DIR_RE.test(path) || TEST_FILE_RE.test(path);
+}
+
+/** Readable words joined by `-`/`_`, optionally ending in a number: `Secret-pass-123`. */
+const WORD_JOINED_RE = /^[A-Za-z]{2,20}(?:[-_](?:[A-Za-z]{2,20}|\d{1,4}))+$/;
+
+const MIN_WARN_PASSWORD_LENGTH = 12;
+const MIN_WARN_PASSWORD_ENTROPY = 3.0;
+
+function hasAllCharClasses(value: string): boolean {
+  return (
+    /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value)
+  );
+}
+
+/** Whether a password-like value already chosen for redaction also warrants the warning. */
+function passwordWarrantsWarning(value: string, path: string | undefined): boolean {
+  if (value.length < MIN_WARN_PASSWORD_LENGTH) return false;
+  if (shannonEntropy(value) < MIN_WARN_PASSWORD_ENTROPY && !hasAllCharClasses(value)) return false;
+  if (path !== undefined && isTestPath(path) && WORD_JOINED_RE.test(value)) return false;
+  return true;
 }
 
 const REDACTED = "[REDACTED]";
@@ -250,10 +298,12 @@ const ENV_LINE_PREFIX_RE = /^[+\- ]?\s*(?:export\s+)?$/;
 interface Replacement {
   readonly start: number;
   readonly end: number;
+  /** Counts toward {@link RedactResult.secrets}. */
+  readonly warn: boolean;
 }
 
 /** Value spans on one line that are named-assignment secrets. */
-function namedSecretSpans(line: string): Replacement[] {
+function namedSecretSpans(line: string, path: string | undefined): Replacement[] {
   const spans: Replacement[] = [];
   NAMED_OPERATOR_RE.lastIndex = 0;
   for (
@@ -279,18 +329,24 @@ function namedSecretSpans(line: string): Replacement[] {
       if (!isEnvLine) continue;
     }
     if (!looksLikeCredential(value.content, kind, words)) continue;
-    spans.push({ start: value.start, end: value.end });
+    const warn = kind === "key" || passwordWarrantsWarning(value.content, path);
+    spans.push({ start: value.start, end: value.end, warn });
     NAMED_OPERATOR_RE.lastIndex = value.end;
   }
   return spans;
 }
 
-function redactNamedAssignments(text: string): { text: string; redactions: number } {
+function redactNamedAssignments(
+  text: string,
+  path: string | undefined,
+): { text: string; redactions: number; secrets: number } {
   let redactions = 0;
+  let secrets = 0;
   const lines = text.split("\n").map((line) => {
-    const spans = namedSecretSpans(line);
+    const spans = namedSecretSpans(line, path);
     if (spans.length === 0) return line;
     redactions += spans.length;
+    secrets += spans.filter((span) => span.warn).length;
     let out = "";
     let cursor = 0;
     for (const span of spans) {
@@ -299,7 +355,7 @@ function redactNamedAssignments(text: string): { text: string; redactions: numbe
     }
     return out + line.slice(cursor);
   });
-  return { text: lines.join("\n"), redactions };
+  return { text: lines.join("\n"), redactions, secrets };
 }
 
 /**
@@ -310,7 +366,7 @@ function redactNamedAssignments(text: string): { text: string; redactions: numbe
  * into `[REDACTED]` is a placeholder to the last pass and never counts
  * twice.
  */
-export function redact(text: string): RedactResult {
+export function redact(text: string, options: RedactOptions = {}): RedactResult {
   let redactions = 0;
   let result = text.replace(PRIVATE_KEY_BLOCK_RE, (block) => {
     redactions++;
@@ -325,10 +381,15 @@ export function redact(text: string): RedactResult {
     });
   }
 
-  const named = redactNamedAssignments(result);
-  return { text: named.text, redactions: redactions + named.redactions };
+  const named = redactNamedAssignments(result, options.path);
+  return {
+    text: named.text,
+    redactions: redactions + named.redactions,
+    secrets: redactions + named.secrets,
+  };
 }
 
-export function containsSecret(text: string): boolean {
-  return redact(text).redactions > 0;
+/** Whether `text` warrants the "possible committed secret" warning (see the module doc). */
+export function containsSecret(text: string, options: RedactOptions = {}): boolean {
+  return redact(text, options).secrets > 0;
 }

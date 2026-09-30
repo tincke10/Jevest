@@ -27,7 +27,11 @@
     "dataset:reverse": "tsx scripts/dataset/reverse-hunks.ts",
     "coherence:summarize": "tsx scripts/coherence/summarize.ts",
     "coherence": "tsx scripts/coherence/run.ts",
-    "adversarial": "tsx scripts/adversarial/run.ts"
+    "adversarial": "tsx scripts/adversarial/run.ts",
+    "eval:review": "tsx scripts/eval/review.ts",
+    "eval:compare": "tsx scripts/eval/compare.ts",
+    "eval:label-queue": "tsx scripts/eval/label-queue.ts",
+    "eval:import-adjudication": "tsx scripts/eval/import-adjudication.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

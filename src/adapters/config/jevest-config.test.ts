@@ -48,7 +48,12 @@ describe("loadJevestConfig", () => {
     const filePath = await writeConfig(VALID_YAML);
     const config = await loadJevestConfig(filePath);
 
-    expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(config.reviewer).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+    });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
     expect(config.thresholds.triage!.low).toEqual({ autoMin: 0.9, confirmMin: 0.6 });
@@ -111,7 +116,12 @@ describe("loadJevestConfig", () => {
   it("inherits the default model when reviewer.model is omitted for anthropic/openai (partial override)", async () => {
     const filePath = await writeConfig("reviewer:\n  provider: anthropic\nbudgetUsd: 1\n");
     const config = await loadJevestConfig(filePath);
-    expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(config.reviewer).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+    });
   });
 
   it("still throws when reviewer.model is explicitly empty for a non-none provider", async () => {
@@ -134,7 +144,12 @@ describe("loadJevestConfig", () => {
       "reviewer:\n  provider: deepseek\n  model: deepseek-v4-pro\nthresholds: {}\nbudgetUsd: 1\nmaxHunks: 10\n",
     );
     const config = await loadJevestConfig(filePath);
-    expect(config.reviewer).toEqual({ provider: "deepseek", model: "deepseek-v4-pro" });
+    expect(config.reviewer).toEqual({
+      provider: "deepseek",
+      model: "deepseek-v4-pro",
+      language: "es",
+      narrative: true,
+    });
   });
 
   it("accepts the claude-cli provider (Claude subscription via OAuth token)", async () => {
@@ -142,7 +157,47 @@ describe("loadJevestConfig", () => {
       "reviewer:\n  provider: claude-cli\n  model: claude-opus-5\nbudgetUsd: 1\n",
     );
     const config = await loadJevestConfig(filePath);
-    expect(config.reviewer).toEqual({ provider: "claude-cli", model: "claude-opus-5" });
+    expect(config.reviewer).toEqual({
+      provider: "claude-cli",
+      model: "claude-opus-5",
+      language: "es",
+      narrative: true,
+    });
+  });
+
+  describe("reviewer.language and reviewer.narrative (colleague review)", () => {
+    it('defaults language to "es" and narrative to true when an LLM provider is configured', async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: openai\n  model: m\n",
+      );
+      expect(config.reviewer.language).toBe("es");
+      expect(config.reviewer.narrative).toBe(true);
+    });
+
+    it("defaults narrative to false in Jev-only mode (provider none): there is no LLM to write it", async () => {
+      const config = await loadJevestConfigFromString("reviewer:\n  provider: none\n");
+      expect(config.reviewer.narrative).toBe(false);
+    });
+
+    it("accepts an explicit language and narrative: false", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: anthropic\n  language: en\n  narrative: false\n",
+      );
+      expect(config.reviewer.language).toBe("en");
+      expect(config.reviewer.narrative).toBe(false);
+    });
+
+    it("throws when narrative is explicitly true with provider none", async () => {
+      await expect(
+        loadJevestConfigFromString("reviewer:\n  provider: none\n  narrative: true\n"),
+      ).rejects.toThrow(/reviewer\.narrative/);
+    });
+
+    it("throws on an empty language", async () => {
+      await expect(
+        loadJevestConfigFromString('reviewer:\n  provider: anthropic\n  language: ""\n'),
+      ).rejects.toThrow(JevestConfigError);
+    });
   });
 
   it("throws a clear error for an unknown provider", async () => {
@@ -216,7 +271,12 @@ describe("loadJevestConfig", () => {
     expect(fromMissing).toEqual(fromExample);
     // Sanity-check a few concrete values so this test still fails loudly if
     // the example file's shape ever drifts silently.
-    expect(fromMissing.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(fromMissing.reviewer).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+    });
     expect(fromMissing.budgetUsd).toBe(5);
     expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });
   });

@@ -9,6 +9,24 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Colleague review** (`reviewer.narrative`, `reviewer.language`): one extra
+  LLM call per PR, after the finding filter, writes the top of the summary
+  comment as a senior colleague would — an overall take, each point tied to
+  `file:line` with what to change and why, and a verdict line that agrees
+  with the `jevest` check — in the configured language (`es` by default).
+  New `ReviewNarratorPort` with claude-cli, anthropic, openai and deepseek
+  adapters and a fake, using the reviewer's provider, model and credential.
+  The narrator only phrases what Jev kept: it gets the published and
+  needs-human findings (the latter phrased as questions), never the
+  low-confidence or discarded ones, and its prompt forbids raising anything
+  else. The rest of the report moves into one collapsed "Jevest details"
+  block, with the "LLM review failed" warning kept visible. Its cost counts
+  against `budgetUsd`, the spend ledger and `cost-usd`. A narrator failure
+  never fails the run: the comment falls back to the full report with a
+  one-line note. The summary fingerprint still covers only the deterministic
+  report, so a reworded narrative is not a new review (NFR-12). On by
+  default for any LLM provider, off for `provider: none`.
+
 - **Hard crossing strategy for H7** (docs/SPEC.md §4.4, docs/BENCHMARK.md "H7
   hard"): `pnpm dataset:pairs --strategy hard` builds
   `coherence-pairs-hard.jsonl` by crossing each PR with the most similar
@@ -41,6 +59,13 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Fixed
 
+- **A run whose LLM review failed entirely could be marked safe to merge**:
+  when every attempted reviewer call threw (e.g. a 401 from an expired
+  token), Jev's merge gate saw zero findings and could return green, and
+  `jevest:auto-merge-ok` was applied. Per NFR-2 the check is now at most
+  `neutral` in that case, the auto-merge label is never applied, and the PR
+  gets `jevest:needs-human` plus a line in "Needs human review". A partial
+  failure keeps the gate's conclusion and the existing warning.
 - **`config-path` read Jevest's own `.jevest.yml`** in a workflow without
   checkout: the action step runs in `github.action_path`, so the relative path
   found Jevest's dogfood config (`reviewer.provider: none`) and the consumer's

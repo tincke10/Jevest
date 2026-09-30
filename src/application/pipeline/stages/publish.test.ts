@@ -6,6 +6,7 @@ import { type RunMetrics, ZERO_WALL_TIMES } from "../run-metrics.js";
 import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
+import type { NarrateStageResult } from "./narrate.js";
 import {
   type PublishStageInput,
   buildFailClosedPublication,
@@ -975,11 +976,52 @@ describe("runPublishStage reviewer failures", () => {
     expect(again.summaryFingerprint).toBe(failed.summaryFingerprint);
   });
 
-  it("mentions the failure in the check title and summary without changing the conclusion", () => {
-    const result = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1);
+  it("on a partial failure mentions it in the check title and summary without changing the conclusion", () => {
+    const result = publishWithReviews(
+      [okEntry("a.ts#0", "a.ts"), failedEntry("b.ts#0", "b.ts", OAUTH_ERROR)],
+      1,
+    );
     expect(result.check.conclusion).toBe("success");
     expect(result.check.title).toBe("Jevest: success (LLM review failed)");
-    expect(result.check.summary).toContain("LLM review failed on 1 of 1 hunk(s)");
+    expect(result.check.summary).toContain("LLM review failed on 1 of 2 hunk(s)");
+    expect(result.labelsToAdd).toContain("jevest:auto-merge-ok");
+    expect(result.labelsToRemove).toContain("jevest:needs-human");
+  });
+
+  describe("fails closed when every attempted reviewer call failed (NFR-2)", () => {
+    const allFailed = (mergeGate = makeMergeGate()) =>
+      publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1, { mergeGate });
+
+    it("downgrades a green merge gate to neutral and never applies auto-merge-ok", () => {
+      const result = allFailed();
+      expect(result.check.conclusion).toBe("neutral");
+      expect(result.check.title).toBe("Jevest: neutral (LLM review failed)");
+      expect(result.check.summary).toContain("LLM review failed on 1 of 1 hunk(s)");
+      expect(result.check.summary).toContain("Nothing is marked safe to auto-merge.");
+      expect(result.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+      expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+    });
+
+    it("routes the PR to a human: needs-human label and a line in the human queue", () => {
+      const result = allFailed();
+      expect(result.labelsToAdd).toContain("jevest:needs-human");
+      expect(result.labelsToRemove).not.toContain("jevest:needs-human");
+      const queue = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+      expect(queue).toContain(
+        "- No hunk was reviewed: the reviewer failed on every hunk it was given. A human should review this pull request directly.",
+      );
+    });
+
+    it("never raises a gate that was already neutral or red", () => {
+      expect(allFailed(makeMergeGate({ conclusion: "failure" })).check.conclusion).toBe("failure");
+      expect(allFailed(makeMergeGate({ conclusion: "neutral" })).check.conclusion).toBe("neutral");
+    });
+
+    it("leaves a run with no reviewer attempts alone (Jev-only / spend cap): nothing failed", () => {
+      const result = publishWithReviews([], 0);
+      expect(result.check.conclusion).toBe("success");
+      expect(result.labelsToAdd).toContain("jevest:auto-merge-ok");
+    });
   });
 });
 
@@ -1235,5 +1277,140 @@ describe("buildFailClosedPublication", () => {
     expect(result.summaryMarkdown).not.toContain("Jev did not respond");
     expect(result.check.conclusion).toBe("failure");
     expect(result.check.summary).toContain("product-context");
+  });
+});
+
+describe("runPublishStage colleague review (narrative)", () => {
+  const NARRATIVE = [
+    "Buen cambio; el redondeo del impuesto pierde centavos.",
+    "",
+    "- `a.ts:10`: usá `<` en vez de `<=`, el loop se pasa un elemento.",
+    "",
+    "**Veredicto: necesita cambios.**",
+  ].join("\n");
+
+  function narrative(overrides: Partial<NarrateStageResult> = {}): NarrateStageResult {
+    return {
+      markdown: NARRATIVE,
+      note: null,
+      model: "claude-sonnet-5",
+      usage: {
+        inputTokens: 2000,
+        outputTokens: 300,
+        cacheReadInputTokens: 0,
+        cacheCreationInputTokens: 0,
+      },
+      costUsd: 0.0105,
+      latencyMs: 900,
+      ...overrides,
+    };
+  }
+
+  function publishNarrated(overrides: Partial<PublishStageInput> = {}): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview({ reviews: [okEntry("a.ts#0", "a.ts")] }),
+      findingFilter: makeFindingFilter({ published: [makeFinding()] }),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics(),
+      narrative: narrative(),
+      language: "es",
+      ...overrides,
+    });
+  }
+
+  it("puts the review at the top under a heading in the configured language, and everything else in one collapsed block", () => {
+    const md = publishNarrated().summaryMarkdown;
+    const lines = md.split("\n");
+
+    expect(lines.slice(0, 3)).toEqual(["## Revisión", "", NARRATIVE.split("\n")[0]]);
+    expect(md).toContain(NARRATIVE);
+    const detailsAt = md.indexOf("<details>\n<summary>Jevest details</summary>");
+    expect(detailsAt).toBeGreaterThan(md.indexOf("**Veredicto: necesita cambios.**"));
+    // Exactly one top-level collapsed block, and the report lives inside it.
+    const inside = md.slice(detailsAt);
+    for (const section of [
+      "### Triage",
+      "### Intent vs change",
+      "### Skipped hunks",
+      "### Needs human review",
+      "### Cost breakdown",
+      "### Merge gate",
+      "### Efficiency",
+    ]) {
+      expect(inside).toContain(section);
+      expect(md.indexOf(section)).toBeGreaterThan(detailsAt);
+    }
+    expect(md.trimEnd().endsWith("</details>")).toBe(true);
+    expect(md).not.toContain("## Jevest review");
+  });
+
+  it("uses an English heading for en and falls back to 'Review' for an unknown language", () => {
+    expect(publishNarrated({ language: "en" }).summaryMarkdown.startsWith("## Review\n")).toBe(
+      true,
+    );
+    expect(publishNarrated({ language: "es-AR" }).summaryMarkdown.startsWith("## Revisión\n")).toBe(
+      true,
+    );
+    expect(publishNarrated({ language: "tlh" }).summaryMarkdown.startsWith("## Review\n")).toBe(
+      true,
+    );
+  });
+
+  it("keeps the 'LLM review failed' warning visible, outside the collapsed block", () => {
+    const md = publishNarrated({
+      review: makeReview({
+        reviews: [okEntry("a.ts#0", "a.ts"), failedEntry("b.ts#0", "b.ts", OAUTH_ERROR)],
+      }),
+    }).summaryMarkdown;
+    const warningAt = md.indexOf("### ⚠️ LLM review failed");
+    expect(warningAt).toBeGreaterThan(md.indexOf(NARRATIVE));
+    expect(warningAt).toBeLessThan(md.indexOf("<details>\n<summary>Jevest details</summary>"));
+    expect(md.split("### ⚠️ LLM review failed")).toHaveLength(2);
+  });
+
+  it("reports the narrative's cost and model with the efficiency numbers", () => {
+    const md = publishNarrated().summaryMarkdown;
+    const efficiency = md.split("### Efficiency")[1] ?? "";
+    expect(efficiency).toContain("- Review narrative: 2300 tokens · $0.0105 (claude-sonnet-5)");
+  });
+
+  it("fingerprints the deterministic report only: the narrative text, its cost and the layout never change it (NFR-12)", () => {
+    const plain = publishNarrated({ narrative: null });
+    const narrated = publishNarrated();
+    const reworded = publishNarrated({
+      narrative: narrative({ markdown: "Otra redacción.", costUsd: 0.03, latencyMs: 5 }),
+    });
+    const failed = publishNarrated({
+      narrative: narrative({ markdown: null, note: "The review narrative failed (x)." }),
+    });
+
+    expect(narrated.summaryMarkdown).not.toBe(reworded.summaryMarkdown);
+    expect(new Set([plain, narrated, reworded, failed].map((p) => p.summaryFingerprint)).size).toBe(
+      1,
+    );
+  });
+
+  it("falls back to today's report with a one-line note when the narrative failed or was skipped", () => {
+    const note =
+      "The review narrative failed (claude-cli timed out); showing the full Jevest report instead.";
+    const plain = publishNarrated({ narrative: null });
+    const failed = publishNarrated({ narrative: narrative({ markdown: null, note }) });
+
+    expect(failed.summaryMarkdown).toBe(`> ${note}\n\n${plain.summaryMarkdown}`);
+    expect(plain.summaryMarkdown.startsWith("## Jevest review\n")).toBe(true);
+    expect(plain.summaryMarkdown).not.toContain("<summary>Jevest details</summary>");
+  });
+
+  it("changes neither the inline comments, the labels nor the check", () => {
+    const plain = publishNarrated({ narrative: null });
+    const narrated = publishNarrated();
+    expect(narrated.inlineComments).toEqual(plain.inlineComments);
+    expect(narrated.labelsToAdd).toEqual(plain.labelsToAdd);
+    expect(narrated.labelsToRemove).toEqual(plain.labelsToRemove);
+    expect(narrated.check).toEqual(plain.check);
   });
 });

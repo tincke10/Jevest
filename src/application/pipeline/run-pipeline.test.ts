@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { JevestConfig } from "../../adapters/config/jevest-config.js";
+import { createFakeNarrator, fakeNarrativeOutput } from "../../adapters/narrators/fake-narrator.js";
 import { createFakeSpendLedger } from "../../adapters/spend-ledger/fake-spend-ledger.js";
 import type { CalibrationMap } from "../../domain/calibration.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
@@ -9,7 +10,9 @@ import type {
   ChangeSummaryOutput,
 } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
+import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port.js";
 import type { ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
+import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../../domain/pull-request.js";
 import { parseProductContext } from "../context/product-context.js";
@@ -67,7 +70,12 @@ const policyConfig: ConfidencePolicyConfig = {
 
 function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
   return {
-    reviewer: { provider: "anthropic", model: "claude-sonnet-5" },
+    reviewer: {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+    },
     thresholds: policyConfig,
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
     publish: { inlineComments: true },
@@ -485,7 +493,9 @@ describe("runPipeline", () => {
     const result = await runPipeline({
       ref,
       ports: { vcs, decision, reviewer: trackedReviewer },
-      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+      config: makeConfig({
+        reviewer: { provider: "none", model: undefined, language: "es", narrative: false },
+      }),
     });
 
     expect(reviewerCalled).toBe(false);
@@ -535,7 +545,9 @@ describe("runPipeline", () => {
     const result = await runPipeline({
       ref,
       ports: { vcs, decision },
-      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+      config: makeConfig({
+        reviewer: { provider: "none", model: undefined, language: "es", narrative: false },
+      }),
     });
 
     expect(result.failedClosed).toBe(false);
@@ -1092,7 +1104,14 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     const result = await runPipeline({
       ref,
       ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer: nominal },
-      config: makeConfig({ reviewer: { provider: "claude-cli", model: "claude-opus-5" } }),
+      config: makeConfig({
+        reviewer: {
+          provider: "claude-cli",
+          model: "claude-opus-5",
+          language: "es",
+          narrative: true,
+        },
+      }),
     });
     expect(result.triage?.summaryCostUsd).toBe(0.0131);
 
@@ -1100,7 +1119,14 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     const opus = await runPipeline({
       ref,
       ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer(), summarizer: priced },
-      config: makeConfig({ reviewer: { provider: "anthropic", model: "claude-opus-5" } }),
+      config: makeConfig({
+        reviewer: {
+          provider: "anthropic",
+          model: "claude-opus-5",
+          language: "es",
+          narrative: true,
+        },
+      }),
     });
     // Opus 5: $5/MTok input.
     expect(opus.triage?.summaryCostUsd).toBeCloseTo(5, 6);
@@ -1127,7 +1153,9 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     const result = await runPipeline({
       ref,
       ports: { vcs, decision: mediumRiskPort() },
-      config: makeConfig({ reviewer: { provider: "none", model: undefined } }),
+      config: makeConfig({
+        reviewer: { provider: "none", model: undefined, language: "es", narrative: false },
+      }),
     });
     expect(result.failedClosed).toBe(false);
     expect(result.triage?.changeSummary).toBeNull();
@@ -1537,5 +1565,266 @@ describe("runPipeline efficiency metrics (H2 / H4)", () => {
     expect(result.metrics.llm.hunks.total).toBe(2);
     expect(result.metrics.llm.hunks.reviewed).toBe(1);
     expect(result.metrics.llm.hunks.skipped.budget).toBe(1);
+  });
+});
+
+/** Medium risk so the full pipeline runs; one finding at `a.ts#0` that Jev keeps (auto band). */
+function fullRunWithFindingPort(): DecisionPort {
+  return scriptedPort({
+    ...HIGH_RISK_TRIAGE_SCRIPT,
+    risk: {
+      type: "score",
+      score: 2,
+      confidence: 0.95,
+      legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+      probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+    },
+    change_kind: {
+      type: "choice",
+      choice: "modify-behavior",
+      confidence: 0.9,
+      probabilities: { "modify-behavior": 0.9 },
+    },
+    touches_error_handling: { type: "noul", noul: 0.1 },
+    touches_async: { type: "noul", noul: 0.1 },
+    contains_reviewer_instructions: { type: "noul", noul: 0.02 },
+    "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.99 },
+    "a.ts#0-f0__severity": {
+      type: "score",
+      score: 2,
+      confidence: 0.8,
+      legend: { 0: "nit", 1: "minor", 2: "major", 3: "critical" },
+      probabilities: { 0: 0.1, 1: 0.1, 2: 0.7, 3: 0.1 },
+    },
+    "a.ts#0-f0__is_style_only": { type: "noul", noul: 0.05 },
+    "a.ts#0-f0__actionable": { type: "noul", noul: 0.9 },
+    // Above the medium-risk auto bar (0.97): a green gate.
+    safe_to_automerge: { type: "noul", noul: 0.99 },
+  });
+}
+
+const OFF_BY_ONE: ReviewOutput["findings"][number] = {
+  lineStart: 1,
+  lineEnd: 1,
+  claim: "off-by-one",
+  rationale: "uses <= instead of <",
+  suggestedSeverity: "major",
+};
+
+function failingReviewer(message = "anthropic reviewer authentication failed (401)"): ReviewerPort {
+  return {
+    async review() {
+      throw new Error(message);
+    },
+  };
+}
+
+describe("runPipeline when every reviewer call failed (NFR-2 fail closed)", () => {
+  it("is never auto-merge-ok: the check is at most neutral and the PR goes to a human", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: fullRunWithFindingPort(),
+        reviewer: failingReviewer(),
+      },
+      config: makeConfig(),
+    });
+
+    expect(result.failedClosed).toBe(false);
+    // Jev's gate saw zero findings and said "safe"; the code overrides it.
+    expect(result.mergeGate?.conclusion).toBe("success");
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
+    expect(result.publication.labelsToAdd).toContain("jevest:needs-human");
+    expect(result.publication.summaryMarkdown).toContain("### ⚠️ LLM review failed");
+  });
+});
+
+describe("runPipeline colleague review (narrator)", () => {
+  const NARRATIVE =
+    "Cambio chico y claro.\n\n- `a.ts:1`: ...\n\n**Veredicto: listo para mergear.**";
+
+  function run(
+    overrides: {
+      narrator?: ReviewNarratorPort;
+      reviewer?: ReviewerPort;
+      decision?: DecisionPort;
+      config?: Partial<JevestConfig>;
+      spendLedger?: SpendLedgerPort;
+      pr?: PullRequestData;
+    } = {},
+  ) {
+    const vcs = makeVcs(overrides.pr ?? makePr());
+    return runPipeline({
+      ref,
+      ports: {
+        vcs,
+        decision: overrides.decision ?? fullRunWithFindingPort(),
+        reviewer: overrides.reviewer ?? fakeReviewer([OFF_BY_ONE]),
+        ...(overrides.narrator ? { narrator: overrides.narrator } : {}),
+        ...(overrides.spendLedger ? { spendLedger: overrides.spendLedger } : {}),
+      },
+      config: makeConfig(overrides.config),
+      now: () => new Date("2026-09-21T16:00:00.000Z"),
+    });
+  }
+
+  it("narrates after the filter from the kept findings, in the configured language, with the check's verdict, and puts the review on top", async () => {
+    const narrator = createFakeNarrator(() =>
+      fakeNarrativeOutput(NARRATIVE, { nominalCostUsd: 0.02, model: "claude-sonnet-5" }),
+    );
+    const result = await run({
+      narrator,
+      config: {
+        reviewer: {
+          provider: "anthropic",
+          model: "claude-sonnet-5",
+          language: "es",
+          narrative: true,
+        },
+      },
+    });
+
+    expect(narrator.calls).toHaveLength(1);
+    const input = narrator.calls[0]!;
+    expect(input.language).toBe("es");
+    expect(input.verdict).toBe("ready-to-merge");
+    expect(input.title).toBe("Fix off-by-one");
+    expect(input.findings).toEqual([
+      expect.objectContaining({ claim: "off-by-one", needsHuman: false }),
+    ]);
+    expect(result.narrative?.markdown).toBe(NARRATIVE);
+    expect(result.publication.summaryMarkdown.startsWith(`## Revisión\n\n${NARRATIVE}`)).toBe(true);
+    expect(result.publication.summaryMarkdown).toContain("<summary>Jevest details</summary>");
+    expect(result.publication.inlineComments).toHaveLength(1);
+  });
+
+  it("counts the narrative in costUsd and books it in the ledger with the run (one entry)", async () => {
+    const spendLedger = createFakeSpendLedger();
+    const result = await run({
+      narrator: createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE, { nominalCostUsd: 0.02 })),
+      spendLedger,
+    });
+
+    expect(result.costUsd).toBeCloseTo(result.review!.totalCostUsd + 0.02, 10);
+    expect(spendLedger.entries).toHaveLength(1);
+    expect(spendLedger.entries[0]!.llmUsd).toBeCloseTo(result.review!.totalCostUsd + 0.02, 10);
+  });
+
+  it("still books the review spend when a later stage fails closed", async () => {
+    const spendLedger = createFakeSpendLedger();
+    const base = fullRunWithFindingPort();
+    const decision: DecisionPort = {
+      async decide(state, questions) {
+        if ("safe_to_automerge" in questions) throw new Error("jev down at the gate");
+        return base.decide(state, questions);
+      },
+    } as DecisionPort;
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+
+    const result = await run({ decision, spendLedger, narrator });
+
+    expect(result.failedClosed).toBe(true);
+    expect(narrator.calls).toHaveLength(0);
+    expect(spendLedger.entries).toHaveLength(1);
+    expect(spendLedger.entries[0]!.llmUsd).toBe(result.review!.totalCostUsd);
+  });
+
+  it("never fails the run when the narrator fails: the plain report, headed by a one-line note", async () => {
+    const result = await run({
+      narrator: createFakeNarrator(() => {
+        throw new Error("claude-cli reviewer timed out after 180000ms");
+      }),
+    });
+
+    expect(result.failedClosed).toBe(false);
+    expect(result.narrative?.markdown).toBeNull();
+    expect(result.costUsd).toBe(result.review!.totalCostUsd);
+    expect(result.publication.summaryMarkdown).toMatch(
+      /^> The review narrative failed \(claude-cli reviewer timed out after 180000ms\); showing the full Jevest report instead\.\n\n## Jevest review\n/,
+    );
+  });
+
+  it("does not call the narrator when reviewer.narrative is false", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const result = await run({
+      narrator,
+      config: {
+        reviewer: {
+          provider: "anthropic",
+          model: "claude-sonnet-5",
+          language: "es",
+          narrative: false,
+        },
+      },
+    });
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative).toBeNull();
+    expect(result.publication.summaryMarkdown.startsWith("## Jevest review\n")).toBe(true);
+  });
+
+  it("skips the narrator silently when every reviewer call failed (the visible warning already says why)", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const result = await run({ narrator, reviewer: failingReviewer() });
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative).toBeNull();
+    expect(result.publication.summaryMarkdown.startsWith("## Jevest review\n")).toBe(true);
+  });
+
+  it("skips the narrator on a Jev-only run: spend cap reached", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const spendLedger = createFakeSpendLedger({
+      seed: { periodKey: "2026-09", spentUsd: 50, runs: 3, updatedAt: "2026-09-20T00:00:00Z" },
+    });
+    const result = await run({ narrator, spendLedger });
+    expect(result.reviewSkippedForSpendCap).toBe(true);
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative).toBeNull();
+  });
+
+  it("skips the narrator, with a note, when the per-run budget is already spent", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const result = await run({ narrator, config: { budgetUsd: 0.0001 } });
+    expect(result.review?.budgetExceeded).toBe(true);
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative?.note).toBe(
+      "The review narrative was skipped (the per-run budgetUsd is spent); showing the full Jevest report instead.",
+    );
+  });
+
+  it("skips the narrator, with a note, when the diff carries instructions addressed to a reviewer (NFR-7)", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const base = fullRunWithFindingPort();
+    const decision: DecisionPort = {
+      async decide(state, questions) {
+        const response = await base.decide(state, questions);
+        if ("contains_reviewer_instructions" in questions) {
+          return {
+            ...response,
+            answers: {
+              ...response.answers,
+              contains_reviewer_instructions: { type: "noul", noul: 0.9 },
+            },
+          };
+        }
+        return response;
+      },
+    } as DecisionPort;
+
+    const result = await run({ narrator, decision });
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative?.note).toContain(
+      "suspected instructions to a reviewer in the pull request",
+    );
+  });
+
+  it("never narrates a triage-only run (FR-2.3)", async () => {
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput(NARRATIVE));
+    const result = await run({ narrator, decision: scriptedPort(HIGH_RISK_TRIAGE_SCRIPT) });
+    expect(result.review).toBeNull();
+    expect(narrator.calls).toHaveLength(0);
+    expect(result.narrative).toBeNull();
   });
 });

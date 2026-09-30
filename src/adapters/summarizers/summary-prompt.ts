@@ -34,16 +34,19 @@ Fill the structured output as follows:
 
 const PATCH_TRUNCATED_NOTE = "\n[patch truncated for size]";
 
+/** Cuts a patch at MAX_PATCH_CHARS with an explicit note; shared with the review narrator's prompt. */
+export function truncatePatch(patch: string): string {
+  return patch.length > MAX_PATCH_CHARS
+    ? `${patch.slice(0, MAX_PATCH_CHARS)}${PATCH_TRUNCATED_NOTE}`
+    : patch;
+}
+
 function formatFile(file: SummarizedFile): string {
   const header = `### ${file.path} (${file.status}, +${file.additions}/-${file.deletions})`;
   if (file.patch === undefined || file.patch === "") {
     return `${header}\n(no patch available: binary file or patch not returned)`;
   }
-  const patch =
-    file.patch.length > MAX_PATCH_CHARS
-      ? `${file.patch.slice(0, MAX_PATCH_CHARS)}${PATCH_TRUNCATED_NOTE}`
-      : file.patch;
-  return `${header}\n\`\`\`diff\n${patch}\n\`\`\``;
+  return `${header}\n\`\`\`diff\n${truncatePatch(file.patch)}\n\`\`\``;
 }
 
 /** Builds the per-request user message from files and patches only. */

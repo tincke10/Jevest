@@ -109,10 +109,21 @@ export const REVIEWER_PROVIDERS = [
 ] as const;
 export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 
+// Colleague review: `language` is the language the review narrative is
+// written in (any language code or name the model understands; "es" by
+// default). `narrative` turns the per-PR narrator call on or off; left
+// unset it follows the provider (on for any LLM, off for "none"), and an
+// explicit `true` without an LLM is a config error, like
+// `triage.changeSummary: always`. The narrator uses the reviewer's
+// provider, model and credential.
+const DEFAULT_REVIEW_LANGUAGE = "es";
+
 const reviewerSchema = z
   .object({
     provider: z.enum(REVIEWER_PROVIDERS),
     model: z.string().min(1).optional(),
+    language: z.string().trim().min(1).default(DEFAULT_REVIEW_LANGUAGE),
+    narrative: z.boolean().optional(),
   })
   .superRefine((r, ctx) => {
     if (r.provider !== "none" && !r.model) {
@@ -120,6 +131,14 @@ const reviewerSchema = z
         code: "custom",
         path: ["model"],
         message: `reviewer.model is required when reviewer.provider is "${r.provider}"`,
+      });
+    }
+    if (r.provider === "none" && r.narrative === true) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["narrative"],
+        message:
+          'reviewer.narrative true needs an LLM to write the review: set reviewer.provider to something other than "none" (or drop reviewer.narrative)',
       });
     }
   });
@@ -236,6 +255,10 @@ export interface JevestConfig {
   readonly reviewer: {
     readonly provider: ReviewerProvider;
     readonly model: string | undefined;
+    /** Language of the review narrative, e.g. "es" (default) or "en". */
+    readonly language: string;
+    /** Resolved: the explicit value, else true for any LLM provider and false for "none". */
+    readonly narrative: boolean;
   };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
@@ -321,7 +344,12 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
   }
 
   return {
-    reviewer: { provider: result.data.reviewer.provider, model: result.data.reviewer.model },
+    reviewer: {
+      provider: result.data.reviewer.provider,
+      model: result.data.reviewer.model,
+      language: result.data.reviewer.language,
+      narrative: result.data.reviewer.narrative ?? result.data.reviewer.provider !== "none",
+    },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,
     publish: result.data.publish,

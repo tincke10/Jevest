@@ -76,6 +76,45 @@ budgetUsd: 1
 
 Point `config-path` elsewhere if you'd rather not use the repo root.
 
+### Colleague review (`reviewer.narrative`, `reviewer.language`)
+
+The top of the summary comment reads like a senior colleague's review: a
+one- or two-sentence take on the change, then each point tied to
+`file:line` saying what to change and why, then a bold verdict line
+(ready to merge, needs changes, or worth a human look) that agrees with
+the `jevest` check. One extra LLM call per PR writes it, after the finding
+filter:
+
+```yaml
+reviewer:
+  provider: anthropic
+  model: claude-sonnet-5
+  language: es     # default "es"; any language code or name the model understands
+  narrative: true  # default: true for any LLM provider, false for provider none
+```
+
+- **It never reviews on its own.** The narrator sees the PR title and
+  description, the changed file paths, the diff of the hunks the reviewer
+  actually reviewed, and ONLY the findings Jev kept for publishing plus
+  the needs-human ones (phrased as questions, not assertions). The
+  low-confidence and discarded findings never reach it, and its prompt
+  forbids raising anything that is not in that list: the diff is context
+  for phrasing only. With no findings it says so briefly and names what it
+  reviewed.
+- **Same provider, model and secret as the reviewer**, like the change
+  summary. Its cost counts against `budgetUsd` and the spend ledger, and
+  shows in the "Efficiency" section as `Review narrative: <tokens> · $<cost>
+  (<model>)`.
+- **It never fails the run.** If the call fails, the comment falls back to
+  the full report, headed by one line: "The review narrative failed
+  (<reason>); showing the full Jevest report instead." It is skipped with
+  a similar line when the per-run budget is already spent, or when Jev
+  suspected instructions to a reviewer in the PR (the author's text would
+  otherwise steer the comment). It is skipped silently when there was no
+  real LLM review to narrate: `provider: none`, the spend cap reached, a
+  triage-only run, or every reviewer call failed.
+- `narrative: true` with `provider: none` is a config error.
+
 ### Finding filter mode
 
 `findingFilter.mode` controls what stage 4 does with a low-confidence
@@ -441,11 +480,20 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 
 - **Inline comments** on high-band findings only, upserted in place on
   re-runs of the same commit — never duplicated (NFR-12).
-- **One summary comment**, also upserted in place, with the triage
-  decision, an "Intent vs change" section (what the diff summary says
-  changes, product areas touched with their criticality, whether the
+- **One summary comment**, also upserted in place. With the colleague
+  review on (see "Colleague review" above), it opens with the review in
+  natural language; below it, only when some reviewer call failed, the
+  "⚠️ LLM review failed" warning stays visible; everything else sits in
+  one collapsed `<details><summary>Jevest details</summary>` block: the
+  triage decision, an "Intent vs change" section (what the diff summary
+  says changes, product areas touched with their criticality, whether the
   description matches the change), hunks skipped and why, findings sent
-  to a human review queue, and the run's cost.
+  to a human review queue, the run's cost, the merge gate and
+  "Efficiency". Without a narrative the comment is that same report,
+  uncollapsed. The comment's fingerprint covers the deterministic report
+  only, never the narrative: an LLM rewording the same findings is not a
+  new review (NFR-12), while the comment body is still updated in place
+  on every run.
 - **Labels**, added/removed per the triage and merge-gate outcome (e.g.
   `jevest:needs-human`, `jevest:auto-merge-ok`,
   `jevest:description-mismatch`, `jevest:needs-product-owner`,
@@ -462,6 +510,21 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 The summary comment ends with an "Efficiency" section, on every run that
 gets past triage's Jev call (a triage-only run has it too; a fail-closed
 run does not):
+
+For example, the top of a comment with the colleague review on:
+
+```markdown
+## Revisión
+
+<the narrative: overall take, one bullet per finding at `file:line`, verdict line>
+
+<details>
+<summary>Jevest details</summary>
+
+### Triage
+...
+</details>
+```
 
 ```
 ### Efficiency
@@ -574,6 +637,15 @@ the PR. Whether the *workflow job itself* also fails is controlled by the
 Every degraded-input case inside the pipeline also fails closed by design
 (NFR-2): if Jev doesn't respond, triage assumes high risk, the finding
 filter publishes everything as "unverified", and the merge gate goes red.
+
+The LLM reviewer failing is handled the same way when it fails on EVERY
+hunk it was given (an expired token, a 401): zero findings from a
+reviewer that never answered is not a clean review, so the check is at
+most `neutral` whatever Jev's merge gate said, `jevest:auto-merge-ok` is
+never applied, the PR gets `jevest:needs-human` and a line in "Needs
+human review", and the colleague review is not written. A partial failure
+keeps the gate's conclusion and shows the "LLM review failed" warning
+naming the failed files.
 
 One exception, by design: a missing or invalid **input** (e.g. a required
 secret was never set on the workflow) always crashes the job with a

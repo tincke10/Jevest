@@ -29,11 +29,25 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * a triage skip never profiled (so the counterfactual can price them).
  * The metrics are computed once BEFORE publish, so the summary comment
  * can carry them, and once after, so `metrics.wallTime` includes publish.
+ *
+ * Colleague review: after the merge gate, one narrator call writes the
+ * top of the summary comment from the findings Jev kept (stages/narrate.ts),
+ * when `reviewer.narrative` is on and a ReviewNarratorPort is wired. It is
+ * skipped — never failing the run — when the LLM review did not really
+ * happen (Jev-only, spend cap reached, every reviewer call failed), when
+ * the per-run budget is already spent, and when injected instructions were
+ * suspected (the author's text and diff would reach an LLM that writes
+ * the comment). Its cost is LLM money like the review's: it counts in
+ * `costUsd` and in the ONE ledger write of the run, which therefore
+ * happens after the narrator — or, on a fail-closed exit after the review
+ * stage, right before publishing that failure, so spent money is never
+ * lost from the total.
  */
 import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
+import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
@@ -59,8 +73,11 @@ import {
   runHunkProfileStage,
 } from "./stages/hunk-profile.js";
 import { type MergeGateStageResult, runMergeGateStage } from "./stages/merge-gate.js";
+import { type NarrateStageResult, narrativeSkipped, runNarrateStage } from "./stages/narrate.js";
 import {
+  allReviewsFailed,
   buildFailClosedPublication,
+  resolvePublishConclusion,
   runPublishStage,
   runTriageOnlyPublishStage,
 } from "./stages/publish.js";
@@ -80,6 +97,12 @@ export interface RunPipelineInput {
      * under "auto" it is used when present, under "never" it is ignored.
      */
     readonly summarizer?: ChangeSummarizerPort;
+    /**
+     * Writes the colleague review (stages/narrate.ts). Used only when
+     * `config.reviewer.narrative` is true; without it the comment is the
+     * plain report, exactly as before.
+     */
+    readonly narrator?: ReviewNarratorPort;
     /**
      * Cumulative spend ledger behind `config.spendCap` (NFR-10). Optional:
      * without it the cap is not enforced and `spendCap` in the result is
@@ -114,6 +137,8 @@ export interface PipelineResult {
   readonly review: ReviewStageResult | null;
   readonly findingFilter: FindingFilterStageResult | null;
   readonly mergeGate: MergeGateStageResult | null;
+  /** The colleague review; `null` when the narrator was not configured or not applicable (see the module doc). */
+  readonly narrative: NarrateStageResult | null;
   readonly publication: import("../../domain/ports/vcs-port.js").ReviewPublication;
   /**
    * Convenience top-level mirrors of `publication.check` and the
@@ -124,7 +149,7 @@ export interface PipelineResult {
   readonly findingsPublished: number;
   /** `findingFilter.lowConfidence.length` (`mode: "annotate"` only; 0 in `mode: "discard"`). See stages/finding-filter.ts. */
   readonly findingsLowConfidence: number;
-  /** LLM money spent on this run: the review stage plus the change summary. */
+  /** LLM money spent on this run: the review stage, the change summary and the review narrative. */
   readonly costUsd: number;
   /**
    * Cumulative spend cap state (NFR-10) AFTER this run was recorded, or the
@@ -162,12 +187,14 @@ function summaryFields(
   findingFilter: FindingFilterStageResult | null,
   review: ReviewStageResult | null,
   triage: TriageStageResult | null = null,
+  narrative: NarrateStageResult | null = null,
 ): Pick<PipelineResult, "check" | "findingsPublished" | "findingsLowConfidence" | "costUsd"> {
   return {
     check: publication.check,
     findingsPublished: findingFilter?.published.length ?? 0,
     findingsLowConfidence: findingFilter?.lowConfidence.length ?? 0,
-    costUsd: (review?.totalCostUsd ?? 0) + (triage?.summaryCostUsd ?? 0),
+    costUsd:
+      (review?.totalCostUsd ?? 0) + (triage?.summaryCostUsd ?? 0) + (narrative?.costUsd ?? 0),
   };
 }
 
@@ -235,13 +262,13 @@ async function readSpendCap(
 }
 
 /**
- * Books this run into the ledger right after the review stage — before
- * finding-filter/merge-gate can fail closed — so LLM money already spent
- * is never lost from the total. Jev's share counts triage + hunk-profile
- * input tokens (the stages that ran so far); finding-filter and merge-gate
- * tokens are left out on purpose, a rounding error at $0.042/MTok that is
- * not worth a second ledger write. Returns the post-run evaluation, or the
- * pre-run one when recording fails (again reported, never fatal).
+ * Books this run into the ledger, once: after the narrator on a full run,
+ * or right before publishing a fail-closed result past the review stage,
+ * so LLM money already spent is never lost from the total. Jev's share
+ * counts triage + hunk-profile input tokens; finding-filter and merge-gate
+ * tokens are left out on purpose, a rounding error at $0.042/MTok. Returns
+ * the post-run evaluation, or the pre-run one when recording fails (again
+ * reported, never fatal).
  */
 async function recordSpend(
   spendLedger: SpendLedgerPort,
@@ -333,6 +360,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       failedClosed: true,
       failureReason: stage,
       ...stages,
+      narrative: null,
       publication,
       ...summaryFields(publication, stages.findingFilter, stages.review, stages.triage),
       ...spendFields,
@@ -424,6 +452,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       failedClosed: false,
       failureReason: null,
       ...stages,
+      narrative: null,
       publication,
       ...summaryFields(publication, null, null, triage),
       ...spendFields,
@@ -457,6 +486,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   // fail-closed doesn't apply to this call. reviewer.provider: "none" is
   // Jev-only mode: the review stage never runs at all, no LLM key needed.
   // A reached spend cap takes the same path (see above).
+  // The change summary already spent part of this run's budget (H7).
+  const reviewBudgetUsd = Math.max(
+    0,
+    (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
+  );
   let review: ReviewStageResult;
   if (reviewDisabled || reviewSkippedForSpendCap) {
     review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
@@ -473,30 +507,31 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         reviewerPort,
         // config validation guarantees model is set whenever provider isn't "none".
         pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
-        // The change summary already spent part of this run's budget (H7).
-        budgetUsd: Math.max(
-          0,
-          (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
-        ),
+        budgetUsd: reviewBudgetUsd,
       }),
     );
   }
 
-  if (ports.spendLedger) {
+  // The run's single ledger write (see `recordSpend`); `extraLlmUsd` is the
+  // narrative's cost on a full run, 0 on a fail-closed exit.
+  const bookRunSpend = async (extraLlmUsd: number): Promise<SpendFields> => {
+    if (!ports.spendLedger) {
+      return spend;
+    }
     const recorded = await recordSpend(
       ports.spendLedger,
       input,
       now,
       preRun.evaluation,
       triage.usage.inputTokens + hunkProfile.totalUsage.inputTokens,
-      review.totalCostUsd + triage.summaryCostUsd,
+      review.totalCostUsd + triage.summaryCostUsd + extraLlmUsd,
     );
-    spend = {
+    return {
       spendCap: recorded.evaluation,
       reviewSkippedForSpendCap,
       spendLedgerError: [preRun.error, recorded.error].filter((e) => e !== null).join("; ") || null,
     };
-  }
+  };
 
   const hunksById = new Map(hunkProfile.hunks.map((h) => [h.id, h.diff]));
   let findingFilter: FindingFilterStageResult;
@@ -519,7 +554,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     return failClosed(
       "finding-filter",
       { triage, hunkProfile, review, findingFilter: null, mergeGate: null },
-      spend,
+      await bookRunSpend(0),
     );
   }
 
@@ -554,11 +589,23 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     return failClosed(
       "merge-gate",
       { triage, hunkProfile, review, findingFilter, mergeGate: null },
-      spend,
+      await bookRunSpend(0),
     );
   }
 
   const stages = { triage, hunkProfile, review, findingFilter, mergeGate };
+  const narrative = await narrate({
+    input,
+    pr,
+    stages,
+    reviewRan: !reviewDisabled && !reviewSkippedForSpendCap,
+    injectionSuspected:
+      containsInjectedInstructionsHigh ||
+      injectedInstructionsInDiffWord(hunkProfile.injectedInstructionsInDiff.maxProb) === "yes",
+    remainingBudgetUsd: reviewBudgetUsd - review.totalCostUsd,
+  });
+  spend = await bookRunSpend(narrative?.costUsd ?? 0);
+
   const publication = runPublishStage({
     ...stages,
     inlineCommentsEnabled: config.publish.inlineComments,
@@ -567,6 +614,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     reviewSkippedForSpendCap: spend.reviewSkippedForSpendCap,
     spendLedgerError: spend.spendLedgerError,
     metrics: metricsFor(stages),
+    narrative,
+    language: config.reviewer.language,
   });
   await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
@@ -575,9 +624,60 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     failedClosed: false,
     failureReason: null,
     ...stages,
+    narrative,
     publication,
-    ...summaryFields(publication, findingFilter, review, triage),
+    ...summaryFields(publication, findingFilter, review, triage, narrative),
     ...spend,
     metrics: metricsFor(stages),
   };
+}
+
+interface NarrateInput {
+  readonly input: RunPipelineInput;
+  readonly pr: import("../../domain/pull-request.js").PullRequestData;
+  readonly stages: {
+    readonly triage: TriageStageResult;
+    readonly hunkProfile: HunkProfileStageResult;
+    readonly review: ReviewStageResult;
+    readonly findingFilter: FindingFilterStageResult;
+    readonly mergeGate: MergeGateStageResult;
+  };
+  /** False in Jev-only mode and when the spend cap skipped the review stage. */
+  readonly reviewRan: boolean;
+  readonly injectionSuspected: boolean;
+  /** What is left of this run's budget after the summary and the review. */
+  readonly remainingBudgetUsd: number;
+}
+
+/**
+ * Whether and how the colleague review runs (see the module doc). `null`
+ * means "not applicable, say nothing": no narrator configured, or no real
+ * LLM review to narrate (the comment already explains why). A skip the
+ * reader would not otherwise understand gets a note instead.
+ */
+async function narrate(args: NarrateInput): Promise<NarrateStageResult | null> {
+  const { input, stages } = args;
+  const narrator = input.ports.narrator;
+  if (!input.config.reviewer.narrative || narrator === undefined || !args.reviewRan) {
+    return null;
+  }
+  if (allReviewsFailed(stages.review)) {
+    return null;
+  }
+  if (stages.review.budgetExceeded || args.remainingBudgetUsd <= 0) {
+    return narrativeSkipped("the per-run budgetUsd is spent");
+  }
+  if (args.injectionSuspected) {
+    return narrativeSkipped("suspected instructions to a reviewer in the pull request");
+  }
+  return runNarrateStage({
+    pr: args.pr,
+    hunkProfile: stages.hunkProfile,
+    review: stages.review,
+    findingFilter: stages.findingFilter,
+    conclusion: resolvePublishConclusion(stages).conclusion,
+    narrator,
+    language: input.config.reviewer.language,
+    pricing: pricingForModel(input.config.reviewer.model ?? input.config.reviewer.provider),
+  });
 }

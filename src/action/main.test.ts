@@ -14,6 +14,7 @@ import {
   ActionInputError,
   type ActionInputs,
   buildOutputLines,
+  createNarrator,
   createReviewer,
   createSummarizer,
   loadPullRequestRefFromEvent,
@@ -120,7 +121,13 @@ describe("pullRequestRefFromEventPayload", () => {
 
 function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestConfig {
   return {
-    reviewer: { provider: "anthropic", model: "claude-sonnet-5", ...overrides },
+    reviewer: {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+      ...overrides,
+    },
     thresholds: {},
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
     publish: { inlineComments: true },
@@ -279,6 +286,69 @@ describe("createSummarizer", () => {
   it("builds a summarizer under always with an LLM provider (config validation forbids always + none)", () => {
     const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" }, "always");
     expect(createSummarizer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toBeDefined();
+  });
+});
+
+describe("createNarrator", () => {
+  function withNarrative(reviewer: Partial<JevestConfig["reviewer"]>): JevestConfig {
+    return makeConfig(reviewer);
+  }
+
+  it("returns undefined when reviewer.narrative is false, requiring no key", () => {
+    expect(
+      createNarrator(withNarrative({ provider: "anthropic", narrative: false }), makeInputs()),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined in Jev-only mode (provider none)", () => {
+    expect(
+      createNarrator(
+        withNarrative({ provider: "none", model: undefined, narrative: false }),
+        makeInputs(),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("builds a narrator for every LLM provider with the reviewer's credential", () => {
+    expect(
+      createNarrator(
+        withNarrative({ provider: "anthropic", model: "claude-sonnet-5" }),
+        makeInputs({ anthropicApiKey: "sk-ant-test" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createNarrator(
+        withNarrative({ provider: "openai", model: "gpt-5.6-luna" }),
+        makeInputs({ openaiApiKey: "sk-oa" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createNarrator(
+        withNarrative({ provider: "deepseek", model: "deepseek-v4-pro" }),
+        makeInputs({ deepseekApiKey: "sk-ds" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createNarrator(
+        withNarrative({ provider: "claude-cli", model: "claude-opus-5" }),
+        makeInputs({ claudeCodeOauthToken: "sk-ant-oat" }),
+      ),
+    ).toBeDefined();
+  });
+
+  it("throws naming the missing credential", () => {
+    expect(() =>
+      createNarrator(withNarrative({ provider: "anthropic", model: "m" }), makeInputs()),
+    ).toThrow(/anthropic-api-key/);
+    expect(() =>
+      createNarrator(withNarrative({ provider: "openai", model: "m" }), makeInputs()),
+    ).toThrow(/openai-api-key/);
+    expect(() =>
+      createNarrator(withNarrative({ provider: "deepseek", model: "m" }), makeInputs()),
+    ).toThrow(/deepseek-api-key/);
+    expect(() =>
+      createNarrator(withNarrative({ provider: "claude-cli", model: "m" }), makeInputs()),
+    ).toThrow(/claude-code-oauth-token/);
   });
 });
 
@@ -562,6 +632,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     review: null,
     findingFilter: null,
     mergeGate: null,
+    narrative: null,
     publication,
     check: publication.check,
     findingsPublished: 2,

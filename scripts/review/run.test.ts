@@ -91,7 +91,12 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
   it("reports usedDefault=true and returns the built-in defaults when the config file is missing", async () => {
     const { usedDefault, config } = await resolveConfig(join(dir, "missing.yml"));
     expect(usedDefault).toBe(true);
-    expect(config.reviewer).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+    expect(config.reviewer).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+      language: "es",
+      narrative: true,
+    });
   });
 });
 

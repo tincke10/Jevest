@@ -22,6 +22,11 @@
  * `.jevest.yml`), and the product context (`triage.productContextPath`)
  * is read from the BASE ref via `git show` in `--git` mode — the only mode
  * that has a base — and from the working tree in `--diff` mode.
+ *
+ * Colleague review: the review narrator follows the reviewer's mode too
+ * (dry-run stub, or the live provider) when `reviewer.narrative` is on.
+ * `--mode replay` has no recorded narratives, so it runs without one and
+ * `review.md` is the plain report.
  */
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -30,6 +35,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfig } from "../../src/adapters/config/jevest-config.js";
+import { createAnthropicNarrator } from "../../src/adapters/narrators/anthropic-narrator.js";
+import { createClaudeCliNarrator } from "../../src/adapters/narrators/claude-cli-narrator.js";
+import { createDeepSeekNarrator } from "../../src/adapters/narrators/deepseek-narrator.js";
+import { createOpenAiNarrator } from "../../src/adapters/narrators/openai-narrator.js";
 import { createRecordedDecisionAdapter } from "../../src/adapters/recorded-decision-adapter.js";
 import { createAnthropicReviewer } from "../../src/adapters/reviewers/anthropic-reviewer.js";
 import { createClaudeCliReviewer } from "../../src/adapters/reviewers/claude-cli-reviewer.js";
@@ -64,6 +73,7 @@ import {
 import type { Decision } from "../../src/domain/decision.js";
 import type { ChangeSummarizerPort } from "../../src/domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
+import type { ReviewNarratorPort } from "../../src/domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../src/domain/ports/reviewer-port.js";
 import type { PullRequestRef } from "../../src/domain/pull-request.js";
 
@@ -364,6 +374,73 @@ function buildSummarizerPort(mode: Mode, config: JevestConfig): ChangeSummarizer
   }
 }
 
+/** Never calls a real LLM — a plainly labeled narrative at zero cost. */
+function createDryRunNarrator(): ReviewNarratorPort {
+  return {
+    async narrate(input) {
+      return {
+        markdown: `Dry run: ${input.findings.length} finding(s) would be narrated here; no LLM was called.`,
+        model: "dry-run",
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+        latencyMs: 0,
+        requestId: "dry-run",
+        nominalCostUsd: 0,
+      };
+    },
+  };
+}
+
+/**
+ * The review narrator (colleague review), following the reviewer's mode
+ * and provider. `undefined` when `reviewer.narrative` is off (always the
+ * case for provider "none") and in replay mode, which has no recorded
+ * narratives: the pipeline then publishes the plain report.
+ */
+function buildNarratorPort(mode: Mode, config: JevestConfig): ReviewNarratorPort | undefined {
+  if (!config.reviewer.narrative || config.reviewer.provider === "none") {
+    return undefined;
+  }
+  switch (mode) {
+    case "dry-run":
+      return createDryRunNarrator();
+    case "live": {
+      const { model } = config.reviewer;
+      if (model === undefined) {
+        throw new Error(
+          `.jevest.yml: reviewer.model is required when reviewer.provider is "${config.reviewer.provider}"`,
+        );
+      }
+      switch (config.reviewer.provider) {
+        case "anthropic":
+          return createAnthropicNarrator({
+            client: new Anthropic({ apiKey: requireLiveKey("anthropic") }),
+            model,
+          });
+        case "deepseek":
+          return createDeepSeekNarrator({
+            client: new OpenAI({ apiKey: requireLiveKey("deepseek"), baseURL: DEEPSEEK_BASE_URL }),
+            model,
+          });
+        case "claude-cli":
+          requireLiveKey("claude-cli");
+          return createClaudeCliNarrator({ model });
+        default:
+          return createOpenAiNarrator({
+            client: new OpenAI({ apiKey: requireLiveKey("openai") }),
+            model,
+          });
+      }
+    }
+    case "replay":
+      return undefined;
+  }
+}
+
 export interface LocalProductContextOptions {
   readonly repoDir: string;
   /** `triage.productContextPath` from the config, relative to `repoDir`. */
@@ -518,6 +595,7 @@ async function main(): Promise<number> {
   const decision = buildDecisionPort(options.mode);
   const reviewer = buildReviewerPort(options.mode, config);
   const summarizer = buildSummarizerPort(options.mode, config);
+  const narrator = buildNarratorPort(options.mode, config);
   const fetchFileContent = options.gitRange ? createGitFileContentFetcher(repoDir) : undefined;
   const productContext = await resolveLocalProductContext({
     repoDir,
@@ -557,6 +635,7 @@ async function main(): Promise<number> {
       spendLedger,
       ...(reviewer ? { reviewer } : {}),
       ...(summarizer ? { summarizer } : {}),
+      ...(narrator ? { narrator } : {}),
     },
     config,
     productContext,

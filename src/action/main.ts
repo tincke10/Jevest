@@ -24,6 +24,10 @@ import { Octokit } from "@octokit/rest";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
+import { createAnthropicNarrator } from "../adapters/narrators/anthropic-narrator.js";
+import { createClaudeCliNarrator } from "../adapters/narrators/claude-cli-narrator.js";
+import { createDeepSeekNarrator } from "../adapters/narrators/deepseek-narrator.js";
+import { createOpenAiNarrator } from "../adapters/narrators/openai-narrator.js";
 import { createAnthropicReviewer } from "../adapters/reviewers/anthropic-reviewer.js";
 import { createClaudeCliReviewer } from "../adapters/reviewers/claude-cli-reviewer.js";
 import {
@@ -50,6 +54,7 @@ import {
   parseCalibrationFile,
 } from "../domain/calibration.js";
 import type { ChangeSummarizerPort } from "../domain/ports/change-summarizer-port.js";
+import type { ReviewNarratorPort } from "../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
 import type { PullRequestRef } from "../domain/pull-request.js";
@@ -317,6 +322,65 @@ export function createSummarizer(
 }
 
 /**
+ * The review narrator (colleague review), built exactly like the change
+ * summarizer: the reviewer's provider, model and credential. `undefined`
+ * when `reviewer.narrative` is false, which config resolution already makes
+ * the case for provider "none". The credential checks repeat the
+ * reviewer's so a narrator-only misconfiguration names the right input.
+ */
+export function createNarrator(
+  config: JevestConfig,
+  inputs: ActionInputs,
+): ReviewNarratorPort | undefined {
+  const { provider, model, narrative } = config.reviewer;
+  if (!narrative || provider === "none") {
+    return undefined;
+  }
+  if (model === undefined) {
+    throw new ActionInputError(
+      `.jevest.yml: reviewer.model is required when reviewer.provider is "${provider}"`,
+    );
+  }
+  if (provider === "anthropic") {
+    if (inputs.anthropicApiKey === undefined) {
+      throw new ActionInputError(
+        'input "anthropic-api-key" is required because .jevest.yml selects the anthropic reviewer (the review narrative uses it too)',
+      );
+    }
+    return createAnthropicNarrator({
+      client: new Anthropic({ apiKey: inputs.anthropicApiKey }),
+      model,
+    });
+  }
+  if (provider === "deepseek") {
+    if (inputs.deepseekApiKey === undefined) {
+      throw new ActionInputError(
+        'input "deepseek-api-key" is required because .jevest.yml selects the deepseek reviewer (the review narrative uses it too)',
+      );
+    }
+    return createDeepSeekNarrator({
+      client: new OpenAI({ apiKey: inputs.deepseekApiKey, baseURL: DEEPSEEK_BASE_URL }),
+      model,
+    });
+  }
+  if (provider === "claude-cli") {
+    if (inputs.claudeCodeOauthToken === undefined) {
+      throw new ActionInputError(
+        'input "claude-code-oauth-token" is required because .jevest.yml selects the claude-cli reviewer (the review narrative uses it too)',
+      );
+    }
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = inputs.claudeCodeOauthToken;
+    return createClaudeCliNarrator({ model });
+  }
+  if (inputs.openaiApiKey === undefined) {
+    throw new ActionInputError(
+      'input "openai-api-key" is required because .jevest.yml selects the openai reviewer (the review narrative uses it too)',
+    );
+  }
+  return createOpenAiNarrator({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
+}
+
+/**
  * Resolves `.jevest/context.yml` (see src/application/context/product-context.ts)
  * from the PR's BASE sha via the contents API — deliberately NOT from the
  * local checkout, unlike `resolveConfig`: a checkout is the PR head, and a
@@ -540,6 +604,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     });
     const reviewer = createReviewer(config, inputs);
     const summarizer = createSummarizer(config, inputs);
+    const narrator = createNarrator(config, inputs);
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
     // Same token, same `issues: write` permission the summary comment and
@@ -559,6 +624,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
         spendLedger,
         ...(reviewer ? { reviewer } : {}),
         ...(summarizer ? { summarizer } : {}),
+        ...(narrator ? { narrator } : {}),
       },
       config,
       productContext,

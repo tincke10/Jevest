@@ -46,7 +46,23 @@
  * comes BEFORE every findings section, the empty-findings lines stop
  * claiming a review happened if none did, and the check title/summary say
  * so. The warning IS fingerprinted (a failed run must not look like an
- * identical clean one); the check conclusion is left to the merge gate.
+ * identical clean one). A partial failure leaves the check conclusion to
+ * the merge gate. When EVERY attempted call failed, NFR-2 fails closed in
+ * code: the check is at most neutral, auto-merge-ok is never applied and
+ * the PR gets `jevest:needs-human` plus a line in the human queue — Jev's
+ * gate only saw "zero findings", which is not a review.
+ *
+ * Colleague review (stages/narrate.ts): when the narrator wrote a review,
+ * it is the TOP of the summary comment under a "## Review" heading in
+ * `reviewer.language`; the "LLM review failed" warning, if any, stays
+ * visible right under it; everything else this module renders (triage,
+ * intent vs change, findings, skipped hunks, cost, merge gate, efficiency)
+ * moves into ONE collapsed `<details>` block. Without a narrative the
+ * comment is the plain report, headed by a one-line note when the narrator
+ * failed or was skipped. The fingerprint never covers the narrative: an
+ * LLM rewording the same findings is not new review content, and hashing
+ * it would make every re-run look like a change (see `renderSummary`).
+ * Inline comments, labels and the check are identical either way.
  */
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
@@ -60,6 +76,7 @@ import {
   INJECTED_INSTRUCTIONS_IN_DIFF_YES_MIN_PROB,
 } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
+import type { NarrateStageResult } from "./narrate.js";
 import type { ReviewStageEntry, ReviewStageResult } from "./review.js";
 import type { TriageStageResult } from "./triage.js";
 
@@ -91,6 +108,15 @@ export interface PublishStageInput {
   readonly spendLedgerError?: string | null;
   /** The run's H2 / H4 numbers (run-metrics.ts), rendered as the closing "Efficiency" section. */
   readonly metrics: RunMetrics;
+  /**
+   * The colleague review (stages/narrate.ts). With markdown, it becomes the
+   * top of the comment and the report collapses below it; without (failed
+   * or skipped), its `note` heads the plain report. Absent/`null` when no
+   * narrator ran and there is nothing to say: the plain report, unchanged.
+   */
+  readonly narrative?: NarrateStageResult | null;
+  /** `reviewer.language`, for the narrative's heading. Default: English. */
+  readonly language?: string;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
@@ -347,8 +373,11 @@ function buildNeedsHumanSection(
   if (injectedInDiff(hunkProfile)) {
     lines.push(injectedInstructionsQueueLine(hunkProfile));
   }
+  if (allReviewsFailed(review)) {
+    lines.push(`- ${NO_HUNK_REVIEWED} A human should review this pull request directly.`);
+  }
   if (lines.length === 0) {
-    return allReviewsFailed(review) ? NO_HUNK_REVIEWED : "No findings need human review.";
+    return "No findings need human review.";
   }
   return lines.join("\n");
 }
@@ -390,8 +419,13 @@ function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): str
 /** Longest reviewer error message rendered; provider errors can embed whole response bodies. */
 const MAX_REVIEW_ERROR_CHARS = 300;
 
-/** No hunk was reviewed: the reviewer was called and threw on every call. */
-function allReviewsFailed(review: ReviewStageResult): boolean {
+/**
+ * No hunk was reviewed: the reviewer was called at least once and threw on
+ * every call. NFR-2 fail closed: such a run never reaches auto-merge-ok
+ * (see {@link resolvePublishConclusion}). Zero attempts (Jev-only mode, a
+ * reached spend cap, nothing eligible) is not a failure.
+ */
+export function allReviewsFailed(review: ReviewStageResult): boolean {
   return review.reviews.length > 0 && review.reviews.every((r) => r.error !== null);
 }
 
@@ -490,14 +524,31 @@ function plural(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
+/**
+ * The narrative's own numbers. Outside the H2 token counts on purpose: the
+ * "without Jev" counterfactual prices reviewing every hunk, and the
+ * narrative is a per-PR call that exists with or without Jev.
+ */
+function narrativeEfficiencyLine(narrative: NarrateStageResult): string {
+  const usage = narrative.usage;
+  const tokens = usage
+    ? usage.inputTokens +
+      usage.cacheReadInputTokens +
+      usage.cacheCreationInputTokens +
+      usage.outputTokens
+    : 0;
+  return `- Review narrative: ${tokens} tokens · $${narrative.costUsd.toFixed(4)} (${narrative.model ?? "unknown model"})`;
+}
+
 /** The closing section; see the module doc for why it is last and outside the fingerprint. */
-function buildEfficiencySection(metrics: RunMetrics): string[] {
+function buildEfficiencySection(metrics: RunMetrics, narrative?: NarrateStageResult): string[] {
   const { jev, llm } = metrics;
   return [
     "### Efficiency",
     `- Jev: ${plural(jev.requests.total, "request")} · p95 latency ${jev.latency.p95Ms} ms · total Jev time ${jev.latency.sumMs} ms`,
     `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed${llm.hunks.failed > 0 ? ` · ${llm.hunks.failed} failed (reviewer error)` : ""} · ${skippedByReason(llm.hunks.skipped)}`,
     `- LLM tokens: ${llm.tokens.spent} tokens spent (review ${llm.tokens.reviewInput + llm.tokens.reviewOutput}, summary ${llm.tokens.summaryInput + llm.tokens.summaryOutput}) · without Jev ≈ ${llm.tokensWithoutJev} · saved ≈ ${llm.tokensSavedPct}%`,
+    ...(narrative ? [narrativeEfficiencyLine(narrative)] : []),
     `- ${llm.method}`,
   ];
 }
@@ -514,20 +565,95 @@ function withEfficiency(
   };
 }
 
-function buildSummaryLines(input: PublishStageInput): string[] {
-  const { triage, findingFilter, mergeGate } = input;
+/** `## Review` in `reviewer.language`; the language tag's primary subtag decides ("es-AR" is "es"). */
+const REVIEW_HEADINGS: Readonly<Record<string, string>> = {
+  es: "Revisión",
+  en: "Review",
+  pt: "Revisão",
+  fr: "Revue",
+  it: "Revisione",
+  de: "Review",
+};
 
+function reviewHeading(language: string | undefined): string {
+  const primary = (language ?? "").trim().toLowerCase().split(/[-_]/)[0] ?? "";
+  return `## ${REVIEW_HEADINGS[primary] ?? "Review"}`;
+}
+
+/**
+ * The summary comment around the deterministic report (see the module doc,
+ * "Colleague review"). The fingerprint is ALWAYS `sha256` of the plain
+ * report's stable lines — the same bytes as a run without a narrator — so
+ * neither the narrative's wording, its cost, the fallback note nor the
+ * layout can change it. The GitHub adapter updates the single summary
+ * comment in place whatever the fingerprint says, so a new wording still
+ * reaches the PR; it just never counts as new review content (NFR-12).
+ */
+function renderSummary(
+  parts: SummaryParts,
+  input: PublishStageInput,
+): { summaryMarkdown: string; summaryFingerprint: string } {
+  const plain = withEfficiency(stableSummaryLines(parts), input.metrics);
+  const narrative = input.narrative;
+  if (!narrative || narrative.markdown === null) {
+    return narrative?.note
+      ? { ...plain, summaryMarkdown: `> ${narrative.note}\n\n${plain.summaryMarkdown}` }
+      : plain;
+  }
+  const summaryMarkdown = [
+    reviewHeading(input.language),
+    "",
+    narrative.markdown,
+    "",
+    // Never collapsed: "the reviewer failed" must not hide behind a click.
+    ...parts.warning,
+    "<details>",
+    "<summary>Jevest details</summary>",
+    "",
+    ...parts.head,
+    ...parts.body,
+    "",
+    ...buildEfficiencySection(input.metrics, narrative),
+    "",
+    "</details>",
+  ].join("\n");
+  return { summaryMarkdown, summaryFingerprint: plain.summaryFingerprint };
+}
+
+/**
+ * The report in three parts, so the narrative layout can keep `warning`
+ * visible while collapsing the rest; {@link stableSummaryLines} joins them
+ * back into exactly the plain report.
+ */
+interface SummaryParts {
+  /** The spend-cap banner, when the cap turned this into a Jev-only run. */
+  readonly head: string[];
+  /** The "LLM review failed" section; empty when every reviewer call returned. */
+  readonly warning: string[];
+  readonly body: string[];
+}
+
+function stableSummaryLines(parts: SummaryParts): string[] {
+  return ["## Jevest review", "", ...parts.head, ...parts.warning, ...parts.body];
+}
+
+function buildSummaryParts(input: PublishStageInput): SummaryParts {
   const skippedForSpendCap = input.reviewSkippedForSpendCap === true;
   const spendCapBanner =
     skippedForSpendCap && input.spendCap
       ? `**LLM review skipped: spend cap reached** — USD ${usd(input.spendCap.spentUsd)} of ${usd(input.spendCap.capUsd)} ${periodWording(input.spendCap)}. Jev-only run; raise \`spendCap.usd\` or reset the ledger to resume LLM reviews.`
       : "**LLM review skipped: spend cap reached** — Jev-only run.";
 
+  return {
+    head: skippedForSpendCap ? [spendCapBanner, ""] : [],
+    warning: buildReviewFailedSection(input.review),
+    body: buildReportBody(input),
+  };
+}
+
+function buildReportBody(input: PublishStageInput): string[] {
+  const { triage, findingFilter, mergeGate } = input;
   return [
-    "## Jevest review",
-    "",
-    ...(skippedForSpendCap ? [spendCapBanner, ""] : []),
-    ...buildReviewFailedSection(input.review),
     "### Triage",
     `- Category: ${triage.category}`,
     `- Risk level: ${triage.riskLevel}`,
@@ -664,8 +790,39 @@ export function buildFailClosedPublication(
   };
 }
 
+export interface PublishConclusion {
+  readonly conclusion: MergeGateStageResult["conclusion"];
+  /** An auto-band description mismatch downgraded a green gate. */
+  readonly forcedNeutralForMismatch: boolean;
+  /** Every attempted reviewer call failed (NFR-2): the check is at most neutral. */
+  readonly reviewFailedEntirely: boolean;
+}
+
+/**
+ * The check conclusion the publication will carry, from the merge gate
+ * plus the two code-level downgrades. Exported so the review narrator can
+ * be told the same verdict the check shows. Both downgrades only ever turn
+ * green into neutral: they never override a neutral or red gate, and
+ * never turn anything red by themselves.
+ */
+export function resolvePublishConclusion(
+  input: Pick<PublishStageInput, "triage" | "review" | "mergeGate">,
+): PublishConclusion {
+  const green = input.mergeGate.conclusion === "success";
+  // A human must compare the story with the diff.
+  const forcedNeutralForMismatch = green && mismatchForcesNeutral(input.triage);
+  // Zero findings from a reviewer that never answered reads like a clean
+  // review to Jev's gate; it is not one, so a human decides.
+  const reviewFailedEntirely = allReviewsFailed(input.review);
+  const conclusion =
+    green && (forcedNeutralForMismatch || reviewFailedEntirely)
+      ? "neutral"
+      : input.mergeGate.conclusion;
+  return { conclusion, forcedNeutralForMismatch, reviewFailedEntirely };
+}
+
 export function runPublishStage(input: PublishStageInput): ReviewPublication {
-  const summary = withEfficiency(buildSummaryLines(input), input.metrics);
+  const summary = renderSummary(buildSummaryParts(input), input);
   const hunksById = new Map(input.hunkProfile.hunks.map((h) => [h.id, h]));
   const inlineComments = input.inlineCommentsEnabled
     ? buildInlineComments(input.findingFilter, hunksById)
@@ -674,12 +831,11 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [];
 
-  // An auto-band description mismatch downgrades a green gate to neutral
-  // (a human must compare the story with the diff); it never overrides a
-  // neutral or red gate, and never turns anything red by itself.
-  const forcedNeutral =
-    mismatchForcesNeutral(input.triage) && input.mergeGate.conclusion === "success";
-  const conclusion = forcedNeutral ? "neutral" : input.mergeGate.conclusion;
+  const {
+    conclusion,
+    forcedNeutralForMismatch: forcedNeutral,
+    reviewFailedEntirely,
+  } = resolvePublishConclusion(input);
 
   if (conclusion === "success") {
     labelsToAdd.push(AUTO_MERGE_OK_LABEL);
@@ -687,7 +843,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     labelsToRemove.push(AUTO_MERGE_OK_LABEL);
   }
 
-  if (input.triage.needsHumanLabel) {
+  if (input.triage.needsHumanLabel || reviewFailedEntirely) {
     labelsToAdd.push(NEEDS_HUMAN_LABEL);
   } else {
     labelsToRemove.push(NEEDS_HUMAN_LABEL);
@@ -704,7 +860,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
   const reviewFailedTitle = failedCount > 0 ? " (LLM review failed)" : "";
   const reviewFailedCheckLine =
     failedCount > 0
-      ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.`
+      ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.${reviewFailedEntirely ? " Nothing is marked safe to auto-merge." : ""}`
       : "";
 
   return {

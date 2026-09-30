@@ -25,6 +25,16 @@ reviewer:
   # claude-cli: bills a Claude Pro/Max subscription via `claude -p`; needs
   # the CLAUDE_CODE_OAUTH_TOKEN secret / claude-code-oauth-token input
   # (generate it with `claude setup-token`). See docs/ACTION.md.
+  # Language the review narrative is written in: a language code such as
+  # "es" or "en" (anything the model understands works).
+  language: es
+  # Colleague review: one extra LLM call per PR, after the finding filter,
+  # that writes the top of the summary comment as a senior colleague would,
+  # from the findings Jev kept ONLY (it never raises issues of its own).
+  # Same provider, model and credential as the reviewer; its cost counts
+  # against budgetUsd and the spend cap. Unset = true for any LLM provider,
+  # false for provider none (setting it true with none is an error).
+  # narrative: true
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

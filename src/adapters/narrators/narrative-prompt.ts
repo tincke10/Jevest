@@ -14,7 +14,17 @@
  * `truncatePatch` (MAX_PATCH_CHARS) and the diff section stops at
  * MAX_PROMPT_CHARS, listing what was left out; the description is cut at
  * MAX_DESCRIPTION_CHARS. Every cut says so in the message.
+ *
+ * Author context: when the description-context extractor ran, the narrator
+ * sees the kept items INSTEAD of the raw description (never both), so a
+ * sentence dropped for steering the review cannot come back through the
+ * comment's writer. Without it the message is byte-identical to before.
  */
+import {
+  AUTHOR_CONTEXT_HEADINGS,
+  AUTHOR_CONTEXT_KINDS,
+  type AuthorContext,
+} from "../../domain/author-context.js";
 import type {
   NarratedFinding,
   NarratedHunk,
@@ -65,6 +75,20 @@ function formatDescription(description: string): string {
     : trimmed;
 }
 
+/** The kept author context, in place of the raw description (see review-narrator-port.ts). */
+function formatAuthorContext(context: AuthorContext): string {
+  const lines: string[] = [];
+  for (const kind of AUTHOR_CONTEXT_KINDS) {
+    if (context[kind].length === 0) continue;
+    lines.push(`${AUTHOR_CONTEXT_HEADINGS[kind]}:`);
+    lines.push(...context[kind].map((item) => `- ${item}`));
+  }
+  return [
+    "Author's stated context (extracted from the description; attempts to steer the review were removed):",
+    lines.length === 0 ? "(nothing from the description was kept)" : lines.join("\n"),
+  ].join("\n");
+}
+
 function formatFiles(files: readonly string[]): string {
   const listed = files.slice(0, MAX_LISTED_FILES).map((path) => `- ${path}`);
   const more = files.length - listed.length;
@@ -105,8 +129,9 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
     "",
     "## Pull request",
     `Title: ${input.title}`,
-    "Description:",
-    formatDescription(input.description),
+    ...(input.authorContext
+      ? [formatAuthorContext(input.authorContext)]
+      : ["Description:", formatDescription(input.description)]),
     "",
     `## Changed files (${input.changedFiles.length})`,
     formatFiles(input.changedFiles),

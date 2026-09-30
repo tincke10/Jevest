@@ -53,6 +53,7 @@ describe("loadJevestConfig", () => {
       model: "claude-sonnet-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
@@ -121,6 +122,7 @@ describe("loadJevestConfig", () => {
       model: "claude-sonnet-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
   });
 
@@ -149,6 +151,7 @@ describe("loadJevestConfig", () => {
       model: "deepseek-v4-pro",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
   });
 
@@ -162,6 +165,7 @@ describe("loadJevestConfig", () => {
       model: "claude-opus-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
   });
 
@@ -191,6 +195,30 @@ describe("loadJevestConfig", () => {
       await expect(
         loadJevestConfigFromString("reviewer:\n  provider: none\n  narrative: true\n"),
       ).rejects.toThrow(/reviewer\.narrative/);
+    });
+
+    it("defaults descriptionContext to true with an LLM provider and to false with none", async () => {
+      expect(
+        (await loadJevestConfigFromString("reviewer:\n  provider: openai\n  model: m\n")).reviewer
+          .descriptionContext,
+      ).toBe(true);
+      expect(
+        (await loadJevestConfigFromString("reviewer:\n  provider: none\n")).reviewer
+          .descriptionContext,
+      ).toBe(false);
+    });
+
+    it("accepts descriptionContext: false", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: anthropic\n  descriptionContext: false\n",
+      );
+      expect(config.reviewer.descriptionContext).toBe(false);
+    });
+
+    it("throws when descriptionContext is explicitly true with provider none", async () => {
+      await expect(
+        loadJevestConfigFromString("reviewer:\n  provider: none\n  descriptionContext: true\n"),
+      ).rejects.toThrow(/reviewer\.descriptionContext/);
     });
 
     it("throws on an empty language", async () => {
@@ -276,6 +304,7 @@ describe("loadJevestConfig", () => {
       model: "claude-sonnet-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
     expect(fromMissing.budgetUsd).toBe(5);
     expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });

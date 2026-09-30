@@ -14,6 +14,7 @@ import {
   ActionInputError,
   type ActionInputs,
   buildOutputLines,
+  createDescriptionContextExtractor,
   createNarrator,
   createReviewer,
   createSummarizer,
@@ -126,6 +127,7 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
       model: "claude-sonnet-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
       ...overrides,
     },
     thresholds: {},
@@ -286,6 +288,63 @@ describe("createSummarizer", () => {
   it("builds a summarizer under always with an LLM provider (config validation forbids always + none)", () => {
     const config = withSummary({ provider: "anthropic", model: "claude-sonnet-5" }, "always");
     expect(createSummarizer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }))).toBeDefined();
+  });
+});
+
+describe("createDescriptionContextExtractor", () => {
+  it("returns undefined when reviewer.descriptionContext is false, or in Jev-only mode, requiring no key", () => {
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "anthropic", descriptionContext: false }),
+        makeInputs(),
+      ),
+    ).toBeUndefined();
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "none", model: undefined, descriptionContext: false }),
+        makeInputs(),
+      ),
+    ).toBeUndefined();
+  });
+
+  it("builds an extractor for every LLM provider with the reviewer's credential", () => {
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "anthropic", model: "claude-sonnet-5" }),
+        makeInputs({ anthropicApiKey: "sk-ant-test" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "openai", model: "gpt-5.6-luna" }),
+        makeInputs({ openaiApiKey: "sk-openai" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "deepseek", model: "deepseek-v4-pro" }),
+        makeInputs({ deepseekApiKey: "sk-ds" }),
+      ),
+    ).toBeDefined();
+    expect(
+      createDescriptionContextExtractor(
+        makeConfig({ provider: "claude-cli", model: "claude-opus-5" }),
+        makeInputs({ claudeCodeOauthToken: "sk-ant-oat" }),
+      ),
+    ).toBeDefined();
+  });
+
+  it("throws naming the missing credential", () => {
+    for (const [provider, input] of [
+      ["anthropic", /anthropic-api-key/],
+      ["openai", /openai-api-key/],
+      ["deepseek", /deepseek-api-key/],
+      ["claude-cli", /claude-code-oauth-token/],
+    ] as const) {
+      expect(() =>
+        createDescriptionContextExtractor(makeConfig({ provider, model: "m" }), makeInputs()),
+      ).toThrow(input);
+    }
   });
 });
 
@@ -633,6 +692,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     findingFilter: null,
     mergeGate: null,
     narrative: null,
+    descriptionContext: null,
     publication,
     check: publication.check,
     findingsPublished: 2,

@@ -2,6 +2,7 @@ import { AuthenticationError, BadRequestError, RateLimitError } from "openai";
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type OpenAiChatClient, createOpenAiReviewer } from "./openai-reviewer.js";
+import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -190,5 +191,32 @@ describe("createOpenAiReviewer", () => {
       expect(Array.isArray(output.findings)).toBe(true);
       expect(output.usage.inputTokens).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("createOpenAiReviewer with the author's stated context", () => {
+  const WITH_AUTHOR_CONTEXT: ReviewInput = {
+    ...SAMPLE_INPUT,
+    authorContext: {
+      decisions: ["cache of 5 minutes because the API allows 10 req/s"],
+      intendedBehaviorChanges: [],
+      outOfScope: [],
+      constraints: [],
+      references: [],
+    },
+  };
+
+  it("appends the author-context rules to the system prompt and the block to the user turn only when present", async () => {
+    const client = fakeClient(async () => successResponse());
+    const reviewer = createOpenAiReviewer({ client });
+    await reviewer.review(SAMPLE_INPUT);
+    await reviewer.review(WITH_AUTHOR_CONTEXT);
+    const [plain] = client.chat.completions.parse.mock.calls[0]!;
+    const [withContext] = client.chat.completions.parse.mock.calls[1]!;
+    expect(plain.messages[0].content).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(withContext.messages[0].content).toBe(
+      `${REVIEW_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
+    );
+    expect(withContext.messages[1].content).toContain("<author_context>");
   });
 });

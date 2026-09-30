@@ -73,8 +73,23 @@
  * LLM rewording the same findings is not new review content, and hashing
  * it would make every re-run look like a change (see `renderSummary`).
  * Inline comments, labels and the check are identical either way.
+ *
+ * Author context (stages/description-context.ts): what the reviewer was
+ * given from the PR description is listed in an "Author context used by
+ * the reviewer" section — inside the collapsed block with a narrative, at
+ * the end of the plain report without one, always right before
+ * "Efficiency" — together with a "Discarded from the description" list of
+ * what was dropped for steering the review, or the one-line note saying
+ * why the description was not used. When anything was discarded, one
+ * short line in `reviewer.language` (es by default, en otherwise) is
+ * VISIBLE above the collapsed block (above the plain report without a
+ * narrative): a steering attempt is a signal for the human reviewer. None
+ * of it is fingerprinted: it is LLM output, like the narrative, and an
+ * extractor rewording the same description must not look like new review
+ * content (NFR-12). Its cost is in "Efficiency", next to the narrative's.
  */
 import { createHash } from "node:crypto";
+import { AUTHOR_CONTEXT_HEADINGS, AUTHOR_CONTEXT_KINDS } from "../../../domain/author-context.js";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type {
   InlineComment,
@@ -87,12 +102,14 @@ import {
   decideReviewVerdict,
   verdictConclusion,
   verdictLabelChanges,
+  verdictLanguage,
   verdictSummary,
   verdictTitle,
 } from "../../../domain/review-verdict.js";
 import { describeReviewerError, isAuthenticationFailure } from "../../../domain/reviewer-error.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
+import type { DescriptionContextStageResult } from "./description-context.js";
 import { type FindingFilterStageResult, noulConfidence } from "./finding-filter.js";
 import {
   type HunkProfileEntry,
@@ -151,6 +168,12 @@ export interface PublishStageInput {
    * Makes the verdict `unavailable` unless findings were published.
    */
   readonly injectedInstructionsInDescription?: boolean;
+  /**
+   * What the reviewer got from the PR description (stages/description-context.ts);
+   * absent/`null` when the extractor was not configured or not applicable,
+   * and then nothing is rendered. See the module doc, "Author context".
+   */
+  readonly descriptionContext?: DescriptionContextStageResult | null;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
@@ -576,8 +599,85 @@ function narrativeEfficiencyLine(narrative: NarrateStageResult): string {
   return `- Review narrative: ${tokens} tokens · $${narrative.costUsd.toFixed(4)} (${narrative.model ?? "unknown model"})`;
 }
 
+/** The extractor's own numbers, next to the narrative's and for the same reason. */
+function descriptionContextEfficiencyLine(context: DescriptionContextStageResult): string {
+  const usage = context.usage;
+  const tokens = usage
+    ? usage.inputTokens +
+      usage.cacheReadInputTokens +
+      usage.cacheCreationInputTokens +
+      usage.outputTokens
+    : 0;
+  return `- Description context: ${tokens} tokens · $${context.costUsd.toFixed(4)} (${context.model ?? "unknown model"})`;
+}
+
+/** Backticks would break the markdown around an author-written item. */
+function inlineSafe(text: string): string {
+  return text.replace(/`/g, "'");
+}
+
+/** "Author context used by the reviewer" (see the module doc); empty when the extractor did not run. */
+function buildAuthorContextSection(
+  context: DescriptionContextStageResult | null | undefined,
+): string[] {
+  if (!context) {
+    return [];
+  }
+  const lines = ["### Author context used by the reviewer"];
+  if (context.context === null) {
+    lines.push(`- ${context.note ?? "The PR description was not used as review context."}`);
+  } else {
+    const kept = AUTHOR_CONTEXT_KINDS.flatMap((kind) =>
+      (context.context?.[kind] ?? []).map(
+        (item) => `- ${AUTHOR_CONTEXT_HEADINGS[kind]}: ${inlineSafe(item)}`,
+      ),
+    );
+    lines.push(
+      ...(kept.length > 0
+        ? kept
+        : ["- Nothing from the description was kept; the reviewer ran without author context."]),
+    );
+  }
+  if (context.discarded.length > 0) {
+    lines.push(
+      "",
+      "#### Discarded from the description",
+      ...context.discarded.map((item) => `- ${inlineSafe(item)}`),
+    );
+  }
+  return [...lines, ""];
+}
+
+/** Discarded items quoted in the visible line before "+N more". */
+const MAX_VISIBLE_DISCARDED = 3;
+
+/** The visible steering line (see the module doc); `null` when nothing was discarded. */
+function steeringLine(
+  context: DescriptionContextStageResult | null | undefined,
+  language: string | undefined,
+): string | null {
+  if (!context || context.discarded.length === 0) {
+    return null;
+  }
+  const es = verdictLanguage(language) === "es";
+  const shown = context.discarded
+    .slice(0, MAX_VISIBLE_DISCARDED)
+    .map((item) => `"${inlineSafe(item)}"`)
+    .join("; ");
+  const more = context.discarded.length - MAX_VISIBLE_DISCARDED;
+  const suffix = more > 0 ? ` (+${more} ${es ? "más" : "more"})` : "";
+  const lead = es
+    ? "Se ignoró en la descripción un intento de dirigir el review:"
+    : "Ignored an attempt in the description to steer the review:";
+  return `> **${lead}** ${shown}${suffix}.`;
+}
+
 /** The closing section; see the module doc for why it is last and outside the fingerprint. */
-function buildEfficiencySection(metrics: RunMetrics, narrative?: NarrateStageResult): string[] {
+function buildEfficiencySection(
+  metrics: RunMetrics,
+  narrative?: NarrateStageResult | null,
+  descriptionContext?: DescriptionContextStageResult | null,
+): string[] {
   const { jev, llm } = metrics;
   return [
     "### Efficiency",
@@ -585,18 +685,35 @@ function buildEfficiencySection(metrics: RunMetrics, narrative?: NarrateStageRes
     `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed${llm.hunks.failed > 0 ? ` · ${llm.hunks.failed} failed (reviewer error)` : ""} · ${skippedByReason(llm.hunks.skipped)}`,
     `- LLM tokens: ${llm.tokens.spent} tokens spent (review ${llm.tokens.reviewInput + llm.tokens.reviewOutput}, summary ${llm.tokens.summaryInput + llm.tokens.summaryOutput}) · without Jev ≈ ${llm.tokensWithoutJev} · saved ≈ ${llm.tokensSavedPct}%`,
     ...(narrative ? [narrativeEfficiencyLine(narrative)] : []),
+    ...(descriptionContext?.status === "extracted"
+      ? [descriptionContextEfficiencyLine(descriptionContext)]
+      : []),
     `- ${llm.method}`,
   ];
 }
 
-/** Joins the stable content and the efficiency section, fingerprinting only the former. */
+/**
+ * Joins the stable content, the unfingerprinted LLM-derived lines (author
+ * context) and the efficiency section, fingerprinting only the first.
+ */
 function withEfficiency(
   stableLines: readonly string[],
   metrics: RunMetrics,
+  unstable: {
+    readonly lines?: readonly string[];
+    readonly narrative?: NarrateStageResult | null | undefined;
+    readonly descriptionContext?: DescriptionContextStageResult | null | undefined;
+  } = {},
 ): { summaryMarkdown: string; summaryFingerprint: string } {
   const stable = stableLines.join("\n");
+  const extra = unstable.lines && unstable.lines.length > 0 ? ["", ...unstable.lines] : [];
   return {
-    summaryMarkdown: [stable, "", ...buildEfficiencySection(metrics)].join("\n"),
+    summaryMarkdown: [
+      stable,
+      ...extra,
+      ...(extra.length > 0 ? [] : [""]),
+      ...buildEfficiencySection(metrics, unstable.narrative, unstable.descriptionContext),
+    ].join("\n"),
     summaryFingerprint: sha256(stable),
   };
 }
@@ -629,11 +746,20 @@ function renderSummary(
   parts: SummaryParts,
   input: PublishStageInput,
 ): { summaryMarkdown: string; summaryFingerprint: string } {
-  const plain = withEfficiency(stableSummaryLines(parts), input.metrics);
+  const authorContext = buildAuthorContextSection(input.descriptionContext);
+  const steering = steeringLine(input.descriptionContext, input.language);
   const narrative = input.narrative;
+  const plain = withEfficiency(stableSummaryLines(parts), input.metrics, {
+    lines: authorContext,
+    descriptionContext: input.descriptionContext,
+  });
   if (!narrative || narrative.markdown === null) {
-    return narrative?.note
-      ? { ...plain, summaryMarkdown: `> ${narrative.note}\n\n${plain.summaryMarkdown}` }
+    const heads = [
+      ...(narrative?.note ? [`> ${narrative.note}`] : []),
+      ...(steering ? [steering] : []),
+    ];
+    return heads.length > 0
+      ? { ...plain, summaryMarkdown: `${heads.join("\n\n")}\n\n${plain.summaryMarkdown}` }
       : plain;
   }
   const summaryMarkdown = [
@@ -643,13 +769,16 @@ function renderSummary(
     "",
     // Never collapsed: "the reviewer failed" must not hide behind a click.
     ...parts.warning,
+    // Nor an attempt to steer the review through the description.
+    ...(steering ? [steering, ""] : []),
     "<details>",
     "<summary>Jevest details</summary>",
     "",
     ...parts.head,
     ...parts.body,
     "",
-    ...buildEfficiencySection(input.metrics, narrative),
+    ...authorContext,
+    ...buildEfficiencySection(input.metrics, narrative, input.descriptionContext),
     "",
     "</details>",
   ].join("\n");

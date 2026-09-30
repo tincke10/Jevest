@@ -24,6 +24,10 @@ import { Octokit } from "@octokit/rest";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
+import { createAnthropicDescriptionContextExtractor } from "../adapters/description-context/anthropic-description-context-extractor.js";
+import { createClaudeCliDescriptionContextExtractor } from "../adapters/description-context/claude-cli-description-context-extractor.js";
+import { createDeepSeekDescriptionContextExtractor } from "../adapters/description-context/deepseek-description-context-extractor.js";
+import { createOpenAiDescriptionContextExtractor } from "../adapters/description-context/openai-description-context-extractor.js";
 import { createAnthropicNarrator } from "../adapters/narrators/anthropic-narrator.js";
 import { createClaudeCliNarrator } from "../adapters/narrators/claude-cli-narrator.js";
 import { createDeepSeekNarrator } from "../adapters/narrators/deepseek-narrator.js";
@@ -54,6 +58,7 @@ import {
   parseCalibrationFile,
 } from "../domain/calibration.js";
 import type { ChangeSummarizerPort } from "../domain/ports/change-summarizer-port.js";
+import type { DescriptionContextPort } from "../domain/ports/description-context-port.js";
 import type { ReviewNarratorPort } from "../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
@@ -381,6 +386,67 @@ export function createNarrator(
 }
 
 /**
+ * The description-context extractor (author context for the reviewer),
+ * built exactly like the narrator: the reviewer's provider, model and
+ * credential. `undefined` when `reviewer.descriptionContext` is false,
+ * which config resolution already makes the case for provider "none".
+ */
+export function createDescriptionContextExtractor(
+  config: JevestConfig,
+  inputs: ActionInputs,
+): DescriptionContextPort | undefined {
+  const { provider, model, descriptionContext } = config.reviewer;
+  if (!descriptionContext || provider === "none") {
+    return undefined;
+  }
+  if (model === undefined) {
+    throw new ActionInputError(
+      `.jevest.yml: reviewer.model is required when reviewer.provider is "${provider}"`,
+    );
+  }
+  if (provider === "anthropic") {
+    if (inputs.anthropicApiKey === undefined) {
+      throw new ActionInputError(
+        'input "anthropic-api-key" is required because .jevest.yml selects the anthropic reviewer (the description context uses it too)',
+      );
+    }
+    return createAnthropicDescriptionContextExtractor({
+      client: new Anthropic({ apiKey: inputs.anthropicApiKey }),
+      model,
+    });
+  }
+  if (provider === "deepseek") {
+    if (inputs.deepseekApiKey === undefined) {
+      throw new ActionInputError(
+        'input "deepseek-api-key" is required because .jevest.yml selects the deepseek reviewer (the description context uses it too)',
+      );
+    }
+    return createDeepSeekDescriptionContextExtractor({
+      client: new OpenAI({ apiKey: inputs.deepseekApiKey, baseURL: DEEPSEEK_BASE_URL }),
+      model,
+    });
+  }
+  if (provider === "claude-cli") {
+    if (inputs.claudeCodeOauthToken === undefined) {
+      throw new ActionInputError(
+        'input "claude-code-oauth-token" is required because .jevest.yml selects the claude-cli reviewer (the description context uses it too)',
+      );
+    }
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = inputs.claudeCodeOauthToken;
+    return createClaudeCliDescriptionContextExtractor({ model });
+  }
+  if (inputs.openaiApiKey === undefined) {
+    throw new ActionInputError(
+      'input "openai-api-key" is required because .jevest.yml selects the openai reviewer (the description context uses it too)',
+    );
+  }
+  return createOpenAiDescriptionContextExtractor({
+    client: new OpenAI({ apiKey: inputs.openaiApiKey }),
+    model,
+  });
+}
+
+/**
  * Resolves `.jevest/context.yml` (see src/application/context/product-context.ts)
  * from the PR's BASE sha via the contents API — deliberately NOT from the
  * local checkout, unlike `resolveConfig`: a checkout is the PR head, and a
@@ -605,6 +671,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     const reviewer = createReviewer(config, inputs);
     const summarizer = createSummarizer(config, inputs);
     const narrator = createNarrator(config, inputs);
+    const descriptionContext = createDescriptionContextExtractor(config, inputs);
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
     // Same token, same `issues: write` permission the summary comment and
@@ -625,6 +692,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
         ...(reviewer ? { reviewer } : {}),
         ...(summarizer ? { summarizer } : {}),
         ...(narrator ? { narrator } : {}),
+        ...(descriptionContext ? { descriptionContext } : {}),
       },
       config,
       productContext,

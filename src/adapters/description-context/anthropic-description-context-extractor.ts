@@ -1,45 +1,38 @@
 /**
- * ReviewerPort over the official `@anthropic-ai/sdk` (SPEC FR-4, §5 Fase 1a
- * step 1). Model `claude-opus-5`: thinking is on by default and must NOT be
- * configured with `budget_tokens` (400 on Opus 5); cost is kept down with
- * `output_config.effort: "medium"` instead. No assistant prefill (400 on
- * Opus 5) — every request is a single user turn. Structured output uses
- * `client.messages.parse()` with `zodOutputFormat` (see
- * review-output-schema.ts), never hand-rolled JSON parsing of free text.
- *
- * The system prompt is marked `cache_control: { type: "ephemeral" }` because
- * it repeats byte-for-byte across every hunk in a run; `usage.cache_read_input_tokens`
- * on the response is how a caller verifies the cache is actually being hit.
- *
- * The SDK client is always injected (`options.client`), narrowed to the one
- * method this adapter calls — same pattern as `DecisionApiClient` in
- * ../typesafe-decision-adapter.ts — so tests never touch the real SDK.
+ * DescriptionContextPort over the official `@anthropic-ai/sdk`, the
+ * extractor-side twin of ../narrators/anthropic-narrator.ts: same
+ * `messages.parse()` + `zodOutputFormat` structured output, cached system
+ * prompt and error taxonomy. Effort defaults to "low": pulling a handful
+ * of sentences out of a description needs far less thinking than a review.
  */
 import { APIError, AuthenticationError, RateLimitError } from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { JSONOutputFormat } from "@anthropic-ai/sdk/resources/messages/messages.js";
-import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
-import {
-  type ReviewOutputSchema,
-  reviewOutputSchema,
-  toReviewFindingCandidates,
-} from "./review-output-schema.js";
-import {
-  REVIEW_SYSTEM_PROMPT,
-  buildReviewUserPrompt,
-  reviewSystemPromptForInput,
-} from "./review-prompt.js";
+import type {
+  DescriptionContextInput,
+  DescriptionContextOutput,
+  DescriptionContextPort,
+} from "../../domain/ports/description-context-port.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
   ReviewerParseError,
   ReviewerRateLimitError,
-} from "./reviewer-errors.js";
+} from "../reviewers/reviewer-errors.js";
+import {
+  type DescriptionContextOutputSchema,
+  descriptionContextOutputSchema,
+  toExtractedAuthorContext,
+} from "./description-context-output-schema.js";
+import {
+  DESCRIPTION_CONTEXT_SYSTEM_PROMPT,
+  buildDescriptionContextUserPrompt,
+} from "./description-context-prompt.js";
 
 type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
 /** The subset of the Anthropic client this adapter depends on. */
-export interface AnthropicMessagesClient {
+export interface AnthropicDescriptionContextClient {
   messages: {
     parse(params: {
       model: string;
@@ -50,7 +43,7 @@ export interface AnthropicMessagesClient {
     }): Promise<{
       id: string;
       model: string;
-      parsed_output: ReviewOutputSchema | null;
+      parsed_output: DescriptionContextOutputSchema | null;
       usage: {
         input_tokens: number;
         output_tokens: number;
@@ -61,38 +54,37 @@ export interface AnthropicMessagesClient {
   };
 }
 
-export interface AnthropicReviewerOptions {
-  readonly client: AnthropicMessagesClient;
-  /** Default "claude-opus-5" (SPEC decision, see docs/SPEC.md §13). */
+export interface AnthropicDescriptionContextOptions {
+  readonly client: AnthropicDescriptionContextClient;
+  /** Default "claude-sonnet-5". */
   readonly model?: string;
-  /** Default "medium" — cost control; thinking stays on regardless (Opus 5 default). */
+  /** Default "low". */
   readonly effort?: Effort;
-  /** Default 4096 — findings are short structured output. */
+  /** Default 2048 — a dozen short items plus the thinking before them. */
   readonly maxTokens?: number;
   /** Injectable clock for deterministic latency tests. Default: `Date.now`. */
   readonly now?: () => number;
-  /** Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")` for the low-bar pass. */
-  readonly systemPrompt?: string;
 }
 
-const DEFAULT_MODEL = "claude-opus-5";
-const DEFAULT_EFFORT: Effort = "medium";
-const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_MODEL = "claude-sonnet-5";
+const DEFAULT_EFFORT: Effort = "low";
+const DEFAULT_MAX_TOKENS = 2048;
 const PROVIDER = "anthropic";
 
-const OUTPUT_FORMAT = zodOutputFormat(reviewOutputSchema);
+const OUTPUT_FORMAT = zodOutputFormat(descriptionContextOutputSchema);
 
-export function createAnthropicReviewer(options: AnthropicReviewerOptions): ReviewerPort {
+export function createAnthropicDescriptionContextExtractor(
+  options: AnthropicDescriptionContextOptions,
+): DescriptionContextPort {
   const model = options.model ?? DEFAULT_MODEL;
   const effort = options.effort ?? DEFAULT_EFFORT;
   const maxTokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
   const now = options.now ?? Date.now;
-  const systemPrompt = options.systemPrompt ?? REVIEW_SYSTEM_PROMPT;
 
   return {
-    async review(input: ReviewInput): Promise<ReviewOutput> {
+    async extract(input: DescriptionContextInput): Promise<DescriptionContextOutput> {
       const start = now();
-      let response: Awaited<ReturnType<AnthropicMessagesClient["messages"]["parse"]>>;
+      let response: Awaited<ReturnType<AnthropicDescriptionContextClient["messages"]["parse"]>>;
       try {
         response = await options.client.messages.parse({
           model,
@@ -100,11 +92,11 @@ export function createAnthropicReviewer(options: AnthropicReviewerOptions): Revi
           system: [
             {
               type: "text",
-              text: reviewSystemPromptForInput(systemPrompt, input),
+              text: DESCRIPTION_CONTEXT_SYSTEM_PROMPT,
               cache_control: { type: "ephemeral" },
             },
           ],
-          messages: [{ role: "user", content: buildReviewUserPrompt(input) }],
+          messages: [{ role: "user", content: buildDescriptionContextUserPrompt(input) }],
           output_config: { format: OUTPUT_FORMAT, effort },
         });
       } catch (error) {
@@ -124,11 +116,11 @@ export function createAnthropicReviewer(options: AnthropicReviewerOptions): Revi
       const latencyMs = now() - start;
 
       if (response.parsed_output === null) {
-        throw new ReviewerParseError(PROVIDER, input.hunkId);
+        throw new ReviewerParseError(PROVIDER, input.prId);
       }
 
       return {
-        findings: toReviewFindingCandidates(response.parsed_output),
+        ...toExtractedAuthorContext(response.parsed_output),
         model: response.model,
         usage: {
           inputTokens: response.usage.input_tokens,

@@ -37,6 +37,16 @@ reviewer:
   # against budgetUsd and the spend cap. Unset = true for any LLM provider,
   # false for provider none (setting it true with none is an error).
   # narrative: true
+  # Author context: one extra LLM call per PR, before the review, that
+  # reads the PR description and keeps ONLY what helps the reviewer
+  # understand the change (design decisions, intended behavior, scope,
+  # constraints, linked tickets). Anything that tries to steer or skip the
+  # review ("no review needed", "already tested", "ignore file X", "LGTM")
+  # is dropped and listed in the comment. Never used when triage suspects
+  # injected instructions in the description. Same provider, model and
+  # credential as the reviewer; its cost counts against budgetUsd and the
+  # spend cap. Unset = true for any LLM provider, false for provider none.
+  # descriptionContext: true
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

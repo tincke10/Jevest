@@ -11,7 +11,10 @@
  * one may be a secret), and ONLY the findings Jev kept (`published`) plus
  * the `needsHuman` ones flagged as doubts. `lowConfidence` and `discarded`
  * never reach it: a narrator that saw them could resurrect what the filter
- * dropped. Lines are HEAD-side, like the inline comments.
+ * dropped. Lines are HEAD-side, like the inline comments. When the
+ * description-context extractor ran, the narrator gets its kept items in
+ * place of the raw description (description-context.ts), so a sentence
+ * dropped for steering the review cannot return through the comment.
  *
  * The narrative is an ENHANCER, like the change summary: a narrator error
  * never fails the run. It becomes a one-line note and the summary comment
@@ -19,6 +22,7 @@
  * (config, budget, all reviews failed, suspected injection) is the
  * pipeline's decision; {@link narrativeSkipped} is how it says "not run".
  */
+import type { AuthorContext } from "../../../domain/author-context.js";
 import type { FindingSeverity } from "../../../domain/finding.js";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type {
@@ -46,6 +50,12 @@ export interface NarrateStageInput {
   readonly language: string;
   /** Rate table when the adapter reports no nominal cost (the reviewer model's). */
   readonly pricing: ModelPricing;
+  /**
+   * The sanitized author context, set only when the description-context
+   * extractor ran (possibly empty): the narrator then sees it instead of
+   * the raw description. Absent: the raw description, as before.
+   */
+  readonly authorContext?: AuthorContext;
 }
 
 export interface NarrateStageResult {
@@ -119,6 +129,7 @@ function toNarrativeInput(input: NarrateStageInput): ReviewNarrativeInput {
     prId: `${ref.owner}/${ref.repo}#${ref.number}`,
     title: input.pr.title,
     description: input.pr.body,
+    ...(input.authorContext ? { authorContext: input.authorContext } : {}),
     changedFiles: input.pr.files.map((f) => f.path),
     hunks: reviewed.map((h) => ({ file: h.file, hunkHeader: h.hunkHeader, diff: h.diff })),
     findings: [

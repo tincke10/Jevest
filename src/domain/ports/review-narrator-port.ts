@@ -11,6 +11,7 @@
  * anything that is not in `findings`. Handing it the reviewer's raw output
  * instead would let it undo the filter, which is the whole point of Jevest.
  */
+import type { AuthorContext } from "../author-context.js";
 import type { FindingSeverity } from "../finding.js";
 import type { ReviewVerdict } from "../review-verdict.js";
 import type { ReviewUsage } from "./reviewer-port.js";
@@ -41,6 +42,14 @@ export interface ReviewNarrativeInput {
   readonly prId: string;
   readonly title: string;
   readonly description: string;
+  /**
+   * The author's stated context, sanitized (../author-context.ts), set only
+   * when the description-context extractor ran successfully — possibly
+   * empty. When set, the prompt shows it INSTEAD of the raw description, so
+   * the sentences dropped for steering the review never reach the narrator
+   * either. Absent: the raw description, exactly as before.
+   */
+  readonly authorContext?: AuthorContext;
   readonly changedFiles: readonly string[];
   readonly hunks: readonly NarratedHunk[];
   readonly findings: readonly NarratedFinding[];

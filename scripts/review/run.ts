@@ -27,6 +27,11 @@
  * (dry-run stub, or the live provider) when `reviewer.narrative` is on.
  * `--mode replay` has no recorded narratives, so it runs without one and
  * `review.md` is the plain report.
+ *
+ * Author context: the description-context extractor follows the same
+ * rule (dry-run stub that keeps nothing, or the live provider) when
+ * `reviewer.descriptionContext` is on. `--mode replay` runs without it, so
+ * the replayed reviewer requests (and their fixture keys) stay unchanged.
  */
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,6 +40,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
 import { type JevestConfig, loadJevestConfig } from "../../src/adapters/config/jevest-config.js";
+import { createAnthropicDescriptionContextExtractor } from "../../src/adapters/description-context/anthropic-description-context-extractor.js";
+import { createClaudeCliDescriptionContextExtractor } from "../../src/adapters/description-context/claude-cli-description-context-extractor.js";
+import { createDeepSeekDescriptionContextExtractor } from "../../src/adapters/description-context/deepseek-description-context-extractor.js";
+import { fakeDescriptionContextOutput } from "../../src/adapters/description-context/fake-description-context-extractor.js";
+import { createOpenAiDescriptionContextExtractor } from "../../src/adapters/description-context/openai-description-context-extractor.js";
 import { createAnthropicNarrator } from "../../src/adapters/narrators/anthropic-narrator.js";
 import { createClaudeCliNarrator } from "../../src/adapters/narrators/claude-cli-narrator.js";
 import { createDeepSeekNarrator } from "../../src/adapters/narrators/deepseek-narrator.js";
@@ -73,6 +83,7 @@ import {
 import type { Decision } from "../../src/domain/decision.js";
 import type { ChangeSummarizerPort } from "../../src/domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
+import type { DescriptionContextPort } from "../../src/domain/ports/description-context-port.js";
 import type { ReviewNarratorPort } from "../../src/domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../src/domain/ports/reviewer-port.js";
 import type { PullRequestRef } from "../../src/domain/pull-request.js";
@@ -441,6 +452,65 @@ function buildNarratorPort(mode: Mode, config: JevestConfig): ReviewNarratorPort
   }
 }
 
+/** Never calls a real LLM: keeps nothing from the description, at zero cost. */
+function createDryRunDescriptionContext(): DescriptionContextPort {
+  return {
+    async extract() {
+      return fakeDescriptionContextOutput({}, [], { model: "dry-run", requestId: "dry-run" });
+    },
+  };
+}
+
+/**
+ * The description-context extractor (author context for the reviewer),
+ * following the reviewer's mode and provider. `undefined` when
+ * `reviewer.descriptionContext` is off (always the case for provider
+ * "none") and in replay mode, whose recorded reviewer fixtures were keyed
+ * without author context.
+ */
+function buildDescriptionContextPort(
+  mode: Mode,
+  config: JevestConfig,
+): DescriptionContextPort | undefined {
+  if (!config.reviewer.descriptionContext || config.reviewer.provider === "none") {
+    return undefined;
+  }
+  switch (mode) {
+    case "dry-run":
+      return createDryRunDescriptionContext();
+    case "live": {
+      const { model } = config.reviewer;
+      if (model === undefined) {
+        throw new Error(
+          `.jevest.yml: reviewer.model is required when reviewer.provider is "${config.reviewer.provider}"`,
+        );
+      }
+      switch (config.reviewer.provider) {
+        case "anthropic":
+          return createAnthropicDescriptionContextExtractor({
+            client: new Anthropic({ apiKey: requireLiveKey("anthropic") }),
+            model,
+          });
+        case "deepseek":
+          return createDeepSeekDescriptionContextExtractor({
+            client: new OpenAI({ apiKey: requireLiveKey("deepseek"), baseURL: DEEPSEEK_BASE_URL }),
+            model,
+          });
+        case "claude-cli":
+          requireLiveKey("claude-cli");
+          return createClaudeCliDescriptionContextExtractor({ model });
+        default:
+          return createOpenAiDescriptionContextExtractor({
+            client: new OpenAI({ apiKey: requireLiveKey("openai") }),
+            model,
+          });
+      }
+    }
+    case "replay":
+      return undefined;
+  }
+}
+
 export interface LocalProductContextOptions {
   readonly repoDir: string;
   /** `triage.productContextPath` from the config, relative to `repoDir`. */
@@ -596,6 +666,7 @@ async function main(): Promise<number> {
   const reviewer = buildReviewerPort(options.mode, config);
   const summarizer = buildSummarizerPort(options.mode, config);
   const narrator = buildNarratorPort(options.mode, config);
+  const descriptionContext = buildDescriptionContextPort(options.mode, config);
   const fetchFileContent = options.gitRange ? createGitFileContentFetcher(repoDir) : undefined;
   const productContext = await resolveLocalProductContext({
     repoDir,
@@ -636,6 +707,7 @@ async function main(): Promise<number> {
       ...(reviewer ? { reviewer } : {}),
       ...(summarizer ? { summarizer } : {}),
       ...(narrator ? { narrator } : {}),
+      ...(descriptionContext ? { descriptionContext } : {}),
     },
     config,
     productContext,

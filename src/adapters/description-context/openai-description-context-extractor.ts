@@ -1,50 +1,45 @@
 /**
- * ReviewerPort over the official `openai` SDK (SPEC FR-4, §5 Fase 1a step 1,
- * §13 "LLM revisor y juez: ambos proveedores"). Structured output via
- * `client.chat.completions.parse()` with `zodResponseFormat`, the OpenAI
- * chat-completions equivalent of the Anthropic adapter's `messages.parse()`.
- *
- * Model defaults to `gpt-5.6-luna`, confirmed present in this repo's
- * installed `openai` SDK's `ChatModel` type union (per the task brief, this
- * is what the LangChain article used; the installed SDK's own types confirm
- * it's a real, current model id rather than a guess).
- *
- * The SDK client is always injected (`options.client`), narrowed to the one
- * method this adapter calls, matching the Anthropic adapter and
- * ../typesafe-decision-adapter.ts's `DecisionApiClient` pattern.
+ * DescriptionContextPort over the official `openai` SDK, the extractor-side
+ * twin of ../narrators/openai-narrator.ts: `chat.completions.parse()` with
+ * `zodResponseFormat`, same error mapping.
  */
 import { APIError, AuthenticationError, RateLimitError } from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
-import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
-import {
-  type ReviewOutputSchema,
-  reviewOutputSchema,
-  toReviewFindingCandidates,
-} from "./review-output-schema.js";
-import {
-  REVIEW_SYSTEM_PROMPT,
-  buildReviewUserPrompt,
-  reviewSystemPromptForInput,
-} from "./review-prompt.js";
+import type {
+  DescriptionContextInput,
+  DescriptionContextOutput,
+  DescriptionContextPort,
+} from "../../domain/ports/description-context-port.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
   ReviewerParseError,
   ReviewerRateLimitError,
-} from "./reviewer-errors.js";
+} from "../reviewers/reviewer-errors.js";
+import {
+  type DescriptionContextOutputSchema,
+  descriptionContextOutputSchema,
+  toExtractedAuthorContext,
+} from "./description-context-output-schema.js";
+import {
+  DESCRIPTION_CONTEXT_SYSTEM_PROMPT,
+  buildDescriptionContextUserPrompt,
+} from "./description-context-prompt.js";
 
 /** The subset of the OpenAI client this adapter depends on. */
-export interface OpenAiChatClient {
+export interface OpenAiDescriptionContextClient {
   chat: {
     completions: {
       parse(params: {
         model: string;
         messages: Array<{ role: "system" | "user"; content: string }>;
-        response_format: ReturnType<typeof zodResponseFormat<typeof reviewOutputSchema>>;
+        response_format: ReturnType<
+          typeof zodResponseFormat<typeof descriptionContextOutputSchema>
+        >;
       }): Promise<{
         id: string;
         model: string;
-        choices: Array<{ message: { parsed: ReviewOutputSchema | null } }>;
+        choices: Array<{ message: { parsed: DescriptionContextOutputSchema | null } }>;
         usage?: {
           prompt_tokens: number;
           completion_tokens: number;
@@ -55,11 +50,9 @@ export interface OpenAiChatClient {
   };
 }
 
-export interface OpenAiReviewerOptions {
-  readonly client: OpenAiChatClient;
-  /** Default REVIEW_SYSTEM_PROMPT (strict); `reviewSystemPromptFor("thorough")` for the low-bar pass. */
-  readonly systemPrompt?: string;
-  /** Default "gpt-5.6-luna" (confirmed in the installed SDK's ChatModel union). */
+export interface OpenAiDescriptionContextOptions {
+  readonly client: OpenAiDescriptionContextClient;
+  /** Default "gpt-5.6-luna", same as the reviewer. */
   readonly model?: string;
   /** Injectable clock for deterministic latency tests. Default: `Date.now`. */
   readonly now?: () => number;
@@ -67,23 +60,26 @@ export interface OpenAiReviewerOptions {
 
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const PROVIDER = "openai";
-const RESPONSE_FORMAT = zodResponseFormat(reviewOutputSchema, "review_output");
+const RESPONSE_FORMAT = zodResponseFormat(descriptionContextOutputSchema, "description_context");
 
-export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPort {
+export function createOpenAiDescriptionContextExtractor(
+  options: OpenAiDescriptionContextOptions,
+): DescriptionContextPort {
   const model = options.model ?? DEFAULT_MODEL;
   const now = options.now ?? Date.now;
-  const systemPrompt = options.systemPrompt ?? REVIEW_SYSTEM_PROMPT;
 
   return {
-    async review(input: ReviewInput): Promise<ReviewOutput> {
+    async extract(input: DescriptionContextInput): Promise<DescriptionContextOutput> {
       const start = now();
-      let response: Awaited<ReturnType<OpenAiChatClient["chat"]["completions"]["parse"]>>;
+      let response: Awaited<
+        ReturnType<OpenAiDescriptionContextClient["chat"]["completions"]["parse"]>
+      >;
       try {
         response = await options.client.chat.completions.parse({
           model,
           messages: [
-            { role: "system", content: reviewSystemPromptForInput(systemPrompt, input) },
-            { role: "user", content: buildReviewUserPrompt(input) },
+            { role: "system", content: DESCRIPTION_CONTEXT_SYSTEM_PROMPT },
+            { role: "user", content: buildDescriptionContextUserPrompt(input) },
           ],
           response_format: RESPONSE_FORMAT,
         });
@@ -105,11 +101,11 @@ export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPo
 
       const parsed = response.choices[0]?.message.parsed ?? null;
       if (parsed === null) {
-        throw new ReviewerParseError(PROVIDER, input.hunkId);
+        throw new ReviewerParseError(PROVIDER, input.prId);
       }
 
       return {
-        findings: toReviewFindingCandidates(parsed),
+        ...toExtractedAuthorContext(parsed),
         model: response.model,
         usage: {
           inputTokens: response.usage?.prompt_tokens ?? 0,

@@ -96,6 +96,7 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
       model: "claude-sonnet-5",
       language: "es",
       narrative: true,
+      descriptionContext: true,
     });
   });
 });

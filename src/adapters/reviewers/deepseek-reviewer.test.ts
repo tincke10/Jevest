@@ -8,6 +8,7 @@ import {
   buildDeepSeekSystemPrompt,
   createDeepSeekReviewer,
 } from "./deepseek-reviewer.js";
+import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -282,5 +283,32 @@ describe("createDeepSeekReviewer", () => {
       expect(Array.isArray(output.findings)).toBe(true);
       expect(output.usage.inputTokens + output.usage.cacheReadInputTokens).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("createDeepSeekReviewer with the author's stated context", () => {
+  const WITH_AUTHOR_CONTEXT: ReviewInput = {
+    ...SAMPLE_INPUT,
+    authorContext: {
+      decisions: ["cache of 5 minutes because the API allows 10 req/s"],
+      intendedBehaviorChanges: [],
+      outOfScope: [],
+      constraints: [],
+      references: [],
+    },
+  };
+
+  it("appends the author-context rules after the json rules only when present", async () => {
+    const client = fakeClient(async () => successResponse());
+    const reviewer = createDeepSeekReviewer({ client });
+    await reviewer.review(SAMPLE_INPUT);
+    await reviewer.review(WITH_AUTHOR_CONTEXT);
+    const [plain] = client.chat.completions.create.mock.calls[0]!;
+    const [withContext] = client.chat.completions.create.mock.calls[1]!;
+    expect(plain.messages[0].content).toBe(DEEPSEEK_SYSTEM_PROMPT);
+    expect(withContext.messages[0].content).toBe(
+      `${DEEPSEEK_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
+    );
+    expect(withContext.messages[1].content).toContain("<author_context>");
   });
 });

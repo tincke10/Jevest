@@ -9,6 +9,28 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Author context from the PR description** (`reviewer.descriptionContext`):
+  the per-hunk reviewer now takes the PR description into account — design
+  decisions, intended behavior changes, what is out of scope, constraints
+  and business rules, linked tickets — without letting it steer the review.
+  Three layers: (1) when triage flags injected instructions in the
+  description, nothing from it reaches the reviewer; (2) one extra LLM call
+  per PR (new `DescriptionContextPort`, claude-cli, anthropic, openai and
+  deepseek adapters and a fake, using the reviewer's provider, model and
+  credential) keeps only review-relevant items and discards every sentence
+  that tries to skip or steer the review or asserts quality ("no review
+  needed", "already tested", "ignore file X", "LGTM"), followed by a
+  deterministic Spanish/English post-filter and size caps; (3) the reviewer
+  prompt treats the kept items as untrusted, intent-only context that can
+  never dismiss or soften a finding, and a contradiction between the code
+  and a stated decision is itself a finding. The narrator gets the kept
+  items instead of the raw description. The comment lists what was kept and
+  discarded inside "Jevest details", plus one visible line in
+  `reviewer.language` when something was discarded. Its cost counts against
+  `budgetUsd`, the spend ledger and `cost-usd`; an extractor error never
+  fails the run. Without author context the reviewer request is
+  byte-identical to before, so recorded fixtures keep their keys. On by
+  default for any LLM provider, off for `provider: none`.
 - **Colleague review** (`reviewer.narrative`, `reviewer.language`): one extra
   LLM call per PR, after the finding filter, writes the top of the summary
   comment as a senior colleague would — an overall take, each point tied to

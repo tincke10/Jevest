@@ -116,6 +116,13 @@ export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 // explicit `true` without an LLM is a config error, like
 // `triage.changeSummary: always`. The narrator uses the reviewer's
 // provider, model and credential.
+//
+// `descriptionContext` turns on the per-PR extractor that keeps the review-
+// relevant part of the PR description (design decisions, intended behavior,
+// scope, constraints, references) for the reviewer and drops every attempt
+// to steer the review (src/application/pipeline/stages/description-context.ts).
+// Same resolution as `narrative`: unset follows the provider, explicit
+// `true` without an LLM is a config error.
 const DEFAULT_REVIEW_LANGUAGE = "es";
 
 const reviewerSchema = z
@@ -124,6 +131,7 @@ const reviewerSchema = z
     model: z.string().min(1).optional(),
     language: z.string().trim().min(1).default(DEFAULT_REVIEW_LANGUAGE),
     narrative: z.boolean().optional(),
+    descriptionContext: z.boolean().optional(),
   })
   .superRefine((r, ctx) => {
     if (r.provider !== "none" && !r.model) {
@@ -139,6 +147,14 @@ const reviewerSchema = z
         path: ["narrative"],
         message:
           'reviewer.narrative true needs an LLM to write the review: set reviewer.provider to something other than "none" (or drop reviewer.narrative)',
+      });
+    }
+    if (r.provider === "none" && r.descriptionContext === true) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["descriptionContext"],
+        message:
+          'reviewer.descriptionContext true needs an LLM to read the PR description: set reviewer.provider to something other than "none" (or drop reviewer.descriptionContext)',
       });
     }
   });
@@ -259,6 +275,8 @@ export interface JevestConfig {
     readonly language: string;
     /** Resolved: the explicit value, else true for any LLM provider and false for "none". */
     readonly narrative: boolean;
+    /** Author context from the PR description for the reviewer; resolved like `narrative`. */
+    readonly descriptionContext: boolean;
   };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
@@ -349,6 +367,8 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
       model: result.data.reviewer.model,
       language: result.data.reviewer.language,
       narrative: result.data.reviewer.narrative ?? result.data.reviewer.provider !== "none",
+      descriptionContext:
+        result.data.reviewer.descriptionContext ?? result.data.reviewer.provider !== "none",
     },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,

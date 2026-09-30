@@ -31,7 +31,11 @@ import {
   reviewOutputSchema,
   toReviewFindingCandidates,
 } from "./review-output-schema.js";
-import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from "./review-prompt.js";
+import {
+  REVIEW_SYSTEM_PROMPT,
+  buildReviewUserPrompt,
+  reviewSystemPromptForInput,
+} from "./review-prompt.js";
 import {
   ClaudeCliError,
   ClaudeCliProcessError,
@@ -165,7 +169,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
         "--tools",
         "",
         "--system-prompt",
-        systemPrompt,
+        reviewSystemPromptForInput(systemPrompt, input),
         "--json-schema",
         JSON.stringify(REVIEW_OUTPUT_JSON_SCHEMA),
         buildReviewUserPrompt(input),

@@ -225,3 +225,42 @@ describe("runReviewStage", () => {
     expect(result.budgetExceeded).toBe(false);
   });
 });
+
+describe("runReviewStage and the author's stated context", () => {
+  const AUTHOR_CONTEXT = {
+    decisions: ["cache of 5 minutes because the API allows 10 req/s"],
+    intendedBehaviorChanges: [],
+    outOfScope: [],
+    constraints: [],
+    references: [],
+  };
+
+  it("passes the same author context to every hunk", async () => {
+    const inputs: ReviewInput[] = [];
+    await runReviewStage({
+      hunks: [makeHunk(), makeHunk({ id: "a.ts#1" })],
+      reviewerPort: fakeReviewer(async (input) => {
+        inputs.push(input);
+        return makeReviewOutput();
+      }),
+      pricing,
+      budgetUsd: 10,
+      authorContext: AUTHOR_CONTEXT,
+    });
+    expect(inputs.map((i) => i.authorContext)).toEqual([AUTHOR_CONTEXT, AUTHOR_CONTEXT]);
+  });
+
+  it("leaves the key out entirely without one (the fixture key and prompt stay unchanged)", async () => {
+    const inputs: ReviewInput[] = [];
+    await runReviewStage({
+      hunks: [makeHunk()],
+      reviewerPort: fakeReviewer(async (input) => {
+        inputs.push(input);
+        return makeReviewOutput();
+      }),
+      pricing,
+      budgetUsd: 10,
+    });
+    expect("authorContext" in inputs[0]!).toBe(false);
+  });
+});

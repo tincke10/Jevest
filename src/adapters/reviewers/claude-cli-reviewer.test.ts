@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type ClaudeCliSpawn, createClaudeCliReviewer } from "./claude-cli-reviewer.js";
-import { REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
+import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
 import {
   ClaudeCliError,
   ClaudeCliProcessError,
@@ -267,5 +267,32 @@ describe("createClaudeCliReviewer", () => {
       expect(Array.isArray(output.findings)).toBe(true);
       expect(output.usage.inputTokens + output.usage.cacheCreationInputTokens).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("createClaudeCliReviewer with the author's stated context", () => {
+  const WITH_AUTHOR_CONTEXT: ReviewInput = {
+    ...SAMPLE_INPUT,
+    authorContext: {
+      decisions: ["cache of 5 minutes because the API allows 10 req/s"],
+      intendedBehaviorChanges: [],
+      outOfScope: [],
+      constraints: [],
+      references: [],
+    },
+  };
+
+  it("appends the author-context rules to --system-prompt and the block to the prompt only when present", async () => {
+    const spawn = okSpawn();
+    const reviewer = createClaudeCliReviewer({ spawn });
+    await reviewer.review(SAMPLE_INPUT);
+    await reviewer.review(WITH_AUTHOR_CONTEXT);
+    const [plain] = spawn.mock.calls[0]!;
+    const [withContext] = spawn.mock.calls[1]!;
+    expect(plain[plain.indexOf("--system-prompt") + 1]).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(withContext[withContext.indexOf("--system-prompt") + 1]).toBe(
+      `${REVIEW_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
+    );
+    expect(withContext.at(-1)).toContain("<author_context>");
   });
 });

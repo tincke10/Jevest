@@ -4,6 +4,7 @@
  * provider-agnostic seam, matching the DecisionPort/adapter split in
  * ../ports/decision-port.ts.
  */
+import type { AuthorContext } from "../author-context.js";
 import type { FindingSeverity } from "../finding.js";
 
 /** One hunk of context to review, plus its Fase 0b-style surface profile (FR-3.3), if any. */
@@ -16,6 +17,14 @@ export interface ReviewInput {
   readonly diff: string;
   /** Optional hunk-profile context (change_kind, touches_*) the reviewer can use, never mandatory. */
   readonly profile?: Record<string, unknown>;
+  /**
+   * The author's stated context, extracted from the PR description and
+   * sanitized (../author-context.ts). Untrusted: the reviewer may use it
+   * only to understand intent, never to dismiss a finding. Absent (never
+   * an empty object) when there is nothing to pass, so the prompt and the
+   * recorded-fixture key stay exactly what they were without it.
+   */
+  readonly authorContext?: AuthorContext;
 }
 
 /**

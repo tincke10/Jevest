@@ -272,3 +272,22 @@ describe("narrativeSkipped", () => {
     });
   });
 });
+
+describe("runNarrateStage and the author's stated context", () => {
+  it("passes the extracted context through, and leaves the key out when there is none", async () => {
+    const context = {
+      decisions: ["cache of 5 minutes"],
+      intendedBehaviorChanges: [],
+      outOfScope: [],
+      constraints: [],
+      references: [],
+    };
+    const withContext = createFakeNarrator(() => fakeNarrativeOutput("Review body"));
+    await runNarrateStage(makeInput({ narrator: withContext, authorContext: context }));
+    expect(withContext.calls[0]!.authorContext).toEqual(context);
+
+    const without = createFakeNarrator(() => fakeNarrativeOutput("Review body"));
+    await runNarrateStage(makeInput({ narrator: without }));
+    expect("authorContext" in without.calls[0]!).toBe(false);
+  });
+});

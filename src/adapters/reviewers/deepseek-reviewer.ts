@@ -29,7 +29,11 @@
 import { APIError, AuthenticationError, RateLimitError } from "openai";
 import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import { reviewOutputSchema, toReviewFindingCandidates } from "./review-output-schema.js";
-import { REVIEW_SYSTEM_PROMPT, buildReviewUserPrompt } from "./review-prompt.js";
+import {
+  REVIEW_SYSTEM_PROMPT,
+  buildReviewUserPrompt,
+  reviewSystemPromptForInput,
+} from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -159,7 +163,7 @@ export function createDeepSeekReviewer(options: DeepSeekReviewerOptions): Review
         response = await options.client.chat.completions.create({
           model,
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: reviewSystemPromptForInput(systemPrompt, input) },
             { role: "user", content: buildReviewUserPrompt(input) },
           ],
           response_format: { type: "json_object" },

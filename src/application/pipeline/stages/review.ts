@@ -5,8 +5,10 @@
  * `review()` call, with its FR-3.3 profile passed as context. A budget cap
  * stops further calls once exceeded (FR-4.3); a per-hunk reviewer error is
  * recorded and the stage continues (matches the spike/filter runners'
- * fail-per-item, continue-overall pattern).
+ * fail-per-item, continue-overall pattern). The author's stated context, when
+ * the pipeline has one, rides along on every hunk's ReviewInput.
  */
+import type { AuthorContext } from "../../../domain/author-context.js";
 import { languageFromPath } from "../../../domain/language.js";
 import type {
   ReviewFindingCandidate,
@@ -68,6 +70,11 @@ export interface ReviewStageInput {
   readonly reviewerPort: ReviewerPort;
   readonly pricing: ModelPricing;
   readonly budgetUsd: number;
+  /**
+   * The author's stated context (description-context.ts), the same for every
+   * hunk. Absent when the description was not used or nothing was kept.
+   */
+  readonly authorContext?: AuthorContext;
 }
 
 export interface ReviewStageResult {
@@ -77,7 +84,7 @@ export interface ReviewStageResult {
   readonly skippedForBudgetCount: number;
 }
 
-function toReviewInput(hunk: HunkProfileEntry): ReviewInput {
+function toReviewInput(hunk: HunkProfileEntry, authorContext?: AuthorContext): ReviewInput {
   return {
     hunkId: hunk.id,
     file: hunk.file,
@@ -93,6 +100,7 @@ function toReviewInput(hunk: HunkProfileEntry): ReviewInput {
       touchesPublicApiPartial: hunk.touchesPublicApiPartial,
       astSkipped: hunk.astSkipped,
     },
+    ...(authorContext ? { authorContext } : {}),
   };
 }
 
@@ -111,7 +119,7 @@ export async function runReviewStage(input: ReviewStageInput): Promise<ReviewSta
     }
 
     try {
-      const output = await input.reviewerPort.review(toReviewInput(hunk));
+      const output = await input.reviewerPort.review(toReviewInput(hunk, input.authorContext));
       // A subscription-billed reviewer (claude-cli) reports the CLI's own
       // nominal list-price cost; that number is what the budget cap should
       // track, not a re-computation from a per-token pricing table.

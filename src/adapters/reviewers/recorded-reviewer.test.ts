@@ -123,3 +123,36 @@ describe("createRecordedReviewer", () => {
     );
   });
 });
+
+describe("fixtureKeyForReview and the author context", () => {
+  const GOLDEN_INPUT = {
+    hunkId: "zod-9446b5c-1",
+    file: "packages/zod/src/v4/core/compile.ts",
+    language: "typescript",
+    hunkHeader: "@@ -1268,13 +1268,13 @@ function generateObjectCheck(",
+    before: "const outputVar = newVar(ctx);",
+    diff: "@@ -1268,13 +1268,13 @@\n-const outputVar = newVar(ctx);\n+const outputVar = newVar(ctx2);",
+    profile: { changeKind: "modify-behavior" },
+  };
+
+  it("keeps the key of an input without author context unchanged (recorded fixtures still match)", () => {
+    expect(fixtureKeyForReview(GOLDEN_INPUT)).toBe(
+      "d2b2d73a11894d4d959544889846f3044860a2ae94cb3838546cf2a7960ea5e9",
+    );
+  });
+
+  it("gives an input with author context its own key", () => {
+    expect(
+      fixtureKeyForReview({
+        ...GOLDEN_INPUT,
+        authorContext: {
+          decisions: ["cache 5 min"],
+          intendedBehaviorChanges: [],
+          outOfScope: [],
+          constraints: [],
+          references: [],
+        },
+      }),
+    ).not.toBe(fixtureKeyForReview(GOLDEN_INPUT));
+  });
+});

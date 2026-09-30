@@ -42,11 +42,26 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * happens after the narrator — or, on a fail-closed exit after the review
  * stage, right before publishing that failure, so spent money is never
  * lost from the total.
+ *
+ * Author context (stages/description-context.ts): right before the review
+ * stage, one extractor call keeps the review-relevant part of the PR
+ * description for the reviewer (and the narrator, in place of the raw
+ * description) and drops every attempt to steer the review. It runs only
+ * when `reviewer.descriptionContext` is on, a DescriptionContextPort is
+ * wired, the LLM review really runs (not Jev-only, not a reached spend
+ * cap, not a triage-only run) and the description is not blank; those
+ * skips are silent. When triage flagged injected instructions in the
+ * description (the same confirm bar the merge gate fails on) the extractor
+ * is NOT called and nothing from the description reaches the reviewer; the
+ * comment says so in one line. An extractor error never fails the run.
+ * Its cost is LLM money like the others: it comes out of the per-run
+ * budget before the review, and counts in `costUsd` and the ledger.
  */
 import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
+import type { DescriptionContextPort } from "../../domain/ports/description-context-port.js";
 import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
@@ -66,6 +81,12 @@ import {
   ZERO_WALL_TIMES,
   computeRunMetrics,
 } from "./run-metrics.js";
+import {
+  type DescriptionContextStageResult,
+  descriptionContextSkipped,
+  reviewerAuthorContext,
+  runDescriptionContextStage,
+} from "./stages/description-context.js";
 import { type FindingFilterStageResult, runFindingFilterStage } from "./stages/finding-filter.js";
 import {
   type HunkProfileStageResult,
@@ -104,6 +125,13 @@ export interface RunPipelineInput {
      */
     readonly narrator?: ReviewNarratorPort;
     /**
+     * Extracts the author's stated context from the PR description for the
+     * reviewer (stages/description-context.ts). Used only when
+     * `config.reviewer.descriptionContext` is true; without it the reviewer
+     * never sees the description, exactly as before.
+     */
+    readonly descriptionContext?: DescriptionContextPort;
+    /**
      * Cumulative spend ledger behind `config.spendCap` (NFR-10). Optional:
      * without it the cap is not enforced and `spendCap` in the result is
      * `null`. Read/record failures never fail the run — see `readSpendCap`
@@ -139,6 +167,8 @@ export interface PipelineResult {
   readonly mergeGate: MergeGateStageResult | null;
   /** The colleague review; `null` when the narrator was not configured or not applicable (see the module doc). */
   readonly narrative: NarrateStageResult | null;
+  /** What the reviewer got from the PR description; `null` when the extractor was not configured or not applicable (see the module doc). */
+  readonly descriptionContext: DescriptionContextStageResult | null;
   readonly publication: import("../../domain/ports/vcs-port.js").ReviewPublication;
   /**
    * Convenience top-level mirrors of `publication.check` and the
@@ -149,7 +179,7 @@ export interface PipelineResult {
   readonly findingsPublished: number;
   /** `findingFilter.lowConfidence.length` (`mode: "annotate"` only; 0 in `mode: "discard"`). See stages/finding-filter.ts. */
   readonly findingsLowConfidence: number;
-  /** LLM money spent on this run: the review stage, the change summary and the review narrative. */
+  /** LLM money spent on this run: the review stage, the change summary, the description context and the review narrative. */
   readonly costUsd: number;
   /**
    * Cumulative spend cap state (NFR-10) AFTER this run was recorded, or the
@@ -188,13 +218,17 @@ function summaryFields(
   review: ReviewStageResult | null,
   triage: TriageStageResult | null = null,
   narrative: NarrateStageResult | null = null,
+  descriptionContext: DescriptionContextStageResult | null = null,
 ): Pick<PipelineResult, "check" | "findingsPublished" | "findingsLowConfidence" | "costUsd"> {
   return {
     check: publication.check,
     findingsPublished: findingFilter?.published.length ?? 0,
     findingsLowConfidence: findingFilter?.lowConfidence.length ?? 0,
     costUsd:
-      (review?.totalCostUsd ?? 0) + (triage?.summaryCostUsd ?? 0) + (narrative?.costUsd ?? 0),
+      (review?.totalCostUsd ?? 0) +
+      (triage?.summaryCostUsd ?? 0) +
+      (descriptionContext?.costUsd ?? 0) +
+      (narrative?.costUsd ?? 0),
   };
 }
 
@@ -338,6 +372,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
 
   const reviewDisabled = config.reviewer.provider === "none";
   let reviewSkippedForSpendCap = false;
+  // Set right before the review stage; a fail-closed exit after it still reports it (and its cost).
+  let descriptionContext: DescriptionContextStageResult | null = null;
   let unprofiledHunkDiffs: readonly string[] = [];
   const metricsFor = (stages: StageResults): RunMetrics =>
     computeRunMetrics({
@@ -366,8 +402,16 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       failureReason: stage,
       ...stages,
       narrative: null,
+      descriptionContext,
       publication,
-      ...summaryFields(publication, stages.findingFilter, stages.review, stages.triage),
+      ...summaryFields(
+        publication,
+        stages.findingFilter,
+        stages.review,
+        stages.triage,
+        null,
+        descriptionContext,
+      ),
       ...spendFields,
       metrics: metricsFor(stages),
     };
@@ -462,6 +506,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       failureReason: null,
       ...stages,
       narrative: null,
+      descriptionContext: null,
       publication,
       ...summaryFields(publication, null, null, triage),
       ...spendFields,
@@ -490,16 +535,34 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     );
   }
 
+  // Triage's injection flag in the description, resolved against its
+  // confirm bar: the same flag the merge gate fails on, and the gate that
+  // keeps the description away from the reviewer (see the module doc).
+  const injectionThresholds = config.thresholds.triage?.[triage.riskLevel];
+  const containsInjectedInstructionsHigh =
+    injectionThresholds !== undefined &&
+    triage.containsInjectedInstructionsProb >= injectionThresholds.confirmMin;
+
   // The LLM reviewer is not Jev — its own per-hunk errors are already
   // handled inside runReviewStage (recorded, pipeline continues), so NFR-2
   // fail-closed doesn't apply to this call. reviewer.provider: "none" is
   // Jev-only mode: the review stage never runs at all, no LLM key needed.
   // A reached spend cap takes the same path (see above).
   // The change summary already spent part of this run's budget (H7).
-  const reviewBudgetUsd = Math.max(
+  const budgetAfterSummaryUsd = Math.max(
     0,
     (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
   );
+  descriptionContext = await extractDescriptionContext({
+    input,
+    pr,
+    reviewRuns: !reviewDisabled && !reviewSkippedForSpendCap,
+    budgetUsd: budgetAfterSummaryUsd,
+    containsInjectedInstructionsHigh,
+  });
+  // The author context, like the summary, already spent part of the budget.
+  const reviewBudgetUsd = Math.max(0, budgetAfterSummaryUsd - (descriptionContext?.costUsd ?? 0));
+  const authorContext = reviewerAuthorContext(descriptionContext);
   let review: ReviewStageResult;
   if (reviewDisabled || reviewSkippedForSpendCap) {
     review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
@@ -517,6 +580,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         // config validation guarantees model is set whenever provider isn't "none".
         pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
         budgetUsd: reviewBudgetUsd,
+        ...(authorContext ? { authorContext } : {}),
       }),
     );
   }
@@ -533,7 +597,10 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       now,
       preRun.evaluation,
       triage.usage.inputTokens + hunkProfile.totalUsage.inputTokens,
-      review.totalCostUsd + triage.summaryCostUsd + extraLlmUsd,
+      review.totalCostUsd +
+        triage.summaryCostUsd +
+        (descriptionContext?.costUsd ?? 0) +
+        extraLlmUsd,
     );
     return {
       spendCap: recorded.evaluation,
@@ -566,11 +633,6 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       await bookRunSpend(0),
     );
   }
-
-  const injectionThresholds = config.thresholds.triage?.[triage.riskLevel];
-  const containsInjectedInstructionsHigh =
-    injectionThresholds !== undefined &&
-    triage.containsInjectedInstructionsProb >= injectionThresholds.confirmMin;
 
   let mergeGate: MergeGateStageResult;
   try {
@@ -614,6 +676,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       containsInjectedInstructionsHigh ||
       injectedInstructionsInDiffWord(hunkProfile.injectedInstructionsInDiff.maxProb) === "yes",
     remainingBudgetUsd: reviewBudgetUsd - review.totalCostUsd,
+    descriptionContext,
   });
   spend = await bookRunSpend(narrative?.costUsd ?? 0);
 
@@ -628,6 +691,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     narrative,
     language: config.reviewer.language,
     injectedInstructionsInDescription: containsInjectedInstructionsHigh,
+    descriptionContext,
   });
   await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
@@ -637,8 +701,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     failureReason: null,
     ...stages,
     narrative,
+    descriptionContext,
     publication,
-    ...summaryFields(publication, findingFilter, review, triage, narrative),
+    ...summaryFields(publication, findingFilter, review, triage, narrative, descriptionContext),
     ...spend,
     metrics: metricsFor(stages),
   };
@@ -661,6 +726,8 @@ interface NarrateInput {
   readonly injectionSuspected: boolean;
   /** What is left of this run's budget after the summary and the review. */
   readonly remainingBudgetUsd: number;
+  /** The author-context extraction, if any: an extracted one replaces the raw description for the narrator. */
+  readonly descriptionContext: DescriptionContextStageResult | null;
 }
 
 /**
@@ -700,5 +767,43 @@ async function narrate(args: NarrateInput): Promise<NarrateStageResult | null> {
     narrator,
     language: input.config.reviewer.language,
     pricing: pricingForModel(input.config.reviewer.model ?? input.config.reviewer.provider),
+    ...(args.descriptionContext?.context ? { authorContext: args.descriptionContext.context } : {}),
+  });
+}
+
+interface ExtractDescriptionContextInput {
+  readonly input: RunPipelineInput;
+  readonly pr: import("../../domain/pull-request.js").PullRequestData;
+  /** The LLM review will really run: not Jev-only, not a reached spend cap. */
+  readonly reviewRuns: boolean;
+  /** This run's budget left after the change summary. */
+  readonly budgetUsd: number;
+  readonly containsInjectedInstructionsHigh: boolean;
+}
+
+/**
+ * Whether and how the author context is extracted (see the module doc).
+ * `null` means "not applicable, say nothing"; the injection gate is the one
+ * skip the reader is told about, since it is a security decision.
+ */
+async function extractDescriptionContext(
+  args: ExtractDescriptionContextInput,
+): Promise<DescriptionContextStageResult | null> {
+  const { config, ports } = args.input;
+  const extractor = ports.descriptionContext;
+  if (!config.reviewer.descriptionContext || extractor === undefined || !args.reviewRuns) {
+    return null;
+  }
+  if (args.pr.body.trim() === "" || args.budgetUsd <= 0) {
+    return null;
+  }
+  if (args.containsInjectedInstructionsHigh) {
+    return descriptionContextSkipped("suspected instructions to a reviewer in the description");
+  }
+  return runDescriptionContextStage({
+    pr: args.pr,
+    extractor,
+    language: config.reviewer.language,
+    pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
   });
 }

@@ -39,6 +39,14 @@
  * deliberately last and EXCLUDED from `summaryFingerprint`: latency varies
  * between two runs over the same commit, and NFR-12's fingerprint promises
  * to cover the review's content, not its timing.
+ *
+ * Reviewer failures: a hunk whose reviewer call threw (e.g. an expired
+ * token) has no findings, which reads exactly like a clean review. When
+ * any did, an "LLM review failed" warning with the distinct error messages
+ * comes BEFORE every findings section, the empty-findings lines stop
+ * claiming a review happened if none did, and the check title/summary say
+ * so. The warning IS fingerprinted (a failed run must not look like an
+ * identical clean one); the check conclusion is left to the merge gate.
  */
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
@@ -52,7 +60,7 @@ import {
   INJECTED_INSTRUCTIONS_IN_DIFF_YES_MIN_PROB,
 } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
-import type { ReviewStageResult } from "./review.js";
+import type { ReviewStageEntry, ReviewStageResult } from "./review.js";
 import type { TriageStageResult } from "./triage.js";
 
 export interface PublishStageInput {
@@ -327,6 +335,7 @@ function buildNeedsHumanSection(
   findingFilter: FindingFilterStageResult,
   triage: TriageStageResult,
   hunkProfile: HunkProfileStageResult,
+  review: ReviewStageResult,
 ): string {
   const lines = findingFilter.needsHuman.map((f) => {
     const suffix = f.unverified ? " — unverified (Jev unavailable)" : "";
@@ -339,7 +348,7 @@ function buildNeedsHumanSection(
     lines.push(injectedInstructionsQueueLine(hunkProfile));
   }
   if (lines.length === 0) {
-    return "No findings need human review.";
+    return allReviewsFailed(review) ? NO_HUNK_REVIEWED : "No findings need human review.";
   }
   return lines.join("\n");
 }
@@ -378,9 +387,56 @@ function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): str
   ];
 }
 
-function buildHighConfidenceFindingsSection(findingFilter: FindingFilterStageResult): string {
+/** Longest reviewer error message rendered; provider errors can embed whole response bodies. */
+const MAX_REVIEW_ERROR_CHARS = 300;
+
+/** No hunk was reviewed: the reviewer was called and threw on every call. */
+function allReviewsFailed(review: ReviewStageResult): boolean {
+  return review.reviews.length > 0 && review.reviews.every((r) => r.error !== null);
+}
+
+function failedReviews(review: ReviewStageResult): ReviewStageEntry[] {
+  return review.reviews.filter((r) => r.error !== null);
+}
+
+function errorForDisplay(message: string): string {
+  const oneLine = message.replace(/\s+/g, " ").replace(/`/g, "'").trim();
+  return oneLine.length > MAX_REVIEW_ERROR_CHARS
+    ? `${oneLine.slice(0, MAX_REVIEW_ERROR_CHARS - 1)}…`
+    : oneLine;
+}
+
+/** Empty when every reviewer call returned; see the module doc. */
+function buildReviewFailedSection(review: ReviewStageResult): string[] {
+  const failed = failedReviews(review);
+  if (failed.length === 0) {
+    return [];
+  }
+  const filesByError = new Map<string, Set<string>>();
+  for (const entry of failed) {
+    const message = errorForDisplay(entry.error ?? "");
+    const files = filesByError.get(message) ?? new Set<string>();
+    files.add(entry.file);
+    filesByError.set(message, files);
+  }
+  return [
+    "### ⚠️ LLM review failed",
+    `The reviewer failed on ${failed.length} of ${review.reviews.length} hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.`,
+    ...[...filesByError].map(
+      ([message, files]) => `- \`${message}\` — ${[...files].map((f) => `\`${f}\``).join(", ")}`,
+    ),
+    "",
+  ];
+}
+
+const NO_HUNK_REVIEWED = "No hunk was reviewed: the reviewer failed on every hunk it was given.";
+
+function buildHighConfidenceFindingsSection(
+  findingFilter: FindingFilterStageResult,
+  review: ReviewStageResult,
+): string {
   if (findingFilter.published.length === 0) {
-    return "No high-confidence findings.";
+    return allReviewsFailed(review) ? NO_HUNK_REVIEWED : "No high-confidence findings.";
   }
   return findingFilter.published
     .map((f) => `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rationale})`)
@@ -440,7 +496,7 @@ function buildEfficiencySection(metrics: RunMetrics): string[] {
   return [
     "### Efficiency",
     `- Jev: ${plural(jev.requests.total, "request")} · p95 latency ${jev.latency.p95Ms} ms · total Jev time ${jev.latency.sumMs} ms`,
-    `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed · ${skippedByReason(llm.hunks.skipped)}`,
+    `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed${llm.hunks.failed > 0 ? ` · ${llm.hunks.failed} failed (reviewer error)` : ""} · ${skippedByReason(llm.hunks.skipped)}`,
     `- LLM tokens: ${llm.tokens.spent} tokens spent (review ${llm.tokens.reviewInput + llm.tokens.reviewOutput}, summary ${llm.tokens.summaryInput + llm.tokens.summaryOutput}) · without Jev ≈ ${llm.tokensWithoutJev} · saved ≈ ${llm.tokensSavedPct}%`,
     `- ${llm.method}`,
   ];
@@ -471,6 +527,7 @@ function buildSummaryLines(input: PublishStageInput): string[] {
     "## Jevest review",
     "",
     ...(skippedForSpendCap ? [spendCapBanner, ""] : []),
+    ...buildReviewFailedSection(input.review),
     "### Triage",
     `- Category: ${triage.category}`,
     `- Risk level: ${triage.riskLevel}`,
@@ -489,9 +546,13 @@ function buildSummaryLines(input: PublishStageInput): string[] {
     "",
     ...(input.inlineCommentsEnabled
       ? []
-      : ["### Findings (high confidence)", buildHighConfidenceFindingsSection(findingFilter), ""]),
+      : [
+          "### Findings (high confidence)",
+          buildHighConfidenceFindingsSection(findingFilter, input.review),
+          "",
+        ]),
     "### Needs human review",
-    buildNeedsHumanSection(findingFilter, triage, input.hunkProfile),
+    buildNeedsHumanSection(findingFilter, triage, input.hunkProfile, input.review),
     "",
     `### Findings discarded: ${findingFilter.discarded.length}`,
     "",
@@ -639,6 +700,13 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     ? " The PR description does not match the change; a human should look."
     : "";
 
+  const failedCount = failedReviews(input.review).length;
+  const reviewFailedTitle = failedCount > 0 ? " (LLM review failed)" : "";
+  const reviewFailedCheckLine =
+    failedCount > 0
+      ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.`
+      : "";
+
   return {
     ...summary,
     inlineComments,
@@ -646,8 +714,8 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     labelsToRemove,
     check: {
       conclusion,
-      title: `Jevest: ${conclusion}`,
-      summary: `Triage: ${input.triage.category}/${input.triage.riskLevel}. Published ${input.findingFilter.published.length} finding(s), ${input.findingFilter.needsHuman.length} need human review.${mismatchCheckLine}${spendCapCheckLine(input.spendCap)}`,
+      title: `Jevest: ${conclusion}${reviewFailedTitle}`,
+      summary: `Triage: ${input.triage.category}/${input.triage.riskLevel}. Published ${input.findingFilter.published.length} finding(s), ${input.findingFilter.needsHuman.length} need human review.${reviewFailedCheckLine}${mismatchCheckLine}${spendCapCheckLine(input.spendCap)}`,
     },
   };
 }

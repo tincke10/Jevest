@@ -80,8 +80,10 @@ export interface LlmHunkCounts {
   readonly total: number;
   /** Not skipped by the hunk profile and no secret: what the review stage would iterate. */
   readonly eligible: number;
-  /** Reviewer calls attempted (a reviewer error still counts as attempted). */
+  /** Reviewer calls that returned (findings or not). A call that threw is in `failed`, not here. */
   readonly reviewed: number;
+  /** Reviewer calls that threw (e.g. an auth error): attempted, never reviewed. `reviewed + failed` is the attempts. */
+  readonly failed: number;
   readonly skipped: LlmSkippedHunks;
   /** Hunks beyond `maxHunks`, never profiled; outside the counterfactual because their diff is not kept. */
   readonly truncatedByMaxHunks: number;
@@ -224,10 +226,13 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
   const hunks = hunkProfile?.hunks ?? [];
   const eligible = hunks.filter(isEligible);
   const reviews = review?.reviews ?? [];
-  const reviewed = reviews.length;
+  const attempted = reviews.length;
+  const failed = reviews.filter((r) => r.error !== null).length;
+  const reviewed = attempted - failed;
   // The review stage walks the eligible hunks in order and stops calling the
-  // reviewer once the budget is gone, so the unreviewed ones are the tail.
-  const unreviewedEligible = eligible.slice(reviewed);
+  // reviewer once the budget is gone, so the unreviewed ones are the tail
+  // past the ATTEMPTS: a failed hunk was attempted, it is not budget-skipped.
+  const unreviewedEligible = eligible.slice(attempted);
   const secretHunks = hunks.filter((h) => h.containsSecret);
   const changeKindSkipped = hunks.filter((h) => h.skippedFromReview && !h.containsSecret);
 
@@ -304,6 +309,7 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
       total: hunks.length + input.unprofiledHunkDiffs.length,
       eligible: eligible.length,
       reviewed,
+      failed,
       skipped: { ...skippedWithReason, total: skippedTotal },
       truncatedByMaxHunks: hunkProfile?.truncatedHunkCount ?? 0,
     },

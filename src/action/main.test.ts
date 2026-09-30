@@ -582,6 +582,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
           total: 5,
           eligible: 3,
           reviewed: 2,
+          failed: 0,
           skipped: {
             triageSkip: 0,
             skipChangeKind: 1,

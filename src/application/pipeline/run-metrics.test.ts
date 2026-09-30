@@ -201,6 +201,7 @@ describe("computeRunMetrics", () => {
     expect(metrics.jev.costUsd).toBe(0);
     expect(metrics.llm.hunks.total).toBe(0);
     expect(metrics.llm.hunks.reviewed).toBe(0);
+    expect(metrics.llm.hunks.failed).toBe(0);
     expect(metrics.llm.hunks.skipped.total).toBe(0);
     expect(metrics.llm.tokens.spent).toBe(0);
     expect(metrics.llm.tokensWithoutJev).toBe(0);
@@ -300,6 +301,7 @@ describe("computeRunMetrics", () => {
       total: 5,
       eligible: 3,
       reviewed: 2,
+      failed: 0,
       skipped: {
         triageSkip: 0,
         skipChangeKind: 1,
@@ -363,6 +365,24 @@ describe("computeRunMetrics", () => {
     expect(metrics.llm.hunks.skipped.budget).toBe(0);
   });
 
+  it("keeps the unreviewed tail based on attempts: a failed hunk is not re-counted as budget-skipped", () => {
+    const hunks = [makeHunk("a.ts#0"), makeHunk("a.ts#1")];
+    const review = makeReview([makeReviewEntry("a.ts#0", { usage: null, error: "401" })]);
+    const metrics = computeRunMetrics(
+      makeInput({
+        triage: makeTriage(),
+        hunkProfile: makeHunkProfile(hunks),
+        review,
+        findingFilter: makeFindingFilter([]),
+        mergeGate: makeMergeGate(),
+      }),
+    );
+
+    expect(metrics.llm.hunks.reviewed).toBe(0);
+    expect(metrics.llm.hunks.failed).toBe(1);
+    expect(metrics.llm.hunks.skipped.budget).toBe(1);
+  });
+
   it("on a triage skip (FR-2.3) counts the unprofiled hunks as saved in full", () => {
     const metrics = computeRunMetrics(
       makeInput({
@@ -380,7 +400,7 @@ describe("computeRunMetrics", () => {
     expect(metrics.llm.tokensSavedPct).toBe(100);
   });
 
-  it("counts a reviewer error as an attempted review with no tokens, and excludes it from the mean output", () => {
+  it("counts a reviewer error as failed, not reviewed, with no tokens, and excludes it from the mean output", () => {
     const hunks = [
       makeHunk("a.ts#0"),
       makeHunk("a.ts#1"),
@@ -407,7 +427,8 @@ describe("computeRunMetrics", () => {
       }),
     );
 
-    expect(metrics.llm.hunks.reviewed).toBe(2);
+    expect(metrics.llm.hunks.reviewed).toBe(1);
+    expect(metrics.llm.hunks.failed).toBe(1);
     expect(metrics.llm.hunks.skipped.total).toBe(1);
     expect(metrics.llm.tokens.reviewInput).toBe(1000);
     expect(metrics.llm.tokens.reviewOutput).toBe(100);

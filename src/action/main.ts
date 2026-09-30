@@ -569,7 +569,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
       `jevest: PR #${ref.number} — check=${result.check.conclusion} findings=${result.findingsPublished} cost=$${result.costUsd.toFixed(4)}`,
     );
     console.log(
-      `jevest: efficiency — jev requests=${result.metrics.jev.requests.total} p95=${result.metrics.jev.latency.p95Ms}ms total=${result.metrics.jev.latency.sumMs}ms · llm hunks reviewed=${result.metrics.llm.hunks.reviewed}/${result.metrics.llm.hunks.total} tokens=${result.metrics.llm.tokens.spent} saved≈${result.metrics.llm.tokensSavedPct}% (estimate) · wall=${result.metrics.wallTime.totalMs}ms`,
+      `jevest: efficiency — jev requests=${result.metrics.jev.requests.total} p95=${result.metrics.jev.latency.p95Ms}ms total=${result.metrics.jev.latency.sumMs}ms · llm hunks reviewed=${result.metrics.llm.hunks.reviewed}/${result.metrics.llm.hunks.total} failed=${result.metrics.llm.hunks.failed} tokens=${result.metrics.llm.tokens.spent} saved≈${result.metrics.llm.tokensSavedPct}% (estimate) · wall=${result.metrics.wallTime.totalMs}ms`,
     );
     for (const line of spendCapAnnotations(result)) {
       console.log(line);

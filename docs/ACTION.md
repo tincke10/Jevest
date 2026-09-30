@@ -473,7 +473,7 @@ run does not):
 
 - The Jev line is H4 (SPEC §4.2): every Jev request of the run, its
   nearest-rank p95 and its sum.
-- The LLM lines are H2: which hunks the reviewer saw and why the others
+- The LLM lines are H2: which hunks the reviewer saw (a hunk whose reviewer call threw counts as `N failed (reviewer error)`, never as reviewed, and the summary opens with an "LLM review failed" warning listing the errors) and why the others
   were skipped (`triage skip`, `change kind` for `skipChangeKinds`,
   `secret`, `budget`, `spend cap`, `reviewer disabled`), the tokens spent
   (review + change summary), and an **estimated** "without Jev" figure

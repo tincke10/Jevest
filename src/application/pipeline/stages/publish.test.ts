@@ -12,7 +12,7 @@ import {
   runPublishStage,
   runTriageOnlyPublishStage,
 } from "./publish.js";
-import type { ReviewStageResult } from "./review.js";
+import type { ReviewStageEntry, ReviewStageResult } from "./review.js";
 import type { TriageStageResult } from "./triage.js";
 
 function makeTriage(overrides: Partial<TriageStageResult> = {}): TriageStageResult {
@@ -163,6 +163,7 @@ function makeMetrics(overrides: Partial<RunMetrics> = {}): RunMetrics {
         total: 5,
         eligible: 3,
         reviewed: 2,
+        failed: 0,
         skipped: {
           triageSkip: 0,
           skipChangeKind: 1,
@@ -249,6 +250,7 @@ describe("runPublishStage efficiency section (H2 / H4)", () => {
             total: 2,
             eligible: 2,
             reviewed: 2,
+            failed: 0,
             skipped: {
               triageSkip: 0,
               skipChangeKind: 0,
@@ -852,6 +854,135 @@ function publishWith(triage: TriageStageResult, mergeGate = makeMergeGate()): Re
   });
 }
 
+function failedEntry(hunkId: string, file: string, error: string): ReviewStageEntry {
+  return {
+    hunkId,
+    file,
+    findings: [],
+    model: null,
+    usage: null,
+    latencyMs: 0,
+    requestId: undefined,
+    costUsd: 0,
+    error,
+  };
+}
+
+function okEntry(hunkId: string, file: string): ReviewStageEntry {
+  return { ...failedEntry(hunkId, file, ""), error: null, model: "m", costUsd: 0.01 };
+}
+
+function publishWithReviews(
+  reviews: ReviewStageEntry[],
+  failed: number,
+  overrides: Partial<PublishStageInput> = {},
+): ReviewPublication {
+  const base = makeMetrics();
+  return runPublishStage({
+    triage: makeTriage(),
+    hunkProfile: makeHunkProfile([]),
+    review: makeReview({ reviews }),
+    findingFilter: makeFindingFilter(),
+    mergeGate: makeMergeGate(),
+    inlineCommentsEnabled: true,
+    reviewDisabled: false,
+    metrics: makeMetrics({
+      llm: {
+        ...base.llm,
+        hunks: {
+          ...base.llm.hunks,
+          total: reviews.length,
+          eligible: reviews.length,
+          reviewed: reviews.length - failed,
+          failed,
+        },
+      },
+    }),
+    ...overrides,
+  });
+}
+
+const OAUTH_ERROR = "claude-cli exited 1: 401 OAuth access token is invalid";
+
+describe("runPublishStage reviewer failures", () => {
+  it("renders the all-failed case: a warning before the findings sections, no 'clean' claims", () => {
+    const result = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1, {
+      inlineCommentsEnabled: false,
+    });
+    const md = result.summaryMarkdown;
+    const section = md.slice(md.indexOf("### ⚠️ LLM review failed"), md.indexOf("### Triage"));
+
+    expect(section).toBe(
+      [
+        "### ⚠️ LLM review failed",
+        "The reviewer failed on 1 of 1 hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.",
+        `- \`${OAUTH_ERROR}\` — \`a.ts\``,
+        "",
+        "",
+      ].join("\n"),
+    );
+    expect(md.indexOf("### ⚠️ LLM review failed")).toBeLessThan(
+      md.indexOf("### Findings (high confidence)"),
+    );
+    expect(md).not.toContain("No high-confidence findings.");
+    expect(md).not.toContain("No findings need human review.");
+    expect(md).toContain("No hunk was reviewed: the reviewer failed on every hunk it was given.");
+    expect(md).toMatch(/LLM: 0 of 1 hunks reviewed · 1 failed \(reviewer error\) · 3 skipped/);
+  });
+
+  it("on a partial failure warns but keeps the honest 'no findings' wording for what was reviewed", () => {
+    const result = publishWithReviews(
+      [okEntry("a.ts#0", "a.ts"), failedEntry("b.ts#0", "b.ts", OAUTH_ERROR)],
+      1,
+      { inlineCommentsEnabled: false },
+    );
+    expect(result.summaryMarkdown).toContain("The reviewer failed on 1 of 2 hunks");
+    expect(result.summaryMarkdown).toContain("No high-confidence findings.");
+  });
+
+  it("dedupes identical errors listing every affected file, and truncates long ones", () => {
+    const long = "x".repeat(500);
+    const result = publishWithReviews(
+      [
+        failedEntry("a.ts#0", "a.ts", OAUTH_ERROR),
+        failedEntry("a.ts#1", "a.ts", OAUTH_ERROR),
+        failedEntry("b.ts#0", "b.ts", OAUTH_ERROR),
+        failedEntry("c.ts#0", "c.ts", long),
+      ],
+      4,
+    );
+    const md = result.summaryMarkdown;
+
+    expect(md.split(OAUTH_ERROR)).toHaveLength(2);
+    expect(md).toContain(`\`${OAUTH_ERROR}\` — \`a.ts\`, \`b.ts\``);
+    expect(md).toContain(`\`${"x".repeat(299)}…\``);
+    expect(md).not.toContain("x".repeat(301));
+  });
+
+  it("omits the failed part of the efficiency line and the section when nothing failed", () => {
+    const result = publishWithReviews([okEntry("a.ts#0", "a.ts")], 0);
+    expect(result.summaryMarkdown).not.toContain("LLM review failed");
+    expect(result.summaryMarkdown).not.toContain("failed (reviewer error)");
+    expect(result.check.title).toBe("Jevest: success");
+  });
+
+  it("puts the error inside the fingerprint (review content) while keeping timing outside", () => {
+    const ok = publishWithReviews([okEntry("a.ts#0", "a.ts")], 0);
+    const failed = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1);
+    const again = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1);
+
+    expect(failed.summaryFingerprint).not.toBe(ok.summaryFingerprint);
+    expect(again.summaryFingerprint).toBe(failed.summaryFingerprint);
+  });
+
+  it("mentions the failure in the check title and summary without changing the conclusion", () => {
+    const result = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1);
+    expect(result.check.conclusion).toBe("success");
+    expect(result.check.title).toBe("Jevest: success (LLM review failed)");
+    expect(result.check.summary).toContain("LLM review failed on 1 of 1 hunk(s)");
+  });
+});
+
 describe("runPublishStage intent vs change (triage v2, H7)", () => {
   it("renders an 'Intent vs change' section: what the summary says changes, areas with criticality, the verdict with its probability, the product-owner flag", () => {
     const result = publishWith(makeSummaryTriage({ needsProductOwnerLabel: true }));
@@ -1047,6 +1178,7 @@ describe("runTriageOnlyPublishStage", () => {
             total: 4,
             eligible: 0,
             reviewed: 0,
+            failed: 0,
             skipped: {
               triageSkip: 4,
               skipChangeKind: 0,

@@ -306,14 +306,22 @@ describe("the secret warning (secrets) for password-like names", () => {
       });
     }
 
-    it("still warns about a random-looking password", () => {
-      expect(redact(`password: "${RANDOM}"`, { path: "tests/a.test.ts" }).secrets).toBe(1);
+    it("never warns about a named assignment: test credentials are fixtures, still redacted", () => {
+      const path = "tests/Feature/Auth/LoginTest.php";
+      const mixedClass = `Str0ng${"Pass"}w0rd!!`;
+      const line = `+    $this->postJson('/auth/login', ['email' => 'a@b.test', 'password' => '${mixedClass}'])`;
+      const result = redact(line, { path });
+      expect(result.redactions).toBe(1);
+      expect(result.text).not.toContain(mixedClass);
+      expect(result.secrets).toBe(0);
+      expect(redact(`password: "${RANDOM}"`, { path: "tests/a.test.ts" }).secrets).toBe(0);
+      expect(
+        redact(`const apiKey = '${HIGH_ENTROPY_KEY}';`, { path: "tests/a.test.ts" }).secrets,
+      ).toBe(0);
     });
 
-    it("still warns about a key-named high-entropy value and a known token format", () => {
-      const path = "tests/a.test.ts";
-      expect(redact(`const apiKey = '${HIGH_ENTROPY_KEY}';`, { path }).secrets).toBe(1);
-      expect(redact(`see ${OPENAI_LIKE} here`, { path }).secrets).toBe(1);
+    it("still warns about a known token format", () => {
+      expect(redact(`see ${OPENAI_LIKE} here`, { path: "tests/a.test.ts" }).secrets).toBe(1);
     });
   });
 });

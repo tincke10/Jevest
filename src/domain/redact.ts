@@ -329,7 +329,10 @@ function namedSecretSpans(line: string, path: string | undefined): Replacement[]
       if (!isEnvLine) continue;
     }
     if (!looksLikeCredential(value.content, kind, words)) continue;
-    const warn = kind === "key" || passwordWarrantsWarning(value.content, path);
+    // A named credential in a test file is a fixture (measured: every
+    // warning there was a dummy password); only known token formats warn.
+    const inTestFile = path !== undefined && isTestPath(path);
+    const warn = !inTestFile && (kind === "key" || passwordWarrantsWarning(value.content, path));
     spans.push({ start: value.start, end: value.end, warn });
     NAMED_OPERATOR_RE.lastIndex = value.end;
   }

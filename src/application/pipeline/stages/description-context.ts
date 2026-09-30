@@ -89,7 +89,7 @@ export async function runDescriptionContextStage(
   try {
     const output = await input.extractor.extract({
       prId: `${pr.ref.owner}/${pr.ref.repo}#${pr.ref.number}`,
-      title: pr.title,
+      title: redact(pr.title).text,
       description: redact(pr.body).text,
       changedFiles: pr.files.map((f) => f.path),
       language: input.language,

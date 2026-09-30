@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { createFakeDecisionAdapter } from "../../../adapters/fake-decision-adapter.js";
 import type {
   ReviewInput,
   ReviewOutput,
   ReviewerPort,
 } from "../../../domain/ports/reviewer-port.js";
 import type { ModelPricing } from "../../findings/pricing.js";
-import type { HunkProfileEntry } from "./hunk-profile.js";
+import { type HunkProfileEntry, runHunkProfileStage } from "./hunk-profile.js";
 import { runReviewStage } from "./review.js";
 
 const pricing: ModelPricing = {
@@ -127,22 +128,79 @@ describe("runReviewStage", () => {
     expect(capturedInput!.language).toBe("blade");
   });
 
-  it("skips hunks marked skippedFromReview or containsSecret", async () => {
+  it("skips hunks marked skippedFromReview, but reviews a hunk that contains a (redacted) secret", async () => {
     const hunks = [
       makeHunk({ id: "a#0", skippedFromReview: true }),
       makeHunk({ id: "b#0", containsSecret: true }),
       makeHunk({ id: "c#0" }),
     ];
-    let callCount = 0;
-    const reviewer = fakeReviewer(async () => {
-      callCount++;
+    const reviewed: string[] = [];
+    const reviewer = fakeReviewer(async (input) => {
+      reviewed.push(input.hunkId);
       return makeReviewOutput();
     });
 
     const result = await runReviewStage({ hunks, reviewerPort: reviewer, pricing, budgetUsd: 10 });
-    expect(callCount).toBe(1);
-    expect(result.reviews).toHaveLength(1);
-    expect(result.reviews[0]!.hunkId).toBe("c#0");
+    expect(reviewed).toEqual(["b#0", "c#0"]);
+    expect(result.reviews.map((r) => r.hunkId)).toEqual(["b#0", "c#0"]);
+  });
+
+  it("NFR-3: the reviewer gets a secret hunk redacted, never the secret itself (hunk profile -> review)", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const password = `S3cr3t!${"Passw0rd"}`;
+    const profile = await runHunkProfileStage({
+      pr: {
+        ref: { owner: "acme", repo: "widgets", number: 1, headSha: "head", baseSha: "base" },
+        title: "t",
+        body: "b",
+        author: "dev",
+        labels: [],
+        baseBranch: "main",
+        ciStatus: "success",
+        files: [
+          {
+            path: "src/config.ts",
+            status: "modified",
+            additions: 2,
+            deletions: 0,
+            patch: `@@ -1,1 +1,3 @@\n const region = "eu";\n+const apiKey = "${secret}";\n+DB_PASSWORD=${password}`,
+          },
+        ],
+      },
+      decisionPort: createFakeDecisionAdapter({
+        contains_reviewer_instructions: { type: "noul", noul: 0.02 },
+        change_kind: {
+          type: "choice",
+          choice: "add-behavior",
+          confidence: 0.95,
+          probabilities: { "add-behavior": 0.95, "modify-behavior": 0.05 },
+        },
+        touches_error_handling: { type: "noul", noul: 0.1 },
+        touches_async: { type: "noul", noul: 0.1 },
+      }),
+      policyConfig: {
+        hunk_profile: {
+          low: { autoMin: 0.85, confirmMin: 0.55 },
+          medium: { autoMin: 0.9, confirmMin: 0.6 },
+        },
+      },
+      riskLevel: "medium",
+      skipChangeKinds: ["rename-or-format"],
+      maxHunks: 50,
+    });
+    const inputs: ReviewInput[] = [];
+    const reviewer = fakeReviewer(async (input) => {
+      inputs.push(input);
+      return makeReviewOutput();
+    });
+
+    await runReviewStage({ hunks: profile.hunks, reviewerPort: reviewer, pricing, budgetUsd: 10 });
+
+    expect(inputs).toHaveLength(1);
+    const sent = JSON.stringify(inputs[0]);
+    expect(sent).toContain("[REDACTED]");
+    expect(sent).not.toContain(secret);
+    expect(sent).not.toContain(password);
   });
 
   it("continues past a per-hunk reviewer error, recording it", async () => {

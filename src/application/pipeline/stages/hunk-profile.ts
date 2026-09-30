@@ -15,8 +15,15 @@
  * per-hunk probability is folded in code into one stage-level verdict
  * (`injectedInstructionsInDiff`: the maximum and the hunks at or above the
  * "yes" bar), which the merge gate receives as a WORD (NFR-5) and publish
- * turns into a label and a human-queue line. A secret hunk or a failed
- * profile has no probability (`null`) and never raises the verdict.
+ * turns into a label and a human-queue line. A failed profile has no
+ * probability (`null`) and never raises the verdict.
+ *
+ * Secrets (NFR-3): every hunk's `diff` and `before` are redacted HERE,
+ * before Jev sees them, and stay redacted in the entry every later stage
+ * reads (reviewer, narrator). A hunk with a detected secret is no longer
+ * skipped: measured on real PRs the redactor's hits were mostly false
+ * positives that hid the key hunks from review, and the redacted text is
+ * safe to send. It is flagged (`containsSecret`) for publish instead.
  *
  * Language gate: `ast-labels.ts` parses everything as TypeScript, so
  * `touchesPublicApi` is only meaningful for actual TypeScript/JavaScript
@@ -37,7 +44,7 @@ import { type SplitHunk, splitFileIntoHunks } from "../../../domain/hunk-splitte
 import { extractVueScript, languageFromPath } from "../../../domain/language.js";
 import type { DecisionPort } from "../../../domain/ports/decision-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
-import { containsSecret, redact } from "../../../domain/redact.js";
+import { redact } from "../../../domain/redact.js";
 import { pipelineHunkProfileQuestionSet } from "./hunk-profile-questions.js";
 import type { RiskLevel } from "./triage.js";
 
@@ -90,9 +97,14 @@ export interface HunkProfileEntry {
   readonly requestId: string | null;
   readonly latencyMs: number;
   readonly usage: Usage;
-  /** FR-3.3: change_kind in skipChangeKinds at auto-band confidence, or NFR-3 secret. */
+  /** FR-3.3: change_kind in skipChangeKinds at auto-band confidence. A secret never skips a hunk. */
   readonly skippedFromReview: boolean;
-  /** NFR-3: hunk contains a secret, marked and never sent to Jev or the LLM. */
+  /**
+   * NFR-3: the redactor found a possible secret in the hunk's diff. `before`
+   * and `diff` above are already redacted, so the hunk is profiled and
+   * reviewed like any other; publish shows a visible "possible committed
+   * secret" warning and the verdict is at least `questions`.
+   */
   readonly containsSecret: boolean;
   /** NFR-2 fail-closed: Jev failed to profile this hunk (timeout/error) — still sent to review, just without profile context. */
   readonly profileFailed: boolean;
@@ -211,40 +223,21 @@ export async function runHunkProfileStage(
 
   for (const [index, hunk] of hunksToProcess.entries()) {
     const id = `${hunk.file}#${index}`;
-    const secretCheck = containsSecret(hunk.diff);
+    // NFR-3: everything this stage stores or sends out is the REDACTED
+    // text (identical to the raw text when nothing matched), so Jev, the
+    // reviewer and the narrator only ever see `[REDACTED]`. A hunk with a
+    // secret is profiled and reviewed like any other; `containsSecret`
+    // only drives the visible warning in the summary comment.
+    const diffRedaction = redact(hunk.diff);
+    const diff = diffRedaction.text;
+    const before = redact(hunk.before).text;
+    const secretDetected = diffRedaction.redactions > 0;
 
     const {
       touchesPublicApi: hasPublicApi,
       partial,
       astSkipped,
     } = await resolvePublicApi(hunk, input.pr, input.fetchFileContent);
-
-    if (secretCheck) {
-      entries.push({
-        id,
-        file: hunk.file,
-        hunkHeader: hunk.hunkHeader,
-        before: redact(hunk.before).text,
-        diff: redact(hunk.diff).text,
-        oldStart: hunk.oldStart,
-        newStart: hunk.newStart,
-        changeKind: null,
-        changeKindConfidence: null,
-        touchesErrorHandlingProb: null,
-        touchesAsyncProb: null,
-        containsReviewerInstructionsProb: null,
-        touchesPublicApi: hasPublicApi,
-        touchesPublicApiPartial: partial,
-        astSkipped,
-        requestId: null,
-        latencyMs: 0,
-        usage: { inputTokens: 0, outputTokens: 0 },
-        skippedFromReview: true,
-        containsSecret: true,
-        profileFailed: false,
-      });
-      continue;
-    }
 
     const questions: Record<
       string,
@@ -256,19 +249,19 @@ export async function runHunkProfileStage(
 
     let response: Awaited<ReturnType<typeof input.decisionPort.decide>>;
     try {
-      response = await input.decisionPort.decide(hunk.diff, questions);
+      response = await input.decisionPort.decide(diff, questions);
     } catch {
       // NFR-2 fail-closed: a Jev failure on one hunk doesn't abort the whole
       // stage or lose the hunks already profiled. The hunk still goes to
       // review (skippedFromReview stays false — we can't safely apply the
       // skip-change-kind optimization without a change_kind), just without
-      // profile context (nullable fields, same shape as the secret path).
+      // profile context (nullable fields).
       entries.push({
         id,
         file: hunk.file,
         hunkHeader: hunk.hunkHeader,
-        before: hunk.before,
-        diff: hunk.diff,
+        before,
+        diff,
         oldStart: hunk.oldStart,
         newStart: hunk.newStart,
         changeKind: null,
@@ -283,7 +276,7 @@ export async function runHunkProfileStage(
         latencyMs: 0,
         usage: { inputTokens: 0, outputTokens: 0 },
         skippedFromReview: false,
-        containsSecret: false,
+        containsSecret: secretDetected,
         profileFailed: true,
       });
       continue;
@@ -318,8 +311,8 @@ export async function runHunkProfileStage(
       id,
       file: hunk.file,
       hunkHeader: hunk.hunkHeader,
-      before: hunk.before,
-      diff: hunk.diff,
+      before,
+      diff,
       oldStart: hunk.oldStart,
       newStart: hunk.newStart,
       changeKind: changeKindDecision.choice,
@@ -334,7 +327,7 @@ export async function runHunkProfileStage(
       latencyMs: response.latencyMs,
       usage: response.usage,
       skippedFromReview,
-      containsSecret: false,
+      containsSecret: secretDetected,
       profileFailed: false,
     });
   }

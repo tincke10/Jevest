@@ -559,7 +559,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 |---|---|---|
 | NFR-1 | Retries con backoff exponencial y jitter para `429` y `529`; sin retry en `401` y `422` | API reference |
 | NFR-2 | Timeout de cliente configurable (default 3 s). Si Jev no responde: triage asume `risk = high`, filtro de findings publica todo como "sin verificar", merge gate emite rojo. **Siempre falla cerrado** | Diseño |
-| NFR-3 | Redactor obligatorio antes de cualquier adapter externo: API keys, tokens, `.env`, secretos en diffs. Un hunk que contiene un secreto se marca y no se envía | Docs LangChain |
+| NFR-3 | Redactor obligatorio antes de cualquier adapter externo: API keys, tokens, `.env`, secretos en diffs. Un hunk con un secreto se envía redactado (el valor nunca sale) y se marca como posible secreto commiteado | Docs LangChain |
 | NFR-4 | El state de cada etapa incluye solo lo necesario. Nada de mandar el PR completo a cada pregunta | Jaggedness |
 | NFR-5 | Toda cuenta, comparación numérica o de fechas se resuelve en código antes de preguntar. A Jev llegan categorías (`size: "large"`), no números | Jaggedness |
 | NFR-6 | Criterios explícitos con casos borde escritos; sin dobles negaciones; instrucciones y criterios alineados | Jaggedness |

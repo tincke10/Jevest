@@ -359,6 +359,37 @@ describe("runTriageStage v2: three-layer state, product context and change summa
     expect(JSON.stringify(inputs[0])).not.toContain("Fix off-by-one");
   });
 
+  it("NFR-3: redacts secrets in the patches the summarizer gets, and in the title Jev gets", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const inputs: ChangeSummaryInput[] = [];
+    const summarizer = createFakeSummarizer((input) => {
+      inputs.push(input);
+      return makeSummaryOutput();
+    });
+    const { port, captured } = capturingPort(script("bugfix", 1, 0.95, 0.1, 0.02));
+    await runTriageStage({
+      pr: makePr({
+        title: `rotate ${secret}`,
+        files: [
+          {
+            path: "src/config.ts",
+            status: "modified",
+            additions: 1,
+            deletions: 0,
+            patch: `@@ -1,1 +1,2 @@\n x\n+const apiKey = "${secret}";`,
+          },
+        ],
+      }),
+      decisionPort: port,
+      sizeThresholds,
+      policyConfig,
+      summarizer,
+    });
+    expect(JSON.stringify(inputs[0])).not.toContain(secret);
+    expect(inputs[0]!.files[0]!.patch).toContain("[REDACTED]");
+    expect(JSON.stringify(captured.state)).not.toContain(secret);
+  });
+
   it("runs WITHOUT the summary when the summarizer fails: triage completes, the error is reported, nothing is billed", async () => {
     const { port, captured } = capturingPort(script("bugfix", 1, 0.95, 0.1, 0.02));
     const summarizer = createFakeSummarizer(() => {

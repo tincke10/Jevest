@@ -125,9 +125,48 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   first.
 - `fail-on: failure` now fails the job on a `fix` verdict (or a fail-closed
   run), not on the merge gate's conclusion.
+- **A hunk with a detected secret is reviewed, not skipped (NFR-3).** Its
+  `diff` and `before` are redacted in the hunk-profile stage before Jev
+  sees them, and every later stage (reviewer, narrator) only gets that
+  redacted text, so it is profiled and reviewed like any other hunk. The
+  summary comment replaces the collapsed "skipped — hunk contains a
+  redacted secret" line with a visible warning near the top, localized by
+  `reviewer.language` ("⚠️ Posible secreto commiteado en `file` (hunk):
+  revisá y rotalo si es real." / "⚠️ Possible committed secret in `file`
+  (hunk): check it and rotate it if it is real."), a line in "Questions and
+  manual checks" and in the check summary; each flagged hunk counts as one
+  question, so the verdict is at least `questions` (a published finding
+  still makes it `fix`). `secret` is gone from the Efficiency skip reasons
+  and from `metrics.llm.hunks.skipped`; `metrics.llm.hunks.withSecret`
+  counts the flagged hunks and the Efficiency line says "N with a redacted
+  secret".
 
 ### Fixed
 
+- **The secret redactor flagged ordinary code and hid it from review**: any
+  `name = value` / `name: value` whose name contained key, token, secret or
+  password counted as a secret whatever the value, and `key === prev` even
+  read as an assignment. On 6 real PRs it skipped key hunks in 5 of them
+  (cache keys, CSRF lookups, `'key' => 'EUR'` maps, arrow functions), every
+  hit a false positive, and defects in those hunks were missed. A named
+  assignment now counts only when the VALUE looks like a literal
+  credential: comparisons, arrows and code expressions (calls, variables,
+  member references, interpolation, concatenation, cache-key shapes) never
+  count; a quoted literal or an `.env` line counts at 8+ characters for
+  password/secret names and 16+ for key/token names, which must also look
+  random (entropy ≥ 3.0 bits/char or letters and digits over 20
+  characters, not a word slug); placeholders (example, dummy, changeme,
+  `<…>`, `***`, …) never count; and names like `cacheKey`, `csrfToken`,
+  `tokenType`, `primaryKey` or `storageKey` are not secret names. Known
+  formats still count wherever they appear, now also Anthropic `sk-ant-`,
+  OpenAI `sk-proj-`, Stripe `sk_live_`/`rk_live_`, Google `AIza…`, JWTs
+  and long `Bearer` tokens; a PEM block is redacted line by line, so a
+  redacted hunk keeps its line numbers.
+- **Unredacted text could reach an external LLM (NFR-3)**: the change
+  summarizer got the raw patches, the narrator the raw title and
+  description, the description-context extractor and Jev's triage the raw
+  title, and a hunk's `before` context went to the reviewer unredacted.
+  All of them now get redacted text.
 - **Reviewer errors rendered as walls of JSON**: claude-cli failures embed the
   raw stdout envelope (with per-call values like `duration_ms`), so the
   "LLM review failed" section repeated the same 401 once per hunk. Errors are

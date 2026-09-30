@@ -7,8 +7,8 @@
  *
  * What the narrator gets is chosen here, on purpose narrow: the PR title
  * and description, the changed file paths, the diff of the hunks the LLM
- * reviewer actually reviewed (never a failed or skipped hunk — a skipped
- * one may be a secret), and ONLY the findings Jev kept (`published`) plus
+ * reviewer actually reviewed (never a failed or skipped hunk; every hunk's
+ * text is already redacted by hunk-profile, NFR-3), and ONLY the findings Jev kept (`published`) plus
  * the `needsHuman` ones flagged as doubts. `lowConfidence` and `discarded`
  * never reach it: a narrator that saw them could resurrect what the filter
  * dropped. Lines are HEAD-side, like the inline comments. When the
@@ -32,6 +32,7 @@ import type {
 } from "../../../domain/ports/review-narrator-port.js";
 import type { ReviewUsage } from "../../../domain/ports/reviewer-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
+import { redact } from "../../../domain/redact.js";
 import { type ReviewVerdictResult, verdictTitle } from "../../../domain/review-verdict.js";
 import { type ModelPricing, reviewCostUsd } from "../../findings/pricing.js";
 import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
@@ -127,8 +128,10 @@ function toNarrativeInput(input: NarrateStageInput): ReviewNarrativeInput {
   const { ref } = input.pr;
   return {
     prId: `${ref.owner}/${ref.repo}#${ref.number}`,
-    title: input.pr.title,
-    description: input.pr.body,
+    // NFR-3: the narrator is an external LLM; the hunks are already redacted
+    // by hunk-profile, the PR text is redacted here.
+    title: redact(input.pr.title).text,
+    description: redact(input.pr.body).text,
     ...(input.authorContext ? { authorContext: input.authorContext } : {}),
     changedFiles: input.pr.files.map((f) => f.path),
     hunks: reviewed.map((h) => ({ file: h.file, hunkHeader: h.hunkHeader, diff: h.diff })),

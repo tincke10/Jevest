@@ -197,7 +197,8 @@ function toSummaryInput(pr: PullRequestData): ChangeSummaryInput {
       status: f.status,
       additions: f.additions,
       deletions: f.deletions,
-      ...(f.patch !== undefined ? { patch: f.patch } : {}),
+      // NFR-3: the summarizer is an external LLM; it gets redacted patches.
+      ...(f.patch !== undefined ? { patch: redact(f.patch).text } : {}),
     })),
   };
 }
@@ -331,7 +332,7 @@ export async function runTriageStage(input: TriageStageInput): Promise<TriageSta
   const { text: redactedBody } = redact(pr.body);
   const state: JsonObject = {
     ...buildCoherenceState({
-      intent: { title: pr.title, body: redactedBody, labels: pr.labels },
+      intent: { title: redact(pr.title).text, body: redactedBody, labels: pr.labels },
       change,
       summary: attempt.summary,
     }),

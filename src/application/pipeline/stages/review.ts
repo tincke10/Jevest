@@ -1,7 +1,8 @@
 /**
  * Stage 3: LLM review (SPEC FR-4). No Jev logic here — the reviewer is
  * pluggable behind ReviewerPort (provider/model from `.jevest.yml`). Each
- * eligible hunk (not skipped by hunk-profile, no secret) gets its own
+ * eligible hunk (not skipped by hunk-profile; a hunk with a secret is
+ * reviewed, its text already redacted there, NFR-3) gets its own
  * `review()` call, with its FR-3.3 profile passed as context. A budget cap
  * stops further calls once exceeded (FR-4.3); a per-hunk reviewer error is
  * recorded and the stage continues (matches the spike/filter runners'
@@ -105,7 +106,7 @@ function toReviewInput(hunk: HunkProfileEntry, authorContext?: AuthorContext): R
 }
 
 export async function runReviewStage(input: ReviewStageInput): Promise<ReviewStageResult> {
-  const eligible = input.hunks.filter((h) => !h.skippedFromReview && !h.containsSecret);
+  const eligible = input.hunks.filter((h) => !h.skippedFromReview);
 
   const reviews: ReviewStageEntry[] = [];
   let totalCostUsd = 0;

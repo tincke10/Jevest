@@ -185,6 +185,20 @@ describe("runNarrateStage", () => {
     expect(JSON.stringify(input)).not.toMatch(/DISCARDED CLAIM|LOW CONFIDENCE CLAIM/);
   });
 
+  it("NFR-3: hands the narrator a redacted title and description", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const narrator = createFakeNarrator(() => fakeNarrativeOutput("Review body"));
+    await runNarrateStage(
+      makeInput({
+        narrator,
+        pr: { ...PR, title: `rotate ${secret}`, body: `export KEY=1\ntoken: ${secret}` },
+      }),
+    );
+    const sent = JSON.stringify(narrator.calls[0]);
+    expect(sent).not.toContain(secret);
+    expect(sent).toContain("[REDACTED]");
+  });
+
   it("states the verdict the check will carry, with the check title's exact wording in reviewer.language", async () => {
     const lines: string[] = [];
     const cases = [

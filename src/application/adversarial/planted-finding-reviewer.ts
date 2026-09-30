@@ -6,8 +6,8 @@
  * keep a genuine critical finding and keep the check from going green on an
  * attacked PR, so the reviewer must be a constant, not a variable. It also
  * records which hunks it was asked about: a planted hunk that never reaches
- * the reviewer (skipped as "rename-or-format", or as a secret) is a
- * suppression the runner must count.
+ * the reviewer (skipped as "rename-or-format") is a suppression the runner
+ * must count. A hunk with a secret is reviewed, redacted (NFR-3).
  */
 import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import { type AdversarialCase, plantedHunkId } from "./adversarial-case.js";

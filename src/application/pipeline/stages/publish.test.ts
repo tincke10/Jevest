@@ -170,11 +170,11 @@ function makeMetrics(overrides: Partial<RunMetrics> = {}): RunMetrics {
         eligible: 3,
         reviewed: 2,
         failed: 0,
+        withSecret: 0,
         skipped: {
           triageSkip: 0,
           skipChangeKind: 1,
-          secret: 1,
-          budget: 1,
+          budget: 2,
           spendCap: 0,
           reviewerDisabled: 0,
           total: 3,
@@ -206,7 +206,8 @@ describe("runPublishStage efficiency section (H2 / H4)", () => {
     expect(efficiency).toMatch(/p95 latency 400 ms/);
     expect(efficiency).toMatch(/total Jev time 1400 ms/);
     expect(efficiency).toMatch(/LLM: 2 of 5 hunks reviewed/);
-    expect(efficiency).toMatch(/3 skipped \(change kind 1, secret 1, budget 1\)/);
+    expect(efficiency).toMatch(/3 skipped \(change kind 1, budget 2\)/);
+    expect(efficiency).not.toMatch(/secret/);
     expect(efficiency).toMatch(/2780 tokens spent \(review 2200, summary 580\)/);
     expect(efficiency).toMatch(/without Jev ≈ 4000/);
     expect(efficiency).toMatch(/saved ≈ 30\.5%/);
@@ -260,7 +261,6 @@ describe("runPublishStage efficiency section (H2 / H4)", () => {
             skipped: {
               triageSkip: 0,
               skipChangeKind: 0,
-              secret: 0,
               budget: 0,
               spendCap: 0,
               reviewerDisabled: 0,
@@ -359,10 +359,7 @@ describe("runPublishStage", () => {
     const secretHunk = makeHunkEntry({
       id: "c.ts#0",
       file: "c.ts",
-      skippedFromReview: true,
       containsSecret: true,
-      changeKind: null,
-      changeKindConfidence: null,
     });
     const result = runPublishStage({
       triage: makeTriage({ category: "security", riskLevel: "high" }),
@@ -383,8 +380,10 @@ describe("runPublishStage", () => {
     expect(result.summaryMarkdown).toContain("b.ts");
     expect(result.summaryMarkdown).toContain("rename-or-format");
     expect(result.summaryMarkdown).toContain("0.97");
-    expect(result.summaryMarkdown).toContain("c.ts");
-    expect(result.summaryMarkdown).toContain("secret");
+    expect(result.summaryMarkdown).toContain("**Posible secreto commiteado** en `c.ts`");
+    const skippedSection = result.summaryMarkdown.split("### Skipped hunks")[1]?.split("###")[0];
+    expect(skippedSection).toContain("b.ts");
+    expect(skippedSection).not.toContain("c.ts");
     expect(result.summaryMarkdown).toContain("possible race condition");
     expect(result.summaryMarkdown).toMatch(/discarded.*2/i);
   });
@@ -662,6 +661,94 @@ describe("runPublishStage", () => {
   });
 });
 
+describe("runPublishStage possible secrets in the diff (NFR-3)", () => {
+  const secretHunk = makeHunkEntry({
+    id: "config/app.php#0",
+    file: "config/app.php",
+    hunkHeader: "@@ -10,3 +10,4 @@ return [",
+    containsSecret: true,
+  });
+
+  function publish(overrides: Partial<PublishStageInput> = {}): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry(), secretHunk]),
+      review: makeReview({
+        reviews: [okEntry("a.ts#0", "a.ts"), okEntry("config/app.php#0", "config/app.php")],
+      }),
+      findingFilter: makeFindingFilter(),
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics(),
+      ...overrides,
+    });
+  }
+
+  const ES_WARNING =
+    "> ⚠️ **Posible secreto commiteado** en `config/app.php` (`@@ -10,3 +10,4 @@ return [`): revisá y rotalo si es real.";
+  const EN_WARNING =
+    "> ⚠️ **Possible committed secret** in `config/app.php` (`@@ -10,3 +10,4 @@ return [`): check it and rotate it if it is real.";
+
+  it("shows a visible warning near the top, in Spanish by default, before the report sections", () => {
+    const md = publish().summaryMarkdown;
+    expect(md).toContain(ES_WARNING);
+    expect(md.indexOf(ES_WARNING)).toBeLessThan(md.indexOf("### Triage"));
+    expect(md).not.toContain("hunk contains a redacted secret");
+  });
+
+  it("renders the warning in English for reviewer.language en", () => {
+    const md = publish({ language: "en" }).summaryMarkdown;
+    expect(md).toContain(EN_WARNING);
+    expect(md).not.toContain("Posible secreto");
+  });
+
+  it("keeps the warning visible, outside the collapsed block, with a narrative", () => {
+    const md = publish({
+      narrative: {
+        markdown: "Todo bien.",
+        note: null,
+        model: "m",
+        usage: null,
+        costUsd: 0,
+        latencyMs: 1,
+      },
+    }).summaryMarkdown;
+    expect(md.indexOf(ES_WARNING)).toBeGreaterThan(md.indexOf("Todo bien."));
+    expect(md.indexOf(ES_WARNING)).toBeLessThan(md.indexOf("<details>"));
+    expect(md.split(ES_WARNING)).toHaveLength(2);
+  });
+
+  it("makes the verdict at least questions: something the author must check", () => {
+    const result = publish();
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.check.title).toBe("Responder 1 duda (no bloquea)");
+    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+    const queue = result.summaryMarkdown.split("### Questions and manual checks")[1] ?? "";
+    expect(queue).toContain("`config/app.php`");
+    expect(queue).not.toContain("Nothing to answer or check by hand.");
+  });
+
+  it("does not soften a published finding: the verdict stays fix", () => {
+    const result = publish({ findingFilter: makeFindingFilter({ published: [makeFinding()] }) });
+    expect(result.check.conclusion).toBe("failure");
+  });
+
+  it("is part of the fingerprinted content (NFR-12)", () => {
+    const without = publish({ hunkProfile: makeHunkProfile([makeHunkEntry()]) });
+    expect(publish().summaryFingerprint).not.toBe(without.summaryFingerprint);
+  });
+
+  it("counts the flagged hunks on the Efficiency line, not as a skip reason", () => {
+    const base = makeMetrics();
+    const md = publish({
+      metrics: makeMetrics({ llm: { ...base.llm, hunks: { ...base.llm.hunks, withSecret: 1 } } }),
+    }).summaryMarkdown;
+    const efficiency = md.split("### Efficiency")[1] ?? "";
+    expect(efficiency).toMatch(/3 skipped \(change kind 1, budget 2\) · 1 with a redacted secret/);
+  });
+});
+
 describe("resolvePublishVerdict", () => {
   const base = {
     triage: makeTriage(),
@@ -676,6 +763,16 @@ describe("resolvePublishVerdict", () => {
     const result = resolvePublishVerdict({ ...base, reviewSkippedForSpendCap: true });
     expect(result.verdict.verdict).toBe("unavailable");
     expect(result.conclusion).toBe("neutral");
+    expect(result.autoMergeOk).toBe(false);
+  });
+
+  it("is questions when a hunk carries a possible secret, and never auto-merge-ok", () => {
+    const result = resolvePublishVerdict({
+      ...base,
+      hunkProfile: makeHunkProfile([makeHunkEntry({ containsSecret: true })]),
+    });
+    expect(result.verdict.verdict).toBe("questions");
+    expect(result.verdict.questions).toBe(1);
     expect(result.autoMergeOk).toBe(false);
   });
 
@@ -1405,10 +1502,10 @@ describe("runTriageOnlyPublishStage", () => {
             eligible: 0,
             reviewed: 0,
             failed: 0,
+            withSecret: 0,
             skipped: {
               triageSkip: 4,
               skipChangeKind: 0,
-              secret: 0,
               budget: 0,
               spendCap: 0,
               reviewerDisabled: 0,

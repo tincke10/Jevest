@@ -7,8 +7,10 @@
  *
  * - `fix`: at least one PUBLISHED finding (high confidence, confirmed by
  *   Jev). The author must fix it. Blocks: check `failure`.
- * - `questions`: nothing published, but doubts (needs-human findings) or an
- *   auto-band description mismatch for the author to answer. `neutral`.
+ * - `questions`: nothing published, but doubts (needs-human findings), an
+ *   auto-band description mismatch, or a possible committed secret (one
+ *   question per flagged hunk, NFR-3) for the author to answer or check.
+ *   `neutral`.
  * - `clear`: nothing to fix or answer. `success`; the usual human approval
  *   is still needed. Whether the PR may auto-merge is the merge gate's
  *   separate call (`jevest:auto-merge-ok`), not this verdict's.
@@ -61,18 +63,20 @@ export interface ReviewVerdictInput {
   readonly descriptionMismatch: boolean;
   /** Instructions to a reviewer suspected in the description or the diff (NFR-7). */
   readonly injectionSuspected: boolean;
+  /** Hunks where the redactor found a possible secret (NFR-3): one question each for the author. */
+  readonly secretsDetected: number;
 }
 
 export interface ReviewVerdictResult {
   readonly verdict: ReviewVerdict;
   readonly published: number;
   readonly needsHuman: number;
-  /** What the author has to answer: the doubts plus one for a description mismatch. */
+  /** What the author has to answer: the doubts, one for a description mismatch, one per possible secret. */
   readonly questions: number;
 }
 
 export function decideReviewVerdict(input: ReviewVerdictInput): ReviewVerdictResult {
-  const questions = input.needsHuman + (input.descriptionMismatch ? 1 : 0);
+  const questions = input.needsHuman + (input.descriptionMismatch ? 1 : 0) + input.secretsDetected;
   const counts = { published: input.published, needsHuman: input.needsHuman, questions };
   const verdict = ((): ReviewVerdict => {
     if (input.llmReview === "failed-closed") return "unavailable";

@@ -172,17 +172,22 @@ describe("runHunkProfileStage", () => {
     expect(result.hunks[0]!.skippedFromReview).toBe(false);
   });
 
-  it("flags a hunk containing a secret, and never sends it to Jev (NFR-3)", async () => {
+  it("flags a hunk containing a secret but still profiles and reviews it, redacted (NFR-3)", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
     const files: PullRequestData["files"] = [
       {
         path: "a.ts",
         status: "modified",
         additions: 1,
-        deletions: 0,
-        patch: '@@ -1,1 +1,1 @@\n-x\n+const apiKey = "sk-abcdefghijklmnopqrstuvwxyz";',
+        deletions: 1,
+        patch: `@@ -1,2 +1,2 @@\n const oldKey = "${secret}";\n-x\n+const apiKey = "${secret}";`,
       },
     ];
-    const port = createFakeDecisionAdapter({});
+    const states: string[] = [];
+    const port = createFakeDecisionAdapter((state) => {
+      states.push(typeof state === "string" ? state : JSON.stringify(state));
+      return scriptFor("add-behavior", 0.99, 0.05, 0.05);
+    });
     const result = await runHunkProfileStage({
       pr: makePr(files),
       decisionPort: port,
@@ -191,10 +196,71 @@ describe("runHunkProfileStage", () => {
       skipChangeKinds: [],
       maxHunks: 50,
     });
+    const hunk = result.hunks[0]!;
+    expect(hunk.containsSecret).toBe(true);
+    expect(hunk.skippedFromReview).toBe(false);
+    expect(hunk.changeKind).toBe("add-behavior");
+    expect(hunk.requestId).not.toBeNull();
+    expect(result.totalRequests).toBe(1);
+    expect(hunk.diff).toContain("[REDACTED]");
+    expect(hunk.diff).not.toContain(secret);
+    expect(hunk.before).not.toContain(secret);
+    expect(states).toHaveLength(1);
+    expect(states[0]).toContain("[REDACTED]");
+    expect(states[0]).not.toContain(secret);
+  });
+
+  it("still skips a secret hunk whose change kind is in skipChangeKinds at auto band", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const files: PullRequestData["files"] = [
+      {
+        path: "a.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: `@@ -1,1 +1,1 @@\n-const apiKey = "${secret}";\n+const apiKey  = "${secret}";`,
+      },
+    ];
+    const port = createFakeDecisionAdapter(scriptFor("rename-or-format", 0.99, 0.05, 0.05));
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: ["rename-or-format"],
+      maxHunks: 50,
+    });
     expect(result.hunks[0]!.containsSecret).toBe(true);
-    expect(result.hunks[0]!.requestId).toBeNull();
     expect(result.hunks[0]!.skippedFromReview).toBe(true);
-    expect(result.totalRequests).toBe(0);
+  });
+
+  it("keeps the secret flag and the redaction when Jev fails on a secret hunk", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const files: PullRequestData["files"] = [
+      {
+        path: "a.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 0,
+        patch: `@@ -1,1 +1,2 @@\n x\n+const apiKey = "${secret}";`,
+      },
+    ];
+    const port = createFakeDecisionAdapter(() => {
+      throw new Error("jev down");
+    });
+    const result = await runHunkProfileStage({
+      pr: makePr(files),
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      skipChangeKinds: [],
+      maxHunks: 50,
+    });
+    const hunk = result.hunks[0]!;
+    expect(hunk.profileFailed).toBe(true);
+    expect(hunk.containsSecret).toBe(true);
+    expect(hunk.skippedFromReview).toBe(false);
+    expect(hunk.diff).not.toContain(secret);
   });
 
   it("computes touchesPublicApi from the hunk fragment and flags it partial when no file fetcher is given", async () => {

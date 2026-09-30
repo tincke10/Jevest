@@ -690,7 +690,8 @@ counted: uncached, cache read, cache write). The comparison point,
 "tokens without Jev", is a COUNTERFACTUAL: what reviewing every hunk
 would have cost. Reviewed hunks contribute their measured usage; each
 hunk the run did not send to the reviewer (triage skip, `skipChangeKinds`,
-secret, per-run budget, spend cap, reviewer disabled) contributes
+per-run budget, spend cap, reviewer disabled; a hunk with a secret is
+reviewed, redacted, and is never a skip) contributes
 `ceil(chars / 4)` input tokens from its diff plus the run's mean output
 tokens per reviewed hunk (150 when nothing was reviewed). Then
 `saved % = (without − spent) / without`.

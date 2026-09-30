@@ -559,7 +559,10 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 - **One summary comment**, also upserted in place. With the colleague
   review on (see "Colleague review" above), it opens with the review in
   natural language; below it, only when some reviewer call failed, the
-  "⚠️ LLM review failed" warning stays visible; everything else sits in
+  "⚠️ LLM review failed" warning stays visible, and so does one
+  "⚠️ Posible secreto commiteado" / "⚠️ Possible committed secret" line per
+  hunk where the redactor found a possible secret (see "Security notes");
+  everything else sits in
   one collapsed `<details><summary>Jevest details</summary>` block: the
   triage decision, an "Intent vs change" section (what the diff summary
   says changes, product areas touched with their criticality, whether the
@@ -595,7 +598,7 @@ the colleague review.
 | Verdict | When | Check | Title (es / en) | Label (es / en) |
 |---|---|---|---|---|
 | fix | at least one finding was PUBLISHED (high confidence, confirmed by Jev) | `failure` (blocks) | Corregir N problema(s) antes de mergear / Fix N issue(s) before merging | `jevest: corregir antes de mergear` / `jevest: fix before merge` (red) |
-| questions | nothing published, but doubts (needs-human findings) or an `auto`-band description mismatch | `neutral` | Responder N duda(s) (no bloquea) / Answer N question(s) (not blocking) | `jevest: responder dudas` / `jevest: answer questions` (yellow) |
+| questions | nothing published, but doubts (needs-human findings), an `auto`-band description mismatch, or a possible committed secret (one question per flagged hunk) | `neutral` | Responder N duda(s) (no bloquea) / Answer N question(s) (not blocking) | `jevest: responder dudas` / `jevest: answer questions` (yellow) |
 | clear | nothing to fix or answer | `success` | Nada para corregir / Nothing to fix | `jevest: listo para aprobar` / `jevest: ready to approve` (green) |
 | unavailable | the automated review could not be done or cannot be trusted (see below) | `neutral` | Review automático no disponible: revisar a mano / Automated review unavailable: review manually | `jevest: revisar a mano` / `jevest: review manually` (grey) |
 
@@ -650,16 +653,18 @@ For example, the top of a comment with the colleague review on:
 ```
 ### Efficiency
 - Jev: 9 requests · p95 latency 312 ms · total Jev time 1840 ms
-- LLM: 4 of 7 hunks reviewed · 3 skipped (change kind 2, secret 1)
+- LLM: 5 of 7 hunks reviewed · 2 skipped (change kind 2) · 1 with a redacted secret
 - LLM tokens: 6120 tokens spent (review 5700, summary 420) · without Jev ≈ 8900 · saved ≈ 31.2%
-- Estimate, not a measurement: tokens without Jev = measured review tokens + for each of the 3 skipped hunk(s) ceil(chars / 4) input tokens + this run's mean output tokens per reviewed hunk (140); ...
+- Estimate, not a measurement: tokens without Jev = measured review tokens + for each of the 2 skipped hunk(s) ceil(chars / 4) input tokens + this run's mean output tokens per reviewed hunk (140); ...
 ```
 
 - The Jev line is H4 (SPEC §4.2): every Jev request of the run, its
   nearest-rank p95 and its sum.
 - The LLM lines are H2: which hunks the reviewer saw (a hunk whose reviewer call threw counts as `N failed (reviewer error)`, never as reviewed, and the summary opens with an "LLM review failed" warning listing the errors) and why the others
   were skipped (`triage skip`, `change kind` for `skipChangeKinds`,
-  `secret`, `budget`, `spend cap`, `reviewer disabled`), the tokens spent
+  `budget`, `spend cap`, `reviewer disabled`; a hunk with a secret is
+  reviewed, redacted, and only counted as "N with a redacted secret"),
+  the tokens spent
   (review + change summary), and an **estimated** "without Jev" figure
   priced from the skipped hunks' diff size. The last line always says how
   it was computed. Read [`docs/BENCHMARK.md`](BENCHMARK.md) "H2 / H4 —
@@ -740,6 +745,53 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   regression-tests this in CI (SPEC §4.2, §10).
 - Never put an API key directly in a workflow file — always
   `${{ secrets.<NAME> }}` (NFR-9).
+- **Secrets in the pull request are redacted before anything leaves the
+  runner (NFR-3).** Jev, the reviewer, the narrator, the description-context
+  extractor and the change summarizer only ever get text where a detected
+  secret is replaced by `[REDACTED]` (the title, the description, every
+  hunk's diff and its `before` context, the summarizer's patches). A hunk
+  with a detected secret is still profiled and reviewed, redacted; the
+  summary comment shows a visible warning for it near the top, in
+  `reviewer.language` (Spanish by default):
+
+  ```markdown
+  > ⚠️ **Posible secreto commiteado** en `config/app.php` (`@@ -10,3 +10,4 @@ return [`): revisá y rotalo si es real.
+  ```
+
+  The same hunk is listed under "Questions and manual checks" and counts
+  as one question, so the verdict is at least `questions` (never green).
+  What counts as a secret (`src/domain/redact.ts`):
+  - **Always**: a PEM private key block (redacted line by line, so line
+    numbers still match) and well-known token formats wherever they
+    appear: `sk-…` (OpenAI-style), `sk-ant-…`, `sk-proj-…`, `sk_live_…` /
+    `rk_live_…` (Stripe), `ghp_…`-style GitHub tokens, `xox?-…` (Slack),
+    `AKIA…` (AWS), `AIza…` (Google), JWTs (`eyJ….eyJ….…`) and a long
+    `Bearer` token containing a digit.
+  - **A named assignment** (`name = value`, `name: value`, a quoted
+    `'name' => value`) only when the name holds a whole secret word (key,
+    token, secret, password, passwd, pwd) AND the value looks like a
+    literal credential: a quoted string, or the value of an `.env` line
+    (`UPPER_SNAKE=value` at the start of a line), with no whitespace, no
+    interpolation or concatenation, no `prefix:` or trailing `:`
+    (cache keys, URLs), not a placeholder (example, sample, dummy, fake,
+    test, changeme, placeholder, your, xxx, `***`, `<…>`, session-token,
+    redacted, todo, one repeated character) and not containing the
+    name's own word. Password/secret names need 8+ characters; key/token
+    names need 16+, must not be a word slug like `acme_tracing_id`, and
+    must look random (Shannon entropy ≥ 3.0 bits/char, or letters and
+    digits over 20 characters).
+  - **Never**: comparisons (`==`, `===`, `!=`, `>=`, `<=`), arrow
+    functions, and code values (variables, calls, member references like
+    `this.token`, `++run`, `new …`); and names where the key-like word is
+    qualified as a non-secret: `cacheKey`, `sortKey`, `primaryKey`,
+    `foreignKey`, `keyPrefix`, `i18nKey`, `translationKey`, `titleKey`,
+    `routeKey`, `storageKey`, `idempotencyKey`, `csrfToken`, `tokenType`
+    (any casing), plus words that only contain one (`keyboard`, `keyof`,
+    `tokenizer`).
+
+  It is a high-signal heuristic, not a secrets scanner: keep a dedicated
+  scanner in CI for full coverage. A PR that triage skips as low risk
+  (FR-2.3) never has its hunks profiled, so it gets no secret warning.
 
 ## Fail-closed behavior
 

@@ -213,14 +213,6 @@ describe("computeRunMetrics", () => {
     const hunks = [
       makeHunk("a.ts#0", { latencyMs: 100 }),
       makeHunk("a.ts#1", { latencyMs: 400 }),
-      // A secret hunk never reaches Jev: no request, no latency.
-      makeHunk("a.ts#2", {
-        requestId: null,
-        latencyMs: 0,
-        usage: { inputTokens: 0, outputTokens: 0 },
-        skippedFromReview: true,
-        containsSecret: true,
-      }),
       // A failed profile is not a request either.
       makeHunk("a.ts#3", {
         requestId: null,
@@ -268,18 +260,13 @@ describe("computeRunMetrics", () => {
     const hunks = [
       makeHunk("a.ts#0"),
       makeHunk("a.ts#1", { changeKind: "rename-or-format", skippedFromReview: true }),
-      makeHunk("a.ts#2", {
-        requestId: null,
-        latencyMs: 0,
-        usage: { inputTokens: 0, outputTokens: 0 },
-        skippedFromReview: true,
-        containsSecret: true,
-      }),
+      // A hunk with a (redacted) secret is reviewed like any other: never a skip reason.
+      makeHunk("a.ts#2", { containsSecret: true }),
       makeHunk("a.ts#3"),
       makeHunk("a.ts#4"),
     ];
-    // Eligible: #0, #3, #4. Reviewed: #0 and #3 (mean output 100); #4 skipped for budget.
-    const review = makeReview([makeReviewEntry("a.ts#0"), makeReviewEntry("a.ts#3")], 1);
+    // Eligible: #0, #2, #3, #4. Reviewed: #0 and #2 (mean output 100); #3 and #4 skipped for budget.
+    const review = makeReview([makeReviewEntry("a.ts#0"), makeReviewEntry("a.ts#2")], 2);
     const metrics = computeRunMetrics(
       makeInput({
         triage: makeTriage({
@@ -299,14 +286,14 @@ describe("computeRunMetrics", () => {
 
     expect(metrics.llm.hunks).toEqual({
       total: 5,
-      eligible: 3,
+      eligible: 4,
       reviewed: 2,
       failed: 0,
+      withSecret: 1,
       skipped: {
         triageSkip: 0,
         skipChangeKind: 1,
-        secret: 1,
-        budget: 1,
+        budget: 2,
         spendCap: 0,
         reviewerDisabled: 0,
         total: 3,

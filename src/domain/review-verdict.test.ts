@@ -21,6 +21,7 @@ function input(overrides: Partial<ReviewVerdictInput> = {}): ReviewVerdictInput 
     llmReview: "ran",
     descriptionMismatch: false,
     injectionSuspected: false,
+    secretsDetected: 0,
     ...overrides,
   };
 }
@@ -39,6 +40,19 @@ describe("decideReviewVerdict", () => {
     const result = decideReviewVerdict(input({ needsHuman: 3 }));
     expect(result.verdict).toBe("questions");
     expect(result.questions).toBe(3);
+  });
+
+  it("is questions when a possible secret was detected, counting one question per flagged hunk", () => {
+    const result = decideReviewVerdict(input({ secretsDetected: 2, needsHuman: 1 }));
+    expect(result.verdict).toBe("questions");
+    expect(result.questions).toBe(3);
+  });
+
+  it("keeps fix over a detected secret, and unavailable when the review could not be trusted", () => {
+    expect(decideReviewVerdict(input({ secretsDetected: 1, published: 1 })).verdict).toBe("fix");
+    expect(
+      decideReviewVerdict(input({ secretsDetected: 1, llmReview: "failed-entirely" })).verdict,
+    ).toBe("unavailable");
   });
 
   it("is clear when the review ran and nothing was published or doubted", () => {

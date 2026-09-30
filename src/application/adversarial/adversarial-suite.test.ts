@@ -2,7 +2,7 @@
  * Suite-level tests over the real `datasets/adversarial/` cases.
  *
  * - dry-run: always runs; guards the cases themselves (every file parses,
- *   no non-secret hunk trips the redactor and gets skipped, the harness
+ *   a hunk with a secret is reviewed only in its redacted form, the harness
  *   yields PASS with a well-behaved scripted Jev).
  * - replay: the H5 regression gate (SPEC §10 item 5). Skipped, not failed,
  *   until `pnpm adversarial --mode record` has written

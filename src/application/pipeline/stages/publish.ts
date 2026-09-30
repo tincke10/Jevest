@@ -53,6 +53,14 @@
  * gets the review-manually label plus a line in the human queue — Jev's
  * gate only saw "zero findings", which is not a review.
  *
+ * Possible secrets (NFR-3): a hunk where the redactor found a secret was
+ * reviewed with the value redacted (hunk-profile.ts), never skipped. It
+ * gets one visible "possible committed secret" line near the top of the
+ * comment in `reviewer.language` (es by default, en otherwise; outside the
+ * collapsed block with a narrative), a line in "Questions and manual
+ * checks" and in the check summary, and counts as one question, so the
+ * verdict is at least `questions`. The warning IS fingerprinted.
+ *
  * Review verdict (src/domain/review-verdict.ts): ONE action per run — fix,
  * questions, clear or unavailable — decides the check conclusion
  * (failure / neutral / success / neutral), its title and summary in
@@ -405,13 +413,39 @@ function buildSkippedHunksSection(hunkProfile: HunkProfileStageResult): string {
   if (skipped.length === 0) {
     return "No hunks were skipped.";
   }
-  const lines = skipped.map((h) => {
-    if (h.containsSecret) {
-      return `- \`${h.file}\` (${h.hunkHeader}): skipped — hunk contains a redacted secret.`;
-    }
-    return `- \`${h.file}\` (${h.hunkHeader}): skipped — change_kind=\`${h.changeKind}\` at confidence ${h.changeKindConfidence}.`;
-  });
+  const lines = skipped.map(
+    (h) =>
+      `- \`${h.file}\` (${h.hunkHeader}): skipped — change_kind=\`${h.changeKind}\` at confidence ${h.changeKindConfidence}.`,
+  );
   return lines.join("\n");
+}
+
+function secretHunks(hunkProfile: HunkProfileStageResult): HunkProfileEntry[] {
+  return hunkProfile.hunks.filter((h) => h.containsSecret);
+}
+
+/**
+ * The visible "possible committed secret" warning (NFR-3), one line per
+ * flagged hunk in `reviewer.language` (es by default, en otherwise). The
+ * hunk was reviewed with the value redacted; the author still has to check
+ * whether a real credential reached the repository.
+ */
+function buildSecretWarnings(
+  hunkProfile: HunkProfileStageResult,
+  language: string | undefined,
+): string[] {
+  const hunks = secretHunks(hunkProfile);
+  if (hunks.length === 0) {
+    return [];
+  }
+  const es = verdictLanguage(language) === "es";
+  const lines = hunks.map((h) => {
+    const where = `\`${h.file}\` (\`${inlineSafe(h.hunkHeader)}\`)`;
+    return es
+      ? `> ⚠️ **Posible secreto commiteado** en ${where}: revisá y rotalo si es real.`
+      : `> ⚠️ **Possible committed secret** in ${where}: check it and rotate it if it is real.`;
+  });
+  return [lines.join("\n>\n"), ""];
 }
 
 function buildNeedsHumanSection(
@@ -429,6 +463,11 @@ function buildNeedsHumanSection(
   }
   if (injectedInDiff(hunkProfile)) {
     lines.push(injectedInstructionsQueueLine(hunkProfile));
+  }
+  for (const h of secretHunks(hunkProfile)) {
+    lines.push(
+      `- Possible committed secret in \`${h.file}\` (\`${inlineSafe(h.hunkHeader)}\`), redacted before any external call: the author should check it and rotate it if it is real.`,
+    );
   }
   if (allReviewsFailed(review)) {
     lines.push(`- ${NO_HUNK_REVIEWED} A human should review this pull request directly.`);
@@ -564,7 +603,6 @@ function summaryCostLine(triage: TriageStageResult): string {
 const SKIP_REASON_WORDS: readonly [Exclude<keyof LlmSkippedHunks, "total">, string][] = [
   ["triageSkip", "triage skip"],
   ["skipChangeKind", "change kind"],
-  ["secret", "secret"],
   ["budget", "budget"],
   ["spendCap", "spend cap"],
   ["reviewerDisabled", "reviewer disabled"],
@@ -682,7 +720,7 @@ function buildEfficiencySection(
   return [
     "### Efficiency",
     `- Jev: ${plural(jev.requests.total, "request")} · p95 latency ${jev.latency.p95Ms} ms · total Jev time ${jev.latency.sumMs} ms`,
-    `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed${llm.hunks.failed > 0 ? ` · ${llm.hunks.failed} failed (reviewer error)` : ""} · ${skippedByReason(llm.hunks.skipped)}`,
+    `- LLM: ${llm.hunks.reviewed} of ${llm.hunks.total} hunks reviewed${llm.hunks.failed > 0 ? ` · ${llm.hunks.failed} failed (reviewer error)` : ""} · ${skippedByReason(llm.hunks.skipped)}${llm.hunks.withSecret > 0 ? ` · ${llm.hunks.withSecret} with a redacted secret` : ""}`,
     `- LLM tokens: ${llm.tokens.spent} tokens spent (review ${llm.tokens.reviewInput + llm.tokens.reviewOutput}, summary ${llm.tokens.summaryInput + llm.tokens.summaryOutput}) · without Jev ≈ ${llm.tokensWithoutJev} · saved ≈ ${llm.tokensSavedPct}%`,
     ...(narrative ? [narrativeEfficiencyLine(narrative)] : []),
     ...(descriptionContext?.status === "extracted"
@@ -769,6 +807,8 @@ function renderSummary(
     "",
     // Never collapsed: "the reviewer failed" must not hide behind a click.
     ...parts.warning,
+    // Nor a secret the author may have committed.
+    ...parts.secrets,
     // Nor an attempt to steer the review through the description.
     ...(steering ? [steering, ""] : []),
     "<details>",
@@ -795,11 +835,13 @@ interface SummaryParts {
   readonly head: string[];
   /** The "LLM review failed" section; empty when every reviewer call returned. */
   readonly warning: string[];
+  /** One "possible committed secret" line per flagged hunk (NFR-3); empty when none. */
+  readonly secrets: string[];
   readonly body: string[];
 }
 
 function stableSummaryLines(parts: SummaryParts): string[] {
-  return ["## Jevest review", "", ...parts.head, ...parts.warning, ...parts.body];
+  return ["## Jevest review", "", ...parts.head, ...parts.warning, ...parts.secrets, ...parts.body];
 }
 
 function buildSummaryParts(input: PublishStageInput): SummaryParts {
@@ -812,6 +854,7 @@ function buildSummaryParts(input: PublishStageInput): SummaryParts {
   return {
     head: skippedForSpendCap ? [spendCapBanner, ""] : [],
     warning: buildReviewFailedSection(input.review),
+    secrets: buildSecretWarnings(input.hunkProfile, input.language),
     body: buildReportBody(input),
   };
 }
@@ -909,6 +952,8 @@ export function runTriageOnlyPublishStage(
     llmReview: "skipped-by-triage",
     descriptionMismatch: forcedNeutral,
     injectionSuspected: false,
+    // Hunks are never profiled on a triage-only run, so none is flagged.
+    secretsDetected: 0,
   });
   const summaryLines = [
     "## Jevest review",
@@ -974,6 +1019,7 @@ export function buildFailClosedPublication(
     llmReview: "failed-closed",
     descriptionMismatch: false,
     injectionSuspected: false,
+    secretsDetected: 0,
   });
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
@@ -1030,6 +1076,8 @@ export interface PublishVerdict {
   readonly mismatchQuestion: boolean;
   /** Instructions to a reviewer suspected in the description or the diff. */
   readonly injectionSuspected: boolean;
+  /** Hunks where the redactor found a possible secret (NFR-3). */
+  readonly secretsDetected: number;
 }
 
 function llmReviewOutcome(
@@ -1066,12 +1114,14 @@ export function resolvePublishVerdict(
   const mismatchQuestion = mismatchForcesNeutral(input.triage);
   const injectionSuspected =
     input.injectedInstructionsInDescription === true || injectedInDiff(input.hunkProfile);
+  const secretsDetected = secretHunks(input.hunkProfile).length;
   const verdict = decideReviewVerdict({
     published: input.findingFilter.published.length,
     needsHuman: input.findingFilter.needsHuman.length,
     llmReview: llmReviewOutcome(input),
     descriptionMismatch: mismatchQuestion,
     injectionSuspected,
+    secretsDetected,
   });
   return {
     verdict,
@@ -1080,6 +1130,7 @@ export function resolvePublishVerdict(
     reviewFailedEntirely,
     mismatchQuestion,
     injectionSuspected,
+    secretsDetected,
   };
 }
 
@@ -1100,6 +1151,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     reviewFailedEntirely,
     mismatchQuestion,
     injectionSuspected,
+    secretsDetected,
   } = resolvePublishVerdict(input);
 
   if (autoMergeOk) {
@@ -1123,6 +1175,10 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     failedCount > 0
       ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.${reviewFailedEntirely ? " Nothing is marked safe to auto-merge." : ""}`
       : "";
+  const secretCheckLine =
+    secretsDetected > 0
+      ? ` A possible committed secret was found in ${secretsDetected} hunk(s) (redacted before review): check it and rotate it if it is real.`
+      : "";
   const injectionCheckLine = injectionSuspected
     ? " Instructions to a reviewer were suspected in the pull request; the automated review cannot be trusted on its own."
     : "";
@@ -1136,7 +1192,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     check: {
       conclusion,
       title: verdictTitle(verdict, input.language),
-      summary: `${verdictSummary(verdict, input.language)} Triage: ${input.triage.category}/${input.triage.riskLevel}.${reviewFailedCheckLine}${mismatchQuestion ? MISMATCH_CHECK_LINE : ""}${injectionCheckLine}${spendCapCheckLine(input.spendCap)}`,
+      summary: `${verdictSummary(verdict, input.language)} Triage: ${input.triage.category}/${input.triage.riskLevel}.${reviewFailedCheckLine}${mismatchQuestion ? MISMATCH_CHECK_LINE : ""}${injectionCheckLine}${secretCheckLine}${spendCapCheckLine(input.spendCap)}`,
     },
   };
 }

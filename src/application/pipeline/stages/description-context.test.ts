@@ -71,6 +71,20 @@ describe("runDescriptionContextStage", () => {
     expect(result.model).toBe("claude-sonnet-5");
   });
 
+  it("NFR-3: redacts a secret pasted in the title too", async () => {
+    const secret = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+    const extractor = createFakeDescriptionContextExtractor(() =>
+      fakeDescriptionContextOutput({}, [], { nominalCostUsd: 0, model: "claude-sonnet-5" }),
+    );
+    await runDescriptionContextStage({
+      pr: { ...makePr(), title: `rotate ${secret}` },
+      extractor,
+      language: "es",
+      pricing,
+    });
+    expect(extractor.calls[0]!.title).toBe("rotate [REDACTED]");
+  });
+
   it("prices the call from usage when the adapter reports no nominal cost", async () => {
     const usage = {
       inputTokens: 1_000_000,

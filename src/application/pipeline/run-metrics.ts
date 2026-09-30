@@ -11,8 +11,8 @@
  *   the LLM (review + change summary) against a COUNTERFACTUAL "tokens
  *   without Jev" = what reviewing every hunk would have cost. The reviewed
  *   hunks contribute their measured usage; every hunk the run did not send
- *   to the reviewer (triage skip, skip-change-kind, secret, budget, spend
- *   cap, reviewer disabled) contributes an ESTIMATE from its diff size:
+ *   to the reviewer (triage skip, skip-change-kind, budget, spend cap,
+ *   reviewer disabled) contributes an ESTIMATE from its diff size:
  *   ceil(chars / 4) input tokens plus the run's mean output tokens per
  *   reviewed hunk (150 when nothing was reviewed). That is a floor, not a
  *   measurement: it ignores the prompt and `before` context a real review
@@ -58,14 +58,16 @@ export interface JevMetrics {
   readonly costUsd: number;
 }
 
-/** Why a hunk was never sent to the LLM reviewer. Sums to `total`. */
+/**
+ * Why a hunk was never sent to the LLM reviewer. Sums to `total`. A hunk
+ * with a detected secret is not a reason: it is reviewed with its text
+ * redacted (NFR-3), and counted in {@link LlmHunkCounts.withSecret}.
+ */
 export interface LlmSkippedHunks {
   /** FR-2.3: triage skipped the whole review; the hunks were never profiled. */
   readonly triageSkip: number;
   /** FR-3.3: `change_kind` in `skipChangeKinds` at auto-band confidence (rename-or-format by default). */
   readonly skipChangeKind: number;
-  /** NFR-3: the hunk carries a secret. */
-  readonly secret: number;
   /** FR-4.3: the per-run `budgetUsd` was exhausted before this hunk. */
   readonly budget: number;
   /** NFR-10: the cumulative spend cap was reached before the run. */
@@ -78,12 +80,14 @@ export interface LlmSkippedHunks {
 export interface LlmHunkCounts {
   /** Hunks the run saw: the profiled ones, or the ones split from the PR on a triage skip. */
   readonly total: number;
-  /** Not skipped by the hunk profile and no secret: what the review stage would iterate. */
+  /** Not skipped by the hunk profile: what the review stage would iterate. */
   readonly eligible: number;
   /** Reviewer calls that returned (findings or not). A call that threw is in `failed`, not here. */
   readonly reviewed: number;
   /** Reviewer calls that threw (e.g. an auth error): attempted, never reviewed. `reviewed + failed` is the attempts. */
   readonly failed: number;
+  /** Hunks where the redactor found a possible secret (NFR-3); reviewed or skipped like any other, always redacted. */
+  readonly withSecret: number;
   readonly skipped: LlmSkippedHunks;
   /** Hunks beyond `maxHunks`, never profiled; outside the counterfactual because their diff is not kept. */
   readonly truncatedByMaxHunks: number;
@@ -218,7 +222,7 @@ function computeJev(input: RunMetricsInput): JevMetrics {
 }
 
 function isEligible(hunk: HunkProfileEntry): boolean {
-  return !hunk.skippedFromReview && !hunk.containsSecret;
+  return !hunk.skippedFromReview;
 }
 
 function computeLlm(input: RunMetricsInput): LlmMetrics {
@@ -233,13 +237,11 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
   // reviewer once the budget is gone, so the unreviewed ones are the tail
   // past the ATTEMPTS: a failed hunk was attempted, it is not budget-skipped.
   const unreviewedEligible = eligible.slice(attempted);
-  const secretHunks = hunks.filter((h) => h.containsSecret);
-  const changeKindSkipped = hunks.filter((h) => h.skippedFromReview && !h.containsSecret);
+  const changeKindSkipped = hunks.filter((h) => h.skippedFromReview);
 
   const skipped: LlmSkippedHunks = {
     triageSkip: input.unprofiledHunkDiffs.length,
     skipChangeKind: changeKindSkipped.length,
-    secret: secretHunks.length,
     budget: 0,
     spendCap: 0,
     reviewerDisabled: 0,
@@ -257,7 +259,6 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
   const skippedTotal =
     skippedWithReason.triageSkip +
     skippedWithReason.skipChangeKind +
-    skippedWithReason.secret +
     skippedWithReason.budget +
     skippedWithReason.spendCap +
     skippedWithReason.reviewerDisabled;
@@ -286,7 +287,6 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
   const skippedDiffs = [
     ...input.unprofiledHunkDiffs,
     ...changeKindSkipped.map((h) => h.diff),
-    ...secretHunks.map((h) => h.diff),
     ...unreviewedEligible.map((h) => h.diff),
   ];
   const estimated = skippedDiffs.reduce(
@@ -310,6 +310,7 @@ function computeLlm(input: RunMetricsInput): LlmMetrics {
       eligible: eligible.length,
       reviewed,
       failed,
+      withSecret: hunks.filter((h) => h.containsSecret).length,
       skipped: { ...skippedWithReason, total: skippedTotal },
       truncatedByMaxHunks: hunkProfile?.truncatedHunkCount ?? 0,
     },

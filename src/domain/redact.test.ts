@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { containsSecret, redact } from "./redact.js";
+import { containsSecret, redact, shannonEntropy } from "./redact.js";
+
+// Test credentials are built by concatenation so secret scanners never see a
+// live-looking literal in this file.
+const OPENAI_LIKE = `sk-${"abcdefghijklmnopqrstuvwxyz"}`;
+const HIGH_ENTROPY_KEY = ["f3a9c2e1", "7b6d4058", "a1c9Zx9Q", "w3Er7Ty1"].join("");
 
 describe("redact", () => {
   it("returns the text unchanged with zero redactions when there is nothing to redact", () => {
@@ -9,14 +14,14 @@ describe("redact", () => {
   });
 
   it("redacts a .env-style KEY=value assignment", () => {
-    const result = redact('TYPESAFE_API_KEY="sk-abcdefghijklmnopqrstuvwxyz"');
+    const result = redact(`TYPESAFE_API_KEY="${OPENAI_LIKE}"`);
     expect(result.redactions).toBeGreaterThan(0);
     expect(result.text).not.toContain("abcdefghijklmnopqrstuvwxyz");
     expect(result.text).toContain("[REDACTED]");
   });
 
   it("redacts a JS/TS variable assignment named like a secret", () => {
-    const result = redact('const apiKey = "sk-abcdefghijklmnopqrstuvwxyz";');
+    const result = redact(`const apiKey = "${OPENAI_LIKE}";`);
     expect(result.text).not.toContain("abcdefghijklmnopqrstuvwxyz");
     expect(result.text).toContain("[REDACTED]");
   });
@@ -26,15 +31,47 @@ describe("redact", () => {
     expect(result.text).not.toContain("hunter2-super-secret-value");
   });
 
+  it("redacts a short quoted password literal", () => {
+    const result = redact('password: "hunter2hunter2"');
+    expect(result.redactions).toBe(1);
+    expect(result.text).toBe('password: "[REDACTED]"');
+  });
+
+  it("redacts an unquoted .env line with a password", () => {
+    const value = `S3cr3t!${"Passw0rd"}`;
+    const result = redact(`DB_PASSWORD=${value}`);
+    expect(result.redactions).toBe(1);
+    expect(result.text).toBe("DB_PASSWORD=[REDACTED]");
+  });
+
+  it("redacts an unquoted .env line inside a diff with export", () => {
+    const value = `S3cr3t!${"Passw0rd"}`;
+    const result = redact(`+export DB_PASSWORD=${value}`);
+    expect(result.text).not.toContain(value);
+  });
+
+  it("redacts a quoted high-entropy api key assigned to a key-named variable", () => {
+    const result = redact(`const apiKey = '${HIGH_ENTROPY_KEY}';`);
+    expect(result.redactions).toBe(1);
+    expect(result.text).toBe("const apiKey = '[REDACTED]';");
+  });
+
+  it("redacts a secret in a JSON / PHP array with a quoted name", () => {
+    expect(redact(`"api_key": "${HIGH_ENTROPY_KEY}"`).redactions).toBe(1);
+    expect(redact(`'password' => 'hunter2hunter2',`).redactions).toBe(1);
+  });
+
   it("redacts an AWS access key id", () => {
-    const result = redact("aws_key = AKIAABCDEFGHIJKLMNOP");
-    expect(result.text).not.toContain("AKIAABCDEFGHIJKLMNOP");
+    const id = `AKIA${"ABCDEFGHIJKLMNOP"}`;
+    const result = redact(`aws_key = ${id}`);
+    expect(result.text).not.toContain(id);
     expect(result.text).toContain("[REDACTED]");
   });
 
   it("redacts a GitHub personal access token", () => {
-    const result = redact("token: ghp_123456789012345678901234567890123456");
-    expect(result.text).not.toContain("ghp_123456789012345678901234567890123456");
+    const pat = `ghp_${"1234567890".repeat(3)}123456`;
+    const result = redact(`token: ${pat}`);
+    expect(result.text).not.toContain(pat);
   });
 
   it("redacts a full PEM private key block", () => {
@@ -44,9 +81,30 @@ describe("redact", () => {
     expect(result.text).toContain("[REDACTED]");
   });
 
+  it("keeps the line count and the diff markers when redacting a PEM block inside a diff", () => {
+    const diff = [
+      "@@ -1,1 +1,5 @@",
+      " const a = 1;",
+      "+-----BEGIN PRIVATE KEY-----",
+      "+MIIBOgIBAAJBAK",
+      "+-----END PRIVATE KEY-----",
+      "+const b = 2;",
+    ].join("\n");
+    const result = redact(diff);
+    expect(result.redactions).toBe(1);
+    expect(result.text.split("\n")).toEqual([
+      "@@ -1,1 +1,5 @@",
+      " const a = 1;",
+      "+[REDACTED]",
+      "+[REDACTED]",
+      "+[REDACTED]",
+      "+const b = 2;",
+    ]);
+  });
+
   it("counts multiple distinct redactions", () => {
     const result = redact(
-      'const apiKey = "sk-abcdefghijklmnopqrstuvwxyz";\nconst password = "hunter2-super-secret";',
+      `const apiKey = "${OPENAI_LIKE}";\nconst password = "hunter2-super-secret";`,
     );
     expect(result.redactions).toBe(2);
   });
@@ -56,6 +114,131 @@ describe("redact", () => {
     expect(result.redactions).toBe(0);
     expect(result.text).toBe("const keyboardLayout = getLayout();");
   });
+
+  describe("known token formats count regardless of the name", () => {
+    const cases: readonly [string, string][] = [
+      ["Anthropic", `sk-ant-api03-${"Ab1_Cd2-Ef3".repeat(3)}`],
+      ["OpenAI project", `sk-proj-${"Ab1Cd2Ef3Gh4".repeat(2)}`],
+      ["Stripe live secret", `sk_live_${"4eC39HqLyjWDarjtT1zdp7dc"}`],
+      ["Stripe restricted", `rk_live_${"4eC39HqLyjWDarjtT1zdp7dc"}`],
+      ["Google API key", `AIza${"SyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6q"}`],
+      [
+        "JWT",
+        `eyJ${"hbGciOiJIUzI1NiJ9"}.eyJ${"zdWIiOiIxMjM0NTY3ODkwIn0"}.${"dozjgNryP4J3jVmNHl0w5N"}`,
+      ],
+    ];
+    for (const [label, token] of cases) {
+      it(`redacts a ${label} token in free text`, () => {
+        const result = redact(`see ${token} here`);
+        expect(result.redactions).toBe(1);
+        expect(result.text).toBe("see [REDACTED] here");
+      });
+    }
+
+    it("redacts a long Bearer token but keeps the scheme", () => {
+      const token = `${"a1B2c3D4e5".repeat(3)}`;
+      const result = redact(`Authorization: Bearer ${token}`);
+      expect(result.text).not.toContain(token);
+      expect(result.text).toContain("Bearer [REDACTED]");
+    });
+
+    it("does not redact Bearer followed by an interpolation or a short word", () => {
+      expect(redact("{ Authorization: `Bearer ${STRIPE_API_KEY}` }").redactions).toBe(0);
+      expect(redact("the Bearer scheme is used").redactions).toBe(0);
+    });
+  });
+
+  describe("real-world false positives are not flagged", () => {
+    const lines: readonly string[] = [
+      // PHP
+      '$cacheKey = "cfg2d:render:v2:{$hash}";',
+      "$cacheKey = 'sketch-svg:v2:' . $id;",
+      "$cacheKey = $this->articlePriceCacheKey($priceScope, $currency);",
+      "$titleKey = mb_strtoupper($p->getTranslation('title'));",
+      "$key = mb_strtoupper(trim($title));",
+      "$token = $this->resolveToken($request);",
+      "$csrfToken = $this->kratos->extractCsrfToken($flow);",
+      "'key' => 'EUR',",
+      "'key' => 'CHF',",
+      "key: code,",
+      "$articleCallsByToken = collect(Http::recorded());",
+      "const CONTEXT_KEY = 'acme_tracing_id';",
+      "const CONTEXT_KEY = 'acme_platform_tracing_id';",
+      "'token' => 'session-token',",
+      // JS
+      "const key = usable.join('|');",
+      "if (key === prev) return;",
+      "if (key == prev) return;",
+      "if (key !== prev) return;",
+      "if (token != null) return;",
+      "if (key >= 3 || key <= 1) return;",
+      "const token = ++run;",
+      "const key = galleryUploadKey(img);",
+      "const galleryUploadKey = (img) => `${img.id}:${img.name}`;",
+      "items.map((key) => key.id);",
+      "return { key: key };",
+      "key = entries;",
+      "const token = this.token;",
+      "const token = props.token;",
+      "const key = [a, b].join();",
+      "const key = { a: 1 };",
+      "const key = new Map();",
+      "const key = !flag;",
+      "const key = `row-${id}`;",
+      "token: string;",
+      "const tokenizer = createTokenizer();",
+      "type K = keyof Props;",
+      "const tokenType = 'Bearer';",
+      "const storageKey = 'user-preferences-panel-state';",
+      "const passwordHint = 'Enter your password';",
+      "'password' => 'required|min:8|confirmed',",
+    ];
+    for (const line of lines) {
+      it(`leaves alone: ${line}`, () => {
+        for (const prefix of ["", "+    ", "-  "]) {
+          const text = `${prefix}${line}`;
+          const result = redact(text);
+          expect(result.redactions, text).toBe(0);
+          expect(result.text).toBe(text);
+        }
+      });
+    }
+
+    it("leaves a whole real-world hunk alone", () => {
+      const hunk = lines.map((l) => `+${l}`).join("\n");
+      expect(containsSecret(hunk)).toBe(false);
+    });
+  });
+
+  describe("placeholders and weak literals are not flagged", () => {
+    const lines: readonly string[] = [
+      "password: 'changeme'",
+      "password: 'example-password-1'",
+      "const apiKey = 'your-api-key-goes-here-123';",
+      "const apiKey = '<API_KEY_1234567890>';",
+      "const apiKey = 'xxxxxxxxxxxxxxxxxxxxxxxx';",
+      "const secret = '********';",
+      "const apiKey = 'dummy1234567890abcdef';",
+      "password: 'short'",
+      "const apiKey = 'abc123';",
+      "const apiKey = 'TODO_replace_1234567890';",
+      "const apiKey = '[REDACTED]';",
+      "password: 'test1234test'",
+    ];
+    for (const line of lines) {
+      it(`leaves alone: ${line}`, () => {
+        expect(redact(line).redactions).toBe(0);
+      });
+    }
+  });
+});
+
+describe("shannonEntropy", () => {
+  it("is 0 for a repeated character and grows with variety", () => {
+    expect(shannonEntropy("aaaa")).toBe(0);
+    expect(shannonEntropy("ab")).toBe(1);
+    expect(shannonEntropy("")).toBe(0);
+  });
 });
 
 describe("containsSecret", () => {
@@ -64,6 +247,6 @@ describe("containsSecret", () => {
   });
 
   it("is true for text containing a secret", () => {
-    expect(containsSecret('const apiKey = "sk-abcdefghijklmnopqrstuvwxyz";')).toBe(true);
+    expect(containsSecret(`const apiKey = "${OPENAI_LIKE}";`)).toBe(true);
   });
 });

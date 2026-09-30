@@ -158,7 +158,7 @@ describe("isEligiblePr", () => {
       eligible: false,
       reason: "secret",
     });
-    expect(isEligiblePr(candidate({ body: `${LONG}\napi_key = "hunter2hunter2"` }))).toEqual({
+    expect(isEligiblePr(candidate({ body: `${LONG}\ndb_password = "hunter2hunter2"` }))).toEqual({
       eligible: false,
       reason: "secret",
     });

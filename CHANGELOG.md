@@ -59,6 +59,14 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Fixed
 
+- **Reviewer errors rendered as walls of JSON**: claude-cli failures embed the
+  raw stdout envelope (with per-call values like `duration_ms`), so the
+  "LLM review failed" section repeated the same 401 once per hunk. Errors are
+  now cleaned to their human part (`result:` text, no stdout/stderr dumps,
+  200 chars max) and deduplicated into one bullet listing each affected file
+  once (6 shown, then "+N more"); the summarizer-failure line gets the same
+  cleaning. An authentication failure adds one line saying which credential
+  to renew. The raw error is still written to the action log.
 - **A run whose LLM review failed entirely could be marked safe to merge**:
   when every attempted reviewer call threw (e.g. a 401 from an expired
   token), Jev's merge gate saw zero findings and could return green, and

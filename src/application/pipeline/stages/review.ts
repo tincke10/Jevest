@@ -134,6 +134,10 @@ export async function runReviewStage(input: ReviewStageInput): Promise<ReviewSta
         budgetExceeded = true;
       }
     } catch (error) {
+      // The comment shows a cleaned message; keep the raw error for debugging.
+      console.warn(
+        `jevest: reviewer failed on ${hunk.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       reviews.push({
         hunkId: hunk.id,
         file: hunk.file,

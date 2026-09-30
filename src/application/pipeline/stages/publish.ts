@@ -67,6 +67,7 @@
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
+import { describeReviewerError, isAuthenticationFailure } from "../../../domain/reviewer-error.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
 import { type FindingFilterStageResult, noulConfidence } from "./finding-filter.js";
@@ -199,7 +200,7 @@ function buildIntentVsChangeSection(triage: TriageStageResult): string[] {
     }
   } else if (triage.summaryError !== null) {
     summaryLines.push(
-      `- No change summary: the summarizer failed (${triage.summaryError}). Triage ran on file facts only, without the summary.`,
+      `- No change summary: the summarizer failed (${describeReviewerError(triage.summaryError)}). Triage ran on file facts only, without the summary.`,
     );
   } else {
     summaryLines.push(
@@ -416,8 +417,11 @@ function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): str
   ];
 }
 
-/** Longest reviewer error message rendered; provider errors can embed whole response bodies. */
-const MAX_REVIEW_ERROR_CHARS = 300;
+/** Files listed per distinct error before "+N more". */
+const MAX_FILES_PER_ERROR = 6;
+
+const AUTH_FAILURE_HINT =
+  "The reviewer could not authenticate: the provider credential (for claude-cli, the `CLAUDE_CODE_OAUTH_TOKEN` secret from `claude setup-token`; otherwise the provider's API key secret) is invalid or expired. Renew it and re-run the job.";
 
 /**
  * No hunk was reviewed: the reviewer was called at least once and threw on
@@ -433,11 +437,11 @@ function failedReviews(review: ReviewStageResult): ReviewStageEntry[] {
   return review.reviews.filter((r) => r.error !== null);
 }
 
-function errorForDisplay(message: string): string {
-  const oneLine = message.replace(/\s+/g, " ").replace(/`/g, "'").trim();
-  return oneLine.length > MAX_REVIEW_ERROR_CHARS
-    ? `${oneLine.slice(0, MAX_REVIEW_ERROR_CHARS - 1)}…`
-    : oneLine;
+function describeFiles(files: string[]): string {
+  const shown = files.slice(0, MAX_FILES_PER_ERROR).map((f) => `\`${f}\``);
+  const more =
+    files.length > MAX_FILES_PER_ERROR ? ` +${files.length - MAX_FILES_PER_ERROR} more` : "";
+  return `${files.length} ${files.length === 1 ? "file" : "files"}: ${shown.join(", ")}${more}`;
 }
 
 /** Empty when every reviewer call returned; see the module doc. */
@@ -448,7 +452,7 @@ function buildReviewFailedSection(review: ReviewStageResult): string[] {
   }
   const filesByError = new Map<string, Set<string>>();
   for (const entry of failed) {
-    const message = errorForDisplay(entry.error ?? "");
+    const message = describeReviewerError(entry.error ?? "");
     const files = filesByError.get(message) ?? new Set<string>();
     files.add(entry.file);
     filesByError.set(message, files);
@@ -456,9 +460,8 @@ function buildReviewFailedSection(review: ReviewStageResult): string[] {
   return [
     "### ⚠️ LLM review failed",
     `The reviewer failed on ${failed.length} of ${review.reviews.length} hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.`,
-    ...[...filesByError].map(
-      ([message, files]) => `- \`${message}\` — ${[...files].map((f) => `\`${f}\``).join(", ")}`,
-    ),
+    ...[...filesByError].map(([message, files]) => `- ${message} — ${describeFiles([...files])}`),
+    ...([...filesByError.keys()].some(isAuthenticationFailure) ? [AUTH_FAILURE_HINT] : []),
     "",
   ];
 }

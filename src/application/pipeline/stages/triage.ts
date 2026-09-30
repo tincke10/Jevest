@@ -307,6 +307,10 @@ async function attemptSummary(input: TriageStageInput): Promise<SummaryAttempt> 
       costUsd,
     };
   } catch (error) {
+    // The comment shows a cleaned message; keep the raw error for debugging.
+    console.warn(
+      `jevest: summarizer failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return {
       ...NO_SUMMARY,
       error: error instanceof Error ? error.message : String(error),

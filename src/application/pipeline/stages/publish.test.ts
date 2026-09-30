@@ -904,8 +904,45 @@ function publishWithReviews(
 }
 
 const OAUTH_ERROR = "claude-cli exited 1: 401 OAuth access token is invalid";
+const AUTH_HINT =
+  "The reviewer could not authenticate: the provider credential (for claude-cli, the `CLAUDE_CODE_OAUTH_TOKEN` secret from `claude setup-token`; otherwise the provider's API key secret) is invalid or expired. Renew it and re-run the job.";
+const RAW_401 =
+  'claude-cli process exited with code 1: result: Failed to authenticate. API Error: 401 OAuth access token is invalid. | stdout: {"type":"result","is_error":true,"api_error_status":401,"duration_ms":DURATION} | stderr: ';
 
 describe("runPublishStage reviewer failures", () => {
+  it("renders 8 hunks over 5 files failing with the same 401 as one short bullet", () => {
+    const files = ["a.php", "b.php", "c.php", "d.php", "e.php"];
+    const entries = Array.from({ length: 8 }, (_, i) =>
+      failedEntry(`h${i}`, files[i % 5] as string, RAW_401.replace("DURATION", String(1900 + i))),
+    );
+    const result = publishWithReviews(entries, 8, { inlineCommentsEnabled: false });
+    const md = result.summaryMarkdown;
+    const section = md.slice(md.indexOf("### ⚠️ LLM review failed"), md.indexOf("### Triage"));
+
+    expect(section).toBe(
+      [
+        "### ⚠️ LLM review failed",
+        "The reviewer failed on 8 of 8 hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.",
+        "- Failed to authenticate. API Error: 401 OAuth access token is invalid. — 5 files: `a.php`, `b.php`, `c.php`, `d.php`, `e.php`",
+        AUTH_HINT,
+        "",
+        "",
+      ].join("\n"),
+    );
+    expect(md).not.toContain("duration_ms");
+  });
+
+  it("shows six files and '+N more' past that", () => {
+    const entries = Array.from({ length: 9 }, (_, i) =>
+      failedEntry(`h${i}`, `f${i}.ts`, "anthropic reviewer rate-limited (429); back off and retry"),
+    );
+    const md = publishWithReviews(entries, 9, { inlineCommentsEnabled: false }).summaryMarkdown;
+    expect(md).toContain(
+      "- anthropic reviewer rate-limited (429); back off and retry — 9 files: `f0.ts`, `f1.ts`, `f2.ts`, `f3.ts`, `f4.ts`, `f5.ts` +3 more",
+    );
+    expect(md).not.toContain("could not authenticate");
+  });
+
   it("renders the all-failed case: a warning before the findings sections, no 'clean' claims", () => {
     const result = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1, {
       inlineCommentsEnabled: false,
@@ -917,7 +954,8 @@ describe("runPublishStage reviewer failures", () => {
       [
         "### ⚠️ LLM review failed",
         "The reviewer failed on 1 of 1 hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.",
-        `- \`${OAUTH_ERROR}\` — \`a.ts\``,
+        `- ${OAUTH_ERROR} — 1 file: \`a.ts\``,
+        AUTH_HINT,
         "",
         "",
       ].join("\n"),
@@ -955,9 +993,9 @@ describe("runPublishStage reviewer failures", () => {
     const md = result.summaryMarkdown;
 
     expect(md.split(OAUTH_ERROR)).toHaveLength(2);
-    expect(md).toContain(`\`${OAUTH_ERROR}\` — \`a.ts\`, \`b.ts\``);
-    expect(md).toContain(`\`${"x".repeat(299)}…\``);
-    expect(md).not.toContain("x".repeat(301));
+    expect(md).toContain(`- ${OAUTH_ERROR} — 2 files: \`a.ts\`, \`b.ts\``);
+    expect(md).toContain(`- ${"x".repeat(199)}…`);
+    expect(md).not.toContain("x".repeat(201));
   });
 
   it("omits the failed part of the efficiency line and the section when nothing failed", () => {
@@ -1046,6 +1084,14 @@ describe("runPublishStage intent vs change (triage v2, H7)", () => {
     );
     expect(result.summaryMarkdown).toMatch(/no change summary.*rate-limited/i);
     expect(result.summaryMarkdown).toMatch(/file facts only|without the summary/i);
+  });
+
+  it("cleans a claude-cli summarizer failure down to its human part", () => {
+    const result = publishWith(makeTriage({ summaryError: RAW_401.replace("DURATION", "1960") }));
+    expect(result.summaryMarkdown).toContain(
+      "the summarizer failed (Failed to authenticate. API Error: 401 OAuth access token is invalid.)",
+    );
+    expect(result.summaryMarkdown).not.toContain("duration_ms");
   });
 
   it("says no summary was requested when there is none and no error", () => {

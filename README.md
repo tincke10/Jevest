@@ -40,8 +40,8 @@ Every run leaves on the PR:
 
 - **one summary comment** (triage decision, hunks skipped and why, findings by band, cost, merge-gate verdict), upserted in place on every push;
 - **inline comments** only for high-confidence findings, fingerprinted so re-runs never duplicate them;
-- **labels** such as `jevest:needs-human`, `jevest:spend-warning`;
-- **a `jevest` check run** carrying the merge-gate signal: green, neutral or red.
+- **one verdict label** saying what to do next (`jevest: fix before merge`, `jevest: answer questions`, `jevest: ready to approve` or `jevest: review manually`, in Spanish by default), a risk label, and others such as `jevest:auto-merge-ok`, `jevest:spend-warning`;
+- **a `jevest` check run** carrying that verdict: red only when there is something to fix, neutral for questions or when the automated review could not run, green when there is nothing to fix (see [docs/ACTION.md](docs/ACTION.md#review-verdict)).
 
 If Jev does not answer, the run **fails closed**: triage assumes high risk, nothing is published inline, everything goes to the human queue, the check goes red with the reason.
 

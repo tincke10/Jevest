@@ -23,16 +23,15 @@ import type { FindingSeverity } from "../../../domain/finding.js";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
 import type {
   NarratedFinding,
-  NarrativeVerdict,
   ReviewNarrativeInput,
   ReviewNarratorPort,
 } from "../../../domain/ports/review-narrator-port.js";
 import type { ReviewUsage } from "../../../domain/ports/reviewer-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
+import { type ReviewVerdictResult, verdictTitle } from "../../../domain/review-verdict.js";
 import { type ModelPricing, reviewCostUsd } from "../../findings/pricing.js";
 import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
-import type { MergeGateStageResult } from "./merge-gate.js";
 import type { ReviewStageResult } from "./review.js";
 
 export interface NarrateStageInput {
@@ -40,8 +39,8 @@ export interface NarrateStageInput {
   readonly hunkProfile: HunkProfileStageResult;
   readonly review: ReviewStageResult;
   readonly findingFilter: FindingFilterStageResult;
-  /** The conclusion the check will carry (publish.ts `resolvePublishConclusion`), so the verdict line agrees with it. */
-  readonly conclusion: MergeGateStageResult["conclusion"];
+  /** The verdict the check will carry (publish.ts `resolvePublishVerdict`); its title is the narrative's closing line. */
+  readonly verdict: ReviewVerdictResult;
   readonly narrator: ReviewNarratorPort;
   /** `reviewer.language`. */
   readonly language: string;
@@ -81,12 +80,6 @@ export function narrativeSkipped(reason: string): NarrateStageResult {
     latencyMs: 0,
   };
 }
-
-const VERDICTS: Record<MergeGateStageResult["conclusion"], NarrativeVerdict> = {
-  success: "ready-to-merge",
-  neutral: "needs-human-look",
-  failure: "needs-changes",
-};
 
 const SEVERITIES: readonly FindingSeverity[] = ["nit", "minor", "major", "critical"];
 
@@ -133,7 +126,8 @@ function toNarrativeInput(input: NarrateStageInput): ReviewNarrativeInput {
       ...input.findingFilter.needsHuman.map((f) => toNarratedFinding(f, hunksById, true)),
     ],
     language: input.language,
-    verdict: VERDICTS[input.conclusion],
+    verdict: input.verdict.verdict,
+    verdictLine: verdictTitle(input.verdict, input.language),
   };
 }
 

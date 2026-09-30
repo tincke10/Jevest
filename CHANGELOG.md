@@ -57,6 +57,53 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   set it was fitted on (from 0.284 raw) with the ranking untouched, but carries
   0.216 to a set whose base rate is ten times lower.
 
+### Changed
+
+- **BREAKING: the `jevest` check and labels now say what to do, not whether
+  the PR may auto-merge.** Every run ends in ONE review verdict
+  (src/domain/review-verdict.ts): `fix` (at least one published finding;
+  check `failure`, the only red), `questions` (doubts or an auto-band
+  description mismatch; `neutral`), `clear` (nothing to fix; `success`) or
+  `unavailable` (every reviewer call failed, the spend cap skipped the
+  review, or instructions to a reviewer were suspected; `neutral`). Before,
+  the check carried the merge gate's conclusion, so a PR with zero
+  findings and zero doubts could go red just for not being safe to
+  auto-merge. The merge gate now only decides `jevest:auto-merge-ok`,
+  which additionally requires a `clear` verdict. Kept as they were: the
+  NFR-2 fail-closed exit still publishes a red check; a suspected
+  injection or an auto-band description mismatch can never produce a
+  green check; Jev-only mode and triage's low-risk skip are `clear` when
+  Jev flagged nothing.
+- **BREAKING: `jevest:needs-human` is gone.** It was on nearly every PR and
+  said nothing. It is replaced by exactly one verdict label per run, created
+  with a color and a description and localized by `reviewer.language`:
+  `jevest: corregir antes de mergear` / `jevest: fix before merge`,
+  `jevest: responder dudas` / `jevest: answer questions`,
+  `jevest: listo para aprobar` / `jevest: ready to approve`,
+  `jevest: revisar a mano` / `jevest: review manually`; plus a risk label
+  (`riesgo: alto` / `risk: high` for high and critical, `riesgo: medio` /
+  `risk: medium`). Every run removes the other verdict labels and the
+  legacy `jevest:needs-human`, so open PRs migrate on their next run.
+  **Anyone filtering PRs, issues or automations on `jevest:needs-human`
+  must switch to the new labels.** Triage's needs-human signal (FR-2.4) is
+  still reported in the summary comment.
+- The check title and summary are action-oriented and localized (es by
+  default, en for any other language), e.g. "Corregir 2 problemas antes de
+  mergear" or "Nothing to fix", instead of "Jevest: failure".
+- The colleague review's closing line is the check title word for word,
+  taken from the same verdict function, so a review with nothing to flag
+  can no longer end with "needs changes". `ReviewNarrativeInput.verdict` is
+  now the review verdict and gains `verdictLine`.
+- The summary comment's "Needs human review" section is now "Questions and
+  manual checks", and the merge gate line says it only decides
+  `jevest:auto-merge-ok`.
+- The GitHub adapter creates missing labels with their color and
+  description (`ReviewPublication.labelDefinitions`), leaves existing
+  labels untouched, and tolerates a 422 when another run created the label
+  first.
+- `fail-on: failure` now fails the job on a `fix` verdict (or a fail-closed
+  run), not on the merge gate's conclusion.
+
 ### Fixed
 
 - **Reviewer errors rendered as walls of JSON**: claude-cli failures embed the

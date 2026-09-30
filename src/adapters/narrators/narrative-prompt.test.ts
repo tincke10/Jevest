@@ -50,9 +50,16 @@ describe("NARRATIVE_SYSTEM_PROMPT", () => {
 describe("buildNarrativeUserPrompt", () => {
   const prompt = buildNarrativeUserPrompt(INPUT);
 
-  it("states the language and the verdict in words", () => {
+  it("states the language and the verdict with the check title's exact wording", () => {
     expect(prompt).toContain("Write the review in: es");
-    expect(prompt).toContain("Verdict to state at the end: needs changes");
+    expect(prompt).toContain("Verdict to state at the end: Corregir 1 problema antes de mergear");
+  });
+
+  it("tells the narrator to close with the given verdict wording, never a verdict of its own", () => {
+    const lowered = NARRATIVE_SYSTEM_PROMPT.toLowerCase();
+    expect(lowered).toContain("use the verdict wording you are given");
+    expect(lowered).not.toContain("worth a human look");
+    expect(lowered).not.toContain("ready to merge");
   });
 
   it("carries the title, the description, the changed files and the diff", () => {

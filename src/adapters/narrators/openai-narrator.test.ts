@@ -57,7 +57,9 @@ describe("createOpenAiNarrator", () => {
     const [params] = client.chat.completions.parse.mock.calls[0]!;
     expect(params.model).toBe("gpt-x");
     expect(params.messages[0]).toEqual({ role: "system", content: NARRATIVE_SYSTEM_PROMPT });
-    expect(params.messages[1].content).toContain("Verdict to state at the end: needs changes");
+    expect(params.messages[1].content).toContain(
+      "Verdict to state at the end: Corregir 1 problema antes de mergear",
+    );
   });
 
   it("throws ReviewerParseError when parsed is null", async () => {

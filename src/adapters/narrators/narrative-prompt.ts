@@ -18,7 +18,6 @@
 import type {
   NarratedFinding,
   NarratedHunk,
-  NarrativeVerdict,
   ReviewNarrativeInput,
 } from "../../domain/ports/review-narrator-port.js";
 import { MAX_PROMPT_CHARS, truncatePatch } from "../summarizers/summary-prompt.js";
@@ -39,17 +38,11 @@ Shape:
 1. Open with one or two sentences giving your overall take on the change.
 2. Then the concrete points, one bullet each, the most important first.
 3. If there are no findings, say briefly that nothing in the reviewed code needs changes and mention what you reviewed, in one or two sentences. Do not invent praise or suggestions to fill the space.
-4. End with one bold verdict line that agrees with the verdict you are given (ready to merge, needs changes, or worth a human look), written in the requested language.
+4. End with one bold verdict line: use the verdict wording you are given, as is (translate it only if it is not in the language you are writing in). Never state a verdict of your own, and never contradict it: with no findings to raise, do not ask for changes.
 
 Style: direct and friendly, like a colleague who respects the author's time. No filler, no greetings, no sign-off, no praise inflation, no emojis. Do not add a top-level heading: start with the overall take. Markdown only, short: rarely more than 250 words.
 
 Put the whole review, as markdown, in the \`review\` field of the structured output.`;
-
-const VERDICT_WORDS: Record<NarrativeVerdict, string> = {
-  "ready-to-merge": "ready to merge",
-  "needs-changes": "needs changes",
-  "needs-human-look": "worth a human look",
-};
 
 function location(finding: NarratedFinding): string {
   const lines =
@@ -108,7 +101,7 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
       : input.findings.map(formatFinding).join("\n");
   return [
     `Write the review in: ${input.language}`,
-    `Verdict to state at the end: ${VERDICT_WORDS[input.verdict]}`,
+    `Verdict to state at the end: ${input.verdictLine}`,
     "",
     "## Pull request",
     `Title: ${input.title}`,

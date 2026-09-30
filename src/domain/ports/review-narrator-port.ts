@@ -12,6 +12,7 @@
  * instead would let it undo the filter, which is the whole point of Jevest.
  */
 import type { FindingSeverity } from "../finding.js";
+import type { ReviewVerdict } from "../review-verdict.js";
 import type { ReviewUsage } from "./reviewer-port.js";
 
 /** One finding as the narrator sees it: already filtered by Jev, located on the HEAD side. */
@@ -35,9 +36,6 @@ export interface NarratedHunk {
   readonly diff: string;
 }
 
-/** The verdict the check carries, in words; the narrator's closing line must agree with it. */
-export type NarrativeVerdict = "ready-to-merge" | "needs-changes" | "needs-human-look";
-
 export interface ReviewNarrativeInput {
   /** `${owner}/${repo}#${number}`; for error messages and fixtures only. */
   readonly prId: string;
@@ -48,7 +46,14 @@ export interface ReviewNarrativeInput {
   readonly findings: readonly NarratedFinding[];
   /** `reviewer.language` from `.jevest.yml`, e.g. "es" or "en". */
   readonly language: string;
-  readonly verdict: NarrativeVerdict;
+  /** The run's verdict (src/domain/review-verdict.ts); the same one the check carries. */
+  readonly verdict: ReviewVerdict;
+  /**
+   * The check title for that verdict, word for word (`verdictTitle`, es or
+   * en). The narrative's closing line states exactly this, so the comment
+   * and the check can never disagree.
+   */
+  readonly verdictLine: string;
 }
 
 export interface ReviewNarrativeOutput {

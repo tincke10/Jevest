@@ -393,6 +393,107 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
     expect(createLabel).not.toHaveBeenCalled();
   });
 
+  it("creates a missing label with the color and description from labelDefinitions", async () => {
+    const getLabel = vi.fn().mockRejectedValue(githubError(404));
+    const createLabel = vi.fn().mockResolvedValue(ghResponse({ name: "jevest: fix before merge" }));
+    const client = createFakeClient({
+      issues: { ...createFakeClient().issues, getLabel, createLabel },
+    });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await adapter.publishReview(REF, {
+      ...PUBLICATION_BASE,
+      labelsToAdd: ["jevest: fix before merge", "jevest:auto-merge-ok"],
+      labelDefinitions: [
+        { name: "jevest: fix before merge", color: "b60205", description: "Fix it." },
+      ],
+    });
+
+    expect(createLabel).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      name: "jevest: fix before merge",
+      color: "b60205",
+      description: "Fix it.",
+    });
+    expect(createLabel).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      name: "jevest:auto-merge-ok",
+    });
+  });
+
+  it("leaves an existing defined label as the repo has it (no create, no update)", async () => {
+    const getLabel = vi
+      .fn()
+      .mockResolvedValue(ghResponse({ name: "jevest: fix before merge", color: "000000" }));
+    const createLabel = vi.fn();
+    const client = createFakeClient({
+      issues: { ...createFakeClient().issues, getLabel, createLabel },
+    });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await adapter.publishReview(REF, {
+      ...PUBLICATION_BASE,
+      labelsToAdd: ["jevest: fix before merge"],
+      labelDefinitions: [
+        { name: "jevest: fix before merge", color: "b60205", description: "Fix it." },
+      ],
+    });
+
+    expect(createLabel).not.toHaveBeenCalled();
+  });
+
+  it("tolerates a 422 already_exists on create (another run created the label first)", async () => {
+    const getLabel = vi.fn().mockRejectedValue(githubError(404));
+    const createLabel = vi.fn().mockRejectedValue(githubError(422));
+    const addLabels = vi.fn().mockResolvedValue(ghResponse([]));
+    const client = createFakeClient({
+      issues: { ...createFakeClient().issues, getLabel, createLabel, addLabels },
+    });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await adapter.publishReview(REF, {
+      ...PUBLICATION_BASE,
+      labelsToAdd: ["jevest: ready to approve"],
+    });
+
+    expect(addLabels).toHaveBeenCalledWith(
+      expect.objectContaining({ labels: ["jevest: ready to approve"] }),
+    );
+  });
+
+  it("propagates a non-422 error when creating a label", async () => {
+    const getLabel = vi.fn().mockRejectedValue(githubError(404));
+    const createLabel = vi.fn().mockRejectedValue(githubError(500));
+    const client = createFakeClient({
+      issues: { ...createFakeClient().issues, getLabel, createLabel },
+    });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await expect(
+      adapter.publishReview(REF, { ...PUBLICATION_BASE, labelsToAdd: ["x"] }),
+    ).rejects.toThrow();
+  });
+
+  it("passes a label name with ': ' and spaces raw to removeLabel (Octokit URL-encodes path params; pre-encoding would double-encode)", async () => {
+    const removeLabel = vi.fn().mockResolvedValue(ghResponse({}));
+    const client = createFakeClient({ issues: { ...createFakeClient().issues, removeLabel } });
+    const adapter = createGitHubVcsAdapter({ client });
+
+    await adapter.publishReview(REF, {
+      ...PUBLICATION_BASE,
+      labelsToRemove: ["jevest: corregir antes de mergear"],
+    });
+
+    expect(removeLabel).toHaveBeenCalledWith({
+      owner: "tincke10",
+      repo: "jevest",
+      issue_number: 42,
+      name: "jevest: corregir antes de mergear",
+    });
+  });
+
   it("ignores a 404 when removing a label that is already absent", async () => {
     const removeLabel = vi.fn().mockRejectedValue(githubError(404));
     const client = createFakeClient({ issues: { ...createFakeClient().issues, removeLabel } });

@@ -10,6 +10,7 @@ import type { NarrateStageResult } from "./narrate.js";
 import {
   type PublishStageInput,
   buildFailClosedPublication,
+  resolvePublishVerdict,
   runPublishStage,
   runTriageOnlyPublishStage,
 } from "./publish.js";
@@ -415,9 +416,9 @@ describe("runPublishStage", () => {
     expect(result.summaryMarkdown.toLowerCase()).toContain("jev");
   });
 
-  it("sets the check conclusion and title/summary from the merge gate result", () => {
+  it("takes the check from the review verdict, not the merge gate: a red gate with nothing to fix is green", () => {
     const result = runPublishStage({
-      triage: makeTriage(),
+      triage: makeTriage({ category: "config", riskLevel: "medium" }),
       hunkProfile: makeHunkProfile([]),
       review: makeReview(),
       findingFilter: makeFindingFilter(),
@@ -426,9 +427,77 @@ describe("runPublishStage", () => {
       reviewDisabled: false,
       metrics: makeMetrics(),
     });
+    expect(result.check.conclusion).toBe("success");
+    expect(result.check.title).toBe("Nada para corregir");
+    expect(result.check.summary).toContain(
+      "Jevest no encontró nada para corregir. Falta la aprobación humana habitual.",
+    );
+    expect(result.check.summary).toContain("Triage: config/medium.");
+    expect(result.labelsToAdd).toContain("jevest: listo para aprobar");
+    // The gate still decides auto-merge-ok on its own terms.
+    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+  });
+
+  it("is fix (red, blocking) with at least one published finding, even when the gate is green", () => {
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter({
+        published: [makeFinding(), makeFinding({ findingId: "2", claim: "other" })],
+      }),
+      mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics(),
+    });
     expect(result.check.conclusion).toBe("failure");
-    expect(result.check.title.length).toBeGreaterThan(0);
-    expect(result.check.summary.length).toBeGreaterThan(0);
+    expect(result.check.title).toBe("Corregir 2 problemas antes de mergear");
+    expect(result.labelsToAdd).toContain("jevest: corregir antes de mergear");
+    expect(result.labelsToRemove).toEqual(
+      expect.arrayContaining([
+        "jevest: responder dudas",
+        "jevest: listo para aprobar",
+        "jevest: revisar a mano",
+        "jevest:needs-human",
+        "jevest:auto-merge-ok",
+      ]),
+    );
+    expect(result.labelDefinitions).toContainEqual(
+      expect.objectContaining({ name: "jevest: corregir antes de mergear", color: "b60205" }),
+    );
+  });
+
+  it("is questions (neutral, not blocking) with doubts only, and never auto-merge-ok", () => {
+    const result = runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter: makeFindingFilter({ needsHuman: [makeFinding()] }),
+      mergeGate: makeMergeGate({ conclusion: "success" }),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics(),
+      language: "en",
+    });
+    expect(result.check.conclusion).toBe("neutral");
+    expect(result.check.title).toBe("Answer 1 question (not blocking)");
+    expect(result.labelsToAdd).toContain("jevest: answer questions");
+    expect(result.labelsToRemove).toContain("jevest: fix before merge");
+    expect(result.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+  });
+
+  it("adds a risk label from triage and removes the stale one", () => {
+    const high = publishWith(makeTriage({ riskLevel: "high" }));
+    expect(high.labelsToAdd).toContain("riesgo: alto");
+    expect(high.labelsToRemove).toContain("riesgo: medio");
+    expect(high.labelDefinitions).toContainEqual(
+      expect.objectContaining({ name: "riesgo: alto", color: "d93f0b" }),
+    );
+    const low = publishWith(makeTriage({ riskLevel: "low" }));
+    expect(low.labelsToAdd).not.toContain("riesgo: alto");
+    expect(low.labelsToRemove).toEqual(expect.arrayContaining(["riesgo: alto", "riesgo: medio"]));
   });
 
   it("adds the auto-merge-ok label only when the merge gate succeeds, and removes it otherwise", () => {
@@ -459,7 +528,7 @@ describe("runPublishStage", () => {
     expect(failure.labelsToRemove).toContain("jevest:auto-merge-ok");
   });
 
-  it("adds the needs-human label when triage flagged it", () => {
+  it("never adds the legacy needs-human label and removes it on every run; triage's signal stays in the report", () => {
     const result = runPublishStage({
       triage: makeTriage({ needsHumanLabel: true }),
       hunkProfile: makeHunkProfile([]),
@@ -470,7 +539,16 @@ describe("runPublishStage", () => {
       reviewDisabled: false,
       metrics: makeMetrics(),
     });
-    expect(result.labelsToAdd).toContain("jevest:needs-human");
+    expect(result.labelsToAdd).not.toContain("jevest:needs-human");
+    expect(result.labelsToRemove).toContain("jevest:needs-human");
+    expect(result.summaryMarkdown).toContain("- Careful human review suggested by triage: yes");
+  });
+
+  it("explains in the report that the merge gate only decides auto-merge-ok", () => {
+    const result = publishWith(makeTriage(), makeMergeGate({ conclusion: "failure" }));
+    expect(result.summaryMarkdown).toContain(
+      "- Gate conclusion: failure (decides `jevest:auto-merge-ok` only; the check follows the review verdict)",
+    );
   });
 
   it("publishes no inline comments when inlineCommentsEnabled is false, listing auto-band findings in the summary instead", () => {
@@ -576,6 +654,41 @@ describe("runPublishStage", () => {
       metrics: makeMetrics(),
     });
     expect(result.check.conclusion).toBe("success");
+    expect(result.labelsToAdd).toContain("jevest: listo para aprobar");
+  });
+});
+
+describe("resolvePublishVerdict", () => {
+  const base = {
+    triage: makeTriage(),
+    hunkProfile: makeHunkProfile([]),
+    review: makeReview(),
+    findingFilter: makeFindingFilter(),
+    mergeGate: makeMergeGate(),
+    reviewDisabled: false,
+  };
+
+  it("is unavailable when the spend cap skipped the review, and never auto-merge-ok", () => {
+    const result = resolvePublishVerdict({ ...base, reviewSkippedForSpendCap: true });
+    expect(result.verdict.verdict).toBe("unavailable");
+    expect(result.conclusion).toBe("neutral");
+    expect(result.autoMergeOk).toBe(false);
+  });
+
+  it("is unavailable when triage suspected instructions in the description", () => {
+    const result = resolvePublishVerdict({ ...base, injectedInstructionsInDescription: true });
+    expect(result.verdict.verdict).toBe("unavailable");
+    expect(result.conclusion).toBe("neutral");
+  });
+
+  it("is clear and auto-merge-ok only when the gate is green and the verdict is clear", () => {
+    expect(resolvePublishVerdict(base)).toMatchObject({
+      conclusion: "success",
+      autoMergeOk: true,
+    });
+    expect(
+      resolvePublishVerdict({ ...base, mergeGate: makeMergeGate({ conclusion: "neutral" }) }),
+    ).toMatchObject({ conclusion: "success", autoMergeOk: false });
   });
 });
 
@@ -699,28 +812,32 @@ describe("runPublishStage injected instructions in the diff (NFR-7)", () => {
     );
   });
 
-  it("adds the injected-instructions label at or above 0.5 and lists the hunks under Needs human review; removes it below", () => {
+  it("adds the injected-instructions label at or above 0.5 and lists the hunks under Questions and manual checks; removes it below", () => {
     const flagged = publish({ maxProb: 0.5, hunkIds: ["a.ts#0"] });
     expect(flagged.labelsToAdd).toContain("jevest:injected-instructions");
     expect(flagged.labelsToRemove).not.toContain("jevest:injected-instructions");
     expect(flagged.summaryMarkdown).toMatch(
-      /### Needs human review\n[\s\S]*instructions[\s\S]*`a\.ts#0`/,
+      /### Questions and manual checks\n[\s\S]*instructions[\s\S]*`a\.ts#0`/,
     );
 
     const unclear = publish({ maxProb: 0.49, hunkIds: [] });
     expect(unclear.labelsToAdd).not.toContain("jevest:injected-instructions");
     expect(unclear.labelsToRemove).toContain("jevest:injected-instructions");
-    expect(unclear.summaryMarkdown).toContain("No findings need human review.");
+    expect(unclear.summaryMarkdown).toContain("Nothing to answer or check by hand.");
   });
 
-  it("never turns a check green by itself and never overrides the gate — the gate already failed in code", () => {
-    const result = publish(
-      { maxProb: 0.9, hunkIds: ["a.ts#0"] },
-      makeMergeGate({ conclusion: "failure" }),
-    );
-    expect(result.check.conclusion).toBe("failure");
-    expect(result.labelsToAdd).toContain("jevest:injected-instructions");
-    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+  it("is never green: the review may have been steered, so a human reviews by hand (unavailable, neutral), never auto-merge-ok", () => {
+    for (const gate of ["failure", "success"] as const) {
+      const result = publish(
+        { maxProb: 0.9, hunkIds: ["a.ts#0"] },
+        makeMergeGate({ conclusion: gate }),
+      );
+      expect(result.check.conclusion).toBe("neutral");
+      expect(result.check.title).toBe("Review automático no disponible: revisar a mano");
+      expect(result.labelsToAdd).toContain("jevest:injected-instructions");
+      expect(result.labelsToAdd).toContain("jevest: revisar a mano");
+      expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+    }
   });
 });
 
@@ -964,7 +1081,7 @@ describe("runPublishStage reviewer failures", () => {
       md.indexOf("### Findings (high confidence)"),
     );
     expect(md).not.toContain("No high-confidence findings.");
-    expect(md).not.toContain("No findings need human review.");
+    expect(md).not.toContain("Nothing to answer or check by hand.");
     expect(md).toContain("No hunk was reviewed: the reviewer failed on every hunk it was given.");
     expect(md).toMatch(/LLM: 0 of 1 hunks reviewed · 1 failed \(reviewer error\) · 3 skipped/);
   });
@@ -1002,7 +1119,7 @@ describe("runPublishStage reviewer failures", () => {
     const result = publishWithReviews([okEntry("a.ts#0", "a.ts")], 0);
     expect(result.summaryMarkdown).not.toContain("LLM review failed");
     expect(result.summaryMarkdown).not.toContain("failed (reviewer error)");
-    expect(result.check.title).toBe("Jevest: success");
+    expect(result.check.title).toBe("Nada para corregir");
   });
 
   it("puts the error inside the fingerprint (review content) while keeping timing outside", () => {
@@ -1014,13 +1131,13 @@ describe("runPublishStage reviewer failures", () => {
     expect(again.summaryFingerprint).toBe(failed.summaryFingerprint);
   });
 
-  it("on a partial failure mentions it in the check title and summary without changing the conclusion", () => {
+  it("on a partial failure mentions it in the check summary without changing the verdict", () => {
     const result = publishWithReviews(
       [okEntry("a.ts#0", "a.ts"), failedEntry("b.ts#0", "b.ts", OAUTH_ERROR)],
       1,
     );
     expect(result.check.conclusion).toBe("success");
-    expect(result.check.title).toBe("Jevest: success (LLM review failed)");
+    expect(result.check.title).toBe("Nada para corregir");
     expect(result.check.summary).toContain("LLM review failed on 1 of 2 hunk(s)");
     expect(result.labelsToAdd).toContain("jevest:auto-merge-ok");
     expect(result.labelsToRemove).toContain("jevest:needs-human");
@@ -1030,28 +1147,28 @@ describe("runPublishStage reviewer failures", () => {
     const allFailed = (mergeGate = makeMergeGate()) =>
       publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1, { mergeGate });
 
-    it("downgrades a green merge gate to neutral and never applies auto-merge-ok", () => {
+    it("is unavailable: neutral, and never applies auto-merge-ok", () => {
       const result = allFailed();
       expect(result.check.conclusion).toBe("neutral");
-      expect(result.check.title).toBe("Jevest: neutral (LLM review failed)");
+      expect(result.check.title).toBe("Review automático no disponible: revisar a mano");
       expect(result.check.summary).toContain("LLM review failed on 1 of 1 hunk(s)");
       expect(result.check.summary).toContain("Nothing is marked safe to auto-merge.");
       expect(result.labelsToAdd).not.toContain("jevest:auto-merge-ok");
       expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
     });
 
-    it("routes the PR to a human: needs-human label and a line in the human queue", () => {
+    it("routes the PR to a human: review-manually label and a line in the human queue", () => {
       const result = allFailed();
-      expect(result.labelsToAdd).toContain("jevest:needs-human");
-      expect(result.labelsToRemove).not.toContain("jevest:needs-human");
-      const queue = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+      expect(result.labelsToAdd).toContain("jevest: revisar a mano");
+      expect(result.labelsToRemove).toContain("jevest:needs-human");
+      const queue = result.summaryMarkdown.split("### Questions and manual checks")[1] ?? "";
       expect(queue).toContain(
         "- No hunk was reviewed: the reviewer failed on every hunk it was given. A human should review this pull request directly.",
       );
     });
 
-    it("never raises a gate that was already neutral or red", () => {
-      expect(allFailed(makeMergeGate({ conclusion: "failure" })).check.conclusion).toBe("failure");
+    it("is neutral whatever the gate said: no review is not a reason to block, nor to pass", () => {
+      expect(allFailed(makeMergeGate({ conclusion: "failure" })).check.conclusion).toBe("neutral");
       expect(allFailed(makeMergeGate({ conclusion: "neutral" })).check.conclusion).toBe("neutral");
     });
 
@@ -1149,7 +1266,7 @@ describe("runPublishStage intent vs change (triage v2, H7)", () => {
     expect(clear.labelsToRemove).toContain("jevest:needs-product-owner");
   });
 
-  it("forces a green merge gate to neutral on an auto-band mismatch and adds the PR to the human queue text", () => {
+  it("makes an auto-band mismatch a question for the author (neutral) and adds the PR to the human queue text", () => {
     const result = publishWith(
       makeTriage({
         descriptionMismatch: true,
@@ -1159,14 +1276,15 @@ describe("runPublishStage intent vs change (triage v2, H7)", () => {
       makeMergeGate({ conclusion: "success" }),
     );
     expect(result.check.conclusion).toBe("neutral");
+    expect(result.check.title).toBe("Responder 1 duda (no bloquea)");
     expect(result.check.summary).toMatch(/description does not match/i);
     expect(result.labelsToAdd).not.toContain("jevest:auto-merge-ok");
     expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
-    const needsHuman = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+    const needsHuman = result.summaryMarkdown.split("### Questions and manual checks")[1] ?? "";
     expect(needsHuman).toMatch(/description does not match the change.*0\.02/i);
   });
 
-  it("never turns a mismatch into a failure on its own: a failing merge gate stays failure, a neutral one stays neutral", () => {
+  it("never turns a mismatch into a failure on its own: it is neutral whatever the gate says", () => {
     const failure = publishWith(
       makeTriage({
         descriptionMismatch: true,
@@ -1175,7 +1293,7 @@ describe("runPublishStage intent vs change (triage v2, H7)", () => {
       }),
       makeMergeGate({ conclusion: "failure" }),
     );
-    expect(failure.check.conclusion).toBe("failure");
+    expect(failure.check.conclusion).toBe("neutral");
     const neutral = publishWith(
       makeTriage({
         descriptionMismatch: true,
@@ -1198,7 +1316,7 @@ describe("runPublishStage intent vs change (triage v2, H7)", () => {
     );
     expect(result.check.conclusion).toBe("success");
     expect(result.labelsToAdd).toContain("jevest:description-mismatch");
-    const needsHuman = result.summaryMarkdown.split("### Needs human review")[1] ?? "";
+    const needsHuman = result.summaryMarkdown.split("### Questions and manual checks")[1] ?? "";
     expect(needsHuman).toMatch(/description does not match the change/i);
   });
 });
@@ -1244,10 +1362,26 @@ describe("runTriageOnlyPublishStage", () => {
     expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
   });
 
-  it("still adds the needs-human label when triage flagged it, even though the LLM review was skipped", () => {
+  it("labels the verdict (clear, or questions on a mismatch) and removes the legacy needs-human label", () => {
     const triage = makeTriage({ needsHumanLabel: true });
-    const result = runTriageOnlyPublishStage(triage, makeMetrics());
-    expect(result.labelsToAdd).toContain("jevest:needs-human");
+    const result = runTriageOnlyPublishStage(triage, makeMetrics(), "en");
+    expect(result.labelsToAdd).toContain("jevest: ready to approve");
+    expect(result.labelsToRemove).toContain("jevest:needs-human");
+    expect(result.labelsToRemove).toEqual(
+      expect.arrayContaining(["jevest: fix before merge", "risk: high", "risk: medium"]),
+    );
+    expect(result.check.title).toBe("Nothing to fix");
+
+    const mismatch = runTriageOnlyPublishStage(
+      makeTriage({
+        descriptionMismatch: true,
+        descriptionMismatchBand: "auto",
+        matchesIntentProb: 0.05,
+      }),
+      makeMetrics(),
+    );
+    expect(mismatch.labelsToAdd).toContain("jevest: responder dudas");
+    expect(mismatch.check.title).toBe("Responder 1 duda (no bloquea)");
   });
 
   it("reports the efficiency section with every hunk saved by the triage skip (H2), fingerprint unaffected by timing", () => {
@@ -1297,20 +1431,26 @@ describe("runTriageOnlyPublishStage", () => {
 });
 
 describe("buildFailClosedPublication", () => {
-  it("fails closed with no inline comments, needs-human label, and a failure check (NFR-2)", () => {
+  it("fails closed with no inline comments, the review-manually label, and a failure check (NFR-2, kept red)", () => {
     const result = buildFailClosedPublication("hunk-profile", null);
     expect(result.inlineComments).toEqual([]);
     expect(result.check.conclusion).toBe("failure");
-    expect(result.labelsToAdd).toContain("jevest:needs-human");
-    expect(result.labelsToRemove).toContain("jevest:auto-merge-ok");
+    expect(result.check.title).toBe("Review automático no disponible: revisar a mano");
+    expect(result.labelsToAdd).toEqual(["jevest: revisar a mano"]);
+    expect(result.labelsToRemove).toEqual(
+      expect.arrayContaining(["jevest:auto-merge-ok", "jevest:needs-human"]),
+    );
+    expect(result.labelsToRemove).not.toContain("riesgo: alto");
     expect(result.summaryMarkdown).toContain("hunk-profile");
   });
 
   it("includes the last known triage decision in the summary when available", () => {
     const triage = makeTriage({ category: "security", riskLevel: "high" });
-    const result = buildFailClosedPublication("finding-filter", triage);
+    const result = buildFailClosedPublication("finding-filter", triage, undefined, "en");
     expect(result.summaryMarkdown).toContain("security");
     expect(result.summaryMarkdown).toContain("high");
+    expect(result.labelsToAdd).toEqual(["jevest: review manually", "risk: high"]);
+    expect(result.check.title).toBe("Automated review unavailable: review manually");
   });
 
   it("uses the given detail instead of the 'Jev did not respond' wording when a non-Jev step failed closed", () => {
@@ -1382,7 +1522,7 @@ describe("runPublishStage colleague review (narrative)", () => {
       "### Triage",
       "### Intent vs change",
       "### Skipped hunks",
-      "### Needs human review",
+      "### Questions and manual checks",
       "### Cost breakdown",
       "### Merge gate",
       "### Efficiency",

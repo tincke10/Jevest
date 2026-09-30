@@ -26,7 +26,9 @@ reviewer:
   # the CLAUDE_CODE_OAUTH_TOKEN secret / claude-code-oauth-token input
   # (generate it with `claude setup-token`). See docs/ACTION.md.
   # Language the review narrative is written in: a language code such as
-  # "es" or "en" (anything the model understands works).
+  # "es" or "en" (anything the model understands works). Also picks the
+  # language of the check title/summary and the verdict and risk labels
+  # (Spanish for "es", English for anything else).
   language: es
   # Colleague review: one extra LLM call per PR, after the finding filter,
   # that writes the top of the summary comment as a senior colleague would,

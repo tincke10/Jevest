@@ -1,4 +1,9 @@
-import type { InlineComment, ReviewPublication, VcsPort } from "../../domain/ports/vcs-port.js";
+import type {
+  InlineComment,
+  LabelDefinition,
+  ReviewPublication,
+  VcsPort,
+} from "../../domain/ports/vcs-port.js";
 /**
  * VcsPort over `@octokit/rest` (SPEC §5 Fase 2, FR-6.4, FR-7, NFR-12). Zero
  * GitHub SDK imports outside this file and src/action/** (hexagonal
@@ -127,6 +132,8 @@ export interface GitHubApiClient {
       owner: string;
       repo: string;
       name: string;
+      color?: string;
+      description?: string;
     }): Promise<GhResponse<{ name: string }>>;
     addLabels(params: {
       owner: string;
@@ -362,14 +369,39 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): GitHub
     }
   }
 
-  async function ensureLabelExists(owner: string, repo: string, name: string): Promise<void> {
+  /**
+   * Idempotent: an existing label is left exactly as the repo has it (an
+   * admin may have recolored it on purpose); a missing one is created with
+   * its definition's color and description when there is one. A 422 on
+   * create means another run created it in between: fine.
+   *
+   * Label names go to Octokit raw, never pre-encoded: its URL templates
+   * already encode path params (`jevest: fix before merge` becomes
+   * `jevest%3A%20fix%20before%20merge`), so encoding here would double it.
+   */
+  async function ensureLabelExists(
+    owner: string,
+    repo: string,
+    name: string,
+    definition: LabelDefinition | undefined,
+  ): Promise<void> {
     try {
       await withRateLimitRetry(() => client.issues.getLabel({ owner, repo, name }));
+      return;
     } catch (error) {
       if (!isNotFound(error)) {
         throw error;
       }
-      await withRateLimitRetry(() => client.issues.createLabel({ owner, repo, name }));
+    }
+    const style = definition
+      ? { color: definition.color, description: definition.description }
+      : {};
+    try {
+      await withRateLimitRetry(() => client.issues.createLabel({ owner, repo, name, ...style }));
+    } catch (error) {
+      if (!(isGithubApiError(error) && error.status === 422)) {
+        throw error;
+      }
     }
   }
 
@@ -497,8 +529,11 @@ export function createGitHubVcsAdapter(options: GitHubVcsAdapterOptions): GitHub
   async function publishLabels(ref: PullRequestRef, publication: ReviewPublication): Promise<void> {
     const { owner, repo, number } = ref;
     if (publication.labelsToAdd.length > 0) {
+      const definitions = new Map(
+        (publication.labelDefinitions ?? []).map((definition) => [definition.name, definition]),
+      );
       for (const name of publication.labelsToAdd) {
-        await ensureLabelExists(owner, repo, name);
+        await ensureLabelExists(owner, repo, name, definitions.get(name));
       }
       await withRateLimitRetry(() =>
         client.issues.addLabels({

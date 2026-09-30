@@ -515,7 +515,13 @@ describe("runPipeline", () => {
     // rather than being forced to fail-closed by the disabled reviewer.
     expect(result.mergeGate).not.toBeNull();
     expect(result.mergeGate!.safeToAutomergeProb).toBe(0.95);
-    expect(result.publication.check.conclusion).toBe("neutral");
+    expect(result.mergeGate!.conclusion).toBe("neutral");
+    // Jev-only by config with nothing flagged: the verdict is clear (green),
+    // but the neutral gate still withholds auto-merge-ok.
+    expect(result.publication.check.conclusion).toBe("success");
+    expect(result.publication.check.title).toBe("Nada para corregir");
+    expect(result.publication.labelsToAdd).toContain("jevest: listo para aprobar");
+    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
   });
 
   it("does not require a reviewer port at all when reviewer.provider is 'none'", async () => {
@@ -1298,13 +1304,17 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(mergeGateState).toMatchObject({ injected_instructions_in_diff: "yes" });
     expect(JSON.stringify(mergeGateState)).not.toContain("0.91");
     expect(result.mergeGate?.safeToAutomergeProb).toBe(0.99);
-    expect(result.check.conclusion).toBe("failure");
+    expect(result.mergeGate?.conclusion).toBe("failure");
+    // Never green: the review may have been steered, so a human reviews by hand.
+    expect(result.check.conclusion).not.toBe("success");
     expect(result.publication.labelsToAdd).toContain("jevest:injected-instructions");
     expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
     expect(result.publication.summaryMarkdown).toContain(
       "Injected instructions: in description P=0.02 · in diff P=0.91 (hunks: a.ts#0)",
     );
-    expect(result.publication.summaryMarkdown).toMatch(/### Needs human review[\s\S]*a\.ts#0/);
+    expect(result.publication.summaryMarkdown).toMatch(
+      /### Questions and manual checks[\s\S]*a\.ts#0/,
+    );
   });
 
   it("removes the injected-instructions label and keeps the gate's own conclusion when the diff is clean", async () => {
@@ -1637,7 +1647,9 @@ describe("runPipeline when every reviewer call failed (NFR-2 fail closed)", () =
     expect(result.check.conclusion).toBe("neutral");
     expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
     expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
-    expect(result.publication.labelsToAdd).toContain("jevest:needs-human");
+    expect(result.publication.labelsToAdd).toContain("jevest: revisar a mano");
+    expect(result.publication.labelsToRemove).toContain("jevest:needs-human");
+    expect(result.check.title).toBe("Review automático no disponible: revisar a mano");
     expect(result.publication.summaryMarkdown).toContain("### ⚠️ LLM review failed");
   });
 });
@@ -1690,7 +1702,10 @@ describe("runPipeline colleague review (narrator)", () => {
     expect(narrator.calls).toHaveLength(1);
     const input = narrator.calls[0]!;
     expect(input.language).toBe("es");
-    expect(input.verdict).toBe("ready-to-merge");
+    // Same verdict function, same words: the narrative's closing line IS the check title.
+    expect(input.verdict).toBe("fix");
+    expect(input.verdictLine).toBe("Corregir 1 problema antes de mergear");
+    expect(result.check.title).toBe(input.verdictLine);
     expect(input.title).toBe("Fix off-by-one");
     expect(input.findings).toEqual([
       expect.objectContaining({ claim: "off-by-one", needsHuman: false }),

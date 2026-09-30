@@ -15,12 +15,26 @@ export interface InlineComment {
   fingerprint: string;
 }
 
+/** How a label should look when an adapter has to create it (GitHub: color without `#`, description <= 100 chars). */
+export interface LabelDefinition {
+  name: string;
+  color: string;
+  description: string;
+}
+
 export interface ReviewPublication {
   summaryMarkdown: string;
   summaryFingerprint: string;
   inlineComments: InlineComment[];
   labelsToAdd: string[];
   labelsToRemove: string[];
+  /**
+   * Color and description for labels in `labelsToAdd` that should look a
+   * certain way. An adapter creates a missing label with these; a label
+   * that already exists is left as the repo has it. Labels not listed here
+   * are created bare, as before.
+   */
+  labelDefinitions?: LabelDefinition[];
   check: {
     conclusion: "success" | "neutral" | "failure";
     title: string;

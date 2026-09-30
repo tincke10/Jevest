@@ -80,9 +80,10 @@ Point `config-path` elsewhere if you'd rather not use the repo root.
 
 The top of the summary comment reads like a senior colleague's review: a
 one- or two-sentence take on the change, then each point tied to
-`file:line` saying what to change and why, then a bold verdict line
-(ready to merge, needs changes, or worth a human look) that agrees with
-the `jevest` check. One extra LLM call per PR writes it, after the finding
+`file:line` saying what to change and why, then a bold verdict line that
+is the `jevest` check title word for word (e.g. "Corregir 1 problema
+antes de mergear", "Nada para corregir"; see "Review verdict" below), so
+a review with nothing to flag can never end with "needs changes". One extra LLM call per PR writes it, after the finding
 filter:
 
 ```yaml
@@ -449,9 +450,10 @@ How a mismatch surfaces on the PR: the "Intent vs change" section shows
 the verdict with `P(matches_intent)`; a mismatch (`P < 0.35`, H7's
 operating point) whose confidence lands in the `auto` or `confirm` band
 adds the `jevest:description-mismatch` label and lists the PR under
-"Needs human review"; in the `auto` band it also forces a green check to
-`neutral`. It never turns a check red on its own; that stays the merge
-gate's call. `needs_product_owner` above the confirm bar adds
+"Questions and manual checks"; in the `auto` band it also counts as one
+question for the author, so the verdict is at least `questions` (a
+`neutral` check, never green). It never turns a check red on its own.
+`needs_product_owner` above the confirm bar adds
 `jevest:needs-product-owner`. Both labels are removed again when the
 signal clears, like every other Jevest label.
 
@@ -488,22 +490,66 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
   triage decision, an "Intent vs change" section (what the diff summary
   says changes, product areas touched with their criticality, whether the
   description matches the change), hunks skipped and why, findings sent
-  to a human review queue, the run's cost, the merge gate and
+  to the "Questions and manual checks" queue, the run's cost, the merge gate and
   "Efficiency". Without a narrative the comment is that same report,
   uncollapsed. The comment's fingerprint covers the deterministic report
   only, never the narrative: an LLM rewording the same findings is not a
   new review (NFR-12), while the comment body is still updated in place
   on every run.
-- **Labels**, added/removed per the triage and merge-gate outcome (e.g.
-  `jevest:needs-human`, `jevest:auto-merge-ok`,
+- **Labels**: exactly one review-verdict label and a risk label (see
+  "Review verdict" below), plus labels added/removed per the triage and
+  merge-gate outcome (`jevest:auto-merge-ok`,
   `jevest:description-mismatch`, `jevest:needs-product-owner`,
   `jevest:injected-instructions` when a hunk of the diff itself talks to
   the reviewer) and the spend cap state (`jevest:spend-warning`,
   `jevest:spend-cap-reached`).
 - **One "Jevest spend ledger" issue** per repo, holding the cumulative
   spend behind `spendCap` (see "Spend cap").
-- **A `jevest` check run** (or commit status, see above) carrying the
-  merge-gate conclusion: green, neutral ("needs a human"), or red.
+- **A `jevest` check run** (or commit status, see above) whose conclusion,
+  title and summary come from the review verdict: red only when there is
+  something to fix.
+
+### Review verdict
+
+Every run ends in ONE verdict that says what has to happen next and
+whether it blocks. It sets the `jevest` check conclusion, the check title
+and summary (in `reviewer.language`: Spanish by default, English for `en`
+and for any other language), the verdict label, and the closing line of
+the colleague review.
+
+| Verdict | When | Check | Title (es / en) | Label (es / en) |
+|---|---|---|---|---|
+| fix | at least one finding was PUBLISHED (high confidence, confirmed by Jev) | `failure` (blocks) | Corregir N problema(s) antes de mergear / Fix N issue(s) before merging | `jevest: corregir antes de mergear` / `jevest: fix before merge` (red) |
+| questions | nothing published, but doubts (needs-human findings) or an `auto`-band description mismatch | `neutral` | Responder N duda(s) (no bloquea) / Answer N question(s) (not blocking) | `jevest: responder dudas` / `jevest: answer questions` (yellow) |
+| clear | nothing to fix or answer | `success` | Nada para corregir / Nothing to fix | `jevest: listo para aprobar` / `jevest: ready to approve` (green) |
+| unavailable | the automated review could not be done or cannot be trusted (see below) | `neutral` | Review automático no disponible: revisar a mano / Automated review unavailable: review manually | `jevest: revisar a mano` / `jevest: review manually` (grey) |
+
+`unavailable` covers: every reviewer call failed; the spend cap skipped
+the review; instructions to a reviewer were suspected in the description
+or the diff (the review may have been steered; published findings still
+make it `fix`); and the NFR-2 fail-closed exit, whose check stays
+**red** as before. No LLM review *by design* — `reviewer.provider: none`
+(Jev-only mode) or triage's low-risk skip (FR-2.3) — is `clear` when Jev's
+own stages flagged nothing.
+
+Green means "nothing for the author to fix"; the usual human approval is
+still needed. Whether the PR may merge on its own is a separate signal:
+`jevest:auto-merge-ok` is applied only when Jev's merge gate is green
+**and** the verdict is `clear`. The merge gate no longer colors the check.
+
+Labels are created on first use with their color and description (an
+existing label is left as your repo has it). On every run the other three
+verdict labels and the legacy `jevest:needs-human` are removed, so older
+PRs migrate on their next run. Only the current language's names are
+managed: after changing `reviewer.language`, remove the old-language
+labels by hand.
+
+The risk label mirrors triage's risk level: `high` and `critical` add
+`riesgo: alto` / `risk: high` (d93f0b), `medium` adds `riesgo: medio` /
+`risk: medium` (e99695), and `low`/`none` add none; the stale one is
+removed when the risk changes. Triage's own "needs a careful human
+review" signal (FR-2.4) is still reported in the summary comment, no
+longer as a label.
 
 ### Efficiency (H2 / H4)
 
@@ -613,7 +659,9 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   hidden in a code comment or a string literal is seen where triage cannot
   see it. Either one high fails the merge gate in code; the in-diff one
   also adds `jevest:injected-instructions` and lists the hunks under
-  "Needs human review" in the summary comment. The adversarial suite (H5)
+  "Questions and manual checks" in the summary comment; either one makes
+  the verdict `unavailable` unless findings were published, so the check
+  is never green. The adversarial suite (H5)
   regression-tests this in CI (SPEC §4.2, §10).
 - Never put an API key directly in a workflow file — always
   `${{ secrets.<NAME> }}` (NFR-9).
@@ -629,23 +677,25 @@ the PR. Whether the *workflow job itself* also fails is controlled by the
 - `fail-on: never` (default) — the job stays green regardless; the check
   carries the real signal. Use this if you gate merges on the check itself
   (recommended) rather than on this job's pass/fail.
-- `fail-on: failure` — the job exits non-zero when the merge-gate
-  conclusion (or an internal error) is a failure, in addition to the red
-  check. Use this if your branch protection watches this job's status
+- `fail-on: failure` — the job exits non-zero when the check is red (a
+  `fix` verdict, a fail-closed run, or an internal error), in addition to
+  the red check. Use this if your branch protection watches this job's status
   instead of, or in addition to, the `jevest` check.
 
 Every degraded-input case inside the pipeline also fails closed by design
 (NFR-2): if Jev doesn't respond, triage assumes high risk, the finding
-filter publishes everything as "unverified", and the merge gate goes red.
+filter publishes everything as "unverified", the merge gate goes red, and
+a pipeline that stops on a Jev failure publishes a red check with the
+`unavailable` verdict's title and label.
 
 The LLM reviewer failing is handled the same way when it fails on EVERY
 hunk it was given (an expired token, a 401): zero findings from a
-reviewer that never answered is not a clean review, so the check is at
-most `neutral` whatever Jev's merge gate said, `jevest:auto-merge-ok` is
-never applied, the PR gets `jevest:needs-human` and a line in "Needs
-human review", and the colleague review is not written. A partial failure
-keeps the gate's conclusion and shows the "LLM review failed" warning
-naming the failed files.
+reviewer that never answered is not a clean review, so the verdict is
+`unavailable` (a `neutral` check) whatever Jev's merge gate said,
+`jevest:auto-merge-ok` is never applied, the PR gets the review-manually
+label and a line in "Questions and manual checks", and the colleague
+review is not written. A partial failure keeps the count-based verdict
+and shows the "LLM review failed" warning naming the failed files.
 
 One exception, by design: a missing or invalid **input** (e.g. a required
 secret was never set on the workflow) always crashes the job with a

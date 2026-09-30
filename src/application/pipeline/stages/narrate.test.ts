@@ -145,7 +145,7 @@ function makeInput(overrides: Partial<NarrateStageInput> = {}): NarrateStageInpu
     hunkProfile,
     review,
     findingFilter: filterResult(),
-    conclusion: "neutral",
+    verdict: { verdict: "fix", published: 1, needsHuman: 1, questions: 1 },
     narrator: createFakeNarrator(() => fakeNarrativeOutput("Review body")),
     language: "es",
     pricing: PRICING,
@@ -185,14 +185,28 @@ describe("runNarrateStage", () => {
     expect(JSON.stringify(input)).not.toMatch(/DISCARDED CLAIM|LOW CONFIDENCE CLAIM/);
   });
 
-  it("states the verdict the check will carry", async () => {
-    const verdicts: string[] = [];
-    for (const conclusion of ["success", "neutral", "failure"] as const) {
+  it("states the verdict the check will carry, with the check title's exact wording in reviewer.language", async () => {
+    const lines: string[] = [];
+    const cases = [
+      { verdict: "fix", published: 2, needsHuman: 0, questions: 0 },
+      { verdict: "questions", published: 0, needsHuman: 1, questions: 1 },
+      { verdict: "clear", published: 0, needsHuman: 0, questions: 0 },
+    ] as const;
+    for (const verdict of cases) {
       const narrator = createFakeNarrator(() => fakeNarrativeOutput("x"));
-      await runNarrateStage(makeInput({ narrator, conclusion }));
-      verdicts.push(narrator.calls[0]!.verdict);
+      await runNarrateStage(makeInput({ narrator, verdict }));
+      expect(narrator.calls[0]!.verdict).toBe(verdict.verdict);
+      lines.push(narrator.calls[0]!.verdictLine);
     }
-    expect(verdicts).toEqual(["ready-to-merge", "needs-human-look", "needs-changes"]);
+    expect(lines).toEqual([
+      "Corregir 2 problemas antes de mergear",
+      "Responder 1 duda (no bloquea)",
+      "Nada para corregir",
+    ]);
+
+    const english = createFakeNarrator(() => fakeNarrativeOutput("x"));
+    await runNarrateStage(makeInput({ narrator: english, verdict: cases[2], language: "en" }));
+    expect(english.calls[0]!.verdictLine).toBe("Nothing to fix");
   });
 
   it("returns the markdown, model, usage and the nominal cost when the adapter reports one", async () => {

@@ -77,7 +77,7 @@ import { type NarrateStageResult, narrativeSkipped, runNarrateStage } from "./st
 import {
   allReviewsFailed,
   buildFailClosedPublication,
-  resolvePublishConclusion,
+  resolvePublishVerdict,
   runPublishStage,
   runTriageOnlyPublishStage,
 } from "./stages/publish.js";
@@ -353,7 +353,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     stages: StageResults,
     spendFields: SpendFields,
   ): Promise<PipelineResult> => {
-    const publication = buildFailClosedPublication(stage, stages.triage);
+    const publication = buildFailClosedPublication(
+      stage,
+      stages.triage,
+      undefined,
+      config.reviewer.language,
+    );
     await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
     return {
       ref: input.ref,
@@ -445,7 +450,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
     };
     const spendFields = await bookSummaryOnly();
-    const publication = runTriageOnlyPublishStage(triage, metricsFor(stages));
+    const publication = runTriageOnlyPublishStage(
+      triage,
+      metricsFor(stages),
+      config.reviewer.language,
+    );
     await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
     return {
       ref: input.ref,
@@ -598,7 +607,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     input,
     pr,
     stages,
-    reviewRan: !reviewDisabled && !reviewSkippedForSpendCap,
+    reviewDisabled,
+    reviewSkippedForSpendCap,
+    containsInjectedInstructionsHigh,
     injectionSuspected:
       containsInjectedInstructionsHigh ||
       injectedInstructionsInDiffWord(hunkProfile.injectedInstructionsInDiff.maxProb) === "yes",
@@ -616,6 +627,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     metrics: metricsFor(stages),
     narrative,
     language: config.reviewer.language,
+    injectedInstructionsInDescription: containsInjectedInstructionsHigh,
   });
   await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
@@ -642,8 +654,10 @@ interface NarrateInput {
     readonly findingFilter: FindingFilterStageResult;
     readonly mergeGate: MergeGateStageResult;
   };
-  /** False in Jev-only mode and when the spend cap skipped the review stage. */
-  readonly reviewRan: boolean;
+  readonly reviewDisabled: boolean;
+  readonly reviewSkippedForSpendCap: boolean;
+  /** Triage's injection flag, resolved against its confirm bar (same as the merge gate's). */
+  readonly containsInjectedInstructionsHigh: boolean;
   readonly injectionSuspected: boolean;
   /** What is left of this run's budget after the summary and the review. */
   readonly remainingBudgetUsd: number;
@@ -658,7 +672,8 @@ interface NarrateInput {
 async function narrate(args: NarrateInput): Promise<NarrateStageResult | null> {
   const { input, stages } = args;
   const narrator = input.ports.narrator;
-  if (!input.config.reviewer.narrative || narrator === undefined || !args.reviewRan) {
+  const reviewRan = !args.reviewDisabled && !args.reviewSkippedForSpendCap;
+  if (!input.config.reviewer.narrative || narrator === undefined || !reviewRan) {
     return null;
   }
   if (allReviewsFailed(stages.review)) {
@@ -675,7 +690,13 @@ async function narrate(args: NarrateInput): Promise<NarrateStageResult | null> {
     hunkProfile: stages.hunkProfile,
     review: stages.review,
     findingFilter: stages.findingFilter,
-    conclusion: resolvePublishConclusion(stages).conclusion,
+    // The same verdict, and so the same words, as the check (publish.ts).
+    verdict: resolvePublishVerdict({
+      ...stages,
+      reviewDisabled: args.reviewDisabled,
+      reviewSkippedForSpendCap: args.reviewSkippedForSpendCap,
+      injectedInstructionsInDescription: args.containsInjectedInstructionsHigh,
+    }).verdict,
     narrator,
     language: input.config.reviewer.language,
     pricing: pricingForModel(input.config.reviewer.model ?? input.config.reviewer.provider),

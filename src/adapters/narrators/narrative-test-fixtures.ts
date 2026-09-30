@@ -37,8 +37,9 @@ export const SAMPLE_NARRATIVE_INPUT: ReviewNarrativeInput = {
     },
   ],
   language: "es",
-  verdict: "needs-changes",
+  verdict: "fix",
+  verdictLine: "Corregir 1 problema antes de mergear",
 };
 
 export const SAMPLE_REVIEW_MARKDOWN =
-  "Buen cambio, pero el redondeo pierde centavos.\n\n- `src/checkout/total.ts:12`: ...\n\n**Veredicto: necesita cambios.**";
+  "Buen cambio, pero el redondeo pierde centavos.\n\n- `src/checkout/total.ts:12`: ...\n\n**Corregir 1 problema antes de mergear.**";

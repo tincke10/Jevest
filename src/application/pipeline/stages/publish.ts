@@ -3,9 +3,9 @@
  * it stays synchronous, unlike the other stages. Builds the VcsPort-shaped
  * `ReviewPublication` from every prior stage's result: inline comments only
  * for auto-band findings (`findingFilter.published`); a markdown summary
- * covering the triage decision, skipped hunks, needs-human findings,
- * discarded count, low-confidence findings and cost breakdown; and the
- * labels/check for the merge gate outcome. Fingerprints are `sha256` of
+ * covering the triage decision, skipped hunks, the questions and manual
+ * checks, discarded count, low-confidence findings and cost breakdown; and
+ * the labels/check for the run's review verdict. Fingerprints are `sha256` of
  * stable content (path/line/claim for a comment, the whole summary text for
  * the summary) so a re-run over unchanged input reproduces the exact same
  * fingerprints (NFR-12).
@@ -21,16 +21,17 @@
  * description-vs-change verdict with its probability, the product-owner
  * flag), two labels (`jevest:description-mismatch`,
  * `jevest:needs-product-owner`) and one consequence on the check: a
- * mismatch in the AUTO band forces a green check to neutral and lists the
- * PR in the human queue. It never turns a check red on its own — that is
- * the merge gate's call.
+ * mismatch in the AUTO band is a question for the author (verdict
+ * `questions`, neutral) and lists the PR in the human queue. It never
+ * turns a check red on its own.
  *
  * In-diff injection (NFR-7): the Triage section reports both injection
  * probabilities (triage's, over the description; the hunk profile's, over
  * the diff) and the flagged hunks; at or above the hunk profile's "yes"
  * bar the PR gets `jevest:injected-instructions` and a human-queue line
- * naming the hunks. The red check itself comes from the merge gate, which
- * already failed in code on the same verdict.
+ * naming the hunks. The verdict is `unavailable` (neutral) unless findings
+ * were published: the review may have been steered. The merge gate already
+ * failed in code on the same signal, so auto-merge-ok is never applied.
  *
  * Efficiency (H2 / H4, run-metrics.ts): the last section of every summary
  * reports the run's Jev request count, p95 latency and total Jev time, the
@@ -46,11 +47,20 @@
  * comes BEFORE every findings section, the empty-findings lines stop
  * claiming a review happened if none did, and the check title/summary say
  * so. The warning IS fingerprinted (a failed run must not look like an
- * identical clean one). A partial failure leaves the check conclusion to
- * the merge gate. When EVERY attempted call failed, NFR-2 fails closed in
- * code: the check is at most neutral, auto-merge-ok is never applied and
- * the PR gets `jevest:needs-human` plus a line in the human queue — Jev's
+ * identical clean one). A partial failure leaves the verdict to the counts.
+ * When EVERY attempted call failed, NFR-2 fails closed in code: the verdict
+ * is `unavailable` (neutral), auto-merge-ok is never applied and the PR
+ * gets the review-manually label plus a line in the human queue — Jev's
  * gate only saw "zero findings", which is not a review.
+ *
+ * Review verdict (src/domain/review-verdict.ts): ONE action per run — fix,
+ * questions, clear or unavailable — decides the check conclusion
+ * (failure / neutral / success / neutral), its title and summary in
+ * `reviewer.language`, and exactly one verdict label (the other three and
+ * the legacy `jevest:needs-human` are removed on every run). The merge
+ * gate no longer colors the check: it only decides `jevest:auto-merge-ok`,
+ * which also needs a `clear` verdict. A risk label (`risk: high` /
+ * `risk: medium`, localized) mirrors triage's risk level.
  *
  * Colleague review (stages/narrate.ts): when the narrator wrote a review,
  * it is the TOP of the summary comment under a "## Review" heading in
@@ -66,7 +76,20 @@
  */
 import { createHash } from "node:crypto";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
-import type { InlineComment, ReviewPublication } from "../../../domain/ports/vcs-port.js";
+import type {
+  InlineComment,
+  LabelDefinition,
+  ReviewPublication,
+} from "../../../domain/ports/vcs-port.js";
+import {
+  type LlmReviewOutcome,
+  type ReviewVerdictResult,
+  decideReviewVerdict,
+  verdictConclusion,
+  verdictLabelChanges,
+  verdictSummary,
+  verdictTitle,
+} from "../../../domain/review-verdict.js";
 import { describeReviewerError, isAuthenticationFailure } from "../../../domain/reviewer-error.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
@@ -116,12 +139,22 @@ export interface PublishStageInput {
    * narrator ran and there is nothing to say: the plain report, unchanged.
    */
   readonly narrative?: NarrateStageResult | null;
-  /** `reviewer.language`, for the narrative's heading. Default: English. */
+  /**
+   * `reviewer.language`: the narrative's heading (default English) and the
+   * verdict's check title, summary and labels (es by default, en for any
+   * other language; see review-verdict.ts).
+   */
   readonly language?: string;
+  /**
+   * Triage's `contains_injected_instructions` at or above its confirm bar
+   * (resolved by the pipeline, the same flag the merge gate fails on).
+   * Makes the verdict `unavailable` unless findings were published.
+   */
+  readonly injectedInstructionsInDescription?: boolean;
 }
 
 const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
-const NEEDS_HUMAN_LABEL = "jevest:needs-human";
+const MISMATCH_CHECK_LINE = " The PR description does not match the change; a human should look.";
 const SPEND_WARNING_LABEL = "jevest:spend-warning";
 const SPEND_CAP_REACHED_LABEL = "jevest:spend-cap-reached";
 const DESCRIPTION_MISMATCH_LABEL = "jevest:description-mismatch";
@@ -378,7 +411,7 @@ function buildNeedsHumanSection(
     lines.push(`- ${NO_HUNK_REVIEWED} A human should review this pull request directly.`);
   }
   if (lines.length === 0) {
-    return "No findings need human review.";
+    return "Nothing to answer or check by hand.";
   }
   return lines.join("\n");
 }
@@ -426,7 +459,7 @@ const AUTH_FAILURE_HINT =
 /**
  * No hunk was reviewed: the reviewer was called at least once and threw on
  * every call. NFR-2 fail closed: such a run never reaches auto-merge-ok
- * (see {@link resolvePublishConclusion}). Zero attempts (Jev-only mode, a
+ * (see {@link resolvePublishVerdict}). Zero attempts (Jev-only mode, a
  * reached spend cap, nothing eligible) is not a failure.
  */
 export function allReviewsFailed(review: ReviewStageResult): boolean {
@@ -661,7 +694,7 @@ function buildReportBody(input: PublishStageInput): string[] {
     `- Category: ${triage.category}`,
     `- Risk level: ${triage.riskLevel}`,
     `- LLM review skipped: ${triage.skipLlmReview}`,
-    `- Needs human: ${triage.needsHumanLabel}`,
+    triageHumanReviewLine(triage),
     injectedInstructionsLine(triage, input.hunkProfile),
     "",
     ...buildIntentVsChangeSection(triage),
@@ -680,7 +713,7 @@ function buildReportBody(input: PublishStageInput): string[] {
           buildHighConfidenceFindingsSection(findingFilter, input.review),
           "",
         ]),
-    "### Needs human review",
+    QUESTIONS_HEADING,
     buildNeedsHumanSection(findingFilter, triage, input.hunkProfile, input.review),
     "",
     `### Findings discarded: ${findingFilter.discarded.length}`,
@@ -692,8 +725,38 @@ function buildReportBody(input: PublishStageInput): string[] {
     "",
     "### Merge gate",
     `- Safe to automerge probability: ${mergeGate.safeToAutomergeProb}`,
-    `- Conclusion: ${mergeGate.conclusion}`,
+    `- Gate conclusion: ${mergeGate.conclusion} (decides \`jevest:auto-merge-ok\` only; the check follows the review verdict)`,
   ];
+}
+
+/** The human queue: doubts to answer, plus what a human has to check by hand. */
+const QUESTIONS_HEADING = "### Questions and manual checks";
+
+/** Triage's FR-2.4 needs_human signal: reported, no longer a label (the verdict label says what to do). */
+function triageHumanReviewLine(triage: TriageStageResult): string {
+  return `- Careful human review suggested by triage: ${triage.needsHumanLabel ? "yes" : "no"}`;
+}
+
+/**
+ * The verdict and risk labels (review-verdict.ts `verdictLabelChanges`)
+ * pushed onto the run's add/remove lists, with their definitions so the
+ * adapter can create them with a color and a description.
+ */
+function applyVerdictLabels(
+  verdict: ReviewVerdictResult,
+  triage: TriageStageResult | null,
+  language: string | undefined,
+  labelsToAdd: string[],
+  labelsToRemove: string[],
+): LabelDefinition[] {
+  const { add, remove } = verdictLabelChanges(
+    verdict.verdict,
+    triage ? triage.riskLevel : null,
+    language,
+  );
+  labelsToAdd.push(...add.map((l) => l.name));
+  labelsToRemove.push(...remove);
+  return add;
 }
 
 /**
@@ -706,8 +769,18 @@ function buildReportBody(input: PublishStageInput): string[] {
 export function runTriageOnlyPublishStage(
   triage: TriageStageResult,
   metrics: RunMetrics,
+  /** `reviewer.language`, for the verdict's title, summary and labels. */
+  language?: string,
 ): ReviewPublication {
   const forcedNeutral = mismatchForcesNeutral(triage);
+  // No LLM review by design (FR-2.3): clear, or a question on a mismatch.
+  const verdict = decideReviewVerdict({
+    published: 0,
+    needsHuman: 0,
+    llmReview: "skipped-by-triage",
+    descriptionMismatch: forcedNeutral,
+    injectionSuspected: false,
+  });
   const summaryLines = [
     "## Jevest review",
     "",
@@ -715,23 +788,23 @@ export function runTriageOnlyPublishStage(
     `- Category: ${triage.category}`,
     `- Risk level: ${triage.riskLevel}`,
     "- LLM review skipped (FR-2.3): low risk, high confidence, no suspected instruction injection.",
-    `- Needs human: ${triage.needsHumanLabel}`,
+    triageHumanReviewLine(triage),
     "",
     ...buildIntentVsChangeSection(triage),
-    ...(mismatchIsActionable(triage)
-      ? ["### Needs human review", mismatchQueueLine(triage), ""]
-      : []),
+    ...(mismatchIsActionable(triage) ? [QUESTIONS_HEADING, mismatchQueueLine(triage), ""] : []),
     "### Cost breakdown",
     summaryCostLine(triage),
   ];
 
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
-  if (triage.needsHumanLabel) {
-    labelsToAdd.push(NEEDS_HUMAN_LABEL);
-  } else {
-    labelsToRemove.push(NEEDS_HUMAN_LABEL);
-  }
+  const labelDefinitions = applyVerdictLabels(
+    verdict,
+    triage,
+    language,
+    labelsToAdd,
+    labelsToRemove,
+  );
   applyTriageV2Labels(triage, labelsToAdd, labelsToRemove);
 
   return {
@@ -739,10 +812,11 @@ export function runTriageOnlyPublishStage(
     inlineComments: [],
     labelsToAdd,
     labelsToRemove,
+    labelDefinitions,
     check: {
-      conclusion: forcedNeutral ? "neutral" : "success",
-      title: forcedNeutral ? "Jevest: description mismatch" : "Jevest: skipped (low risk)",
-      summary: `Triage: ${triage.category}/${triage.riskLevel}. LLM review skipped per FR-2.3.${forcedNeutral ? " The PR description does not match the change; a human should look." : ""}`,
+      conclusion: verdictConclusion(verdict.verdict),
+      title: verdictTitle(verdict, language),
+      summary: `${verdictSummary(verdict, language)} Triage: ${triage.category}/${triage.riskLevel}. LLM review skipped per FR-2.3 (low risk).${forcedNeutral ? MISMATCH_CHECK_LINE : ""}`,
     },
   };
 }
@@ -760,7 +834,27 @@ export function buildFailClosedPublication(
   lastKnownTriage: TriageStageResult | null,
   /** Replaces the "Jev did not respond" line when the failing step was not a Jev call (e.g. an invalid product context file). */
   detail?: string,
+  /** `reviewer.language`, for the verdict's title and labels. */
+  language?: string,
 ): ReviewPublication {
+  // Verdict `unavailable`, but the check stays `failure`: NFR-2's fail
+  // closed is a safety override this module never weakens.
+  const verdict = decideReviewVerdict({
+    published: 0,
+    needsHuman: 0,
+    llmReview: "failed-closed",
+    descriptionMismatch: false,
+    injectionSuspected: false,
+  });
+  const labelsToAdd: string[] = [];
+  const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
+  const labelDefinitions = applyVerdictLabels(
+    verdict,
+    lastKnownTriage,
+    language,
+    labelsToAdd,
+    labelsToRemove,
+  );
   const summaryMarkdown = [
     "## Jevest review",
     "",
@@ -781,11 +875,12 @@ export function buildFailClosedPublication(
     summaryMarkdown,
     summaryFingerprint: sha256(summaryMarkdown),
     inlineComments: [],
-    labelsToAdd: [NEEDS_HUMAN_LABEL],
-    labelsToRemove: [AUTO_MERGE_OK_LABEL],
+    labelsToAdd,
+    labelsToRemove,
+    labelDefinitions,
     check: {
       conclusion: "failure",
-      title: "Jevest: failed closed",
+      title: verdictTitle(verdict, language),
       summary: detail
         ? `${failedStage} failed — failing closed per NFR-2: ${detail}`
         : `Jev unavailable during ${failedStage} — failing closed per NFR-2.`,
@@ -793,35 +888,70 @@ export function buildFailClosedPublication(
   };
 }
 
-export interface PublishConclusion {
-  readonly conclusion: MergeGateStageResult["conclusion"];
-  /** An auto-band description mismatch downgraded a green gate. */
-  readonly forcedNeutralForMismatch: boolean;
-  /** Every attempted reviewer call failed (NFR-2): the check is at most neutral. */
+export interface PublishVerdict {
+  /** The run's review verdict with its counts (review-verdict.ts). */
+  readonly verdict: ReviewVerdictResult;
+  /** The check conclusion: the verdict's, always. */
+  readonly conclusion: "success" | "neutral" | "failure";
+  /** `jevest:auto-merge-ok`: the merge gate is green AND the verdict is clear. */
+  readonly autoMergeOk: boolean;
+  /** Every attempted reviewer call failed (NFR-2). */
   readonly reviewFailedEntirely: boolean;
+  /** An auto-band description mismatch counted as a question. */
+  readonly mismatchQuestion: boolean;
+  /** Instructions to a reviewer suspected in the description or the diff. */
+  readonly injectionSuspected: boolean;
+}
+
+function llmReviewOutcome(
+  input: Pick<PublishStageInput, "review" | "reviewDisabled" | "reviewSkippedForSpendCap">,
+): LlmReviewOutcome {
+  if (input.reviewDisabled) return "disabled";
+  if (input.reviewSkippedForSpendCap === true) return "skipped-for-spend-cap";
+  if (allReviewsFailed(input.review)) return "failed-entirely";
+  return "ran";
 }
 
 /**
- * The check conclusion the publication will carry, from the merge gate
- * plus the two code-level downgrades. Exported so the review narrator can
- * be told the same verdict the check shows. Both downgrades only ever turn
- * green into neutral: they never override a neutral or red gate, and
- * never turn anything red by themselves.
+ * The verdict the publication will carry. Exported so the review narrator
+ * is told the same verdict, in the same words, as the check. The safety
+ * rules survive the switch from the gate to the verdict: an auto-band
+ * mismatch and a suspected injection can never produce a green check (the
+ * verdict is at most neutral), all-reviews-failed is `unavailable`, and
+ * auto-merge-ok needs both the gate and a clear verdict.
  */
-export function resolvePublishConclusion(
-  input: Pick<PublishStageInput, "triage" | "review" | "mergeGate">,
-): PublishConclusion {
-  const green = input.mergeGate.conclusion === "success";
-  // A human must compare the story with the diff.
-  const forcedNeutralForMismatch = green && mismatchForcesNeutral(input.triage);
-  // Zero findings from a reviewer that never answered reads like a clean
-  // review to Jev's gate; it is not one, so a human decides.
+export function resolvePublishVerdict(
+  input: Pick<
+    PublishStageInput,
+    | "triage"
+    | "hunkProfile"
+    | "review"
+    | "findingFilter"
+    | "mergeGate"
+    | "reviewDisabled"
+    | "reviewSkippedForSpendCap"
+    | "injectedInstructionsInDescription"
+  >,
+): PublishVerdict {
   const reviewFailedEntirely = allReviewsFailed(input.review);
-  const conclusion =
-    green && (forcedNeutralForMismatch || reviewFailedEntirely)
-      ? "neutral"
-      : input.mergeGate.conclusion;
-  return { conclusion, forcedNeutralForMismatch, reviewFailedEntirely };
+  const mismatchQuestion = mismatchForcesNeutral(input.triage);
+  const injectionSuspected =
+    input.injectedInstructionsInDescription === true || injectedInDiff(input.hunkProfile);
+  const verdict = decideReviewVerdict({
+    published: input.findingFilter.published.length,
+    needsHuman: input.findingFilter.needsHuman.length,
+    llmReview: llmReviewOutcome(input),
+    descriptionMismatch: mismatchQuestion,
+    injectionSuspected,
+  });
+  return {
+    verdict,
+    conclusion: verdictConclusion(verdict.verdict),
+    autoMergeOk: input.mergeGate.conclusion === "success" && verdict.verdict === "clear",
+    reviewFailedEntirely,
+    mismatchQuestion,
+    injectionSuspected,
+  };
 }
 
 export function runPublishStage(input: PublishStageInput): ReviewPublication {
@@ -835,46 +965,49 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
   const labelsToRemove: string[] = [];
 
   const {
+    verdict,
     conclusion,
-    forcedNeutralForMismatch: forcedNeutral,
+    autoMergeOk,
     reviewFailedEntirely,
-  } = resolvePublishConclusion(input);
+    mismatchQuestion,
+    injectionSuspected,
+  } = resolvePublishVerdict(input);
 
-  if (conclusion === "success") {
+  if (autoMergeOk) {
     labelsToAdd.push(AUTO_MERGE_OK_LABEL);
   } else {
     labelsToRemove.push(AUTO_MERGE_OK_LABEL);
   }
-
-  if (input.triage.needsHumanLabel || reviewFailedEntirely) {
-    labelsToAdd.push(NEEDS_HUMAN_LABEL);
-  } else {
-    labelsToRemove.push(NEEDS_HUMAN_LABEL);
-  }
+  const labelDefinitions = applyVerdictLabels(
+    verdict,
+    input.triage,
+    input.language,
+    labelsToAdd,
+    labelsToRemove,
+  );
   applyTriageV2Labels(input.triage, labelsToAdd, labelsToRemove);
   applyInjectedInstructionsLabel(input.hunkProfile, labelsToAdd, labelsToRemove);
   applySpendCapLabels(input.spendCap, labelsToAdd, labelsToRemove);
 
-  const mismatchCheckLine = forcedNeutral
-    ? " The PR description does not match the change; a human should look."
-    : "";
-
   const failedCount = failedReviews(input.review).length;
-  const reviewFailedTitle = failedCount > 0 ? " (LLM review failed)" : "";
   const reviewFailedCheckLine =
     failedCount > 0
       ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.${reviewFailedEntirely ? " Nothing is marked safe to auto-merge." : ""}`
       : "";
+  const injectionCheckLine = injectionSuspected
+    ? " Instructions to a reviewer were suspected in the pull request; the automated review cannot be trusted on its own."
+    : "";
 
   return {
     ...summary,
     inlineComments,
     labelsToAdd,
     labelsToRemove,
+    labelDefinitions,
     check: {
       conclusion,
-      title: `Jevest: ${conclusion}${reviewFailedTitle}`,
-      summary: `Triage: ${input.triage.category}/${input.triage.riskLevel}. Published ${input.findingFilter.published.length} finding(s), ${input.findingFilter.needsHuman.length} need human review.${reviewFailedCheckLine}${mismatchCheckLine}${spendCapCheckLine(input.spendCap)}`,
+      title: verdictTitle(verdict, input.language),
+      summary: `${verdictSummary(verdict, input.language)} Triage: ${input.triage.category}/${input.triage.riskLevel}.${reviewFailedCheckLine}${mismatchQuestion ? MISMATCH_CHECK_LINE : ""}${injectionCheckLine}${spendCapCheckLine(input.spendCap)}`,
     },
   };
 }

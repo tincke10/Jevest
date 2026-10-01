@@ -9,6 +9,7 @@
 import type { FindingMatcherPort } from "../../domain/ports/finding-matcher-port.js";
 import type { CandidateFinding } from "./candidate.js";
 import type { GoldenCase } from "./golden-set.js";
+import { mapLimit } from "./map-limit.js";
 import { type MatchedCandidate, matchCandidates } from "./match-candidates.js";
 import {
   type CaseMetrics,
@@ -71,6 +72,15 @@ export interface RunEvalInput {
   readonly matcherInfo: Readonly<Record<string, unknown>>;
   /** Matcher calls in flight per case. Default 1. */
   readonly matcherConcurrency?: number;
+  /**
+   * Cases in flight at once (a bounded pool). Default 1 = sequential, the
+   * original behavior. Results keep the set's case order whatever the
+   * completion order. With more than 1, `totals.wallTimeMs` is the real
+   * elapsed time of the run (the per-case wall times stay as measured).
+   */
+  readonly concurrency?: number;
+  /** Monotonic millisecond clock, injectable for tests. */
+  readonly clock?: () => number;
   readonly now?: () => Date;
   readonly log?: (message: string) => void;
 }
@@ -79,12 +89,11 @@ export async function runEval(input: RunEvalInput): Promise<EvalResults> {
   const now = input.now ?? (() => new Date());
   const log = input.log ?? (() => {});
   const createdAt = now().toISOString();
-  const cases: EvalCaseResult[] = [];
-  let calls = 0;
-  let cacheHits = 0;
-  let matcherCostUsd = 0;
+  const concurrency = input.concurrency ?? 1;
+  const clock = input.clock ?? (() => performance.now());
+  const startedAt = clock();
 
-  for (const goldenCase of input.cases) {
+  const outcomes = await mapLimit(input.cases, concurrency, async (goldenCase) => {
     let run: CaseRun;
     try {
       run = await input.source(goldenCase);
@@ -106,9 +115,6 @@ export async function runEval(input: RunEvalInput): Promise<EvalResults> {
       matcher: input.matcher,
       ...(input.matcherConcurrency !== undefined ? { concurrency: input.matcherConcurrency } : {}),
     });
-    calls += matching.matcherCalls;
-    cacheHits += matching.cacheHits;
-    matcherCostUsd += matching.matcherCostUsd;
     const metrics = computeCaseMetrics({
       caseId: goldenCase.id,
       issues: goldenCase.issues,
@@ -120,15 +126,30 @@ export async function runEval(input: RunEvalInput): Promise<EvalResults> {
     log(
       `[eval] ${goldenCase.id}: ${run.candidates.length} candidate(s), ${metrics.shown.targetsFound}/${metrics.shown.targets} target(s) found shown, ${metrics.shown.unlabeled} unlabeled shown`,
     );
-    cases.push({
+    const result: EvalCaseResult = {
       caseId: goldenCase.id,
       title: goldenCase.title,
       error: run.error,
       falseIssueIds: goldenCase.issues.filter((i) => i.verdict === "false").map((i) => i.id),
       candidates: matching.matched,
       metrics,
-    });
+    };
+    return { result, matching };
+  });
+
+  // Folded in case order (not completion order) so sums are deterministic.
+  const cases: EvalCaseResult[] = [];
+  let calls = 0;
+  let cacheHits = 0;
+  let matcherCostUsd = 0;
+  for (const { result, matching } of outcomes) {
+    cases.push(result);
+    calls += matching.matcherCalls;
+    cacheHits += matching.cacheHits;
+    matcherCostUsd += matching.matcherCostUsd;
   }
+  const totals = aggregateMetrics(cases.map((c) => c.metrics));
+  const elapsedMs = Math.round(clock() - startedAt);
 
   return {
     schema: EVAL_RESULTS_SCHEMA_VERSION,
@@ -139,6 +160,6 @@ export async function runEval(input: RunEvalInput): Promise<EvalResults> {
     matcher: { ...input.matcherInfo, calls, cacheHits, costUsd: matcherCostUsd },
     weights: { verdict: VERDICT_WEIGHTS, severity: SEVERITY_WEIGHTS },
     cases,
-    totals: aggregateMetrics(cases.map((c) => c.metrics)),
+    totals: concurrency > 1 ? { ...totals, wallTimeMs: elapsedMs } : totals,
   };
 }

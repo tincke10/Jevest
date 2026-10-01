@@ -6,7 +6,7 @@
  * repeat an old one's, costs nothing. Delete the directory to re-match.
  */
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   FindingMatch,
@@ -38,6 +38,8 @@ interface CacheEntry {
   readonly model: string;
 }
 
+let tmpCounter = 0;
+
 export function createCachedFindingMatcher(
   options: CachedFindingMatcherOptions,
 ): FindingMatcherPort {
@@ -53,7 +55,11 @@ export function createCachedFindingMatcher(
       const decision = await options.inner.match(input);
       await mkdir(options.dir, { recursive: true });
       const entry: CacheEntry = { issueId: decision.issueId, model: options.model };
-      await writeFile(path, `${JSON.stringify(entry)}\n`, "utf8");
+      // Atomic: with concurrent cases two writers may hit the same key, and a
+      // reader must never see a half-written file.
+      const tmp = `${path}.${process.pid}.${tmpCounter++}.tmp`;
+      await writeFile(tmp, `${JSON.stringify(entry)}\n`, "utf8");
+      await rename(tmp, path);
       return decision;
     },
   };

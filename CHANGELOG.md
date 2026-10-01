@@ -9,6 +9,7 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Parallel eval cases** (`pnpm eval:review --concurrency <n>`, docs/EVAL.md): a bounded pool runs up to `n` golden cases at once (default 1 = sequential, outputs unchanged); results and report keep the set order, logs are prefixed per case, the matcher cache and spend ledger write atomically/serialized, head worktree creation per repo is serialized with lock retry, and the total wall time is the real elapsed time.
 - **Agentic review** (`reviewer.mode: agentic`, docs/ACTION.md "Agentic
   review"): ONE read-only `claude -p` agent per PR in a checkout of the
   head (cwd), only Read/Grep/Glob, confined to the checkout

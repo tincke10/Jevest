@@ -7,11 +7,21 @@
  * file reads as `null` ("nothing recorded yet"), any other read error
  * still throws.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import { type SpendLedger, applySpendEntry } from "../../domain/spend-cap.js";
+import { createKeyedMutex } from "../concurrency/keyed-mutex.js";
 import { decodeSpendLedger, encodeSpendLedger } from "./spend-ledger-codec.js";
+
+/**
+ * `record` is read-modify-write: concurrent eval cases (`--concurrency n`)
+ * sharing one ledger file would lose entries or tear the JSON. Serialized
+ * per file path in this process, and the file is replaced atomically
+ * (temp + rename) so a reader never sees a half-written ledger.
+ */
+const recordMutex = createKeyedMutex();
+let tmpCounter = 0;
 
 export interface LocalFileSpendLedgerOptions {
   readonly filePath: string;
@@ -41,11 +51,15 @@ export function createLocalFileSpendLedger(options: LocalFileSpendLedgerOptions)
 
   return {
     read,
-    async record(entry) {
-      const next = applySpendEntry(await read(), entry);
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, `${JSON.stringify(encodeSpendLedger(next), null, 2)}\n`, "utf8");
-      return next;
+    record(entry) {
+      return recordMutex.run(filePath, async () => {
+        const next = applySpendEntry(await read(), entry);
+        await mkdir(dirname(filePath), { recursive: true });
+        const tmp = `${filePath}.${process.pid}.${tmpCounter++}.tmp`;
+        await writeFile(tmp, `${JSON.stringify(encodeSpendLedger(next), null, 2)}\n`, "utf8");
+        await rename(tmp, filePath);
+        return next;
+      });
     },
   };
 }

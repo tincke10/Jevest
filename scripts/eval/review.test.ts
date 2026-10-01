@@ -98,6 +98,19 @@ describe("parseEvalArgs (scripts/eval/review.ts)", () => {
   });
 });
 
+describe("parseEvalArgs --concurrency", () => {
+  const base = ["--set", "g", "--variant", "v", "--out", "o", "--import", "d"];
+  it("defaults to 1 and accepts a positive integer", () => {
+    expect(parseEvalArgs(base).concurrency).toBe(1);
+    expect(parseEvalArgs([...base, "--concurrency", "3"]).concurrency).toBe(3);
+  });
+  it("rejects zero, negatives and non-integers", () => {
+    for (const bad of ["0", "-1", "1.5", "x"]) {
+      expect(() => parseEvalArgs([...base, "--concurrency", bad])).toThrow(/--concurrency/);
+    }
+  });
+});
+
 describe("resolveCasePath", () => {
   it("expands ~ and resolves relative paths against the set's directory", () => {
     expect(resolveCasePath("~/r", "/sets", "/home/me")).toBe("/home/me/r");

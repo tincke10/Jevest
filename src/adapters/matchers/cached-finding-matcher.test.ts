@@ -60,4 +60,17 @@ describe("createCachedFindingMatcher", () => {
     expect(await matcher.match(INPUT)).toEqual({ issueId: null, costUsd: 0, cached: true });
     expect(decide).toHaveBeenCalledTimes(1);
   });
+
+  it("concurrent matches of the same key leave one intact entry", async () => {
+    const matcher = createCachedFindingMatcher({
+      inner: createFakeFindingMatcher(() => "I1"),
+      dir,
+      model: "m",
+    });
+    await Promise.all(Array.from({ length: 10 }, () => matcher.match(INPUT)));
+    const files = await readdir(dir);
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(/\.json$/);
+    expect(await matcher.match(INPUT)).toEqual({ issueId: "I1", costUsd: 0, cached: true });
+  });
 });

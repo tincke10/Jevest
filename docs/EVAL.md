@@ -122,6 +122,19 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant full-repo \
   [{ file, line, lineEnd?, severity?, claim (or title), kind?, bucket? }],
   costUsd?, tokens?, wallTimeMs? }`. Every finding is `shown` unless its
   `bucket` is `low`.
+- `--concurrency <n>` (default 1, sequential) runs up to `n` cases in
+  parallel with a bounded pool. `results.json` and `report.md` keep the
+  set's case order whatever finishes first, and each log line carries its
+  case id (`[<caseId>] ...`), so interleaved output stays readable. Shared
+  state is safe under it: the matcher cache is one file per decision written
+  atomically, the spend ledger is updated one case at a time (and replaced
+  atomically), and the temporary head worktrees of one repo are created and
+  removed one at a time (retrying on git lock errors). Each case still has its
+  own worktree. `totals.wallTimeMs` is the real elapsed time of the run when
+  `n > 1` (it is the sum of the cases otherwise); each case keeps its own
+  wall time. Mind the LLM rate limits: the matcher's own
+  `--matcher-concurrency` applies per case. With `n = 1` outputs are
+  unchanged.
 - `--cases a,b` runs a subset. A case whose run throws is recorded with its
   error; its issues still count as missed.
 

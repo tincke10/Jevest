@@ -94,4 +94,111 @@ describe("runEval", () => {
     expect(results.cases[0]?.metrics.shown.targets).toBe(1);
     expect(results.totals.shown.recall).toBe(0);
   });
+
+  describe("concurrency", () => {
+    const ids = ["c1", "c2", "c3", "c4"];
+    const base = {
+      variant: "v",
+      setPath: "/s.jsonl",
+      sourceInfo: {},
+      matcher: createTopPrefilterMatcher(),
+      matcherInfo: {},
+    };
+
+    it("keeps the set's case order whatever the completion order", async () => {
+      const delays: Record<string, number> = { c1: 30, c2: 5, c3: 20, c4: 1 };
+      const finished: string[] = [];
+      const source = async (c: GoldenCase): Promise<CaseRun> => {
+        await new Promise((r) => setTimeout(r, delays[c.id]));
+        finished.push(c.id);
+        return {
+          caseId: c.id,
+          candidates: [],
+          costUsd: 1,
+          tokens: 1,
+          wallTimeMs: delays[c.id] ?? 0,
+          error: null,
+        };
+      };
+      const results = await runEval({
+        ...base,
+        cases: ids.map(goldenCase),
+        source,
+        concurrency: 4,
+      });
+      expect(finished).not.toEqual(ids);
+      expect(results.cases.map((c) => c.caseId)).toEqual(ids);
+      expect(results.cases.map((c) => c.metrics.wallTimeMs)).toEqual([30, 5, 20, 1]);
+    });
+
+    it("never exceeds the concurrency bound", async () => {
+      let active = 0;
+      let peak = 0;
+      const source = async (c: GoldenCase): Promise<CaseRun> => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((r) => setTimeout(r, 5));
+        active--;
+        return {
+          caseId: c.id,
+          candidates: [],
+          costUsd: null,
+          tokens: null,
+          wallTimeMs: 5,
+          error: null,
+        };
+      };
+      await runEval({ ...base, cases: ids.map(goldenCase), source, concurrency: 2 });
+      expect(peak).toBe(2);
+    });
+
+    it("reports real elapsed time as the total wall time when concurrent, the sum when sequential", async () => {
+      const source = async (c: GoldenCase): Promise<CaseRun> => ({
+        caseId: c.id,
+        candidates: [],
+        costUsd: null,
+        tokens: null,
+        wallTimeMs: 100,
+        error: null,
+      });
+      let t = 0;
+      const clock = () => {
+        const v = t;
+        t += 150;
+        return v;
+      };
+      const concurrent = await runEval({
+        ...base,
+        cases: ids.map(goldenCase),
+        source,
+        concurrency: 4,
+        clock,
+      });
+      expect(concurrent.totals.wallTimeMs).toBe(150);
+      expect(concurrent.cases.every((c) => c.metrics.wallTimeMs === 100)).toBe(true);
+      const sequential = await runEval({ ...base, cases: ids.map(goldenCase), source, clock });
+      expect(sequential.totals.wallTimeMs).toBe(400);
+    });
+
+    it("a failing case does not stop the others", async () => {
+      const source = async (c: GoldenCase): Promise<CaseRun> => {
+        if (c.id === "c2") throw new Error("boom");
+        return {
+          caseId: c.id,
+          candidates: [],
+          costUsd: null,
+          tokens: null,
+          wallTimeMs: 1,
+          error: null,
+        };
+      };
+      const results = await runEval({
+        ...base,
+        cases: ids.map(goldenCase),
+        source,
+        concurrency: 3,
+      });
+      expect(results.cases.map((c) => c.error)).toEqual([null, "boom", null, null]);
+    });
+  });
 });

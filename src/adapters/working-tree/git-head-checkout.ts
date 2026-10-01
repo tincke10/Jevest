@@ -24,7 +24,8 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { createKeyedMutex, retryOnLockContention } from "../concurrency/keyed-mutex.js";
 
 export interface HeadCheckout {
   /** Absolute path of a tree whose files are the head's. */
@@ -48,6 +49,18 @@ export interface PrepareHeadCheckoutOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 300_000;
+
+/**
+ * `git worktree add/remove/prune` on one repo take its worktree/index locks;
+ * concurrent eval cases on the same repo (`--concurrency n`) would race on
+ * them. Serialized per repo in this process, and retried when another git
+ * process (outside this one) holds a lock.
+ */
+const worktreeMutex = createKeyedMutex();
+
+function underRepoLock<T>(repoDir: string, task: () => Promise<T>): Promise<T> {
+  return worktreeMutex.run(resolve(repoDir), () => retryOnLockContention(task));
+}
 
 const GIT_ENV: NodeJS.ProcessEnv = {
   ...process.env,
@@ -198,24 +211,30 @@ export async function prepareHeadCheckout(
   const parent = await mkdtemp(join(options.tmpParent ?? tmpdir(), "jevest-head-"));
   const root = join(parent, "tree");
   const cleanup = async (): Promise<void> => {
-    try {
-      await runGit(["worktree", "remove", "--force", root], repoDir, timeoutMs);
-    } catch {
-      // Fall through: the directory is removed below and the entry pruned.
-    }
-    await rm(parent, { recursive: true, force: true });
-    try {
-      await runGit(["worktree", "prune"], repoDir, timeoutMs);
-    } catch {
-      // Best effort.
-    }
+    await underRepoLock(repoDir, async () => {
+      try {
+        await runGit(["worktree", "remove", "--force", root], repoDir, timeoutMs);
+      } catch {
+        // Fall through: the directory is removed below and the entry pruned.
+      }
+      await rm(parent, { recursive: true, force: true });
+      try {
+        await runGit(["worktree", "prune"], repoDir, timeoutMs);
+      } catch {
+        // Best effort.
+      }
+    }).catch(() => {});
   };
 
   try {
     if (skippedFiles === 0) {
-      await runGit(["worktree", "add", "--detach", root, sha], repoDir, timeoutMs);
+      await underRepoLock(repoDir, () =>
+        runGit(["worktree", "add", "--detach", root, sha], repoDir, timeoutMs),
+      );
     } else {
-      await runGit(["worktree", "add", "--detach", "--no-checkout", root, sha], repoDir, timeoutMs);
+      await underRepoLock(repoDir, () =>
+        runGit(["worktree", "add", "--detach", "--no-checkout", root, sha], repoDir, timeoutMs),
+      );
       if (present.length > 0) {
         await runGit(
           ["checkout", sha, "--pathspec-from-file=-", "--pathspec-file-nul"],

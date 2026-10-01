@@ -60,4 +60,16 @@ describe("createLocalFileSpendLedger", () => {
     const ledger = createLocalFileSpendLedger({ filePath });
     await expect(ledger.read()).rejects.toThrow(/spend ledger/);
   });
+
+  it("loses no entry when many records run concurrently on one file", async () => {
+    const filePath = join(dir, "l.json");
+    const a = createLocalFileSpendLedger({ filePath });
+    const b = createLocalFileSpendLedger({ filePath });
+    await Promise.all(
+      Array.from({ length: 20 }, (_, i) => (i % 2 === 0 ? a : b).record({ ...entry, llmUsd: 1 })),
+    );
+    const final = await a.read();
+    expect(final?.runs).toBe(20);
+    expect(final?.spentUsd).toBeCloseTo(20.002, 6);
+  });
 });

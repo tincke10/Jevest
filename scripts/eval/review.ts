@@ -9,6 +9,7 @@
  *        [--mode live|replay|dry-run]
  *      | --import <dir with <caseId>.json>)
  *     [--matcher claude-cli|prefilter] [--matcher-model <model>] [--matcher-concurrency <n>]
+ *     [--concurrency <n>]
  *     [--cases <id,id,...>]
  *
  * A pipeline variant runs the local review flow (scripts/review/run.ts,
@@ -68,6 +69,8 @@ export interface EvalCliOptions {
   readonly matcher: MatcherKind;
   readonly matcherModel: string;
   readonly matcherConcurrency: number;
+  /** Golden cases run in parallel (bounded pool); 1 = sequential. */
+  readonly concurrency: number;
   readonly caseIds: readonly string[] | null;
 }
 
@@ -89,6 +92,7 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
   let matcher: MatcherKind = "claude-cli";
   let matcherModel = CLAUDE_CLI_MATCHER_DEFAULT_MODEL;
   let matcherConcurrency = 4;
+  let concurrency = 1;
   let caseIds: string[] | null = null;
 
   for (let i = 0; i < argv.length; i++) {
@@ -142,6 +146,14 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
         matcherConcurrency = value;
         break;
       }
+      case "--concurrency": {
+        const value = Number(requireValue(argv, ++i, arg));
+        if (!Number.isInteger(value) || value < 1) {
+          throw new Error("--concurrency must be a positive integer");
+        }
+        concurrency = value;
+        break;
+      }
       case "--cases":
         caseIds = requireValue(argv, ++i, arg)
           .split(",")
@@ -169,7 +181,17 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
   } else {
     throw new Error("exactly one of --config <file> (pipeline) or --import <dir> is required");
   }
-  return { setPath, variant, outDir, source, matcher, matcherModel, matcherConcurrency, caseIds };
+  return {
+    setPath,
+    variant,
+    outDir,
+    source,
+    matcher,
+    matcherModel,
+    matcherConcurrency,
+    concurrency,
+    caseIds,
+  };
 }
 
 /** `~` expands to the home directory; a relative path is relative to the set file's directory. */
@@ -385,6 +407,7 @@ export async function runEvalCli(
     matcher,
     matcherInfo: info,
     matcherConcurrency: options.matcherConcurrency,
+    concurrency: options.concurrency,
     log,
   });
 

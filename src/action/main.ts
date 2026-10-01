@@ -23,6 +23,11 @@
  * is another commit, with other line numbers, and is refused). Otherwise
  * the layers that need the tree are skipped with one line in the comment
  * and evidence is checked against the hunk text. Never a failure.
+ *
+ * Agentic mode (`reviewer.mode: agentic`) needs the same checkout of the
+ * PR head: the agent runs `claude -p` with cwd = `GITHUB_WORKSPACE`. Without
+ * it the run is `unavailable` (fail closed, never a silent per-hunk
+ * fallback).
  */
 import { execFile } from "node:child_process";
 import { appendFile, readFile, stat } from "node:fs/promises";
@@ -32,6 +37,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Octokit } from "@octokit/rest";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
+import { createClaudeCliAgenticReviewer } from "../adapters/agentic/claude-cli-agentic-reviewer.js";
+import { createClaudeCliFindingVerifier } from "../adapters/agentic/claude-cli-finding-verifier.js";
 import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
 import { createAnthropicDescriptionContextExtractor } from "../adapters/description-context/anthropic-description-context-extractor.js";
 import { createClaudeCliDescriptionContextExtractor } from "../adapters/description-context/claude-cli-description-context-extractor.js";
@@ -67,8 +74,10 @@ import {
   NO_CALIBRATION,
   parseCalibrationFile,
 } from "../domain/calibration.js";
+import type { AgenticReviewerPort } from "../domain/ports/agentic-reviewer-port.js";
 import type { ChangeSummarizerPort } from "../domain/ports/change-summarizer-port.js";
 import type { DescriptionContextPort } from "../domain/ports/description-context-port.js";
+import type { FindingVerifierPort } from "../domain/ports/finding-verifier-port.js";
 import type { ReviewNarratorPort } from "../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
@@ -275,6 +284,43 @@ export function createReviewer(
     );
   }
   return createOpenAiReviewer({ client: new OpenAI({ apiKey: inputs.openaiApiKey }), model });
+}
+
+/**
+ * Agentic mode's ports (`reviewer.mode: agentic`): the one-agent-per-PR
+ * reviewer and, when `reviewer.verifier` is "claude-cli", the per-finding
+ * verifier. Both run `claude -p` on the same subscription token as the
+ * claude-cli reviewer (config validation already requires that provider).
+ * `{}` in the per-hunk mode.
+ */
+export function createAgenticPorts(
+  config: JevestConfig,
+  inputs: ActionInputs,
+): { agenticReviewer?: AgenticReviewerPort; findingVerifier?: FindingVerifierPort } {
+  const { reviewer } = config;
+  if (reviewer.mode !== "agentic") return {};
+  if (inputs.claudeCodeOauthToken === undefined) {
+    throw new ActionInputError(
+      'input "claude-code-oauth-token" is required because .jevest.yml selects reviewer.mode: agentic',
+    );
+  }
+  process.env.CLAUDE_CODE_OAUTH_TOKEN = inputs.claudeCodeOauthToken;
+  return {
+    agenticReviewer: createClaudeCliAgenticReviewer({
+      ...(reviewer.model !== undefined ? { model: reviewer.model } : {}),
+      maxTurns: reviewer.agentic.maxTurns,
+      timeoutMs: reviewer.agentic.timeoutMs,
+    }),
+    ...(reviewer.verifier === "claude-cli"
+      ? {
+          findingVerifier: createClaudeCliFindingVerifier({
+            model: reviewer.verifierModel,
+            maxTurns: reviewer.agentic.verifierMaxTurns,
+            timeoutMs: reviewer.agentic.verifierTimeoutMs,
+          }),
+        }
+      : {}),
+  };
 }
 
 /**
@@ -620,20 +666,24 @@ const DEFAULT_WORKSPACE_PROBE: WorkspaceProbe = {
 };
 
 /**
- * The working tree for the code-context layers (see the module doc): `{}`
- * when every layer is off, a tree over `workspace` when it is a checkout of
- * the PR head, else the reason for the comment's one line.
+ * The working tree for the code-context layers and agentic mode (see the
+ * module doc): `{}` when nothing needs it, a tree over `workspace` (and
+ * its path, the agent's cwd) when it is a checkout of the PR head, else
+ * the reason for the comment's one line.
  */
 export async function resolveActionWorkingTree(
   config: JevestConfig,
   ref: PullRequestRef,
   workspace: string | undefined,
   probe: WorkspaceProbe = DEFAULT_WORKSPACE_PROBE,
-): Promise<{ workingTree?: WorkingTreePort; unavailableReason?: string }> {
+): Promise<{ workingTree?: WorkingTreePort; root?: string; unavailableReason?: string }> {
   const { reviewer } = config;
   const wanted =
     reviewer.provider !== "none" &&
-    (reviewer.fullFile || reviewer.impactContext || reviewer.requireEvidence);
+    (reviewer.mode === "agentic" ||
+      reviewer.fullFile ||
+      reviewer.impactContext ||
+      reviewer.requireEvidence);
   if (!wanted) return {};
   if (workspace === undefined || workspace === "" || !(await probe.hasGitDir(workspace))) {
     return { unavailableReason: "no checkout" };
@@ -649,7 +699,7 @@ export async function resolveActionWorkingTree(
       unavailableReason: `no checkout of the PR head (the workspace is at ${head.slice(0, 7)}; check out ref: the PR head sha)`,
     };
   }
-  return { workingTree: createRipgrepWorkingTree({ root: workspace }) };
+  return { workingTree: createRipgrepWorkingTree({ root: workspace }), root: workspace };
 }
 
 export function buildOutputLines(result: PipelineResult): string {
@@ -743,6 +793,7 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     const summarizer = createSummarizer(config, inputs);
     const narrator = createNarrator(config, inputs);
     const descriptionContext = createDescriptionContextExtractor(config, inputs);
+    const agenticPorts = createAgenticPorts(config, inputs);
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
     const tree = await resolveActionWorkingTree(config, ref, env.GITHUB_WORKSPACE);
@@ -769,8 +820,10 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
         ...(narrator ? { narrator } : {}),
         ...(descriptionContext ? { descriptionContext } : {}),
         ...(tree.workingTree ? { workingTree: tree.workingTree } : {}),
+        ...agenticPorts,
       },
       ...(tree.unavailableReason ? { workingTreeUnavailableReason: tree.unavailableReason } : {}),
+      ...(tree.root ? { headCheckoutRoot: tree.root } : {}),
       config,
       productContext,
       calibration,
@@ -782,6 +835,12 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     console.log(
       `jevest: efficiency — jev requests=${result.metrics.jev.requests.total} p95=${result.metrics.jev.latency.p95Ms}ms total=${result.metrics.jev.latency.sumMs}ms · llm hunks reviewed=${result.metrics.llm.hunks.reviewed}/${result.metrics.llm.hunks.total} failed=${result.metrics.llm.hunks.failed} tokens=${result.metrics.llm.tokens.spent} saved≈${result.metrics.llm.tokensSavedPct}% (estimate) · wall=${result.metrics.wallTime.totalMs}ms`,
     );
+    const agentic = result.metrics.agentic;
+    if (agentic) {
+      console.log(
+        `jevest: agentic — status=${agentic.status} turns=${agentic.turns} tokens=${agentic.tokens.total} cost=$${agentic.costUsd.toFixed(4)} tools=${JSON.stringify(agentic.toolCalls)} denied=${agentic.deniedToolCalls} verifier calls=${agentic.verifier.calls} jev judge=${agentic.jevJudgeCalls} drops=${JSON.stringify(agentic.dropsByReason)}`,
+      );
+    }
     for (const line of spendCapAnnotations(result)) {
       console.log(line);
     }

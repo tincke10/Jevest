@@ -170,12 +170,53 @@ findings are candidates in the `low` bucket with source `evidence-failed`.
 Output: `<out>/<variant>/results.json` (every candidate with its match,
 per-case and total metrics) and `report.md`.
 
+### The agentic variant
+
+`reviewer.mode: agentic` (docs/ACTION.md "Agentic review") runs one
+read-only `claude -p` agent per case in the same head checkout (in place,
+or a temporary worktree), so it needs `--mode live` and
+`CLAUDE_CODE_OAUTH_TOKEN` (or a logged-in CLI) besides `TYPESAFE_API_KEY`.
+`--mode dry-run` runs an agent that reports nothing (wiring only);
+`--mode replay` is refused (no recorded agent runs).
+
+```bash
+# agent + hard exclusions + evidence check + Jev's staged judge
+pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev \
+  --config ~/.jevest/evals/<set>/jevest.yml --override reviewer.mode=agentic \
+  --mode live --out ~/.jevest/evals/<set>/runs
+
+# the same, with a refuting verifier agent per surviving finding
+pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev-verifier \
+  --config ~/.jevest/evals/<set>/jevest.yml --override reviewer.mode=agentic \
+  --override reviewer.verifier=claude-cli --override reviewer.verifierModel=claude-sonnet-5 \
+  --mode live --out ~/.jevest/evals/<set>/runs
+```
+
+The config must use `reviewer.provider: claude-cli`. Each case logs the
+agent's run and EVERY tool call it made, the read-only audit:
+
+```
+[pr-1] [review] agentic: status=ran · 31 turns · 80000 tokens (in 78000, out 2000) · $1.2000 · 95000 ms · diff 40000 chars
+[pr-1] [review] agentic tool: Read /tmp/jevest-head-…/tree/src/cart/total.ts
+[pr-1] [review] agentic tool: Grep computeTotal @ .
+[pr-1] [review] agentic tools: {"Read":20,"Grep":9,"Glob":2} · denied 0
+[pr-1] [review] agentic findings: 5 reported · {"published":2,"questions":1,"low":1,"discarded":1} · drops {"exclusion:excluded-claim":1,"judge:supports-noMatch":1} · verifier 0 calls $0.0000 · Jev judge 11 requests
+```
+
+`pipeline-result.json` keeps `metrics.agentic` and an `agentic` block with
+the tool calls and, per finding, its bucket, claim and route (why it was
+published, asked, or dropped). Candidates: published + questions are
+`shown`; every dropped finding (hard exclusion, refuted, Jev discard) is
+`low` with source `dropped`, evidence failures `low` with source
+`evidence-failed`.
+
 ### Buckets
 
 `shown` is what the PR author sees: published findings, questions
 (needs-human), the colleague review's bullet points, and the "possible
 committed secret" warning. `low` is what the pipeline kept out of sight:
-low-confidence (annotate mode) and discarded findings. A narrative point
+low-confidence (annotate mode) and discarded findings, including the
+agentic mode's drops (source `dropped`). A narrative point
 that restates a finding matches the same issue, so recall is unchanged;
 the shown counts say how much the reader had to read.
 

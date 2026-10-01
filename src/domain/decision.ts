@@ -2,6 +2,7 @@
  * Decisions returned by a DecisionPort, one per Question kind (SPEC §1.1).
  * Zero SDK imports: an adapter maps the SDK's response shape onto these.
  */
+import type { QuestionText } from "./question.js";
 
 /** Answer to a `noul` question: a bare probability of "yes", no confidence. */
 export interface NoulDecision {
@@ -21,7 +22,8 @@ export interface ChoiceDecision {
 export interface ScoreDecision {
   readonly type: "score";
   readonly score: number;
-  readonly legend: Record<number, string>;
+  /** The rubric level descriptions as asked (text, or the structured form). */
+  readonly legend: Record<number, QuestionText>;
   readonly probabilities: Record<number, number>;
   readonly confidence: number;
 }

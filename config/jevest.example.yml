@@ -62,6 +62,21 @@ reviewer:
   # finding whose quotes are not in the code is never published (it goes
   # to low-confidence, or discarded in findingFilter.mode: discard).
   # requireEvidence: false
+  # Review mode. hunks (default): the per-hunk reviewer. agentic: ONE
+  # read-only agent per PR (claude-cli only) in a checkout of the PR head,
+  # then hard exclusions, the evidence check, the optional verifier and
+  # Jev's staged judge; without a checkout the run is "unavailable" (never
+  # a silent fallback). See docs/ACTION.md "Agentic review".
+  # mode: hunks
+  # agentic:
+  #   maxTurns: 40          # the agent's turn cap
+  #   timeoutMs: 900000     # 15 minutes
+  #   verifierMaxTurns: 12
+  #   verifierTimeoutMs: 300000
+  # Agentic mode only: none (default) or claude-cli, a fresh agent per
+  # finding that tries to refute it before Jev judges it.
+  # verifier: none
+  # verifierModel: claude-sonnet-5
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

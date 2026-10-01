@@ -14,6 +14,7 @@ import {
   ActionInputError,
   type ActionInputs,
   buildOutputLines,
+  createAgenticPorts,
   createDescriptionContextExtractor,
   createNarrator,
   createReviewer,
@@ -132,6 +133,15 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
       ...overrides,
     },
     thresholds: {},
@@ -809,6 +819,34 @@ describe("spendCapAnnotations", () => {
   });
 });
 
+describe("createAgenticPorts (reviewer.mode: agentic)", () => {
+  const AGENTIC = {
+    provider: "claude-cli" as const,
+    model: "claude-opus-5",
+    mode: "agentic" as const,
+  };
+
+  it("builds nothing in the per-hunk mode", () => {
+    expect(createAgenticPorts(makeConfig(), makeInputs())).toEqual({});
+  });
+
+  it("builds the agent, and the verifier only when configured", () => {
+    const token = { claudeCodeOauthToken: "oauth-test" };
+    const agentOnly = createAgenticPorts(makeConfig(AGENTIC), makeInputs(token));
+    expect(agentOnly.agenticReviewer).toBeDefined();
+    expect(agentOnly.findingVerifier).toBeUndefined();
+    const both = createAgenticPorts(
+      makeConfig({ ...AGENTIC, verifier: "claude-cli" }),
+      makeInputs(token),
+    );
+    expect(both.findingVerifier).toBeDefined();
+  });
+
+  it("requires the claude-code-oauth-token input", () => {
+    expect(() => createAgenticPorts(makeConfig(AGENTIC), makeInputs())).toThrow(ActionInputError);
+  });
+});
+
 describe("resolveActionWorkingTree (code context in the Action)", () => {
   const REF: PullRequestRef = {
     owner: "acme",
@@ -841,7 +879,19 @@ describe("resolveActionWorkingTree (code context in the Action)", () => {
       },
     });
     expect(resolved.workingTree).toBeDefined();
+    expect(resolved.root).toBe("/ws");
     expect(resolved.unavailableReason).toBeUndefined();
+  });
+
+  it("wants the checkout in agentic mode, whatever the code-context layers say", async () => {
+    const resolved = await resolveActionWorkingTree(
+      makeConfig({ provider: "claude-cli", model: "m", mode: "agentic" }),
+      REF,
+      "/ws",
+      { hasGitDir: async () => true, headSha: async () => REF.headSha },
+    );
+    expect(resolved.root).toBe("/ws");
+    expect(resolved.workingTree).toBeDefined();
   });
 
   it("has no checkout without a workspace or without .git", async () => {

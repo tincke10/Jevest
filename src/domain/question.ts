@@ -4,31 +4,42 @@
  * mapped to the TypeSafe SDK's question builders only inside an adapter.
  */
 
+import type { JsonObject } from "./json.js";
+
+/**
+ * Question or criterion text: plain text, or a structured object Jev reads
+ * as such — e.g. `{ question, focus, ignore }` for instructions and
+ * `{ what, examples, not_for }` for an option (the SDK takes either).
+ * Every question written before the agentic judge is plain text, so its
+ * request (and recorded-fixture key) is unchanged.
+ */
+export type QuestionText = string | JsonObject;
+
 /** A yes/no question. `noul` responses never carry `confidence` (SPEC §1.1). */
 export interface NoulQuestion {
   readonly type: "noul";
-  readonly instructions: string;
+  readonly instructions: QuestionText;
   /** Optional descriptions of the yes/no outcomes. */
   readonly criteria?: {
-    readonly true?: string;
-    readonly false?: string;
+    readonly true?: QuestionText;
+    readonly false?: QuestionText;
   };
 }
 
 /** A question that selects one of 2..255 named alternatives. */
 export interface ChoiceQuestion {
   readonly type: "choice";
-  readonly instructions: string;
+  readonly instructions: QuestionText;
   /** Option label -> description. Must have between 2 and 255 entries. */
-  readonly criteria: Record<string, string>;
+  readonly criteria: Record<string, QuestionText>;
 }
 
 /** A question that assigns a score on an ordinal rubric with at least 2 levels. */
 export interface ScoreQuestion {
   readonly type: "score";
-  readonly instructions: string;
+  readonly instructions: QuestionText;
   /** Rubric level descriptions, indexed from zero. At least 2 entries. */
-  readonly criteria: readonly string[];
+  readonly criteria: readonly QuestionText[];
 }
 
 export type Question = NoulQuestion | ChoiceQuestion | ScoreQuestion;

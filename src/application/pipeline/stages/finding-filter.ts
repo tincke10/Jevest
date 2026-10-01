@@ -34,6 +34,7 @@ import {
   createConfidencePolicy,
 } from "../../../domain/confidence-policy.js";
 import type { Usage } from "../../../domain/decision.js";
+import type { EvidenceItem } from "../../../domain/evidence-verifier.js";
 import type { DecisionPort } from "../../../domain/ports/decision-port.js";
 import { runFilter } from "../../filter/filter-runner.js";
 import type { FindingRecord } from "../../filter/finding-record.js";
@@ -73,6 +74,33 @@ export interface FilteredFinding {
    * ({@link EVIDENCE_NOT_FOUND_REASON}); the probabilities are then NaN.
    */
   readonly rejectedReason?: string;
+  /**
+   * Agentic mode only (stages/agentic-judge.ts): what the agent reported
+   * and how it was judged. Absent in the per-hunk mode, so nothing there
+   * changes. When present, `lineStart`/`lineEnd` are HEAD-side lines and
+   * `rationale` is the failing scenario.
+   */
+  readonly agentic?: AgenticFindingDetail;
+}
+
+/** How an agentic finding was reported and judged (see `FilteredFinding.agentic`). */
+export interface AgenticFindingDetail {
+  readonly category: string;
+  /** The agent's own severity (critical/high/medium/low). */
+  readonly reportedSeverity: string;
+  /** The agent's own confidence, 0..1. */
+  readonly confidence: number;
+  readonly evidence: readonly EvidenceItem[];
+  /** Evidence items whose quote was found in the code. */
+  readonly evidenceVerified: number;
+  /** Where an inline comment can go (a line of the diff); `null` = summary only. */
+  readonly inlineAnchor: { readonly path: string; readonly line: number } | null;
+  readonly verifier: { readonly decision: string; readonly reason: string } | null;
+  readonly supports: { readonly choice: string; readonly confidence: number } | null;
+  readonly mechanism: { readonly choice: string; readonly confidence: number } | null;
+  readonly severity: { readonly score: number; readonly confidence: number } | null;
+  /** Why it was published, asked as a question, or dropped. */
+  readonly route: string;
 }
 
 /** Why a `requireEvidence` finding with no verified quote was not published. */

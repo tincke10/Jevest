@@ -60,6 +60,41 @@ describe("TypeSafeDecisionAdapter", () => {
       });
     });
 
+    it("passes structured instructions and criteria (question/focus/ignore, what/examples/not_for) to the SDK unchanged", async () => {
+      const client = fakeClient(async () => ({
+        data: {
+          model: "jev-latest",
+          usage: { input_tokens: 5, output_tokens: 0 },
+          answers: {
+            pick: {
+              type: "choice",
+              choice: "a",
+              confidence: 0.8,
+              probabilities: { a: 0.8, b: 0.2 },
+            },
+          },
+        },
+        requestId: "req_s",
+      }));
+      const adapter = createTypeSafeDecisionAdapter({ client, ...noRetryDelay() });
+      const instructions = { question: "Which?", focus: "the code", ignore: ["style"] };
+      const criteria = {
+        a: { what: "A", examples: ["x"] },
+        b: { what: "B", not_for: "y" },
+      };
+
+      await adapter.decide("state", {
+        pick: { type: "choice", instructions, criteria } satisfies ChoiceQuestion,
+      });
+
+      const [sentRequest] = client.systemOne.mock.calls[0]!;
+      expect((sentRequest as { questions: Record<string, unknown> }).questions.pick).toEqual({
+        type: "choice",
+        instructions,
+        criteria,
+      });
+    });
+
     it("maps a choice question and choice answer round-trip", async () => {
       const client = fakeClient(async () => ({
         data: {

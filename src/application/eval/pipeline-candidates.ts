@@ -13,9 +13,14 @@
  * quotes is in the code, `rejectedReason` set) are `low` with their own
  * source `evidence-failed`, whatever list they ended in: the run never
  * publishes them, and the report can tell them apart from Jev's
- * low-confidence calls.
+ * low-confidence calls. Agentic mode's other drops (hard exclusions, a
+ * refuting verifier, a Jev discard — any other `rejectedReason`) are `low`
+ * too, with source `dropped`.
  */
-import type { FilteredFinding } from "../pipeline/stages/finding-filter.js";
+import {
+  EVIDENCE_NOT_FOUND_REASON,
+  type FilteredFinding,
+} from "../pipeline/stages/finding-filter.js";
 import type { CandidateFinding, CandidateSource } from "./candidate.js";
 
 export interface PipelineCandidateInput {
@@ -100,7 +105,7 @@ function fromFiltered(
     .map((f, index) => toCandidate(f, `${caseId}:${source}:${index}`, source, bucket));
 }
 
-function evidenceFailed(
+function rejected(
   filter: PipelineCandidateInput["findingFilter"],
   caseId: string,
 ): CandidateFinding[] {
@@ -110,9 +115,16 @@ function evidenceFailed(
     ...(filter?.lowConfidence ?? []),
     ...(filter?.discarded ?? []),
   ].filter((f) => f.rejectedReason !== undefined);
-  return all.map((f, index) =>
-    toCandidate(f, `${caseId}:evidence-failed:${index}`, "evidence-failed", "low"),
-  );
+  const evidence = all.filter((f) => f.rejectedReason === EVIDENCE_NOT_FOUND_REASON);
+  // Agentic mode's other drops (hard exclusions, a refuting verifier, a
+  // Jev discard): never shown, kept apart from evidence failures.
+  const dropped = all.filter((f) => f.rejectedReason !== EVIDENCE_NOT_FOUND_REASON);
+  return [
+    ...evidence.map((f, index) =>
+      toCandidate(f, `${caseId}:evidence-failed:${index}`, "evidence-failed", "low"),
+    ),
+    ...dropped.map((f, index) => toCandidate(f, `${caseId}:dropped:${index}`, "dropped", "low")),
+  ];
 }
 
 export function candidatesFromPipeline(
@@ -149,6 +161,6 @@ export function candidatesFromPipeline(
     ),
     ...fromFiltered(filter?.lowConfidence ?? [], caseId, "low-confidence", "low"),
     ...fromFiltered(filter?.discarded ?? [], caseId, "discarded", "low"),
-    ...evidenceFailed(filter, caseId),
+    ...rejected(filter, caseId),
   ];
 }

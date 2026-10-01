@@ -20,6 +20,7 @@ export type CandidateSource =
   | "low-confidence"
   | "discarded"
   | "evidence-failed"
+  | "dropped"
   | "import";
 
 export interface CandidateFinding {

@@ -25,7 +25,7 @@ import {
 } from "@typesafe-ai/sdk";
 import type { Decision, DecisionResponse } from "../domain/decision.js";
 import type { AnswersFor, DecisionPort, State } from "../domain/ports/decision-port.js";
-import { type Question, validateQuestion } from "../domain/question.js";
+import { type Question, type QuestionText, validateQuestion } from "../domain/question.js";
 
 /**
  * The subset of `TypeSafeClient` this adapter depends on. A real
@@ -128,7 +128,7 @@ function toDomainDecision(answer: SystemOneResult<SdkQuestions>["answers"][strin
         type: "score",
         score: answer.score,
         confidence: answer.confidence,
-        legend: { ...answer.legend } as Record<number, string>,
+        legend: { ...answer.legend } as Record<number, QuestionText>,
         probabilities: { ...answer.probabilities } as Record<number, number>,
       };
   }

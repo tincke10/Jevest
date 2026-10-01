@@ -30,6 +30,8 @@
  */
 import type { Usage } from "../../domain/decision.js";
 import { jevCostUsd } from "../findings/pricing.js";
+import type { AgenticJudgeDetails } from "./stages/agentic-judge.js";
+import type { AgenticReviewStageResult } from "./stages/agentic-review.js";
 import type { CodeContextStageResult } from "./stages/code-context.js";
 import type { FindingFilterStageResult } from "./stages/finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./stages/hunk-profile.js";
@@ -160,11 +162,46 @@ export const ZERO_CODE_CONTEXT_METRICS: CodeContextMetrics = {
   evidenceRejected: 0,
 };
 
+/**
+ * Agentic mode (`reviewer.mode: agentic`): the one agent run per PR, the
+ * optional verifier calls, Jev's judge calls and why findings were
+ * dropped. Its tokens and cost are ALSO in `llm` (booked on the reviewed
+ * hunks), so `llm.tokens.spent` stays the run's total.
+ */
+export interface AgenticMetrics {
+  /** ran / failed / unavailable / skipped-budget / nothing-to-review. */
+  readonly status: string;
+  readonly model: string | null;
+  readonly turns: number;
+  /** Input counts uncached + cache read + cache write. */
+  readonly tokens: { readonly input: number; readonly output: number; readonly total: number };
+  readonly costUsd: number;
+  readonly latencyMs: number;
+  readonly diffChars: number;
+  readonly diffFilesOmitted: number;
+  /** Tool name -> calls, agent and verifiers together (the read-only audit). */
+  readonly toolCalls: Readonly<Record<string, number>>;
+  /** Calls the CLI's permission layer refused (a denied path, outside the checkout). */
+  readonly deniedToolCalls: number;
+  readonly findingsReported: number;
+  readonly outcomes: AgenticJudgeDetails["outcomes"];
+  readonly dropsByReason: Readonly<Record<string, number>>;
+  readonly verifier: {
+    readonly calls: number;
+    readonly turns: number;
+    readonly tokens: number;
+    readonly costUsd: number;
+  };
+  readonly jevJudgeCalls: number;
+}
+
 export interface RunMetrics {
   readonly jev: JevMetrics;
   readonly llm: LlmMetrics;
   readonly wallTime: StageWallTimes;
   readonly codeContext: CodeContextMetrics;
+  /** Present only in agentic mode, so the per-hunk mode's metrics are unchanged. */
+  readonly agentic?: AgenticMetrics;
 }
 
 export interface RunMetricsInput {
@@ -180,6 +217,11 @@ export interface RunMetricsInput {
   readonly wallTime: StageWallTimes;
   /** stages/code-context.ts output; absent/`null` when the layers are off. */
   readonly codeContext?: CodeContextStageResult | null;
+  /** Agentic mode only: the agent run and the judge's details (`null` when the judge did not run). */
+  readonly agentic?: {
+    readonly review: AgenticReviewStageResult;
+    readonly judge: AgenticJudgeDetails | null;
+  } | null;
 }
 
 export const ZERO_WALL_TIMES: StageWallTimes = {
@@ -365,6 +407,44 @@ export function computeRunMetrics(input: RunMetricsInput): RunMetrics {
     llm: computeLlm(input),
     wallTime: input.wallTime,
     codeContext: computeCodeContext(input),
+    ...(input.agentic ? { agentic: computeAgentic(input.agentic) } : {}),
+  };
+}
+
+function computeAgentic(agentic: NonNullable<RunMetricsInput["agentic"]>): AgenticMetrics {
+  const { review, judge } = agentic;
+  const info = review.info;
+  const input = info
+    ? info.usage.inputTokens + info.usage.cacheReadInputTokens + info.usage.cacheCreationInputTokens
+    : 0;
+  const output = info?.usage.outputTokens ?? 0;
+  const toolCalls: Record<string, number> = {};
+  const calls = [...(info?.toolCalls ?? []), ...(judge?.verifierToolCalls ?? [])];
+  for (const call of calls) toolCalls[call.tool] = (toolCalls[call.tool] ?? 0) + 1;
+  const vu = judge?.verifierUsage;
+  return {
+    status: review.status,
+    model: info?.model ?? null,
+    turns: info?.turns ?? 0,
+    tokens: { input, output, total: input + output },
+    costUsd: review.costUsd,
+    latencyMs: info?.latencyMs ?? 0,
+    diffChars: review.diffChars,
+    diffFilesOmitted: review.omittedFiles.length,
+    toolCalls,
+    deniedToolCalls: calls.filter((c) => c.denied).length,
+    findingsReported: judge?.reported ?? review.findings.length,
+    outcomes: judge?.outcomes ?? { published: 0, questions: 0, low: 0, discarded: 0 },
+    dropsByReason: judge?.dropsByReason ?? {},
+    verifier: {
+      calls: judge?.verifierCalls ?? 0,
+      turns: judge?.verifierTurns ?? 0,
+      tokens: vu
+        ? vu.inputTokens + vu.outputTokens + vu.cacheReadInputTokens + vu.cacheCreationInputTokens
+        : 0,
+      costUsd: judge?.verifierCostUsd ?? 0,
+    },
+    jevJudgeCalls: judge?.jevJudgeCalls ?? 0,
   };
 }
 

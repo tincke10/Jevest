@@ -272,6 +272,19 @@ async function pipelineSource(
                     error: h.error,
                   })),
                 },
+          // Agentic mode only: the agent's status, every tool call (the
+          // read-only audit) and where each finding ended and why.
+          ...(result.agentic
+            ? {
+                agentic: {
+                  status: result.agentic.review.status,
+                  error: result.agentic.review.error,
+                  toolCalls: result.agentic.review.info?.toolCalls ?? [],
+                  verifierToolCalls: result.agentic.judge?.verifierToolCalls ?? [],
+                  findings: agenticFindingTrail(result),
+                },
+              }
+            : {}),
         },
         null,
         2,
@@ -287,6 +300,35 @@ async function pipelineSource(
       error: result.failedClosed ? `failed closed at stage "${result.failureReason}"` : null,
     };
   };
+}
+
+/** Each agentic finding's bucket, location, claim and route (why it landed there). */
+function agenticFindingTrail(result: Awaited<ReturnType<typeof runLocalReview>>): unknown[] {
+  const filter = result.findingFilter;
+  if (filter === null) return [];
+  const buckets = {
+    published: filter.published,
+    needsHuman: filter.needsHuman,
+    lowConfidence: filter.lowConfidence,
+    discarded: filter.discarded,
+  };
+  return Object.entries(buckets).flatMap(([bucket, findings]) =>
+    findings.map((f) => ({
+      bucket,
+      id: f.findingId,
+      file: f.file,
+      line: f.lineStart,
+      claim: f.claim,
+      route: f.agentic?.route ?? f.rejectedReason ?? null,
+      category: f.agentic?.category ?? null,
+      reportedSeverity: f.agentic?.reportedSeverity ?? null,
+      evidenceVerified: f.agentic?.evidenceVerified ?? null,
+      verifier: f.agentic?.verifier ?? null,
+      supports: f.agentic?.supports ?? null,
+      mechanism: f.agentic?.mechanism ?? null,
+      severity: f.agentic?.severity ?? null,
+    })),
+  );
 }
 
 function buildMatcher(options: EvalCliOptions): {

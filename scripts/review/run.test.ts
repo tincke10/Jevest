@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { JevestConfig } from "../../src/adapters/config/jevest-config.js";
 import {
+  buildAgenticPorts,
   parseArgs,
   resolveConfig,
   resolveLocalCalibration,
@@ -103,6 +104,15 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
   });
 });
@@ -300,6 +310,40 @@ describe("runLocalReview (scripts/review/run.ts)", () => {
   });
 });
 
+describe("buildAgenticPorts (scripts/review/run.ts)", () => {
+  async function config(reviewer: Partial<JevestConfig["reviewer"]>): Promise<JevestConfig> {
+    const { config: base } = await resolveConfig(join(tmpdir(), "jevest-missing-config.yml"));
+    return { ...base, reviewer: { ...base.reviewer, ...reviewer } };
+  }
+  const AGENTIC = { provider: "claude-cli" as const, model: "m", mode: "agentic" as const };
+
+  it("builds nothing in the per-hunk mode", async () => {
+    expect(buildAgenticPorts("live", await config({}))).toEqual({});
+  });
+
+  it("dry-run: an agent that reports nothing and never spawns a process; a verifier only when configured", async () => {
+    const ports = buildAgenticPorts(
+      "dry-run",
+      await config({ ...AGENTIC, verifier: "claude-cli" }),
+    );
+    const output = await ports.agenticReviewer?.reviewPullRequest({
+      prId: "p",
+      repoRoot: "/nowhere",
+      title: "t",
+      changedFiles: [],
+      diff: "",
+    });
+    expect(output?.findings).toEqual([]);
+    expect(ports.findingVerifier).toBeDefined();
+    expect(buildAgenticPorts("dry-run", await config(AGENTIC)).findingVerifier).toBeUndefined();
+  });
+
+  it("replay: refuses, since there are no recorded agent runs", async () => {
+    const agentic = await config(AGENTIC);
+    expect(() => buildAgenticPorts("replay", agentic)).toThrow(/replay/);
+  });
+});
+
 describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
   async function config(reviewer: Partial<JevestConfig["reviewer"]>): Promise<JevestConfig> {
     const { config: base } = await resolveConfig(join(tmpdir(), "jevest-missing-config.yml"));
@@ -324,6 +368,23 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
     expect(prepared).toBe(false);
     expect(resolved.workingTree).toBeUndefined();
     expect(resolved.unavailableReason).toBeUndefined();
+  });
+
+  it("prepares the checkout in agentic mode even with every code-context layer off", async () => {
+    const resolved = await resolveLocalWorkingTree({
+      config: await config({ provider: "claude-cli", mode: "agentic" }),
+      gitRange: { base: "a", head: "b" },
+      repoDir: "/repo",
+      log: () => {},
+      prepare: async () => ({
+        root: "/tmp/agentic",
+        kind: "worktree",
+        skippedFiles: 0,
+        totalFiles: 1,
+        cleanup: async () => {},
+      }),
+    });
+    expect(resolved.root).toBe("/tmp/agentic");
   });
 
   it("has no checkout in --diff mode, and says why", async () => {
@@ -359,6 +420,7 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
       },
     });
     expect(resolved.workingTree).toBeDefined();
+    expect(resolved.root).toBe("/tmp/tree");
     expect(lines).toContain(
       "[review] head checkout: partial-worktree at /tmp/tree (3 of 10 files skipped: blobs not in the local object store)",
     );

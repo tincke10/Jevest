@@ -45,6 +45,14 @@
  * `--diff` mode has no head ref, so the context is skipped with a note and
  * evidence is checked against the hunk text. One log line per hunk gives
  * the symbols, matches, snippets and characters added.
+ *
+ * Agentic mode (`reviewer.mode: agentic`, e.g. `--override
+ * reviewer.mode=agentic` in `pnpm eval:review`): the same head checkout is
+ * the agent's cwd. `--mode live` runs `claude -p` (CLAUDE_CODE_OAUTH_TOKEN),
+ * `--mode dry-run` an agent that reports nothing, and `--mode replay` is
+ * refused (no recorded agent runs). The log gets the agent's turns,
+ * tokens, cost and EVERY tool call (tool, target, denied), the read-only
+ * audit, plus the judge's outcomes and drops by reason.
  */
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -52,6 +60,12 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import OpenAI from "openai";
+import { createClaudeCliAgenticReviewer } from "../../src/adapters/agentic/claude-cli-agentic-reviewer.js";
+import { createClaudeCliFindingVerifier } from "../../src/adapters/agentic/claude-cli-finding-verifier.js";
+import {
+  createFakeAgenticReviewer,
+  createFakeFindingVerifier,
+} from "../../src/adapters/agentic/fake-agentic.js";
 import { type JevestConfig, loadJevestConfig } from "../../src/adapters/config/jevest-config.js";
 import { createAnthropicDescriptionContextExtractor } from "../../src/adapters/description-context/anthropic-description-context-extractor.js";
 import { createClaudeCliDescriptionContextExtractor } from "../../src/adapters/description-context/claude-cli-description-context-extractor.js";
@@ -100,13 +114,16 @@ import {
   parseCalibrationFile,
 } from "../../src/domain/calibration.js";
 import type { Decision } from "../../src/domain/decision.js";
+import type { AgenticReviewerPort } from "../../src/domain/ports/agentic-reviewer-port.js";
 import type { ChangeSummarizerPort } from "../../src/domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
 import type { DescriptionContextPort } from "../../src/domain/ports/description-context-port.js";
+import type { FindingVerifierPort } from "../../src/domain/ports/finding-verifier-port.js";
 import type { ReviewNarratorPort } from "../../src/domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../src/domain/ports/reviewer-port.js";
 import type { WorkingTreePort } from "../../src/domain/ports/working-tree-port.js";
 import type { PullRequestRef } from "../../src/domain/pull-request.js";
+import type { QuestionText } from "../../src/domain/question.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const DEFAULT_CONFIG_PATH = join(REPO_ROOT, ".jevest.yml");
@@ -219,7 +236,7 @@ function createDryRunDecisionPort(): DecisionPort {
             confidence: DRY_RUN_CONFIDENCE,
           };
         } else {
-          const legend: Record<number, string> = {};
+          const legend: Record<number, QuestionText> = {};
           const probabilities: Record<number, number> = {};
           question.criteria.forEach((label, index) => {
             legend[index] = label;
@@ -550,6 +567,56 @@ function buildDescriptionContextPort(
   }
 }
 
+export interface AgenticPorts {
+  readonly agenticReviewer?: AgenticReviewerPort;
+  readonly findingVerifier?: FindingVerifierPort;
+}
+
+/**
+ * Agentic mode's ports (`reviewer.mode: agentic`), following `--mode`:
+ * dry-run gets an agent that reports nothing (and a verifier that confirms),
+ * live runs `claude -p` in the head checkout, replay is refused because no
+ * agent run is recorded. `{}` in the per-hunk mode.
+ */
+export function buildAgenticPorts(mode: Mode, config: JevestConfig): AgenticPorts {
+  const { reviewer } = config;
+  if (reviewer.mode !== "agentic") return {};
+  const withVerifier = reviewer.verifier === "claude-cli";
+  switch (mode) {
+    case "dry-run":
+      return {
+        agenticReviewer: createFakeAgenticReviewer([], {
+          info: { model: "dry-run", nominalCostUsd: 0, turns: 0 },
+        }),
+        ...(withVerifier
+          ? { findingVerifier: createFakeFindingVerifier(() => "confirmed", { nominalCostUsd: 0 }) }
+          : {}),
+      };
+    case "live":
+      requireLiveKey("claude-cli");
+      return {
+        agenticReviewer: createClaudeCliAgenticReviewer({
+          ...(reviewer.model !== undefined ? { model: reviewer.model } : {}),
+          maxTurns: reviewer.agentic.maxTurns,
+          timeoutMs: reviewer.agentic.timeoutMs,
+        }),
+        ...(withVerifier
+          ? {
+              findingVerifier: createClaudeCliFindingVerifier({
+                model: reviewer.verifierModel,
+                maxTurns: reviewer.agentic.verifierMaxTurns,
+                timeoutMs: reviewer.agentic.verifierTimeoutMs,
+              }),
+            }
+          : {}),
+      };
+    case "replay":
+      throw new Error(
+        "reviewer.mode agentic has no recorded agent runs: use --mode live or --mode dry-run, not replay",
+      );
+  }
+}
+
 export interface LocalProductContextOptions {
   readonly repoDir: string;
   /** `triage.productContextPath` from the config, relative to `repoDir`. */
@@ -676,14 +743,17 @@ export interface LocalWorkingTreeOptions {
 
 export interface LocalWorkingTree {
   readonly workingTree: WorkingTreePort | undefined;
+  /** The checkout's path (the agentic reviewer's cwd); `undefined` without one. */
+  readonly root?: string | undefined;
   readonly unavailableReason: string | undefined;
   /** Removes a temporary worktree; call it in a `finally`. */
   cleanup(): Promise<void>;
 }
 
 /**
- * The working tree at the head for the code-context layers (see the module
- * doc). Nothing at all when every layer is off or the review is Jev-only.
+ * The working tree at the head for the code-context layers and agentic mode
+ * (see the module doc). Nothing at all when nothing needs it or the review
+ * is Jev-only.
  */
 export async function resolveLocalWorkingTree(
   options: LocalWorkingTreeOptions,
@@ -691,7 +761,10 @@ export async function resolveLocalWorkingTree(
   const { reviewer } = options.config;
   const wanted =
     reviewer.provider !== "none" &&
-    (reviewer.fullFile || reviewer.impactContext || reviewer.requireEvidence);
+    (reviewer.mode === "agentic" ||
+      reviewer.fullFile ||
+      reviewer.impactContext ||
+      reviewer.requireEvidence);
   const none = async (): Promise<void> => {};
   if (!wanted) {
     return { workingTree: undefined, unavailableReason: undefined, cleanup: none };
@@ -713,6 +786,7 @@ export async function resolveLocalWorkingTree(
   options.log(`[review] head checkout: ${checkout.kind} at ${checkout.root}${skipped}`);
   return {
     workingTree: createRipgrepWorkingTree({ root: checkout.root }),
+    root: checkout.root,
     unavailableReason: undefined,
     cleanup: () => checkout.cleanup(),
   };
@@ -742,6 +816,31 @@ export function codeContextLogLines(result: PipelineResult): string[] {
       `[review] evidence: ${evidenceChecked} findings checked, ${evidenceRejected} rejected`,
     );
   }
+  return lines;
+}
+
+/** The agent's run and tool calls, the verifier's and the judge's outcomes (agentic mode only). */
+export function agenticLogLines(result: PipelineResult): string[] {
+  const agentic = result.agentic;
+  const metrics = result.metrics.agentic;
+  if (!agentic || !metrics) return [];
+  const lines = [
+    `[review] agentic: status=${metrics.status}${agentic.review.error ? ` (${agentic.review.error})` : ""} · ${metrics.turns} turns · ${metrics.tokens.total} tokens (in ${metrics.tokens.input}, out ${metrics.tokens.output}) · $${metrics.costUsd.toFixed(4)} · ${metrics.latencyMs} ms · diff ${metrics.diffChars} chars${metrics.diffFilesOmitted > 0 ? `, ${metrics.diffFilesOmitted} files left out` : ""}`,
+  ];
+  for (const call of agentic.review.info?.toolCalls ?? []) {
+    lines.push(
+      `[review] agentic tool: ${call.tool} ${call.target ?? ""}${call.denied ? " (DENIED)" : ""}`,
+    );
+  }
+  for (const call of agentic.judge?.verifierToolCalls ?? []) {
+    lines.push(
+      `[review] verifier tool: ${call.tool} ${call.target ?? ""}${call.denied ? " (DENIED)" : ""}`,
+    );
+  }
+  lines.push(
+    `[review] agentic tools: ${JSON.stringify(metrics.toolCalls)} · denied ${metrics.deniedToolCalls}`,
+    `[review] agentic findings: ${metrics.findingsReported} reported · ${JSON.stringify(metrics.outcomes)} · drops ${JSON.stringify(metrics.dropsByReason)} · verifier ${metrics.verifier.calls} calls $${metrics.verifier.costUsd.toFixed(4)} · Jev judge ${metrics.jevJudgeCalls} requests`,
+  );
   return lines;
 }
 
@@ -808,6 +907,7 @@ export async function runLocalReview(input: LocalReviewInput): Promise<PipelineR
   const summarizer = buildSummarizerPort(options.mode, config);
   const narrator = buildNarratorPort(options.mode, config);
   const descriptionContext = buildDescriptionContextPort(options.mode, config);
+  const agenticPorts = buildAgenticPorts(options.mode, config);
   const fetchFileContent = options.gitRange ? createGitFileContentFetcher(repoDir) : undefined;
   const productContext = await resolveLocalProductContext({
     repoDir,
@@ -859,14 +959,17 @@ export async function runLocalReview(input: LocalReviewInput): Promise<PipelineR
         ...(narrator ? { narrator } : {}),
         ...(descriptionContext ? { descriptionContext } : {}),
         ...(tree.workingTree ? { workingTree: tree.workingTree } : {}),
+        ...agenticPorts,
       },
       ...(tree.unavailableReason ? { workingTreeUnavailableReason: tree.unavailableReason } : {}),
+      ...(tree.root ? { headCheckoutRoot: tree.root } : {}),
       config,
       productContext,
       calibration,
       ...(fetchFileContent ? { fetchFileContent } : {}),
     });
     for (const line of codeContextLogLines(result)) log(line);
+    for (const line of agenticLogLines(result)) log(line);
     return result;
   } finally {
     await tree.cleanup();

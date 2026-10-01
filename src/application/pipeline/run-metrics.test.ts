@@ -507,3 +507,106 @@ describe("computeRunMetrics — code context and evidence", () => {
     expect(metrics.codeContext.unavailable).toBe("Impact context unavailable: no checkout");
   });
 });
+
+describe("computeRunMetrics — agentic mode", () => {
+  it("has no agentic block in the per-hunk mode, so its output is unchanged", () => {
+    expect(computeRunMetrics(makeInput())).not.toHaveProperty("agentic");
+  });
+
+  it("reports turns, tokens, cost, tool usage, verifier and Jev judge calls and drops by reason", () => {
+    const metrics = computeRunMetrics(
+      makeInput({
+        agentic: {
+          review: {
+            status: "ran",
+            error: null,
+            findings: [],
+            info: {
+              model: "claude-opus-5",
+              usage: {
+                inputTokens: 100,
+                outputTokens: 2000,
+                cacheReadInputTokens: 60_000,
+                cacheCreationInputTokens: 8_000,
+              },
+              latencyMs: 90_000,
+              nominalCostUsd: 1.25,
+              turns: 31,
+              toolCalls: [
+                { tool: "Read", target: "a.ts", denied: false },
+                { tool: "Read", target: ".env", denied: true },
+                { tool: "Grep", target: "x @ .", denied: false },
+              ],
+            },
+            costUsd: 1.25,
+            diffChars: 4000,
+            omittedFiles: ["big.json"],
+            review: makeReview([]),
+          },
+          judge: {
+            reported: 5,
+            dropsByReason: { "exclusion:excluded-claim": 1, "judge:supports-noMatch": 2 },
+            outcomes: { published: 1, questions: 1, low: 2, discarded: 1 },
+            verifierCalls: 2,
+            verifierCostUsd: 0.2,
+            verifierUsage: {
+              inputTokens: 10,
+              outputTokens: 20,
+              cacheReadInputTokens: 30,
+              cacheCreationInputTokens: 40,
+            },
+            verifierTurns: 9,
+            verifierToolCalls: [{ tool: "Glob", target: "**/*.ts", denied: false }],
+            jevJudgeCalls: 7,
+          },
+        },
+      }),
+    );
+    expect(metrics.agentic).toEqual({
+      status: "ran",
+      model: "claude-opus-5",
+      turns: 31,
+      tokens: { input: 68_100, output: 2000, total: 70_100 },
+      costUsd: 1.25,
+      latencyMs: 90_000,
+      diffChars: 4000,
+      diffFilesOmitted: 1,
+      toolCalls: { Read: 2, Grep: 1, Glob: 1 },
+      deniedToolCalls: 1,
+      findingsReported: 5,
+      outcomes: { published: 1, questions: 1, low: 2, discarded: 1 },
+      dropsByReason: { "exclusion:excluded-claim": 1, "judge:supports-noMatch": 2 },
+      verifier: { calls: 2, turns: 9, tokens: 100, costUsd: 0.2 },
+      jevJudgeCalls: 7,
+    });
+  });
+
+  it("reports a run that never answered with zeros and its status", () => {
+    const metrics = computeRunMetrics(
+      makeInput({
+        agentic: {
+          review: {
+            status: "unavailable",
+            error: "agentic review unavailable: no checkout",
+            findings: [],
+            info: null,
+            costUsd: 0,
+            diffChars: 10,
+            omittedFiles: [],
+            review: makeReview([]),
+          },
+          judge: null,
+        },
+      }),
+    );
+    expect(metrics.agentic).toMatchObject({
+      status: "unavailable",
+      model: null,
+      turns: 0,
+      tokens: { input: 0, output: 0, total: 0 },
+      findingsReported: 0,
+      jevJudgeCalls: 0,
+      verifier: { calls: 0, turns: 0, tokens: 0, costUsd: 0 },
+    });
+  });
+});

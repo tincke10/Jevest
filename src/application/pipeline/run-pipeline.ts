@@ -66,12 +66,29 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * Its time counts in `wallTime.reviewMs`. `reviewer.requireEvidence` asks
  * for evidence and checks it against the same tree (or the hunk text). With
  * all three off the tree is never touched and every request is unchanged.
+ *
+ * Agentic mode (`reviewer.mode: agentic`, stages/agentic-review.ts and
+ * agentic-judge.ts): ONE read-only agent per PR in the checkout at
+ * `headCheckoutRoot` replaces the per-hunk review and the code-context
+ * stage; hard exclusions, the evidence check, the optional verifier
+ * (`reviewer.verifier`) and Jev's staged judge replace the finding filter.
+ * Triage, hunk profile (secret warning, in-diff injection), description
+ * context, merge gate, narrator, verdict, labels and publish are the same
+ * stages as before. The agent's author context is the extractor's output
+ * when it ran, otherwise the redacted description framed as untrusted
+ * data, never either when triage flagged injected instructions. Without a
+ * checkout the run fails closed to `unavailable` (never a silent fallback
+ * to the per-hunk review). The verifier's cost counts in `costUsd`, the
+ * ledger and the budget like every other LLM call. With `mode: hunks` none
+ * of this runs and the result carries no `agentic` key.
  */
 import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
+import type { AgenticReviewerPort } from "../../domain/ports/agentic-reviewer-port.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
 import type { DescriptionContextPort } from "../../domain/ports/description-context-port.js";
+import type { FindingVerifierPort } from "../../domain/ports/finding-verifier-port.js";
 import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
@@ -92,6 +109,8 @@ import {
   ZERO_WALL_TIMES,
   computeRunMetrics,
 } from "./run-metrics.js";
+import { type AgenticJudgeDetails, runAgenticJudgeStage } from "./stages/agentic-judge.js";
+import { type AgenticReviewStageResult, runAgenticReviewStage } from "./stages/agentic-review.js";
 import {
   type CodeContextStageResult,
   createHeadFileReader,
@@ -160,9 +179,19 @@ export interface RunPipelineInput {
      * `reviewer.requireEvidence` is on; absent = no checkout.
      */
     readonly workingTree?: WorkingTreePort;
+    /** The one-agent-per-PR reviewer. Required when `config.reviewer.mode` is "agentic"; ignored otherwise. */
+    readonly agenticReviewer?: AgenticReviewerPort;
+    /** The per-finding LLM verifier. Required when `config.reviewer.verifier` is not "none" (agentic mode only). */
+    readonly findingVerifier?: FindingVerifierPort;
   };
   /** Why there is no `ports.workingTree`, for the comment's one line. Default "no checkout". */
   readonly workingTreeUnavailableReason?: string;
+  /**
+   * Absolute path of the checkout behind `ports.workingTree`: the agentic
+   * reviewer's and verifier's cwd. Agentic mode without it (or without the
+   * working tree) is `unavailable`.
+   */
+  readonly headCheckoutRoot?: string;
   readonly config: JevestConfig;
   /** Optional: full-file content at a given sha, for hunk-profile's §4.3 AST context. */
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
@@ -220,6 +249,14 @@ export interface PipelineResult {
   readonly spendLedgerError: string | null;
   /** H2 / H4 per-run numbers (run-metrics.ts); zeros for the stages that did not run, never null. */
   readonly metrics: RunMetrics;
+  /** Agentic mode only (absent in the per-hunk mode): the agent run and the judge's details. */
+  readonly agentic?: AgenticRunResult;
+}
+
+export interface AgenticRunResult {
+  readonly review: AgenticReviewStageResult;
+  /** `null` when the judge did not run (the run ended before it). */
+  readonly judge: AgenticJudgeDetails | null;
 }
 
 type StageResults = Pick<
@@ -245,6 +282,7 @@ function summaryFields(
   triage: TriageStageResult | null = null,
   narrative: NarrateStageResult | null = null,
   descriptionContext: DescriptionContextStageResult | null = null,
+  agentic: AgenticRunResult | null = null,
 ): Pick<PipelineResult, "check" | "findingsPublished" | "findingsLowConfidence" | "costUsd"> {
   return {
     check: publication.check,
@@ -254,7 +292,8 @@ function summaryFields(
       (review?.totalCostUsd ?? 0) +
       (triage?.summaryCostUsd ?? 0) +
       (descriptionContext?.costUsd ?? 0) +
-      (narrative?.costUsd ?? 0),
+      (narrative?.costUsd ?? 0) +
+      (agentic?.judge?.verifierCostUsd ?? 0),
   };
 }
 
@@ -401,11 +440,14 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   // Set right before the review stage; a fail-closed exit after it still reports it (and its cost).
   let descriptionContext: DescriptionContextStageResult | null = null;
   let codeContext: CodeContextStageResult | null = null;
+  let agentic: AgenticRunResult | null = null;
+  const agenticFields = (): { agentic?: AgenticRunResult } => (agentic ? { agentic } : {});
   let unprofiledHunkDiffs: readonly string[] = [];
   const metricsFor = (stages: StageResults): RunMetrics =>
     computeRunMetrics({
       ...stages,
       codeContext,
+      agentic,
       unprofiledHunkDiffs,
       reviewSkippedForSpendCap,
       reviewDisabled,
@@ -440,9 +482,11 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         stages.triage,
         null,
         descriptionContext,
+        agentic,
       ),
       ...spendFields,
       metrics: metricsFor(stages),
+      ...agenticFields(),
     };
   };
 
@@ -594,8 +638,48 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const reviewBudgetUsd = Math.max(0, budgetAfterSummaryUsd - (descriptionContext?.costUsd ?? 0));
   const authorContext = reviewerAuthorContext(descriptionContext);
   let review: ReviewStageResult;
+  const agenticMode = config.reviewer.mode === "agentic";
+  // Agentic mode needs the checkout's path AND its working tree (the judge
+  // re-reads the evidence through it); either missing is "no checkout".
+  const agenticRoot =
+    input.headCheckoutRoot !== undefined && ports.workingTree !== undefined
+      ? input.headCheckoutRoot
+      : undefined;
   if (reviewDisabled || reviewSkippedForSpendCap) {
     review = { reviews: [], totalCostUsd: 0, budgetExceeded: false, skippedForBudgetCount: 0 };
+  } else if (agenticMode) {
+    const agenticReviewer = ports.agenticReviewer;
+    if (!agenticReviewer) {
+      throw new Error(
+        'internal: reviewer.mode is "agentic" but no AgenticReviewerPort was provided',
+      );
+    }
+    if (config.reviewer.verifier !== "none" && !ports.findingVerifier) {
+      throw new Error(
+        `internal: reviewer.verifier is "${config.reviewer.verifier}" but no FindingVerifierPort was provided`,
+      );
+    }
+    // The raw description only when no extractor result exists (or it
+    // failed), and never when triage flagged injected instructions.
+    const rawDescription =
+      !containsInjectedInstructionsHigh &&
+      (descriptionContext === null || descriptionContext.status === "failed")
+        ? pr.body
+        : undefined;
+    const agenticReview = await timed("reviewMs", () =>
+      runAgenticReviewStage({
+        pr,
+        hunkProfile,
+        reviewer: agenticReviewer,
+        repoRoot: agenticRoot,
+        unavailableReason: input.workingTreeUnavailableReason,
+        authorContext,
+        description: rawDescription,
+        budgetUsd: reviewBudgetUsd,
+      }),
+    );
+    agentic = { review: agenticReview, judge: null };
+    review = agenticReview.review;
   } else {
     if (!ports.reviewer) {
       throw new Error(
@@ -649,6 +733,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       review.totalCostUsd +
         triage.summaryCostUsd +
         (descriptionContext?.costUsd ?? 0) +
+        (agentic?.judge?.verifierCostUsd ?? 0) +
         extraLlmUsd,
     );
     return {
@@ -661,26 +746,43 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   const hunksById = new Map(hunkProfile.hunks.map((h) => [h.id, h.diff]));
   let findingFilter: FindingFilterStageResult;
   try {
-    findingFilter = await timed("findingFilterMs", () =>
-      runFindingFilterStage({
-        reviews: review.reviews,
-        hunksById,
+    const agenticRun = agentic;
+    findingFilter = await timed("findingFilterMs", async () => {
+      if (agenticRun === null) return runPerHunkFindingFilter();
+      const judge = await runAgenticJudgeStage({
+        findings: agenticRun.review.findings,
+        pr,
         decisionPort: ports.decision,
-        policyConfig: config.thresholds,
-        riskLevel: triage.riskLevel,
         mode: config.findingFilter.mode,
-        calibration:
-          config.findingFilter.calibration === "file"
-            ? (input.calibration ?? NO_CALIBRATION)
-            : NO_CALIBRATION,
-      }),
-    );
+        readHeadLines: ports.workingTree ? createHeadFileReader(ports.workingTree) : undefined,
+        verifier: config.reviewer.verifier !== "none" ? ports.findingVerifier : undefined,
+        repoRoot: agenticRoot,
+        verifierBudgetUsd: Math.max(0, reviewBudgetUsd - review.totalCostUsd),
+      });
+      agentic = { ...agenticRun, judge: judge.details };
+      return judge.filter;
+    });
   } catch {
     return failClosed(
       "finding-filter",
       { triage, hunkProfile, review, findingFilter: null, mergeGate: null },
       await bookRunSpend(0),
     );
+  }
+
+  function runPerHunkFindingFilter(): Promise<FindingFilterStageResult> {
+    return runFindingFilterStage({
+      reviews: review.reviews,
+      hunksById,
+      decisionPort: ports.decision,
+      policyConfig: config.thresholds,
+      riskLevel: triage.riskLevel,
+      mode: config.findingFilter.mode,
+      calibration:
+        config.findingFilter.calibration === "file"
+          ? (input.calibration ?? NO_CALIBRATION)
+          : NO_CALIBRATION,
+    });
   }
 
   let mergeGate: MergeGateStageResult;
@@ -724,7 +826,8 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     injectionSuspected:
       containsInjectedInstructionsHigh ||
       injectedInstructionsInDiffWord(hunkProfile.injectedInstructionsInDiff.maxProb) === "yes",
-    remainingBudgetUsd: reviewBudgetUsd - review.totalCostUsd,
+    remainingBudgetUsd:
+      reviewBudgetUsd - review.totalCostUsd - (agentic?.judge?.verifierCostUsd ?? 0),
     descriptionContext,
   });
   spend = await bookRunSpend(narrative?.costUsd ?? 0);
@@ -753,9 +856,18 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     descriptionContext,
     codeContext,
     publication,
-    ...summaryFields(publication, findingFilter, review, triage, narrative, descriptionContext),
+    ...summaryFields(
+      publication,
+      findingFilter,
+      review,
+      triage,
+      narrative,
+      descriptionContext,
+      agentic,
+    ),
     ...spend,
     metrics: metricsFor(stages),
+    ...agenticFields(),
   };
 }
 

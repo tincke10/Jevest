@@ -392,19 +392,36 @@ function buildInlineComments(
   findingFilter: FindingFilterStageResult,
   hunksById: ReadonlyMap<string, HunkProfileEntry>,
 ): InlineComment[] {
-  return findingFilter.published.map((finding) => {
+  return findingFilter.published.flatMap((finding): InlineComment[] => {
+    const body = `**${finding.claim}**\n\n${finding.rationale}`;
+    if (finding.agentic) {
+      // Agentic mode: the judge already resolved a HEAD-side line of the
+      // diff (or none: such a finding is listed in the summary instead,
+      // since a comment off the diff would be refused by the VCS).
+      const anchor = finding.agentic.inlineAnchor;
+      if (anchor === null) return [];
+      return [
+        {
+          path: anchor.path,
+          line: anchor.line,
+          body,
+          fingerprint: sha256(anchor.path, String(anchor.line), finding.claim),
+        },
+      ];
+    }
     // finding.lineStart is a BEFORE-side line (ReviewFindingCandidate's own
     // contract); InlineComment.line must be a HEAD-side line (VcsPort's
     // contract) — map through the owning hunk's diff.
     const hunk = hunksById.get(finding.hunkId);
     const line = hunk ? mapBeforeLineToAfterLine(hunk, finding.lineStart) : finding.lineStart;
-    const body = `**${finding.claim}**\n\n${finding.rationale}`;
-    return {
-      path: finding.file,
-      line,
-      body,
-      fingerprint: sha256(finding.file, String(line), finding.claim),
-    };
+    return [
+      {
+        path: finding.file,
+        line,
+        body,
+        fingerprint: sha256(finding.file, String(line), finding.claim),
+      },
+    ];
   });
 }
 
@@ -455,7 +472,11 @@ function buildNeedsHumanSection(
   review: ReviewStageResult,
 ): string {
   const lines = findingFilter.needsHuman.map((f) => {
-    const suffix = f.unverified ? " — unverified (Jev unavailable)" : "";
+    const suffix = f.unverified
+      ? " — unverified (Jev unavailable)"
+      : f.agentic
+        ? ` — question: ${f.agentic.route}`
+        : "";
     return `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rationale})${suffix}`;
   });
   if (mismatchIsActionable(triage)) {
@@ -576,6 +597,24 @@ function buildHighConfidenceFindingsSection(
   return findingFilter.published
     .map((f) => `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rationale})`)
     .join("\n");
+}
+
+/**
+ * Agentic mode: published findings with no line of the diff to comment on
+ * (a caller broken elsewhere). An inline comment there would be refused,
+ * so they are listed here. Empty (nothing rendered) otherwise, and always
+ * in the per-hunk mode.
+ */
+function buildOutsideDiffSection(findingFilter: FindingFilterStageResult): string[] {
+  const outside = findingFilter.published.filter(
+    (f) => f.agentic && f.agentic.inlineAnchor === null,
+  );
+  if (outside.length === 0) return [];
+  return [
+    "### Findings outside the diff",
+    ...outside.map((f) => `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rationale})`),
+    "",
+  ];
 }
 
 function buildCostSection(input: PublishStageInput): string {
@@ -740,6 +779,24 @@ function codeContextEfficiencyLines(metrics: RunMetrics): string[] {
   return lines;
 }
 
+/** Agentic mode only: the agent run, the outcomes and drops, the verifier and Jev's judge. */
+function agenticEfficiencyLines(metrics: RunMetrics): string[] {
+  const a = metrics.agentic;
+  if (!a) return [];
+  const tools = Object.entries(a.toolCalls)
+    .map(([tool, n]) => `${tool} ${n}`)
+    .join(", ");
+  const drops = Object.entries(a.dropsByReason)
+    .map(([reason, n]) => `${reason} ${n}`)
+    .join(", ");
+  const o = a.outcomes;
+  return [
+    `- Agentic review: ${a.turns} turns · ${a.tokens.total} tokens · $${a.costUsd.toFixed(4)} (${a.model ?? a.status}) · tools: ${tools === "" ? "none" : tools}${a.deniedToolCalls > 0 ? ` · ${a.deniedToolCalls} denied` : ""}${a.diffFilesOmitted > 0 ? ` · ${plural(a.diffFilesOmitted, "file")} left out of the diff by the size cap` : ""}`,
+    `- Agentic findings: ${a.findingsReported} reported → ${o.published} published, ${o.questions} questions, ${o.low} low, ${o.discarded} discarded${drops === "" ? "" : ` · dropped: ${drops}`}`,
+    `- Verifier: ${plural(a.verifier.calls, "call")} · ${a.verifier.tokens} tokens · $${a.verifier.costUsd.toFixed(4)} · Jev judge: ${plural(a.jevJudgeCalls, "request")}`,
+  ];
+}
+
 /** The closing section; see the module doc for why it is last and outside the fingerprint. */
 function buildEfficiencySection(
   metrics: RunMetrics,
@@ -757,6 +814,7 @@ function buildEfficiencySection(
       ? [descriptionContextEfficiencyLine(descriptionContext)]
       : []),
     ...codeContextEfficiencyLines(metrics),
+    ...agenticEfficiencyLines(metrics),
     `- ${llm.method}`,
   ];
 }
@@ -910,7 +968,7 @@ function buildReportBody(input: PublishStageInput): string[] {
     buildSkippedHunksSection(input.hunkProfile),
     "",
     ...(input.inlineCommentsEnabled
-      ? []
+      ? buildOutsideDiffSection(findingFilter)
       : [
           "### Findings (high confidence)",
           buildHighConfidenceFindingsSection(findingFilter, input.review),

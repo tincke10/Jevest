@@ -7,6 +7,7 @@ import type {
   ScoreDecision,
   Usage,
 } from "./decision.js";
+import type { QuestionText } from "./question.js";
 
 describe("Decision shapes", () => {
   it("noul decision is a bare probability", () => {
@@ -35,7 +36,7 @@ describe("Decision shapes", () => {
       confidence: 0.6,
     };
     expectTypeOf(decision.score).toBeNumber();
-    expectTypeOf(decision.legend).toEqualTypeOf<Record<number, string>>();
+    expectTypeOf(decision.legend).toEqualTypeOf<Record<number, QuestionText>>();
   });
 
   it("Decision is the discriminated union of the three kinds", () => {

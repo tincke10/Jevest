@@ -9,6 +9,39 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Agentic review** (`reviewer.mode: agentic`, docs/ACTION.md "Agentic
+  review"): ONE read-only `claude -p` agent per PR in a checkout of the
+  head (cwd), only Read/Grep/Glob, confined to the checkout
+  (`--restricted`), `.env*`/keys/credentials/`.git`/`vendor`/
+  `node_modules`/`storage` denied by permission rules, `--safe-mode`,
+  non-interactive deny-by-default (all verified live against a checkout
+  of fake secrets; gated test `CLAUDE_CLI_LIVE_TEST=1`). Static,
+  cacheable system prompt; the PR (redacted title, author context or the
+  redacted description as untrusted data, changed files, redacted diff
+  capped at 120k chars) on stdin. Findings carry category, severity,
+  claim, failing scenario, 1–3 exact-quote evidence items and confidence,
+  redacted on the way back. Then: deterministic hard exclusions (category
+  allowlist, evidence in a changed file, generated/lock/minified/markdown
+  files, DoS/rate-limit/logging/style claims), the existing evidence
+  verifier, an optional refuting verifier agent per finding
+  (`reviewer.verifier: claude-cli`, `reviewer.verifierModel`, 3 at a
+  time), and Jev's staged judge — `supports` (proves/partially/noMatch on
+  the evidence re-read ±5 lines), `mechanism` (per-category vocabulary
+  with `noIssue`), `severity` (0–3) — routed by one policy module
+  (`src/domain/agentic-policy.ts`) onto the usual published / question /
+  low / discarded buckets. Without a checkout the run fails closed to
+  `unavailable` (no silent fallback). Caps: `reviewer.agentic.maxTurns`
+  (40), `timeoutMs` (15 min), `verifierMaxTurns` (12),
+  `verifierTimeoutMs` (5 min). Metrics and "Efficiency" report turns,
+  tokens, cost, tool usage, denied calls, verifier and Jev judge calls
+  and drops by reason; `pnpm review` / `pnpm eval:review` log every tool
+  call and support it via `--override reviewer.mode=agentic` (eval: drops
+  are `low`, source `dropped`). claude-cli only for now (config error
+  otherwise). With the default `mode: hunks` every prompt, request,
+  result and metric is unchanged (pinned by tests). Jev questions may now
+  carry structured instructions and criteria (`{question, focus, ignore}`,
+  `{what, examples, not_for}`), passed to the SDK as-is.
+
 - **Code context for the reviewer** (docs/ACTION.md "Code context"): three
   opt-in layers under `reviewer:`, all off by default — with all three off
   every prompt, output schema and recorded-fixture key is byte-identical

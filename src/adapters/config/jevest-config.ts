@@ -135,6 +135,35 @@ export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 // the code. See src/application/pipeline/stages/code-context.ts.
 const DEFAULT_REVIEW_LANGUAGE = "es";
 
+// Review mode. "hunks" (default) is the per-hunk reviewer every benchmark
+// measured, byte-identical to before `mode` existed. "agentic" runs ONE
+// read-only agent per PR in a checkout of the head (claude-cli only for
+// now), then hard exclusions, the evidence check, an optional per-finding
+// LLM verifier (`verifier`) and Jev's staged judge — see
+// src/application/pipeline/stages/agentic-review.ts and agentic-judge.ts.
+// `agentic` holds the agent's caps; defaults below.
+export const REVIEWER_MODES = ["hunks", "agentic"] as const;
+export type ReviewerMode = (typeof REVIEWER_MODES)[number];
+export const VERIFIER_PROVIDERS = ["none", "claude-cli"] as const;
+export type VerifierProvider = (typeof VERIFIER_PROVIDERS)[number];
+
+const DEFAULT_AGENTIC = {
+  maxTurns: 40,
+  timeoutMs: 900_000,
+  verifierMaxTurns: 12,
+  verifierTimeoutMs: 300_000,
+};
+const DEFAULT_VERIFIER_MODEL = "claude-sonnet-5";
+
+const agenticSchema = z
+  .object({
+    maxTurns: z.number().int().positive().default(DEFAULT_AGENTIC.maxTurns),
+    timeoutMs: z.number().int().positive().default(DEFAULT_AGENTIC.timeoutMs),
+    verifierMaxTurns: z.number().int().positive().default(DEFAULT_AGENTIC.verifierMaxTurns),
+    verifierTimeoutMs: z.number().int().positive().default(DEFAULT_AGENTIC.verifierTimeoutMs),
+  })
+  .default(DEFAULT_AGENTIC);
+
 const reviewerSchema = z
   .object({
     provider: z.enum(REVIEWER_PROVIDERS),
@@ -145,8 +174,27 @@ const reviewerSchema = z
     fullFile: z.boolean().default(false),
     impactContext: z.boolean().default(false),
     requireEvidence: z.boolean().default(false),
+    mode: z.enum(REVIEWER_MODES).default("hunks"),
+    agentic: agenticSchema,
+    verifier: z.enum(VERIFIER_PROVIDERS).default("none"),
+    verifierModel: z.string().min(1).default(DEFAULT_VERIFIER_MODEL),
   })
   .superRefine((r, ctx) => {
+    if (r.mode === "agentic" && r.provider !== "claude-cli") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["mode"],
+        message: `agentic mode currently requires reviewer.provider: claude-cli (got "${r.provider}")`,
+      });
+    }
+    if (r.verifier !== "none" && r.mode !== "agentic") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["verifier"],
+        message:
+          "reviewer.verifier needs reviewer.mode: agentic (the per-hunk mode has no verifier); set mode: agentic or drop reviewer.verifier",
+      });
+    }
     if (r.provider !== "none" && !r.model) {
       ctx.addIssue({
         code: "custom",
@@ -296,6 +344,19 @@ export interface JevestConfig {
     readonly impactContext: boolean;
     /** Every finding must quote the code that proves it; unverified ones are not published. Default false. */
     readonly requireEvidence: boolean;
+    /** "hunks" (default, per-hunk reviewer) or "agentic" (one read-only agent per PR; claude-cli only). */
+    readonly mode: ReviewerMode;
+    /** The agentic reviewer's and verifier's caps (agentic mode only). */
+    readonly agentic: {
+      readonly maxTurns: number;
+      readonly timeoutMs: number;
+      readonly verifierMaxTurns: number;
+      readonly verifierTimeoutMs: number;
+    };
+    /** Per-finding LLM verifier in agentic mode: "none" (default) or "claude-cli". */
+    readonly verifier: VerifierProvider;
+    /** The verifier's model. Default "claude-sonnet-5". */
+    readonly verifierModel: string;
   };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
@@ -391,6 +452,10 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
       fullFile: result.data.reviewer.fullFile,
       impactContext: result.data.reviewer.impactContext,
       requireEvidence: result.data.reviewer.requireEvidence,
+      mode: result.data.reviewer.mode,
+      agentic: result.data.reviewer.agentic,
+      verifier: result.data.reviewer.verifier,
+      verifierModel: result.data.reviewer.verifierModel,
     },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,

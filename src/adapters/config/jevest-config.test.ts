@@ -57,6 +57,15 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
@@ -129,6 +138,15 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
   });
 
@@ -161,6 +179,15 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
   });
 
@@ -178,6 +205,15 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
   });
 
@@ -207,6 +243,63 @@ describe("loadJevestConfig", () => {
       await expect(
         loadJevestConfigFromString(
           "reviewer:\n  provider: openai\n  model: m\n  fullFile: yes please\n",
+        ),
+      ).rejects.toThrow(JevestConfigError);
+    });
+  });
+
+  describe("reviewer.mode (hunks | agentic) and the agentic verifier", () => {
+    it("defaults to the per-hunk mode, no verifier, and the documented agentic caps", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: openai\n  model: m\n",
+      );
+      expect(config.reviewer.mode).toBe("hunks");
+      expect(config.reviewer.verifier).toBe("none");
+      expect(config.reviewer.verifierModel).toBe("claude-sonnet-5");
+      expect(config.reviewer.agentic).toEqual({
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      });
+    });
+
+    it("accepts agentic mode with the claude-cli provider, a verifier and custom caps", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifier: claude-cli\n  verifierModel: v\n  agentic:\n    maxTurns: 25\n",
+      );
+      expect(config.reviewer.mode).toBe("agentic");
+      expect(config.reviewer.verifier).toBe("claude-cli");
+      expect(config.reviewer.verifierModel).toBe("v");
+      expect(config.reviewer.agentic.maxTurns).toBe(25);
+      expect(config.reviewer.agentic.timeoutMs).toBe(900_000);
+    });
+
+    it("rejects agentic mode with any other provider, naming the requirement", async () => {
+      for (const provider of ["anthropic", "openai", "deepseek", "none"]) {
+        await expect(
+          loadJevestConfigFromString(
+            `reviewer:\n  provider: ${provider}\n  model: m\n  mode: agentic\n`,
+          ),
+        ).rejects.toThrow(/agentic mode currently requires reviewer\.provider: claude-cli/);
+      }
+    });
+
+    it("rejects a verifier outside agentic mode instead of silently ignoring it", async () => {
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  model: m\n  verifier: claude-cli\n",
+        ),
+      ).rejects.toThrow(/reviewer\.verifier needs reviewer\.mode: agentic/);
+    });
+
+    it("rejects an unknown mode and a non-positive turn cap", async () => {
+      await expect(
+        loadJevestConfigFromString("reviewer:\n  provider: claude-cli\n  model: m\n  mode: repo\n"),
+      ).rejects.toThrow(JevestConfigError);
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  agentic:\n    maxTurns: 0\n",
         ),
       ).rejects.toThrow(JevestConfigError);
     });
@@ -351,6 +444,15 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     });
     expect(fromMissing.budgetUsd).toBe(5);
     expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });

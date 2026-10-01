@@ -1955,3 +1955,121 @@ describe("runPublishStage code context and evidence", () => {
     expect(markdown).not.toContain("- Code context:");
   });
 });
+
+describe("runPublishStage — agentic findings (reviewer.mode: agentic)", () => {
+  function agenticFinding(
+    overrides: Partial<FilteredFinding> = {},
+    anchor: { path: string; line: number } | null = { path: "a.ts", line: 3 },
+  ): FilteredFinding {
+    return makeFinding({
+      findingId: "agentic-f0",
+      hunkId: "agentic",
+      lineStart: 40,
+      lineEnd: 40,
+      claim: "Total skips the last item",
+      rationale: "items=[1,2] -> 1",
+      agentic: {
+        category: "correctness",
+        reportedSeverity: "high",
+        confidence: 0.9,
+        evidence: [{ file: "a.ts", line: 3, quote: "i < n - 1" }],
+        evidenceVerified: 1,
+        inlineAnchor: anchor,
+        verifier: null,
+        supports: { choice: "proves", confidence: 0.9 },
+        mechanism: { choice: "condition", confidence: 0.8 },
+        severity: { score: 2, confidence: 0.7 },
+        route: "supported by the evidence",
+      },
+      ...overrides,
+    });
+  }
+
+  function publish(findingFilter: FindingFilterStageResult, metrics: RunMetrics = makeMetrics()) {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([makeHunkEntry()]),
+      review: makeReview(),
+      findingFilter,
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics,
+    });
+  }
+
+  it("comments inline at the anchor (a HEAD-side diff line), never re-mapping it as a before-side line", () => {
+    const result = publish(makeFindingFilter({ published: [agenticFinding()] }));
+    expect(result.inlineComments).toHaveLength(1);
+    expect(result.inlineComments[0]).toMatchObject({ path: "a.ts", line: 3 });
+  });
+
+  it("keeps a finding with no diff line out of inline comments and lists it in the summary", () => {
+    const result = publish(makeFindingFilter({ published: [agenticFinding({}, null)] }));
+    expect(result.inlineComments).toEqual([]);
+    expect(result.summaryMarkdown).toContain("### Findings outside the diff");
+    expect(result.summaryMarkdown).toContain(
+      "`a.ts` line 40: Total skips the last item (items=[1,2] -> 1)",
+    );
+  });
+
+  it("says why an agentic finding is a question", () => {
+    const question = agenticFinding({
+      agentic: {
+        ...agenticFinding().agentic!,
+        route: "the evidence only partially supports the claim",
+      },
+    });
+    const result = publish(makeFindingFilter({ needsHuman: [question] }));
+    expect(result.summaryMarkdown).toContain(
+      "Total skips the last item (items=[1,2] -> 1) — question: the evidence only partially supports the claim",
+    );
+  });
+
+  it("adds no new section or line for per-hunk findings", () => {
+    const result = publish(
+      makeFindingFilter({ published: [makeFinding()], needsHuman: [makeFinding()] }),
+    );
+    expect(result.summaryMarkdown).not.toContain("Findings outside the diff");
+    expect(result.summaryMarkdown).not.toContain("— question:");
+    expect(result.summaryMarkdown).not.toContain("Agentic review");
+  });
+
+  it("reports the agent run, the verifier, Jev's judge and the drops in Efficiency, before the method line", () => {
+    const result = publish(
+      makeFindingFilter(),
+      makeMetrics({
+        agentic: {
+          status: "ran",
+          model: "claude-opus-5",
+          turns: 31,
+          tokens: { input: 68_100, output: 2000, total: 70_100 },
+          costUsd: 1.25,
+          latencyMs: 90_000,
+          diffChars: 4000,
+          diffFilesOmitted: 0,
+          toolCalls: { Read: 20, Grep: 9, Glob: 2 },
+          deniedToolCalls: 1,
+          findingsReported: 5,
+          outcomes: { published: 1, questions: 1, low: 2, discarded: 1 },
+          dropsByReason: { "exclusion:excluded-claim": 1, "judge:supports-noMatch": 2 },
+          verifier: { calls: 2, turns: 9, tokens: 100, costUsd: 0.2 },
+          jevJudgeCalls: 7,
+        },
+      }),
+    );
+    const efficiency = result.summaryMarkdown.split("### Efficiency")[1] ?? "";
+    expect(efficiency).toContain(
+      "- Agentic review: 31 turns · 70100 tokens · $1.2500 (claude-opus-5) · tools: Read 20, Grep 9, Glob 2 · 1 denied",
+    );
+    expect(efficiency).toContain(
+      "- Agentic findings: 5 reported → 1 published, 1 questions, 2 low, 1 discarded · dropped: exclusion:excluded-claim 1, judge:supports-noMatch 2",
+    );
+    expect(efficiency).toContain(
+      "- Verifier: 2 calls · 100 tokens · $0.2000 · Jev judge: 7 requests",
+    );
+    expect(result.summaryMarkdown.trimEnd().split("\n").at(-1)).toContain(
+      "Estimate, not a measurement",
+    );
+  });
+});

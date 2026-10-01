@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
+import { loadJevestConfigFromString } from "../../adapters/config/jevest-config.js";
 import { applyConfigOverrides, parseOverride } from "./config-overrides.js";
 
 describe("parseOverride", () => {
@@ -45,5 +46,29 @@ describe("applyConfigOverrides", () => {
 
   it("rejects an overrides document that is not a mapping", () => {
     expect(() => applyConfigOverrides(base, [1, 2], [])).toThrow(/mapping/);
+  });
+});
+
+describe("agentic variants via --override", () => {
+  it("switches a claude-cli config to agentic mode with the verifier and its caps", async () => {
+    const yaml = applyConfigOverrides(
+      "reviewer:\n  provider: claude-cli\n  model: claude-opus-5\nbudgetUsd: 2\n",
+      undefined,
+      [
+        "reviewer.mode=agentic",
+        "reviewer.verifier=claude-cli",
+        "reviewer.verifierModel=claude-sonnet-5",
+        "reviewer.agentic.maxTurns=30",
+      ].map(parseOverride),
+    );
+    const config = await loadJevestConfigFromString(yaml);
+    expect(config.reviewer).toMatchObject({
+      provider: "claude-cli",
+      mode: "agentic",
+      verifier: "claude-cli",
+      verifierModel: "claude-sonnet-5",
+      agentic: { maxTurns: 30, timeoutMs: 900_000 },
+    });
+    expect(config.budgetUsd).toBe(2);
   });
 });

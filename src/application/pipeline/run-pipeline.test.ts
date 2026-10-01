@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  createFakeAgenticReviewer,
+  createFakeFindingVerifier,
+} from "../../adapters/agentic/fake-agentic.js";
 import type { JevestConfig } from "../../adapters/config/jevest-config.js";
 import {
   createFakeDescriptionContextExtractor,
@@ -92,6 +96,15 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
+      mode: "hunks",
+      agentic: {
+        maxTurns: 40,
+        timeoutMs: 900_000,
+        verifierMaxTurns: 12,
+        verifierTimeoutMs: 300_000,
+      },
+      verifier: "none",
+      verifierModel: "claude-sonnet-5",
     },
     thresholds: policyConfig,
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
@@ -520,6 +533,15 @@ describe("runPipeline", () => {
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       }),
     });
@@ -587,6 +609,15 @@ describe("runPipeline", () => {
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       }),
     });
@@ -1155,6 +1186,15 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       }),
     });
@@ -1174,6 +1214,15 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       }),
     });
@@ -1212,6 +1261,15 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       }),
     });
@@ -1751,6 +1809,15 @@ describe("runPipeline colleague review (narrator)", () => {
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       },
     });
@@ -1832,6 +1899,15 @@ describe("runPipeline colleague review (narrator)", () => {
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       },
     });
@@ -2091,6 +2167,15 @@ describe("runPipeline author context from the PR description", () => {
           fullFile: false,
           impactContext: false,
           requireEvidence: false,
+          mode: "hunks",
+          agentic: {
+            maxTurns: 40,
+            timeoutMs: 900_000,
+            verifierMaxTurns: 12,
+            verifierTimeoutMs: 300_000,
+          },
+          verifier: "none",
+          verifierModel: "claude-sonnet-5",
         },
       },
     });
@@ -2271,5 +2356,211 @@ describe("runPipeline code context and evidence (reviewer.fullFile / impactConte
     });
     expect(result.metrics.codeContext).toMatchObject({ evidenceChecked: 1, evidenceRejected: 0 });
     expect(result.findingFilter?.lowConfidence.some((f) => f.rejectedReason)).toBe(false);
+  });
+});
+
+describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
+  const PR = makePr({
+    body: "Adds one to the total on purpose.",
+    files: [
+      {
+        path: "src/total.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ -1,1 +1,1 @@\n-const total = sum;\n+const total = sum + 1;",
+      },
+    ],
+  });
+  const TREE = { "src/total.ts": "const total = sum + 1;\n" };
+  const FINDING = {
+    file: "src/total.ts",
+    line: 1,
+    category: "correctness" as const,
+    severity: "high" as const,
+    claim: "The total is off by one.",
+    failingScenario: "sum=10 -> total 11",
+    evidence: [{ file: "src/total.ts", line: 1, quote: "const total = sum + 1;" }],
+    confidence: 0.9,
+  };
+
+  function judgePort(): DecisionPort {
+    const base = fullRunWithFindingPort();
+    let n = 0;
+    return {
+      async decide(state, questions) {
+        const key = Object.keys(questions)[0];
+        if (key === "supports" || key === "mechanism" || key === "severity") {
+          n += 1;
+          const answer: Decision =
+            key === "supports"
+              ? {
+                  type: "choice",
+                  choice: "proves",
+                  confidence: 0.9,
+                  probabilities: { proves: 0.9 },
+                }
+              : key === "mechanism"
+                ? {
+                    type: "choice",
+                    choice: "dataFlow",
+                    confidence: 0.8,
+                    probabilities: { dataFlow: 0.8 },
+                  }
+                : { type: "score", score: 2, confidence: 0.7, legend: {}, probabilities: {} };
+          return {
+            requestId: `judge_${n}`,
+            model: "fake",
+            latencyMs: 7,
+            usage: { inputTokens: 3, outputTokens: 1 },
+            // biome-ignore lint/suspicious/noExplicitAny: test double
+            answers: { [key]: answer } as any,
+          };
+        }
+        return base.decide(state, questions);
+      },
+    } as DecisionPort;
+  }
+
+  function agenticConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestConfig {
+    return makeConfig({
+      reviewer: {
+        ...makeConfig().reviewer,
+        provider: "claude-cli",
+        model: "claude-opus-5",
+        narrative: false,
+        descriptionContext: false,
+        mode: "agentic",
+        ...overrides,
+      },
+    });
+  }
+
+  function tracking(): ReviewerPort & { calls: number } {
+    const port = {
+      calls: 0,
+      async review(input: ReviewInput) {
+        port.calls++;
+        return fakeReviewer().review(input);
+      },
+    };
+    return port;
+  }
+
+  it("runs ONE agent in the checkout instead of the per-hunk reviewer, then publishes what Jev's judge kept", async () => {
+    const agent = createFakeAgenticReviewer([FINDING], {
+      info: { nominalCostUsd: 0.9, turns: 12 },
+    });
+    const reviewer = tracking();
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(PR),
+        decision: judgePort(),
+        reviewer,
+        agenticReviewer: agent,
+        workingTree: createInMemoryWorkingTree(TREE),
+      },
+      headCheckoutRoot: "/checkout",
+      config: agenticConfig({ fullFile: true, impactContext: true }),
+    });
+    expect(reviewer.calls).toBe(0);
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0]?.repoRoot).toBe("/checkout");
+    expect(result.codeContext).toBeNull();
+    expect(result.findingFilter?.published).toHaveLength(1);
+    expect(result.publication.inlineComments[0]).toMatchObject({ path: "src/total.ts", line: 1 });
+    expect(result.agentic?.review.status).toBe("ran");
+    expect(result.metrics.agentic).toMatchObject({
+      turns: 12,
+      jevJudgeCalls: 3,
+      findingsReported: 1,
+    });
+    expect(result.metrics.jev.requests.findingFilter).toBe(3);
+    expect(result.costUsd).toBeCloseTo(0.9);
+    expect(result.publication.check.conclusion).toBe("failure");
+  });
+
+  it("gives the agent the redacted raw description, framed as untrusted, when no extractor ran", async () => {
+    const agent = createFakeAgenticReviewer();
+    await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(PR),
+        decision: judgePort(),
+        agenticReviewer: agent,
+        workingTree: createInMemoryWorkingTree(TREE),
+      },
+      headCheckoutRoot: "/checkout",
+      config: agenticConfig(),
+    });
+    expect(agent.calls[0]?.description).toBe("Adds one to the total on purpose.");
+  });
+
+  it("without a checkout fails closed to unavailable with a clear note, and never falls back to the per-hunk review", async () => {
+    const agent = createFakeAgenticReviewer([FINDING]);
+    const reviewer = tracking();
+    const result = await runPipeline({
+      ref,
+      ports: { vcs: makeVcs(PR), decision: judgePort(), reviewer, agenticReviewer: agent },
+      workingTreeUnavailableReason: "no checkout",
+      config: agenticConfig(),
+    });
+    expect(agent.calls).toHaveLength(0);
+    expect(reviewer.calls).toBe(0);
+    expect(result.failedClosed).toBe(false);
+    expect(result.agentic?.review.status).toBe("unavailable");
+    expect(result.publication.check.conclusion).toBe("neutral");
+    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
+    expect(result.publication.summaryMarkdown).toContain(
+      "agentic review unavailable: no checkout (agentic mode needs a checkout of the PR head)",
+    );
+  });
+
+  it("runs the verifier when configured and counts its cost in the run", async () => {
+    const agent = createFakeAgenticReviewer([FINDING], { info: { nominalCostUsd: 0.5 } });
+    const verifier = createFakeFindingVerifier(() => "confirmed", { nominalCostUsd: 0.25 });
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(PR),
+        decision: judgePort(),
+        agenticReviewer: agent,
+        findingVerifier: verifier,
+        workingTree: createInMemoryWorkingTree(TREE),
+      },
+      headCheckoutRoot: "/checkout",
+      config: agenticConfig({ verifier: "claude-cli" }),
+    });
+    expect(verifier.calls).toHaveLength(1);
+    expect(result.metrics.agentic?.verifier).toMatchObject({ calls: 1, costUsd: 0.25 });
+    expect(result.costUsd).toBeCloseTo(0.75);
+  });
+
+  it("hunks mode stays exactly as before: agentic ports are ignored and nothing agentic appears", async () => {
+    const run = (withAgentic: boolean) =>
+      runPipeline({
+        ref,
+        ports: {
+          vcs: makeVcs(PR),
+          decision: fullRunWithFindingPort(),
+          reviewer: fakeReviewer([OFF_BY_ONE]),
+          ...(withAgentic
+            ? {
+                agenticReviewer: createFakeAgenticReviewer([FINDING]),
+                findingVerifier: createFakeFindingVerifier(),
+              }
+            : {}),
+        },
+        ...(withAgentic ? { headCheckoutRoot: "/checkout" } : {}),
+        config: makeConfig(),
+        now: () => new Date("2026-09-21T16:00:00.000Z"),
+      });
+    const plain = await run(false);
+    const wired = await run(true);
+    expect(wired).toEqual(plain);
+    expect(plain).not.toHaveProperty("agentic");
+    expect(plain.metrics).not.toHaveProperty("agentic");
+    expect(plain.publication.summaryMarkdown).not.toContain("Agentic");
   });
 });

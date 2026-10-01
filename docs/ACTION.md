@@ -276,6 +276,141 @@ accordingly, or turn on `impactContext` / `requireEvidence` without
 for what it measured on a large repo (`fetch-depth: 1` keeps it to a
 single commit's tree).
 
+### Agentic review (`reviewer.mode: agentic`)
+
+The per-hunk reviewer, even with the code context above, sees the change
+through a keyhole. Measured on a private golden set of 6 real PRs
+(severity-weighted recall / precision): per hunk 7.7% / 25%; per hunk +
+full file + impact context + evidence 26.9% / ~40% at 3.6x the cost; a
+Jev-only reviewer 0%; ONE agent per PR with read-only tools over the
+repository 61.5% / ~90% at ~80k tokens per PR. Industry reviewers
+(Cursor Bugbot, Copilot, Greptile v3, Anthropic's code-review plugin,
+ByteDance BitsAI-CR) converged on the same shape: one agent per PR, then
+per-finding verification, hard exclusions and a decision-first filter.
+Jev is good at JUDGING a concrete hypothesis against evidence, not at
+discovering bugs, so in this mode the agent proposes and Jev decides.
+
+```yaml
+reviewer:
+  provider: claude-cli          # required: agentic mode runs `claude -p`
+  model: claude-opus-5
+  mode: agentic                 # default: hunks (the per-hunk reviewer)
+  agentic:
+    maxTurns: 40                # default 40
+    timeoutMs: 900000           # default 15 minutes
+    verifierMaxTurns: 12        # default 12
+    verifierTimeoutMs: 300000   # default 5 minutes
+  verifier: none                # or claude-cli: one refuting agent per finding
+  verifierModel: claude-sonnet-5
+```
+
+What runs, per PR:
+
+1. **Triage, hunk profile, description context** as always (the hunk
+   profile still provides the secret warning and the in-diff injection
+   flag; the per-hunk review and the code-context stage do not run).
+2. **One agent** (`claude -p`, cwd = the checkout of the PR head, only
+   Read / Grep / Glob) gets a static system prompt (scope: correctness,
+   security, regressions/compatibility, reliability, and missing tests
+   only for risky changed logic; never style, naming, docs, lint-catchable
+   issues, speculation without a concrete path, pre-existing issues the PR
+   does not touch, DoS / rate-limit theory) and, on stdin, the PR: the
+   redacted title, the author context (the extractor's output when it ran,
+   otherwise the redacted description framed as untrusted data, never
+   either when triage flagged injected instructions), every changed path
+   and the redacted diff (capped at 120k characters; whole files past the
+   cap are left out and named, so the agent can open them). It opens the
+   changed files, greps for their callers, tests and consumers, verifies
+   each claim in the code, and answers with findings `{file, line,
+   category, severity, claim, failingScenario, evidence: [{file, line,
+   quote}] (1–3), confidence}`. Reporting nothing is fine.
+3. **Hard exclusions** (deterministic, `src/domain/hard-exclusions.ts`):
+   a category outside the allowlist, a finding in a generated, lock,
+   minified or markdown file, a claim about DoS / rate limiting / "add
+   logging" / style or docs, and a finding none of whose evidence is in a
+   file the PR changed (a broken caller elsewhere is kept as long as it
+   cites the changed code that breaks it) are discarded with their reason.
+4. **Evidence check**: the same deterministic verifier as
+   `requireEvidence`. No quote found in the code → low confidence,
+   `evidence not found in code`.
+5. **Verifier** (optional, `reviewer.verifier: claude-cli`): per surviving
+   finding, a fresh agent with the same tools and deny list and a small
+   turn cap tries to REFUTE it, decision first. `refuted` → discarded with
+   its reason; `uncertain` (also a verifier error, or a spent budget) → at
+   most a question; `confirmed` → on to Jev. At most 3 run at a time.
+6. **Jev's staged judge**, one typed request per step, stopping at the
+   first discard: `supports` (does the evidence, re-read from the checkout
+   ±5 lines and redacted, support the claim and the failing scenario?
+   proves / partially / noMatch), `mechanism` (a per-category vocabulary
+   with a `noIssue` escape hatch), `severity` (0 no impact … 3 critical).
+   Policy, in one module (`src/domain/agentic-policy.ts`): publish when
+   `proves` at confidence ≥ 0.7, severity ≥ 1 and the verifier was not
+   uncertain; a question when `partially`, `proves` under 0.7, or the
+   verifier was uncertain; discard on `noMatch`, any `supports` answer
+   under 0.55, `noIssue` or severity < 1 (low confidence in
+   `findingFilter.mode: annotate`). A finding the agent rated `critical`
+   is never discarded on Jev's judgment alone (FR-5.4): it becomes a
+   question. A Jev failure on a finding makes it an "unverified" question,
+   never a published finding (NFR-2).
+
+The result maps onto the usual buckets (published / questions / low
+confidence / discarded), so the verdict, labels, narrator, merge gate and
+publish are unchanged. Lines are HEAD-side; a published finding is
+commented inline on its own line when that line is in the diff, else on a
+verified evidence line in the diff, else it is listed under "Findings
+outside the diff" in the summary. Every drop is listed with its reason in
+the details, and "Efficiency" adds the agent's turns, tokens, cost and
+tool usage, the outcomes and drops by reason, the verifier calls and
+Jev's judge requests.
+
+**It needs a checkout of the PR head**, exactly like the code context
+(`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}`).
+Without one the run **fails closed** to the `unavailable` verdict with the
+line `agentic review unavailable: no checkout (agentic mode needs a
+checkout of the PR head)` under "LLM review failed"; it never falls back
+to the per-hunk review silently. An agent error (a timeout, `maxTurns`
+reached) is reported the same way.
+
+**Only `claude-cli` for now**: any other provider with `mode: agentic` is
+a config error (`agentic mode currently requires reviewer.provider:
+claude-cli`); `reviewer.verifier` without `mode: agentic` is one too.
+
+**Read access and secrets (trust model).** The agent reads repository
+files directly, so NFR-3 redaction covers what Jevest SENDS (the title,
+the description, the diff) and what comes BACK (every finding's claim,
+scenario and quotes are redacted before Jev, the verifier, the narrator
+or the PR see them), while what the agent itself can open is limited by
+the CLI's permission layer, verified with a live test against a checkout
+full of fake secrets (`src/adapters/claude-cli/claude-cli-agent.integration.test.ts`):
+
+- tools: only Read, Grep and Glob exist in the session (`--tools`); Bash,
+  Write, Edit, NotebookEdit, WebFetch, WebSearch and Task are also denied;
+- confined to the checkout (`--restricted`): a Read of a path outside it is
+  refused; user/project/local Claude settings files are ignored, so the
+  repository under review cannot loosen the rules with its own
+  `.claude/settings.json`; `--safe-mode` keeps CLAUDE.md, hooks, plugins,
+  skills and MCP servers off;
+- never readable (deny rules, Grep skips them too): `.env*` anywhere,
+  `*.pem`, `*.key`, `*.p12`, `*.pfx`, `id_rsa*`, `id_ed25519*`,
+  `**/secrets/**`, `**/credentials*`, `storage/**`, `vendor/**`,
+  `**/node_modules/**` and `.git/**` (where `actions/checkout` persists
+  the job token);
+- non-interactive: `--permission-mode dontAsk --permission-prompts none`,
+  so anything not allowed is denied, nobody is asked.
+
+A secret committed in a regular source file IS readable by the agent
+(it is part of the code under review); it still never leaves Jevest's
+outputs unredacted, and the hunk profile still raises the "possible
+committed secret" warning for it.
+
+**Cost.** One agent run per PR (a measured 25-turn run on a 6-file PR:
+~690k tokens counting the cache reads every turn re-sends, ~15k output,
+$1.35 nominal on claude-opus-5, about 4 minutes) plus, with the verifier, one small run per surviving finding, and
+1–3 Jev requests per finding. `budgetUsd` is checked before the agent
+starts and before each verifier call; the run itself is bounded by
+`maxTurns` and `timeoutMs`, not by the budget, so set `budgetUsd` above one
+agent run.
+
 ### Finding filter mode
 
 `findingFilter.mode` controls what stage 4 does with a low-confidence
@@ -832,6 +967,12 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   the verdict `unavailable` unless findings were published, so the check
   is never green. The adversarial suite (H5)
   regression-tests this in CI (SPEC §4.2, §10).
+- **Agentic mode reads the repository** (`reviewer.mode: agentic`): the
+  agent opens files in the checkout itself, read-only and confined to it,
+  with environment files, keys, credentials, `.git`, `vendor`,
+  `node_modules` and `storage` denied. Redaction (NFR-3) applies to what
+  Jevest sends and to everything the agent returns; see "Agentic review"
+  for the full deny list and how it was verified.
 - Never put an API key directly in a workflow file — always
   `${{ secrets.<NAME> }}` (NFR-9).
 - **Secrets in the pull request are redacted before anything leaves the

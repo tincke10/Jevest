@@ -127,3 +127,39 @@ describe("candidatesFromPipeline — evidence-failed findings (reviewer.requireE
     expect(new Set(candidates.map((c) => c.id)).size).toBe(candidates.length);
   });
 });
+
+describe("candidatesFromPipeline — agentic drops (reviewer.mode: agentic)", () => {
+  const dropped = (id: string, claim: string, reason: string): FilteredFinding => ({
+    ...finding(id, "src/d.ts", 7, claim),
+    rejectedReason: reason,
+  });
+
+  it("puts every dropped finding in low with source 'dropped', keeping evidence failures apart", () => {
+    const candidates = candidatesFromPipeline(
+      {
+        findingFilter: {
+          published: [finding("p", "src/a.ts", 1, "Real bug")],
+          needsHuman: [finding("q", "src/a.ts", 2, "A question")],
+          lowConfidence: [
+            dropped("l1", "Jev said noMatch", "Jev found the evidence does not support the claim"),
+            dropped("l2", "No quote found", "evidence not found in code"),
+          ],
+          discarded: [
+            dropped("d1", "Rate limit theory", "excluded (excluded-claim): rate limiting"),
+          ],
+        },
+        narrative: null,
+        hunkProfile: null,
+      },
+      "case-a",
+    );
+    expect(candidates.map((c) => [c.source, c.bucket])).toEqual([
+      ["finding", "shown"],
+      ["question", "shown"],
+      ["evidence-failed", "low"],
+      ["dropped", "low"],
+      ["dropped", "low"],
+    ]);
+    expect(new Set(candidates.map((c) => c.id)).size).toBe(candidates.length);
+  });
+});

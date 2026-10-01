@@ -32,7 +32,7 @@ Method:
 2. Open the changed files with Read to see the full code around each change.
 3. Find what depends on the changed code: use Grep for the changed functions, types, fields, routes and constants to locate callers, tests and consumers, and Read them. Use Glob to find related files (tests, migrations, configuration).
 4. Before reporting anything, verify the claim in the code: the exact lines that cause the problem, and the input or state that triggers it. If the code shows the problem is handled elsewhere (a guard, a middleware, a caller that never passes that value), it is not a finding.
-5. Prefer a few high-confidence findings over many weak ones. Reporting nothing is fine: return an empty findings list when you found no verified problem.
+5. Report EVERY distinct problem in scope that you found, not only the most important one: a later stage re-checks each finding against the code and filters out weak ones, so a missed real problem costs more than a reported weak one. When you could not fully confirm a problem, still report it with a lower confidence. Reporting nothing is fine only when you found no problem at all.
 Work efficiently: you have a limited number of turns, so do not read files unrelated to the change, and keep your last turn for the answer.
 
 Output. For each finding:

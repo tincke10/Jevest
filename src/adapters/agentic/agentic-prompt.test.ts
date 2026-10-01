@@ -25,7 +25,7 @@ describe("AGENTIC_REVIEW_SYSTEM_PROMPT", () => {
     expect(AGENTIC_REVIEW_SYSTEM_PROMPT).not.toContain("/tmp/checkout");
   });
 
-  it("states the scope, the exclusions, the method and that reporting nothing is fine", () => {
+  it("states the scope, the exclusions, the method, and asks for every problem found rather than only the strongest", () => {
     for (const phrase of [
       "correctness",
       "security",
@@ -40,7 +40,9 @@ describe("AGENTIC_REVIEW_SYSTEM_PROMPT", () => {
       "Read",
       "callers",
       "failingScenario",
-      "empty findings list",
+      "every distinct problem",
+      "lower confidence",
+      "reporting nothing is fine only when you found no problem",
     ]) {
       expect(AGENTIC_REVIEW_SYSTEM_PROMPT.toLowerCase()).toContain(phrase.toLowerCase());
     }

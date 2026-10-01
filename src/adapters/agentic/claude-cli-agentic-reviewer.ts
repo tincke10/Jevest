@@ -27,7 +27,7 @@ import { AGENTIC_REVIEW_SYSTEM_PROMPT, buildAgenticReviewUserPrompt } from "./ag
 /** `reviewer.agentic.maxTurns` default. */
 export const AGENTIC_DEFAULT_MAX_TURNS = 40;
 /** `reviewer.agentic.effort` default. */
-export const AGENTIC_DEFAULT_EFFORT: AgentEffort = "high";
+export const AGENTIC_DEFAULT_EFFORT: AgentEffort = "xhigh";
 /** `reviewer.agentic.timeoutMs` default: 15 minutes. */
 export const AGENTIC_DEFAULT_TIMEOUT_MS = 900_000;
 
@@ -36,7 +36,7 @@ export interface ClaudeCliAgenticReviewerOptions {
   /** Default "claude-opus-5". */
   readonly model?: string;
   readonly maxTurns?: number;
-  /** `reviewer.agentic.effort`. Default "high". */
+  /** `reviewer.agentic.effort`. Default "xhigh". */
   readonly effort?: AgentEffort;
   readonly timeoutMs?: number;
   readonly now?: () => number;

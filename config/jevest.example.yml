@@ -75,7 +75,7 @@ reviewer:
   #   verifierTimeoutMs: 300000
   #   # The agent's --effort: low | medium | high | xhigh | max. Explicit
   #   # because the agent runs in safe mode, which ignores your settings.
-  #   effort: high
+  #   effort: xhigh
   # Agentic mode only: none (default) or claude-cli, a fresh agent per
   # finding that tries to refute it before Jev judges it.
   # verifier: none

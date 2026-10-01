@@ -68,7 +68,7 @@ describe("createClaudeCliAgenticReviewer", () => {
     );
     expect(argAfter(call?.args ?? [], "--max-turns")).toBe("40");
     expect(argAfter(call?.args ?? [], "--model")).toBe("claude-opus-5");
-    expect(argAfter(call?.args ?? [], "--effort")).toBe("high");
+    expect(argAfter(call?.args ?? [], "--effort")).toBe("xhigh");
     expect(output).toMatchObject({
       findings: [],
       turns: 9,
@@ -79,7 +79,7 @@ describe("createClaudeCliAgenticReviewer", () => {
 
   it("passes the configured effort to the agent", async () => {
     const { spawn, calls } = recordingSpawn(`${resultLine({ findings: [] })}\n`);
-    const reviewer = createClaudeCliAgenticReviewer({ spawn, effort: "xhigh", now: () => 0 });
+    const reviewer = createClaudeCliAgenticReviewer({ spawn, effort: "max", now: () => 0 });
     await reviewer.reviewPullRequest({
       prId: "p",
       repoRoot: "/c",
@@ -87,7 +87,7 @@ describe("createClaudeCliAgenticReviewer", () => {
       changedFiles: ["a.ts"],
       diff: "",
     });
-    expect(argAfter(calls[0]?.args ?? [], "--effort")).toBe("xhigh");
+    expect(argAfter(calls[0]?.args ?? [], "--effort")).toBe("max");
   });
 
   it("returns redacted findings", async () => {

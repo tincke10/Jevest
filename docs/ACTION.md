@@ -300,7 +300,7 @@ reviewer:
     timeoutMs: 900000           # default 15 minutes
     verifierMaxTurns: 12        # default 12
     verifierTimeoutMs: 300000   # default 5 minutes
-    effort: high                # default high: low | medium | high | xhigh | max
+    effort: xhigh               # default xhigh: low | medium | high | xhigh | max
   verifier: none                # or claude-cli: one refuting agent per finding
   verifierModel: claude-sonnet-5
   verifierEffort: medium        # default medium, same levels

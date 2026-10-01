@@ -157,7 +157,7 @@ const DEFAULT_AGENTIC = {
   timeoutMs: 900_000,
   verifierMaxTurns: 12,
   verifierTimeoutMs: 300_000,
-  effort: "high" as AgentEffort,
+  effort: "xhigh" as AgentEffort,
 };
 const DEFAULT_VERIFIER_MODEL = "claude-sonnet-5";
 const DEFAULT_VERIFIER_EFFORT: AgentEffort = "medium";
@@ -361,7 +361,7 @@ export interface JevestConfig {
       readonly timeoutMs: number;
       readonly verifierMaxTurns: number;
       readonly verifierTimeoutMs: number;
-      /** The agent's `--effort`. Default "high". */
+      /** The agent's `--effort`. Default "xhigh" (measured: high explored too little). */
       readonly effort: AgentEffort;
     };
     /** Per-finding LLM verifier in agentic mode: "none" (default) or "claude-cli". */

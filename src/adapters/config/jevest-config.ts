@@ -147,13 +147,20 @@ export type ReviewerMode = (typeof REVIEWER_MODES)[number];
 export const VERIFIER_PROVIDERS = ["none", "claude-cli"] as const;
 export type VerifierProvider = (typeof VERIFIER_PROVIDERS)[number];
 
+// The claude CLI's `--effort` levels. Explicit because `--safe-mode` ignores
+// the user's settings, so without the flag the agent runs at the CLI default.
+export const AGENT_EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"] as const;
+export type AgentEffort = (typeof AGENT_EFFORT_LEVELS)[number];
+
 const DEFAULT_AGENTIC = {
   maxTurns: 60,
   timeoutMs: 900_000,
   verifierMaxTurns: 12,
   verifierTimeoutMs: 300_000,
+  effort: "high" as AgentEffort,
 };
 const DEFAULT_VERIFIER_MODEL = "claude-sonnet-5";
+const DEFAULT_VERIFIER_EFFORT: AgentEffort = "medium";
 
 const agenticSchema = z
   .object({
@@ -161,6 +168,7 @@ const agenticSchema = z
     timeoutMs: z.number().int().positive().default(DEFAULT_AGENTIC.timeoutMs),
     verifierMaxTurns: z.number().int().positive().default(DEFAULT_AGENTIC.verifierMaxTurns),
     verifierTimeoutMs: z.number().int().positive().default(DEFAULT_AGENTIC.verifierTimeoutMs),
+    effort: z.enum(AGENT_EFFORT_LEVELS).default(DEFAULT_AGENTIC.effort),
   })
   .default(DEFAULT_AGENTIC);
 
@@ -178,6 +186,7 @@ const reviewerSchema = z
     agentic: agenticSchema,
     verifier: z.enum(VERIFIER_PROVIDERS).default("none"),
     verifierModel: z.string().min(1).default(DEFAULT_VERIFIER_MODEL),
+    verifierEffort: z.enum(AGENT_EFFORT_LEVELS).default(DEFAULT_VERIFIER_EFFORT),
   })
   .superRefine((r, ctx) => {
     if (r.mode === "agentic" && r.provider !== "claude-cli") {
@@ -352,11 +361,15 @@ export interface JevestConfig {
       readonly timeoutMs: number;
       readonly verifierMaxTurns: number;
       readonly verifierTimeoutMs: number;
+      /** The agent's `--effort`. Default "high". */
+      readonly effort: AgentEffort;
     };
     /** Per-finding LLM verifier in agentic mode: "none" (default) or "claude-cli". */
     readonly verifier: VerifierProvider;
     /** The verifier's model. Default "claude-sonnet-5". */
     readonly verifierModel: string;
+    /** The verifier's `--effort`. Default "medium". */
+    readonly verifierEffort: AgentEffort;
   };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
@@ -456,6 +469,7 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
       agentic: result.data.reviewer.agentic,
       verifier: result.data.reviewer.verifier,
       verifierModel: result.data.reviewer.verifierModel,
+      verifierEffort: result.data.reviewer.verifierEffort,
     },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,

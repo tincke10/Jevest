@@ -73,10 +73,15 @@ reviewer:
   #   timeoutMs: 900000     # 15 minutes
   #   verifierMaxTurns: 12
   #   verifierTimeoutMs: 300000
+  #   # The agent's --effort: low | medium | high | xhigh | max. Explicit
+  #   # because the agent runs in safe mode, which ignores your settings.
+  #   effort: high
   # Agentic mode only: none (default) or claude-cli, a fresh agent per
   # finding that tries to refute it before Jev judges it.
   # verifier: none
   # verifierModel: claude-sonnet-5
+  # The verifier's --effort (same levels). Default medium.
+  # verifierEffort: medium
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

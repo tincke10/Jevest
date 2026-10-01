@@ -98,6 +98,7 @@ describe("buildClaudeCliAgentArgs", () => {
       systemPrompt: "sys",
       jsonSchema: { type: "object" },
       maxTurns: 40,
+      effort: "high",
     });
     expect(args).toEqual([
       "-p",
@@ -107,6 +108,8 @@ describe("buildClaudeCliAgentArgs", () => {
       "--no-session-persistence",
       "--model",
       "m",
+      "--effort",
+      "high",
       "--safe-mode",
       "--restricted",
       "--strict-mcp-config",
@@ -204,6 +207,7 @@ describe("runClaudeCliAgent", () => {
     systemPrompt: "sys",
     jsonSchema: { type: "object" },
     maxTurns: 7,
+    effort: "high" as const,
     cwd: "/repo",
     stdin: "the prompt",
     timeoutMs: 1000,

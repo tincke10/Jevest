@@ -300,9 +300,15 @@ reviewer:
     timeoutMs: 900000           # default 15 minutes
     verifierMaxTurns: 12        # default 12
     verifierTimeoutMs: 300000   # default 5 minutes
+    effort: high                # default high: low | medium | high | xhigh | max
   verifier: none                # or claude-cli: one refuting agent per finding
   verifierModel: claude-sonnet-5
+  verifierEffort: medium        # default medium, same levels
 ```
+
+The effort is passed explicitly (`--effort`) because the agent runs in
+`--safe-mode`, which ignores your Claude Code settings: without the flag it
+would run at the CLI's default effort and explore far less.
 
 What runs, per PR:
 

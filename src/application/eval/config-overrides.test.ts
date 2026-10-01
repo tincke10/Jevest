@@ -59,6 +59,8 @@ describe("agentic variants via --override", () => {
         "reviewer.verifier=claude-cli",
         "reviewer.verifierModel=claude-sonnet-5",
         "reviewer.agentic.maxTurns=30",
+        "reviewer.agentic.effort=xhigh",
+        "reviewer.verifierEffort=low",
       ].map(parseOverride),
     );
     const config = await loadJevestConfigFromString(yaml);
@@ -67,7 +69,8 @@ describe("agentic variants via --override", () => {
       mode: "agentic",
       verifier: "claude-cli",
       verifierModel: "claude-sonnet-5",
-      agentic: { maxTurns: 30, timeoutMs: 900_000 },
+      verifierEffort: "low",
+      agentic: { maxTurns: 30, timeoutMs: 900_000, effort: "xhigh" },
     });
     expect(config.budgetUsd).toBe(2);
   });

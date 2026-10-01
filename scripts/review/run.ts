@@ -598,6 +598,7 @@ export function buildAgenticPorts(mode: Mode, config: JevestConfig): AgenticPort
         agenticReviewer: createClaudeCliAgenticReviewer({
           ...(reviewer.model !== undefined ? { model: reviewer.model } : {}),
           maxTurns: reviewer.agentic.maxTurns,
+          effort: reviewer.agentic.effort,
           timeoutMs: reviewer.agentic.timeoutMs,
         }),
         ...(withVerifier
@@ -605,6 +606,7 @@ export function buildAgenticPorts(mode: Mode, config: JevestConfig): AgenticPort
               findingVerifier: createClaudeCliFindingVerifier({
                 model: reviewer.verifierModel,
                 maxTurns: reviewer.agentic.verifierMaxTurns,
+                effort: reviewer.verifierEffort,
                 timeoutMs: reviewer.agentic.verifierTimeoutMs,
               }),
             }

@@ -63,9 +63,11 @@ describe("loadJevestConfig", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
@@ -144,9 +146,11 @@ describe("loadJevestConfig", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
   });
 
@@ -185,9 +189,11 @@ describe("loadJevestConfig", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
   });
 
@@ -211,9 +217,11 @@ describe("loadJevestConfig", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
   });
 
@@ -256,12 +264,37 @@ describe("loadJevestConfig", () => {
       expect(config.reviewer.mode).toBe("hunks");
       expect(config.reviewer.verifier).toBe("none");
       expect(config.reviewer.verifierModel).toBe("claude-sonnet-5");
+      expect(config.reviewer.verifierEffort).toBe("medium");
       expect(config.reviewer.agentic).toEqual({
         maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       });
+    });
+
+    it("accepts every effort level for the agent and the verifier", async () => {
+      for (const level of ["low", "medium", "high", "xhigh", "max"]) {
+        const config = await loadJevestConfigFromString(
+          `reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifierEffort: ${level}\n  agentic:\n    effort: ${level}\n`,
+        );
+        expect(config.reviewer.agentic.effort).toBe(level);
+        expect(config.reviewer.verifierEffort).toBe(level);
+      }
+    });
+
+    it("rejects an unknown effort level for the agent and the verifier", async () => {
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  agentic:\n    effort: ultra\n",
+        ),
+      ).rejects.toThrow(JevestConfigError);
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifierEffort: ultra\n",
+        ),
+      ).rejects.toThrow(JevestConfigError);
     });
 
     it("accepts agentic mode with the claude-cli provider, a verifier and custom caps", async () => {
@@ -450,9 +483,11 @@ describe("loadJevestConfig", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
     expect(fromMissing.budgetUsd).toBe(5);
     expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });

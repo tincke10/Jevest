@@ -68,12 +68,26 @@ describe("createClaudeCliAgenticReviewer", () => {
     );
     expect(argAfter(call?.args ?? [], "--max-turns")).toBe("40");
     expect(argAfter(call?.args ?? [], "--model")).toBe("claude-opus-5");
+    expect(argAfter(call?.args ?? [], "--effort")).toBe("high");
     expect(output).toMatchObject({
       findings: [],
       turns: 9,
       nominalCostUsd: 0.8,
       model: "claude-opus-5",
     });
+  });
+
+  it("passes the configured effort to the agent", async () => {
+    const { spawn, calls } = recordingSpawn(`${resultLine({ findings: [] })}\n`);
+    const reviewer = createClaudeCliAgenticReviewer({ spawn, effort: "xhigh", now: () => 0 });
+    await reviewer.reviewPullRequest({
+      prId: "p",
+      repoRoot: "/c",
+      title: "T",
+      changedFiles: ["a.ts"],
+      diff: "",
+    });
+    expect(argAfter(calls[0]?.args ?? [], "--effort")).toBe("xhigh");
   });
 
   it("returns redacted findings", async () => {
@@ -137,6 +151,7 @@ describe("createClaudeCliFindingVerifier", () => {
     expect(argAfter(args, "--json-schema")).toBe(JSON.stringify(FINDING_VERIFICATION_JSON_SCHEMA));
     expect(argAfter(args, "--max-turns")).toBe("12");
     expect(argAfter(args, "--model")).toBe("claude-sonnet-5");
+    expect(argAfter(args, "--effort")).toBe("medium");
     expect(output.decision).toBe("refuted");
     expect(output.reason).not.toContain(SECRET);
   });

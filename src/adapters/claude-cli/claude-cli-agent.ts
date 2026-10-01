@@ -32,6 +32,10 @@
  *   every tool call is visible (the read-only audit in the run log); the
  *   final `result` event carries `structured_output` exactly like the
  *   `json` format's envelope.
+ * - `--effort <low|medium|high|xhigh|max>`: right after `--model`. Always
+ *   explicit: `--safe-mode` ignores the user's settings, so without it the
+ *   agent runs at the CLI's default effort (measured: shallow, 16-62 s runs
+ *   with 0-3 findings vs 1-3 min and many more at "high").
  * - `--json-schema`, `--model`, `--no-session-persistence` as elsewhere.
  *
  * The user prompt goes on STDIN, never in argv: a PR diff easily exceeds
@@ -40,6 +44,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import type { z } from "zod";
 import type { AgentRunInfo, AgentToolCall } from "../../domain/ports/agentic-reviewer-port.js";
+import type { AgentEffort } from "../config/jevest-config.js";
 import { ClaudeCliError, ClaudeCliTimeoutError } from "../reviewers/reviewer-errors.js";
 import {
   CLAUDE_CLI_PROVIDER,
@@ -100,6 +105,7 @@ export interface ClaudeCliAgentArgsInput {
   readonly systemPrompt: string;
   readonly jsonSchema: Record<string, unknown>;
   readonly maxTurns: number;
+  readonly effort: AgentEffort;
 }
 
 /** The verified argv (see the module doc). No positional prompt: it goes on stdin. */
@@ -113,6 +119,8 @@ export function buildClaudeCliAgentArgs(input: ClaudeCliAgentArgsInput): string[
     "--no-session-persistence",
     "--model",
     input.model,
+    "--effort",
+    input.effort,
     "--safe-mode",
     "--restricted",
     "--strict-mcp-config",

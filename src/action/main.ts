@@ -309,6 +309,7 @@ export function createAgenticPorts(
     agenticReviewer: createClaudeCliAgenticReviewer({
       ...(reviewer.model !== undefined ? { model: reviewer.model } : {}),
       maxTurns: reviewer.agentic.maxTurns,
+      effort: reviewer.agentic.effort,
       timeoutMs: reviewer.agentic.timeoutMs,
     }),
     ...(reviewer.verifier === "claude-cli"
@@ -316,6 +317,7 @@ export function createAgenticPorts(
           findingVerifier: createClaudeCliFindingVerifier({
             model: reviewer.verifierModel,
             maxTurns: reviewer.agentic.verifierMaxTurns,
+            effort: reviewer.verifierEffort,
             timeoutMs: reviewer.agentic.verifierTimeoutMs,
           }),
         }

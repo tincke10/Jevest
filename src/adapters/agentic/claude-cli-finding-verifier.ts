@@ -16,6 +16,7 @@ import {
   defaultAgentSpawn,
   runClaudeCliAgent,
 } from "../claude-cli/claude-cli-agent.js";
+import type { AgentEffort } from "../config/jevest-config.js";
 import {
   FINDING_VERIFICATION_JSON_SCHEMA,
   findingVerificationSchema,
@@ -27,6 +28,8 @@ import {
 
 /** `reviewer.verifierModel` default. */
 export const VERIFIER_DEFAULT_MODEL = "claude-sonnet-5";
+/** `reviewer.verifierEffort` default. */
+export const VERIFIER_DEFAULT_EFFORT: AgentEffort = "medium";
 /** `reviewer.agentic.verifierMaxTurns` default. */
 export const VERIFIER_DEFAULT_MAX_TURNS = 12;
 /** `reviewer.agentic.verifierTimeoutMs` default: 5 minutes. */
@@ -36,6 +39,8 @@ export interface ClaudeCliFindingVerifierOptions {
   readonly spawn?: AgentSpawn;
   readonly model?: string;
   readonly maxTurns?: number;
+  /** `reviewer.verifierEffort`. Default "medium". */
+  readonly effort?: AgentEffort;
   readonly timeoutMs?: number;
   readonly now?: () => number;
 }
@@ -52,6 +57,7 @@ export function createClaudeCliFindingVerifier(
         systemPrompt: FINDING_VERIFIER_SYSTEM_PROMPT,
         jsonSchema: FINDING_VERIFICATION_JSON_SCHEMA,
         maxTurns: options.maxTurns ?? VERIFIER_DEFAULT_MAX_TURNS,
+        effort: options.effort ?? VERIFIER_DEFAULT_EFFORT,
         cwd: input.repoRoot,
         stdin: buildFindingVerifierUserPrompt(input),
         timeoutMs: options.timeoutMs ?? VERIFIER_DEFAULT_TIMEOUT_MS,

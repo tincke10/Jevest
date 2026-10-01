@@ -58,6 +58,7 @@ describe.skipIf(!process.env.CLAUDE_CLI_LIVE_TEST)("claude-cli agent sandbox (li
         required: ["seen"],
       },
       maxTurns: 25,
+      effort: "high",
       cwd: repo,
       stdin: [
         "Do each step, one tool call each:",

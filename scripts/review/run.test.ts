@@ -110,9 +110,11 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
+        effort: "high",
       },
       verifier: "none",
       verifierModel: "claude-sonnet-5",
+      verifierEffort: "medium",
     });
   });
 });

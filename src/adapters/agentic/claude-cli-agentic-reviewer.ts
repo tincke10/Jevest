@@ -16,6 +16,7 @@ import {
   runClaudeCliAgent,
 } from "../claude-cli/claude-cli-agent.js";
 import { CLAUDE_CLI_DEFAULT_MODEL } from "../claude-cli/claude-cli-process.js";
+import type { AgentEffort } from "../config/jevest-config.js";
 import {
   AGENTIC_REVIEW_JSON_SCHEMA,
   agenticReviewOutputSchema,
@@ -25,6 +26,8 @@ import { AGENTIC_REVIEW_SYSTEM_PROMPT, buildAgenticReviewUserPrompt } from "./ag
 
 /** `reviewer.agentic.maxTurns` default. */
 export const AGENTIC_DEFAULT_MAX_TURNS = 40;
+/** `reviewer.agentic.effort` default. */
+export const AGENTIC_DEFAULT_EFFORT: AgentEffort = "high";
 /** `reviewer.agentic.timeoutMs` default: 15 minutes. */
 export const AGENTIC_DEFAULT_TIMEOUT_MS = 900_000;
 
@@ -33,6 +36,8 @@ export interface ClaudeCliAgenticReviewerOptions {
   /** Default "claude-opus-5". */
   readonly model?: string;
   readonly maxTurns?: number;
+  /** `reviewer.agentic.effort`. Default "high". */
+  readonly effort?: AgentEffort;
   readonly timeoutMs?: number;
   readonly now?: () => number;
 }
@@ -49,6 +54,7 @@ export function createClaudeCliAgenticReviewer(
         systemPrompt: AGENTIC_REVIEW_SYSTEM_PROMPT,
         jsonSchema: AGENTIC_REVIEW_JSON_SCHEMA,
         maxTurns: options.maxTurns ?? AGENTIC_DEFAULT_MAX_TURNS,
+        effort: options.effort ?? AGENTIC_DEFAULT_EFFORT,
         cwd: input.repoRoot,
         stdin: buildAgenticReviewUserPrompt(input),
         timeoutMs: options.timeoutMs ?? AGENTIC_DEFAULT_TIMEOUT_MS,

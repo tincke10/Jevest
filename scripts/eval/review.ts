@@ -8,7 +8,8 @@
  *     (--config <.jevest.yml> [--overrides <file.yml|json>] [--override key=value ...]
  *        [--mode live|replay|dry-run]
  *      | --import <dir with <caseId>.json>)
- *     [--matcher claude-cli|prefilter] [--matcher-model <model>] [--matcher-concurrency <n>]
+ *     [--matcher llm|claude-cli|prefilter] [--matcher-model <model>] [--matcher-effort <level>]
+ *     [--matcher-concurrency <n>]
  *     [--concurrency <n>]
  *     [--cases <id,id,...>]
  *
@@ -19,7 +20,9 @@
  * An import variant scores an existing review (e.g. a full-repo baseline).
  *
  * The matcher defaults to claude-cli (`claude -p`, the machine's Claude
- * login) with its decisions cached under `<out>/matcher-cache/`.
+ * login; `llm` is an alias) with its decisions cached under
+ * `<out>/matcher-cache/`. Re-score a stored run against an updated set with
+ * `pnpm eval:rescore` (./rescore.ts) instead of running it again.
  * `--matcher prefilter` is deterministic and free, for smoke tests only.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -27,11 +30,6 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { loadJevestConfigFromString } from "../../src/adapters/config/jevest-config.js";
-import { createCachedFindingMatcher } from "../../src/adapters/matchers/cached-finding-matcher.js";
-import {
-  CLAUDE_CLI_MATCHER_DEFAULT_MODEL,
-  createClaudeCliFindingMatcher,
-} from "../../src/adapters/matchers/claude-cli-finding-matcher.js";
 import { candidatesFromImportedReview } from "../../src/application/eval/candidate.js";
 import {
   applyConfigOverrides,
@@ -40,15 +38,20 @@ import {
 import { renderEvalReport } from "../../src/application/eval/eval-report.js";
 import { type CaseRun, type CaseSource, runEval } from "../../src/application/eval/eval-run.js";
 import { type GoldenCase, parseGoldenSetJsonl } from "../../src/application/eval/golden-set.js";
-import { createTopPrefilterMatcher } from "../../src/application/eval/match-candidates.js";
 import { candidatesFromPipeline } from "../../src/application/eval/pipeline-candidates.js";
-import type { FindingMatcherPort } from "../../src/domain/ports/finding-matcher-port.js";
 import { runLocalReview } from "../review/run.js";
+import {
+  DEFAULT_MATCHER_EFFORT,
+  DEFAULT_MATCHER_MODEL,
+  type MatcherKind,
+  type MatcherOptions,
+  buildMatcher,
+  parseMatcherEffort,
+  parseMatcherKind,
+} from "./matcher-options.js";
 
 type Mode = "live" | "replay" | "dry-run";
 const MODES: readonly Mode[] = ["live", "replay", "dry-run"];
-type MatcherKind = "claude-cli" | "prefilter";
-const MATCHERS: readonly MatcherKind[] = ["claude-cli", "prefilter"];
 const VARIANT_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 export type EvalSourceOptions =
@@ -61,13 +64,11 @@ export type EvalSourceOptions =
     }
   | { readonly type: "import"; readonly dir: string };
 
-export interface EvalCliOptions {
+export interface EvalCliOptions extends MatcherOptions {
   readonly setPath: string;
   readonly variant: string;
   readonly outDir: string;
   readonly source: EvalSourceOptions;
-  readonly matcher: MatcherKind;
-  readonly matcherModel: string;
   readonly matcherConcurrency: number;
   /** Golden cases run in parallel (bounded pool); 1 = sequential. */
   readonly concurrency: number;
@@ -90,7 +91,8 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
   let mode: Mode = "dry-run";
   let importDir: string | null = null;
   let matcher: MatcherKind = "claude-cli";
-  let matcherModel = CLAUDE_CLI_MATCHER_DEFAULT_MODEL;
+  let matcherModel = DEFAULT_MATCHER_MODEL;
+  let matcherEffort = DEFAULT_MATCHER_EFFORT;
   let matcherConcurrency = 4;
   let concurrency = 1;
   let caseIds: string[] | null = null;
@@ -127,16 +129,14 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
       case "--import":
         importDir = requireValue(argv, ++i, arg);
         break;
-      case "--matcher": {
-        const value = requireValue(argv, ++i, arg);
-        if (!MATCHERS.includes(value as MatcherKind)) {
-          throw new Error(`--matcher must be one of ${MATCHERS.join(", ")}, got "${value}"`);
-        }
-        matcher = value as MatcherKind;
+      case "--matcher":
+        matcher = parseMatcherKind(requireValue(argv, ++i, arg));
         break;
-      }
       case "--matcher-model":
         matcherModel = requireValue(argv, ++i, arg);
+        break;
+      case "--matcher-effort":
+        matcherEffort = parseMatcherEffort(requireValue(argv, ++i, arg));
         break;
       case "--matcher-concurrency": {
         const value = Number(requireValue(argv, ++i, arg));
@@ -188,6 +188,7 @@ export function parseEvalArgs(argv: readonly string[]): EvalCliOptions {
     source,
     matcher,
     matcherModel,
+    matcherEffort,
     matcherConcurrency,
     concurrency,
     caseIds,
@@ -353,23 +354,6 @@ function agenticFindingTrail(result: Awaited<ReturnType<typeof runLocalReview>>)
   );
 }
 
-function buildMatcher(options: EvalCliOptions): {
-  matcher: FindingMatcherPort;
-  info: Record<string, unknown>;
-} {
-  if (options.matcher === "prefilter") {
-    return { matcher: createTopPrefilterMatcher(), info: { type: "prefilter" } };
-  }
-  return {
-    matcher: createCachedFindingMatcher({
-      inner: createClaudeCliFindingMatcher({ model: options.matcherModel }),
-      dir: join(options.outDir, "matcher-cache"),
-      model: options.matcherModel,
-    }),
-    info: { type: "claude-cli", model: options.matcherModel },
-  };
-}
-
 export async function runEvalCli(
   options: EvalCliOptions,
   log: (line: string) => void = (line) => console.log(line),
@@ -387,7 +371,7 @@ export async function runEvalCli(
     options.source.type === "import"
       ? importSource(resolveCasePath(options.source.dir, process.cwd()))
       : await pipelineSource(options.source, variantDir, setDir, log);
-  const { matcher, info } = buildMatcher(options);
+  const { matcher, info } = buildMatcher(options, options.outDir);
 
   const results = await runEval({
     variant: options.variant,

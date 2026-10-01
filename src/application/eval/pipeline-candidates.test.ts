@@ -163,3 +163,58 @@ describe("candidatesFromPipeline — agentic drops (reviewer.mode: agentic)", ()
     expect(new Set(candidates.map((c) => c.id)).size).toBe(candidates.length);
   });
 });
+
+describe("candidatesFromPipeline — agentic matcher context", () => {
+  it("keeps an agentic finding's claim, failing scenario and evidence apart for the matcher", () => {
+    const agentic: FilteredFinding = {
+      ...finding("a", "src/m.ts", 5, "Command rewrites markers"),
+      rationale: "Running fmt twice duplicates the marker block",
+      agentic: {
+        category: "correctness",
+        reportedSeverity: "high",
+        confidence: 0.8,
+        evidence: [{ file: "src/m.ts", line: 5, quote: "replaceMarkers(text)" }],
+        evidenceVerified: 1,
+        inlineAnchor: null,
+        verifier: null,
+        supports: null,
+        mechanism: null,
+        severity: null,
+        route: "published",
+      },
+    };
+    const [candidate] = candidatesFromPipeline(
+      {
+        findingFilter: { published: [agentic], needsHuman: [], lowConfidence: [], discarded: [] },
+        narrative: null,
+        hunkProfile: null,
+      },
+      "c",
+    );
+    expect(candidate).toMatchObject({
+      text: "Command rewrites markers — Running fmt twice duplicates the marker block",
+      claim: "Command rewrites markers",
+      failingScenario: "Running fmt twice duplicates the marker block",
+      evidence: [{ file: "src/m.ts", line: 5, quote: "replaceMarkers(text)" }],
+    });
+  });
+
+  it("adds nothing to a per-hunk finding", () => {
+    const [candidate] = candidatesFromPipeline(
+      {
+        findingFilter: {
+          published: [finding("p", "src/a.ts", 1, "Bug")],
+          needsHuman: [],
+          lowConfidence: [],
+          discarded: [],
+        },
+        narrative: null,
+        hunkProfile: null,
+      },
+      "c",
+    );
+    expect(candidate).not.toHaveProperty("claim");
+    expect(candidate).not.toHaveProperty("failingScenario");
+    expect(candidate).not.toHaveProperty("evidence");
+  });
+});

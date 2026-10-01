@@ -1,9 +1,14 @@
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FindingMatchInput } from "../../domain/ports/finding-matcher-port.js";
-import { createCachedFindingMatcher, matcherCacheKey } from "./cached-finding-matcher.js";
+import {
+  MATCHER_CACHE_VERSION,
+  createCachedFindingMatcher,
+  matcherCacheKey,
+} from "./cached-finding-matcher.js";
 import { createFakeFindingMatcher } from "./fake-finding-matcher.js";
 
 const INPUT: FindingMatchInput = {
@@ -29,6 +34,50 @@ describe("matcherCacheKey", () => {
   });
 });
 
+describe("matcherCacheKey v2", () => {
+  const key = (input: FindingMatchInput, effort?: string) => matcherCacheKey(input, "m", effort);
+  const withIssue = (patch: Record<string, unknown>): FindingMatchInput => ({
+    ...INPUT,
+    goldenIssues: [{ ...INPUT.goldenIssues[0]!, ...patch }, INPUT.goldenIssues[1]!],
+  });
+
+  it("is version 2 and never equals a version-1 key", () => {
+    expect(MATCHER_CACHE_VERSION).toBe(2);
+    const issues = [...INPUT.goldenIssues]
+      .map((issue) => [issue.id, issue.title])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const v1 = createHash("sha256")
+      .update(
+        JSON.stringify({
+          model: "m",
+          issues,
+          candidate: [INPUT.candidate.file, INPUT.candidate.line, INPUT.candidate.text],
+        }),
+      )
+      .digest("hex");
+    expect(key(INPUT)).not.toBe(v1);
+  });
+
+  it("changes with everything the prompt shows and with the effort", () => {
+    const base = key(INPUT);
+    expect(key(withIssue({ notes: "n" }))).not.toBe(base);
+    expect(key(withIssue({ category: "security" }))).not.toBe(base);
+    expect(key(withIssue({ verdict: "false" }))).not.toBe(base);
+    expect(key(withIssue({ locations: [{ file: "b.ts", line: 2 }] }))).not.toBe(base);
+    expect(key({ ...INPUT, candidate: { ...INPUT.candidate, failingScenario: "s" } })).not.toBe(
+      base,
+    );
+    expect(
+      key({
+        ...INPUT,
+        candidate: { ...INPUT.candidate, evidence: [{ file: "a.ts", line: 2, quote: "q" }] },
+      }),
+    ).not.toBe(base);
+    expect(key(INPUT, "medium")).not.toBe(base);
+    expect(key(INPUT, "medium")).not.toBe(key(INPUT, "high"));
+  });
+});
+
 describe("createCachedFindingMatcher", () => {
   let dir: string;
   beforeEach(async () => {
@@ -47,6 +96,23 @@ describe("createCachedFindingMatcher", () => {
     expect(await second.match(INPUT)).toEqual({ issueId: "I1", costUsd: 0, cached: true });
     expect(decide).toHaveBeenCalledTimes(1);
     expect(await readdir(dir)).toHaveLength(1);
+  });
+
+  it("keeps the matcher's reason in the entry and replays it", async () => {
+    const inner = {
+      match: async () => ({ issueId: "I1", costUsd: 0.1, reason: "same root cause" }),
+    };
+    const matcher = createCachedFindingMatcher({ inner, dir, model: "m", effort: "medium" });
+    await matcher.match(INPUT);
+    const [file] = await readdir(dir);
+    const entry = JSON.parse(await readFile(join(dir, file as string), "utf8"));
+    expect(entry).toMatchObject({ issueId: "I1", model: "m", effort: "medium", version: 2 });
+    expect(await matcher.match(INPUT)).toEqual({
+      issueId: "I1",
+      costUsd: 0,
+      cached: true,
+      reason: "same root cause",
+    });
   });
 
   it("caches a none decision too", async () => {

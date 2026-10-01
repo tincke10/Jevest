@@ -30,6 +30,7 @@
     "adversarial": "tsx scripts/adversarial/run.ts",
     "eval:review": "tsx scripts/eval/review.ts",
     "eval:compare": "tsx scripts/eval/compare.ts",
+    "eval:rescore": "tsx scripts/eval/rescore.ts",
     "eval:label-queue": "tsx scripts/eval/label-queue.ts",
     "eval:import-adjudication": "tsx scripts/eval/import-adjudication.ts"
   },

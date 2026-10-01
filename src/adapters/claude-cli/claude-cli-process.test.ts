@@ -55,6 +55,15 @@ describe("buildClaudeCliArgs", () => {
   });
 });
 
+describe("buildClaudeCliArgs effort", () => {
+  it("puts --effort right after --model when given, and omits it otherwise", () => {
+    const base = { model: "m", systemPrompt: "s", jsonSchema: {}, userPrompt: "u" };
+    const args = buildClaudeCliArgs({ ...base, effort: "medium" });
+    expect(args.slice(4, 8)).toEqual(["--model", "m", "--effort", "medium"]);
+    expect(buildClaudeCliArgs(base)).not.toContain("--effort");
+  });
+});
+
 describe("parseClaudeCliEnvelope", () => {
   const context = { provider: "claude-cli", itemId: "x", timeoutMs: 10, fallbackLatencyMs: 3 };
 

@@ -43,6 +43,27 @@ describe("candidatesFromImportedReview", () => {
     expect(candidate).toMatchObject({ file: null, line: null, text: "General concern" });
   });
 
+  it("keeps an optional failing scenario and evidence quotes for the matcher", () => {
+    const [candidate] = candidatesFromImportedReview(
+      {
+        findings: [
+          {
+            file: "a.ts",
+            line: 1,
+            claim: "x",
+            failingScenario: "when y",
+            evidence: [{ file: "a.ts", line: 1, quote: "z()" }],
+          },
+        ],
+      },
+      "c",
+    );
+    expect(candidate).toMatchObject({
+      failingScenario: "when y",
+      evidence: [{ file: "a.ts", line: 1, quote: "z()" }],
+    });
+  });
+
   it("puts a finding marked low into the low bucket", () => {
     const [candidate] = candidatesFromImportedReview(
       { findings: [{ file: "a", line: 1, claim: "x", bucket: "low" }] },

@@ -93,7 +93,93 @@ describe("matchCandidates", () => {
   });
 });
 
+describe("matchCandidates — what the matcher is offered", () => {
+  const rich: GoldenIssue[] = [
+    {
+      id: "R1",
+      file: "src/fmt.ts",
+      line: 10,
+      locations: [{ file: "src/cli.ts", line: 4 }],
+      title: "fmt rewrites the marker block",
+      severity: "high",
+      verdict: "real",
+      category: "correctness",
+      notes: "Running fmt twice duplicates the block",
+    },
+    {
+      id: "R2",
+      file: "src/fmt.ts",
+      line: 400,
+      title: "Marker regex ignores CRLF",
+      severity: "low",
+      verdict: "partly",
+    },
+  ];
+
+  it("offers every same-file issue with its locations, category, verdict and notes", async () => {
+    const seen: FindingMatchInput[] = [];
+    await matchCandidates({
+      issues: rich,
+      candidates: [
+        {
+          id: "c",
+          file: "src/fmt.ts",
+          line: 12,
+          text: "claim — scenario",
+          claim: "claim",
+          failingScenario: "scenario",
+          evidence: [{ file: "src/fmt.ts", line: 12, quote: "q" }],
+          bucket: "shown",
+          source: "finding",
+        },
+      ],
+      matcher: {
+        async match(input) {
+          seen.push(input);
+          return { issueId: null, costUsd: 0 };
+        },
+      },
+    });
+    expect(seen[0]?.goldenIssues).toEqual([
+      {
+        id: "R1",
+        file: "src/fmt.ts",
+        line: 10,
+        locations: [{ file: "src/cli.ts", line: 4 }],
+        title: "fmt rewrites the marker block",
+        category: "correctness",
+        verdict: "real",
+        notes: "Running fmt twice duplicates the block",
+      },
+      {
+        id: "R2",
+        file: "src/fmt.ts",
+        line: 400,
+        title: "Marker regex ignores CRLF",
+        verdict: "partly",
+      },
+    ]);
+    expect(seen[0]?.candidate).toEqual({
+      file: "src/fmt.ts",
+      line: 12,
+      text: "claim — scenario",
+      claim: "claim",
+      failingScenario: "scenario",
+      evidence: [{ file: "src/fmt.ts", line: 12, quote: "q" }],
+    });
+  });
+});
+
 describe("createTopPrefilterMatcher", () => {
+  it("still picks from the strict pre-filter, not the wider shortlist", async () => {
+    const matcher = createTopPrefilterMatcher();
+    const match = await matcher.match({
+      goldenIssues: [{ id: "far", file: "src/cart.ts", line: 300, title: "Unrelated words" }],
+      candidate: { file: "src/cart.ts", line: 11, text: "x" },
+    });
+    expect(match.issueId).toBeNull();
+  });
+
   it("picks the pre-filter's closest issue", async () => {
     const matcher = createTopPrefilterMatcher();
     const match = await matcher.match({

@@ -9,6 +9,8 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **`pnpm eval:rescore`** (docs/EVAL.md "Re-scoring a run"): `--run <out>/<variant> --set <golden.jsonl> [--matcher llm|prefilter] [--matcher-model] [--matcher-effort] [--as <newVariantName>]` re-matches the candidates a run stored in its `results.json` against a (possibly updated) golden set and rewrites `results.json` + `report.md` (in place, or as a new variant with `--as`) without re-running the pipeline; per-case cost, tokens, wall time and errors are kept, the matcher cache is shared with `eval:review`.
+
 - **Explicit agent effort** (`reviewer.agentic.effort`, default `xhigh` — measured: weighted recall 29% at high vs 42% at xhigh on a private golden set, at about 2x the cost — and `reviewer.verifierEffort`, default `medium`; levels `low|medium|high|xhigh|max`): the agentic reviewer and verifier now pass `--effort <level>` right after `--model`. `--safe-mode` ignores the user's settings, so the agent used to run at the CLI default effort (16-62 s runs, 0-3 findings) instead of the effort an interactive session inherits. Overridable in `pnpm eval:review` (`--override reviewer.agentic.effort=xhigh`).
 - **Parallel eval cases** (`pnpm eval:review --concurrency <n>`, docs/EVAL.md): a bounded pool runs up to `n` golden cases at once (default 1 = sequential, outputs unchanged); results and report keep the set order, logs are prefixed per case, the matcher cache and spend ledger write atomically/serialized, head worktree creation per repo is serialized with lock retry, and the total wall time is the real elapsed time.
 - **Agentic review** (`reviewer.mode: agentic`, docs/ACTION.md "Agentic
@@ -157,6 +159,8 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   0.216 to a set whose base rate is ten times lower.
 
 ### Changed
+
+- **Eval matcher accuracy** (docs/EVAL.md "Matching"): an adjudicator found the matcher mapping ~1 finding in 6 to the wrong golden issue (same file, shared title words, different root cause). The LLM matcher now sees each issue's verdict, category, all `file:line`s and notes (400 chars) and the finding's claim, failing scenario and evidence quotes (now stored on candidates from agentic runs and imports); it is told to match only the SAME underlying problem (same root cause and consequence), preferring none when unsure, and answers decision-first `{ match, sameRootCause, reason }` (an id with `sameRootCause: false` counts as none). It is offered every issue of the candidate's file plus the top 3 cross-file issues by word overlap (max 12) instead of the ±15-line pre-filter. Default model `claude-opus-5-5` at `--effort medium` (`--matcher-model`, new `--matcher-effort`; `--matcher llm` is an alias of `claude-cli`). The matcher cache key is now version 2 and covers everything the prompt shows plus the effort, so old decisions are not reused.
 
 - `pnpm review --mode dry-run` (and `pnpm eval:review --mode dry-run`) now
   answers every Jev question at confidence 0.5 instead of 0.9, below every

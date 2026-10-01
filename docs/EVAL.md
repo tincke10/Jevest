@@ -119,9 +119,10 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant full-repo \
   (the default; the dry-run reviewer finds nothing, so it only proves the
   wiring). The spend ledger is `<out>/<variant>/spend-ledger.json`.
 - **Import** (`--import <dir>`): one `<caseId>.json` per case, `{ findings:
-  [{ file, line, lineEnd?, severity?, claim (or title), kind?, bucket? }],
-  costUsd?, tokens?, wallTimeMs? }`. Every finding is `shown` unless its
-  `bucket` is `low`.
+  [{ file, line, lineEnd?, severity?, claim (or title), failingScenario?,
+  evidence?: [{ file, line, quote }], kind?, bucket? }], costUsd?, tokens?,
+  wallTimeMs? }`. Every finding is `shown` unless its `bucket` is `low`;
+  `failingScenario` and `evidence` only feed the matcher.
 - `--concurrency <n>` (default 1, sequential) runs up to `n` cases in
   parallel with a bounded pool. `results.json` and `report.md` keep the
   set's case order whatever finishes first, and each log line carries its
@@ -237,23 +238,69 @@ the shown counts say how much the reader had to read.
 
 A candidate finding is matched to at most one golden issue:
 
-1. A deterministic pre-filter (src/application/eval/prefilter.ts) keeps
-   issues with a location in the candidate's file within ±15 lines, or in
-   the same file with at least 30% of the issue title's words in the
-   candidate text, or anywhere with 60% or more; issues without a location
-   (and candidates without a file) need 40%. At most 8, closest first. An
-   empty pre-filter means "unlabeled" without any LLM call.
+1. A deterministic shortlist (`shortlistIssues`,
+   src/application/eval/prefilter.ts) offers every issue of the case with a
+   location (its `file` or any of its `locations`) in the candidate's file,
+   closest first, plus the top 3 other issues by title-word overlap (at
+   least 25% of the title's words in the candidate; an issue pinned on a
+   caller, an issue without a location, a narrative point without a file),
+   at most 12. An empty shortlist means "unlabeled" without any LLM call.
 2. The matcher (`FindingMatcherPort`) picks one of them or none. The
-   default is claude-cli (`claude -p --safe-mode`, no tools, a JSON schema,
-   `claude-sonnet-5` unless `--matcher-model`), using the machine's Claude
-   login. `--matcher prefilter` takes the pre-filter's closest issue: free
-   and deterministic, for smoke tests only; never report its numbers.
+   default is the LLM matcher (`--matcher llm`, alias `claude-cli`: `claude
+   -p --safe-mode`, no tools, a JSON schema) on `claude-opus-5-5` at effort
+   `medium` (`--matcher-model`, `--matcher-effort low|medium|high|xhigh|max`),
+   using the machine's Claude login. It sees, per issue, the id, title,
+   `file:line`(s), verdict, category and notes (cut at 400 characters), and
+   for the candidate its location, claim, failing scenario and evidence
+   quotes when the source has them (agentic findings, imports that carry
+   them). The rule it gets: match only when it is the SAME underlying
+   problem (same root cause and same consequence), not merely the same file
+   or similar words; prefer none when unsure. It answers decision-first,
+   `{ match: <issueId>|"none", sameRootCause, reason }`; an id with
+   `sameRootCause: false` counts as none.
+3. `--matcher prefilter` is free and deterministic, for smoke tests only
+   (never report its numbers): among the offered issues it takes the
+   closest one that passes the strict pre-filter (`prefilterIssues`: same
+   file within ±15 lines, or same file with 30% of the title's words,
+   anywhere with 60%, 40% without a location).
 
-Decisions are cached in `<out>/matcher-cache/`, keyed by the offered
-issues' ids and titles, the candidate's location and text, and the model,
-so re-scoring a run is free. Delete the directory to re-match.
+Decisions are cached in `<out>/matcher-cache/`, one file per decision
+with the matcher's reason, keyed by a cache version, everything the matcher
+is shown (issues and candidate) and the model and effort, so re-scoring a
+run is free. The key version was bumped with the root-cause matcher, so no
+older decision is replayed. Delete the directory to re-match.
+
+Why the stricter matcher: an adjudicator found the previous one mapping
+about 1 finding in 6 to the wrong issue, nearly always an issue in the same
+file whose title shared words with the finding but whose root cause was
+different.
 
 A finding that covers two issues at once matches only one of them.
+
+## Re-scoring a run
+
+```bash
+pnpm eval:rescore --run ~/.jevest/evals/<set>/runs/<variant> \
+  --set ~/.jevest/evals/<set>/golden.jsonl \
+  [--matcher llm|prefilter] [--matcher-model <model>] [--matcher-effort <level>] \
+  [--matcher-concurrency <n>] [--concurrency <n>] [--as <newVariantName>]
+```
+
+Matches the candidates a run already stored again — every case's
+`candidates` in its `results.json`, with claim, failing scenario and
+evidence for runs made since those were stored — against the given set,
+and scores them, WITHOUT re-running the pipeline or needing the import
+directory. Each case keeps its cost, tokens, wall time and error; the
+total wall time is the run's. Only cases both the run and the set have are
+scored (the others are logged). `results.json` and `report.md` are
+overwritten in the run's directory, or written to `<out>/<newVariantName>/`
+with `--as`, leaving the run as it was. `source` becomes `{ type:
+"rescore", run, runVariant, runCreatedAt, original }`, `original` being
+the source that first produced the candidates. The matcher cache is the
+run's `<out>/matcher-cache/`: unchanged decisions replay for free.
+
+Use it after growing or correcting the set, or to measure a matcher change
+on existing runs (`--as` keeps both for `pnpm eval:compare`).
 
 ## Metrics
 
@@ -295,6 +342,7 @@ pnpm eval:label-queue --run ~/.jevest/evals/<set>/runs/<variant> [--view shown|a
 Each line is a golden issue with `"verdict": "unlabeled"` plus its
 `caseId`. Adjudicate it (verdict, severity, evidence in `notes`), drop the
 `caseId` field, give it a stable id and append it to that case's `issues`.
-Re-score the runs afterwards: cached matcher decisions for unchanged issue
-lists replay for free; the new issue changes the offered list, so affected
-candidates are matched again.
+Re-score the runs afterwards with `pnpm eval:rescore` ("Re-scoring a
+run"): cached matcher decisions for unchanged issue lists replay for free;
+the new issue changes the offered list, so affected candidates are matched
+again.

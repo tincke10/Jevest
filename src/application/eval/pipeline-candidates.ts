@@ -89,6 +89,23 @@ function toCandidate(
     line: f.lineStart,
     lineEnd: f.lineEnd,
     text: f.rationale ? `${f.claim} — ${f.rationale}` : f.claim,
+    // Agentic findings: `rationale` is the failing scenario. Kept apart so
+    // the matcher can show claim, scenario and quotes as such.
+    ...(f.agentic
+      ? {
+          claim: f.claim,
+          ...(f.rationale ? { failingScenario: f.rationale } : {}),
+          ...(f.agentic.evidence.length > 0
+            ? {
+                evidence: f.agentic.evidence.map((e) => ({
+                  file: e.file,
+                  line: e.line,
+                  quote: e.quote,
+                })),
+              }
+            : {}),
+        }
+      : {}),
     bucket,
     source,
   };

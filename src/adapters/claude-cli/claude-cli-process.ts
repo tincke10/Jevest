@@ -21,6 +21,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import type { z } from "zod";
 import type { ReviewUsage } from "../../domain/ports/reviewer-port.js";
+import type { AgentEffort } from "../config/jevest-config.js";
 import {
   ClaudeCliError,
   ClaudeCliProcessError,
@@ -127,6 +128,11 @@ export interface ClaudeCliArgsInput {
   readonly systemPrompt: string;
   readonly jsonSchema: Record<string, unknown>;
   readonly userPrompt: string;
+  /**
+   * `--effort <level>` right after `--model` when set. `--safe-mode` ignores
+   * the user's settings, so without it the CLI's default effort applies.
+   */
+  readonly effort?: AgentEffort;
 }
 
 /** The minimal-footprint argv, identical to the reviewer's; the user prompt is always last. */
@@ -138,6 +144,7 @@ export function buildClaudeCliArgs(input: ClaudeCliArgsInput): string[] {
     "--no-session-persistence",
     "--model",
     input.model,
+    ...(input.effort !== undefined ? ["--effort", input.effort] : []),
     "--safe-mode",
     "--tools",
     "",

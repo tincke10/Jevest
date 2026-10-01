@@ -18,13 +18,26 @@
  * (a narrative point), at least {@link PREFILTER_TITLE_ONLY_COVERAGE}.
  */
 import type { MatchCandidate } from "../../domain/ports/finding-matcher-port.js";
-import type { GoldenIssue, GoldenLocation } from "./golden-set.js";
+import type { GoldenLocation } from "./golden-set.js";
 
 export const PREFILTER_LINE_WINDOW = 15;
 export const PREFILTER_SAME_FILE_COVERAGE = 0.3;
 export const PREFILTER_TITLE_ONLY_COVERAGE = 0.4;
 export const PREFILTER_ANY_FILE_COVERAGE = 0.6;
 export const PREFILTER_MAX_ISSUES = 8;
+export const SHORTLIST_MAX_ISSUES = 12;
+export const SHORTLIST_CROSS_FILE_TOP = 3;
+/** A cross-file issue needs at least this share of its title words in the candidate. */
+export const SHORTLIST_CROSS_FILE_MIN_COVERAGE = 0.25;
+
+/** What the pre-filters read of an issue (a GoldenIssue, or a MatchableIssue the matcher was offered). */
+export interface PrefilterIssue {
+  readonly id: string;
+  readonly file: string | null;
+  readonly line: number | null;
+  readonly locations?: readonly GoldenLocation[];
+  readonly title: string;
+}
 
 const STOPWORDS = new Set([
   "the",
@@ -97,22 +110,23 @@ export function sameFile(a: string, b: string): boolean {
   return baseName(a) === baseName(b);
 }
 
-export function issueLocations(issue: GoldenIssue): GoldenLocation[] {
+export function issueLocations(issue: PrefilterIssue): GoldenLocation[] {
   const locations: GoldenLocation[] = [];
   if (issue.file !== null) locations.push({ file: issue.file, line: issue.line ?? 0 });
   for (const location of issue.locations ?? []) locations.push(location);
   return locations;
 }
 
-interface Scored {
-  readonly issue: GoldenIssue;
+interface Scored<T extends PrefilterIssue> {
+  readonly issue: T;
+  readonly inSameFile: boolean;
   /** Smallest line distance among same-file locations; Infinity when none. */
   readonly distance: number;
   readonly coverage: number;
 }
 
-function score(issue: GoldenIssue, candidate: MatchCandidate): Scored | null {
-  const coverage = titleCoverage(issue.title, candidate.text);
+function measure<T extends PrefilterIssue>(issue: T, candidate: MatchCandidate): Scored<T> {
+  const coverage = titleCoverage(issue.title, candidateWords(candidate));
   const locations = issueLocations(issue);
   let distance = Number.POSITIVE_INFINITY;
   let inSameFile = false;
@@ -125,25 +139,65 @@ function score(issue: GoldenIssue, candidate: MatchCandidate): Scored | null {
       }
     }
   }
+  return { issue, inSameFile, distance, coverage };
+}
+
+/** The candidate's text plus its separate claim and failing scenario, when present. */
+function candidateWords(candidate: MatchCandidate): string {
+  return [candidate.text, candidate.claim, candidate.failingScenario]
+    .filter((t): t is string => t !== undefined)
+    .join(" ");
+}
+
+function score<T extends PrefilterIssue>(issue: T, candidate: MatchCandidate): Scored<T> | null {
+  const scored = measure(issue, candidate);
+  const { inSameFile, distance, coverage } = scored;
+  const locations = issueLocations(issue);
   const keep =
     (inSameFile &&
       (distance <= PREFILTER_LINE_WINDOW || coverage >= PREFILTER_SAME_FILE_COVERAGE)) ||
     coverage >= PREFILTER_ANY_FILE_COVERAGE ||
     ((locations.length === 0 || candidate.file === null) &&
       coverage >= PREFILTER_TITLE_ONLY_COVERAGE);
-  return keep ? { issue, distance, coverage } : null;
+  return keep ? scored : null;
 }
 
-/** The issues `candidate` could be about, closest first, at most `max`. */
-export function prefilterIssues(
-  issues: readonly GoldenIssue[],
+function closestFirst<T extends PrefilterIssue>(a: Scored<T>, b: Scored<T>): number {
+  return a.distance - b.distance || b.coverage - a.coverage;
+}
+
+/** The issues `candidate` could be about, closest first, at most `max` (the strict filter). */
+export function prefilterIssues<T extends PrefilterIssue>(
+  issues: readonly T[],
   candidate: MatchCandidate,
   max = PREFILTER_MAX_ISSUES,
-): GoldenIssue[] {
+): T[] {
   return issues
     .map((issue) => score(issue, candidate))
-    .filter((s): s is Scored => s !== null)
-    .sort((a, b) => a.distance - b.distance || b.coverage - a.coverage)
+    .filter((s): s is Scored<T> => s !== null)
+    .sort(closestFirst)
     .slice(0, max)
     .map((s) => s.issue);
+}
+
+/**
+ * The issues offered to the LLM matcher: all of the candidate's file
+ * (closest first), then the top cross-file ones by title-word overlap; at
+ * most `max`, keeping room for the cross-file ones.
+ */
+export function shortlistIssues<T extends PrefilterIssue>(
+  issues: readonly T[],
+  candidate: MatchCandidate,
+  max = SHORTLIST_MAX_ISSUES,
+): T[] {
+  const scored = issues.map((issue) => measure(issue, candidate));
+  const cross = scored
+    .filter((s) => !s.inSameFile && s.coverage >= SHORTLIST_CROSS_FILE_MIN_COVERAGE)
+    .sort((a, b) => b.coverage - a.coverage)
+    .slice(0, Math.min(SHORTLIST_CROSS_FILE_TOP, max));
+  const same = scored
+    .filter((s) => s.inSameFile)
+    .sort(closestFirst)
+    .slice(0, max - cross.length);
+  return [...same, ...cross].map((s) => s.issue);
 }

@@ -98,6 +98,26 @@ describe("parseEvalArgs (scripts/eval/review.ts)", () => {
   });
 });
 
+describe("parseEvalArgs matcher flags", () => {
+  const base = ["--set", "g", "--variant", "v", "--out", "o", "--import", "d"];
+  it("defaults to the LLM matcher on opus at medium effort", () => {
+    expect(parseEvalArgs(base)).toMatchObject({
+      matcher: "claude-cli",
+      matcherModel: "claude-opus-5-5",
+      matcherEffort: "medium",
+    });
+  });
+  it("accepts llm as the LLM matcher and an explicit effort", () => {
+    const options = parseEvalArgs([...base, "--matcher", "llm", "--matcher-effort", "high"]);
+    expect(options.matcher).toBe("claude-cli");
+    expect(options.matcherEffort).toBe("high");
+  });
+  it("rejects an unknown matcher or effort", () => {
+    expect(() => parseEvalArgs([...base, "--matcher", "gpt"])).toThrow(/--matcher/);
+    expect(() => parseEvalArgs([...base, "--matcher-effort", "huge"])).toThrow(/--matcher-effort/);
+  });
+});
+
 describe("parseEvalArgs --concurrency", () => {
   const base = ["--set", "g", "--variant", "v", "--out", "o", "--import", "d"];
   it("defaults to 1 and accepts a positive integer", () => {

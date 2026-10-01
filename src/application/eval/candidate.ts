@@ -30,10 +30,22 @@ export interface CandidateFinding {
   readonly line: number | null;
   readonly lineEnd?: number;
   readonly text: string;
+  /** The bare claim when `text` adds more (e.g. "claim — rationale"); for the matcher. */
+  readonly claim?: string;
+  /** How the defect shows (agentic findings, imports that carry one); for the matcher. */
+  readonly failingScenario?: string;
+  /** The reviewer's quotes from the code; for the matcher. */
+  readonly evidence?: readonly CandidateEvidence[];
   readonly severity?: string;
   readonly kind?: string;
   readonly bucket: CandidateBucket;
   readonly source: CandidateSource;
+}
+
+export interface CandidateEvidence {
+  readonly file: string;
+  readonly line: number;
+  readonly quote: string;
 }
 
 export class ImportedReviewError extends Error {
@@ -50,6 +62,10 @@ const importedFindingSchema = z.object({
   severity: z.string().nullish(),
   claim: z.string().optional(),
   title: z.string().optional(),
+  failingScenario: z.string().nullish(),
+  evidence: z
+    .array(z.object({ file: z.string(), line: z.number().int(), quote: z.string() }))
+    .optional(),
   kind: z.string().nullish(),
   bucket: z.enum(["shown", "low"]).optional(),
 });
@@ -92,6 +108,8 @@ export function candidatesFromImportedReview(value: unknown, caseId: string): Ca
       line: finding.line ?? null,
       ...(finding.lineEnd !== undefined ? { lineEnd: finding.lineEnd } : {}),
       text,
+      ...(finding.failingScenario ? { failingScenario: finding.failingScenario } : {}),
+      ...(finding.evidence && finding.evidence.length > 0 ? { evidence: finding.evidence } : {}),
       ...(finding.severity ? { severity: finding.severity } : {}),
       ...(finding.kind ? { kind: finding.kind } : {}),
       bucket: finding.bucket ?? "shown",

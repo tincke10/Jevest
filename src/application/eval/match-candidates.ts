@@ -1,14 +1,19 @@
 /**
  * Matches a case's candidate findings to its golden issues: the
- * deterministic pre-filter (./prefilter.ts) narrows the issues, then the
- * {@link FindingMatcherPort} picks one of them or none. A candidate whose
- * pre-filter is empty is unmatched without a matcher call; an answer
- * outside the pre-filtered set is treated as "none".
+ * deterministic shortlist (./prefilter.ts `shortlistIssues`: every issue of
+ * the candidate's file plus the top cross-file ones by word overlap)
+ * narrows the issues, then the {@link FindingMatcherPort} picks one of them
+ * or none. A candidate whose shortlist is empty is unmatched without a
+ * matcher call; an answer outside the shortlist is treated as "none".
  */
-import type { FindingMatcherPort } from "../../domain/ports/finding-matcher-port.js";
+import type {
+  FindingMatcherPort,
+  MatchCandidate,
+  MatchableIssue,
+} from "../../domain/ports/finding-matcher-port.js";
 import type { CandidateFinding } from "./candidate.js";
 import type { GoldenIssue } from "./golden-set.js";
-import { prefilterIssues } from "./prefilter.js";
+import { prefilterIssues, shortlistIssues } from "./prefilter.js";
 
 export interface MatchedCandidate extends CandidateFinding {
   /** The golden issue this candidate is about, or `null` (unlabeled). */
@@ -42,20 +47,14 @@ export async function matchCandidates(input: MatchCandidatesInput): Promise<Matc
     while (next < input.candidates.length) {
       const index = next++;
       const candidate = input.candidates[index] as CandidateFinding;
-      const target = { file: candidate.file, line: candidate.line, text: candidate.text };
-      const shortlist = prefilterIssues(input.issues, target);
+      const target = toMatchCandidate(candidate);
+      const shortlist = shortlistIssues(input.issues, target);
       if (shortlist.length === 0) {
         matched[index] = { ...candidate, issueId: null };
         continue;
       }
       const decision = await input.matcher.match({
-        goldenIssues: shortlist.map((issue) => ({
-          id: issue.id,
-          file: issue.file,
-          line: issue.line,
-          title: issue.title,
-          ...(issue.notes !== undefined ? { notes: issue.notes } : {}),
-        })),
+        goldenIssues: shortlist.map(toMatchableIssue),
         candidate: target,
       });
       matcherCalls++;
@@ -71,15 +70,47 @@ export async function matchCandidates(input: MatchCandidatesInput): Promise<Matc
   return { matched, matcherCalls, cacheHits, matcherCostUsd };
 }
 
+function toMatchCandidate(candidate: CandidateFinding): MatchCandidate {
+  return {
+    file: candidate.file,
+    line: candidate.line,
+    text: candidate.text,
+    ...(candidate.claim !== undefined ? { claim: candidate.claim } : {}),
+    ...(candidate.failingScenario !== undefined
+      ? { failingScenario: candidate.failingScenario }
+      : {}),
+    ...(candidate.evidence !== undefined && candidate.evidence.length > 0
+      ? { evidence: candidate.evidence }
+      : {}),
+  };
+}
+
+function toMatchableIssue(issue: GoldenIssue): MatchableIssue {
+  return {
+    id: issue.id,
+    file: issue.file,
+    line: issue.line,
+    ...(issue.locations !== undefined && issue.locations.length > 0
+      ? { locations: issue.locations }
+      : {}),
+    title: issue.title,
+    ...(issue.category !== undefined ? { category: issue.category } : {}),
+    verdict: issue.verdict,
+    ...(issue.notes !== undefined ? { notes: issue.notes } : {}),
+  };
+}
+
 /**
- * Deterministic, free matcher: the pre-filter's first (closest) issue.
- * Over-matches on purpose; for dry runs and smoke tests, never for numbers
- * you report.
+ * Deterministic, free matcher: the strict pre-filter's first (closest)
+ * issue among those offered (the wider LLM shortlist would over-match even
+ * more). Over-matches on purpose; for dry runs and smoke tests, never for
+ * numbers you report.
  */
 export function createTopPrefilterMatcher(): FindingMatcherPort {
   return {
     async match(input) {
-      return { issueId: input.goldenIssues[0]?.id ?? null, costUsd: 0 };
+      const [closest] = prefilterIssues(input.goldenIssues, input.candidate);
+      return { issueId: closest?.id ?? null, costUsd: 0 };
     },
   };
 }

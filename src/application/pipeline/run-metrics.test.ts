@@ -3,6 +3,7 @@ import { jevCostUsd } from "../findings/pricing.js";
 import {
   type RunMetricsInput,
   type StageWallTimes,
+  ZERO_CODE_CONTEXT_METRICS,
   computeRunMetrics,
   estimateHunkReviewTokens,
 } from "./run-metrics.js";
@@ -434,5 +435,75 @@ describe("computeRunMetrics", () => {
       totalMs: 210,
     };
     expect(computeRunMetrics(makeInput({ wallTime })).wallTime).toEqual(wallTime);
+  });
+});
+
+describe("computeRunMetrics — code context and evidence", () => {
+  it("is all zeros and not run when the layers are off", () => {
+    expect(computeRunMetrics(makeInput()).codeContext).toEqual(ZERO_CODE_CONTEXT_METRICS);
+    expect(ZERO_CODE_CONTEXT_METRICS).toEqual({
+      ran: false,
+      unavailable: null,
+      hunks: 0,
+      files: 0,
+      snippets: 0,
+      fullFileChars: 0,
+      impactChars: 0,
+      evidenceChecked: 0,
+      evidenceRejected: 0,
+    });
+  });
+
+  it("copies the stage totals and counts checked and rejected findings", () => {
+    const finding = {
+      lineStart: 1,
+      lineEnd: 1,
+      claim: "c",
+      rationale: "r",
+      suggestedSeverity: "minor" as const,
+    };
+    const metrics = computeRunMetrics(
+      makeInput({
+        review: makeReview([
+          makeReviewEntry("h1", {
+            findings: [
+              { ...finding, evidenceCheck: { verified: 0, checked: 1 } },
+              { ...finding, evidenceCheck: { verified: 2, checked: 2 } },
+              finding,
+            ],
+          }),
+        ]),
+        codeContext: {
+          hunks: [],
+          unavailable: null,
+          totals: { hunks: 2, files: 5, snippets: 7, fullFileChars: 1000, impactChars: 300 },
+        },
+      }),
+    );
+    expect(metrics.codeContext).toEqual({
+      ran: true,
+      unavailable: null,
+      hunks: 2,
+      files: 5,
+      snippets: 7,
+      fullFileChars: 1000,
+      impactChars: 300,
+      evidenceChecked: 2,
+      evidenceRejected: 1,
+    });
+  });
+
+  it("carries the unavailable note", () => {
+    const metrics = computeRunMetrics(
+      makeInput({
+        codeContext: {
+          hunks: [],
+          unavailable: "Impact context unavailable: no checkout",
+          totals: { hunks: 0, files: 0, snippets: 0, fullFileChars: 0, impactChars: 0 },
+        },
+      }),
+    );
+    expect(metrics.codeContext.ran).toBe(true);
+    expect(metrics.codeContext.unavailable).toBe("Impact context unavailable: no checkout");
   });
 });

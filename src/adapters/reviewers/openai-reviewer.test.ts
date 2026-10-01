@@ -2,7 +2,11 @@ import { AuthenticationError, BadRequestError, RateLimitError } from "openai";
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type OpenAiChatClient, createOpenAiReviewer } from "./openai-reviewer.js";
-import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
+import {
+  AUTHOR_CONTEXT_REVIEW_RULES,
+  EVIDENCE_REVIEW_RULES,
+  REVIEW_SYSTEM_PROMPT,
+} from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -218,5 +222,22 @@ describe("createOpenAiReviewer with the author's stated context", () => {
       `${REVIEW_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
     );
     expect(withContext.messages[1].content).toContain("<author_context>");
+  });
+});
+
+describe("createOpenAiReviewer with requireEvidence", () => {
+  it("asks for the evidence response format and rules only on requests that require it", async () => {
+    const client = fakeClient(async () => successResponse());
+    const reviewer = createOpenAiReviewer({ client });
+    await reviewer.review(SAMPLE_INPUT);
+    await reviewer.review({ ...SAMPLE_INPUT, requireEvidence: true });
+    const [plain] = client.chat.completions.parse.mock.calls[0]!;
+    const [withEvidence] = client.chat.completions.parse.mock.calls[1]!;
+    expect(plain.messages[0].content).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(withEvidence.messages[0].content).toBe(
+      `${REVIEW_SYSTEM_PROMPT}\n\n${EVIDENCE_REVIEW_RULES}`,
+    );
+    expect(JSON.stringify(plain.response_format)).not.toContain("evidence");
+    expect(JSON.stringify(withEvidence.response_format)).toContain("evidence");
   });
 });

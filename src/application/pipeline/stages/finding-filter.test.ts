@@ -4,7 +4,7 @@ import { type CalibrationMap, applyCalibration } from "../../../domain/calibrati
 import type { ConfidencePolicyConfig } from "../../../domain/confidence-policy.js";
 import type { Decision } from "../../../domain/decision.js";
 import type { ReviewFindingCandidate } from "../../../domain/ports/reviewer-port.js";
-import { runFindingFilterStage } from "./finding-filter.js";
+import { EVIDENCE_NOT_FOUND_REASON, runFindingFilterStage } from "./finding-filter.js";
 import type { ReviewStageEntry } from "./review.js";
 
 const policyConfig: ConfidencePolicyConfig = {
@@ -388,5 +388,69 @@ describe("runFindingFilterStage with a calibration map", () => {
     expect(result.needsHuman[0]!.unverified).toBe(true);
     expect(Number.isNaN(result.needsHuman[0]!.isRealDefectProb)).toBe(true);
     expect(Number.isNaN(result.needsHuman[0]!.rawIsRealDefectProb)).toBe(true);
+  });
+});
+
+describe("runFindingFilterStage — evidence (reviewer.requireEvidence)", () => {
+  const unverified = {
+    ...candidate({ claim: "invented" }),
+    evidenceCheck: { verified: 0, checked: 2 },
+  };
+  const verified = {
+    ...candidate({ claim: "proven" }),
+    evidenceCheck: { verified: 1, checked: 2 },
+  };
+
+  it("never asks Jev about a finding with no verified evidence and keeps it out of published (annotate)", async () => {
+    const review = makeReview({ findings: [unverified, verified] });
+    // Only f1 is scripted: asking Jev about f0 would throw in the fake adapter.
+    const port = createFakeDecisionAdapter(scriptFor("a.ts#0-f1", 0.95, 2, 0.05, 0.9));
+    const result = await runFindingFilterStage({
+      reviews: [review],
+      hunksById,
+      decisionPort: port,
+      policyConfig,
+      riskLevel: "low",
+      mode: "annotate",
+    });
+    expect(result.published.map((f) => f.claim)).toEqual(["proven"]);
+    expect(result.lowConfidence).toHaveLength(1);
+    expect(result.lowConfidence[0]).toMatchObject({
+      findingId: "a.ts#0-f0",
+      claim: "invented",
+      rejectedReason: EVIDENCE_NOT_FOUND_REASON,
+      unverified: false,
+    });
+    expect(Number.isNaN(result.lowConfidence[0]?.isRealDefectProb)).toBe(true);
+    expect(result.totalRequests).toBe(1);
+    expect(EVIDENCE_NOT_FOUND_REASON).toBe("evidence not found in code");
+  });
+
+  it("discards it in discard mode, critical or not", async () => {
+    const critical = { ...unverified, suggestedSeverity: "critical" as const };
+    const result = await runFindingFilterStage({
+      reviews: [makeReview({ findings: [critical] })],
+      hunksById,
+      decisionPort: createFakeDecisionAdapter({}),
+      policyConfig,
+      riskLevel: "low",
+      mode: "discard",
+    });
+    expect(result.discarded).toHaveLength(1);
+    expect(result.discarded[0]?.rejectedReason).toBe(EVIDENCE_NOT_FOUND_REASON);
+    expect(result.needsHuman).toHaveLength(0);
+    expect(result.totalRequests).toBe(0);
+  });
+
+  it("leaves rejectedReason off every finding Jev classified", async () => {
+    const result = await runFindingFilterStage({
+      reviews: [makeReview()],
+      hunksById,
+      decisionPort: createFakeDecisionAdapter(scriptFor("a.ts#0-f0", 0.95, 2, 0.05, 0.9)),
+      policyConfig,
+      riskLevel: "low",
+      mode: "discard",
+    });
+    expect(result.published[0]).not.toHaveProperty("rejectedReason");
   });
 });

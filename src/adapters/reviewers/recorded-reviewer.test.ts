@@ -156,3 +156,34 @@ describe("fixtureKeyForReview and the author context", () => {
     ).not.toBe(fixtureKeyForReview(GOLDEN_INPUT));
   });
 });
+
+describe("fixtureKeyForReview with the code-context layers", () => {
+  const GOLDEN: ReviewInput = {
+    hunkId: "zod-9446b5c-1",
+    file: "packages/zod/src/v4/core/compile.ts",
+    language: "typescript",
+    hunkHeader: "@@ -1268,13 +1268,13 @@ function generateObjectCheck(",
+    before: "const outputVar = newVar(ctx);",
+    diff: "@@ -1268,13 +1268,13 @@\n-const outputVar = newVar(ctx);\n+const outputVar = newVar(ctx2);",
+    profile: { changeKind: "modify-behavior" },
+  };
+
+  it("keeps the pinned key without the layers, and gives each layer its own key", () => {
+    expect(fixtureKeyForReview(GOLDEN)).toBe(
+      "d2b2d73a11894d4d959544889846f3044860a2ae94cb3838546cf2a7960ea5e9",
+    );
+    const keys = new Set([
+      fixtureKeyForReview(GOLDEN),
+      fixtureKeyForReview({ ...GOLDEN, requireEvidence: true }),
+      fixtureKeyForReview({
+        ...GOLDEN,
+        fullFile: { path: GOLDEN.file, mode: "full", totalLines: 1, segments: [], chars: 0 },
+      }),
+      fixtureKeyForReview({
+        ...GOLDEN,
+        impactContext: { symbols: ["newVar"], snippets: [], chars: 0, truncated: false },
+      }),
+    ]);
+    expect(keys.size).toBe(4);
+  });
+});

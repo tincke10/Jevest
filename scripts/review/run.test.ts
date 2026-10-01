@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +9,7 @@ import {
   resolveConfig,
   resolveLocalCalibration,
   resolveLocalProductContext,
+  resolveLocalWorkingTree,
   runLocalReview,
 } from "./run.js";
 
@@ -98,6 +100,9 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     });
   });
 });
@@ -292,5 +297,150 @@ describe("runLocalReview (scripts/review/run.ts)", () => {
     expect(lines.some((l) => l.includes("running pipeline (mode=dry-run, config=defaults)"))).toBe(
       true,
     );
+  });
+});
+
+describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
+  async function config(reviewer: Partial<JevestConfig["reviewer"]>): Promise<JevestConfig> {
+    const { config: base } = await resolveConfig(join(tmpdir(), "jevest-missing-config.yml"));
+    return {
+      ...base,
+      reviewer: { ...base.reviewer, provider: "anthropic", model: "m", ...reviewer },
+    };
+  }
+
+  it("does nothing when every layer is off", async () => {
+    let prepared = false;
+    const resolved = await resolveLocalWorkingTree({
+      config: await config({}),
+      gitRange: { base: "a", head: "b" },
+      repoDir: "/repo",
+      log: () => {},
+      prepare: async () => {
+        prepared = true;
+        throw new Error("unreachable");
+      },
+    });
+    expect(prepared).toBe(false);
+    expect(resolved.workingTree).toBeUndefined();
+    expect(resolved.unavailableReason).toBeUndefined();
+  });
+
+  it("has no checkout in --diff mode, and says why", async () => {
+    const resolved = await resolveLocalWorkingTree({
+      config: await config({ impactContext: true }),
+      gitRange: null,
+      repoDir: "/repo",
+      log: () => {},
+    });
+    expect(resolved.workingTree).toBeUndefined();
+    expect(resolved.unavailableReason).toBe("--diff mode has no checkout of the head");
+  });
+
+  it("prepares a checkout of the head in --git mode, logs it, and cleans it up", async () => {
+    const lines: string[] = [];
+    let cleaned = false;
+    const resolved = await resolveLocalWorkingTree({
+      config: await config({ requireEvidence: true }),
+      gitRange: { base: "a", head: "feedface" },
+      repoDir: "/repo",
+      log: (line) => lines.push(line),
+      prepare: async (options) => {
+        expect(options).toMatchObject({ repoDir: "/repo", head: "feedface" });
+        return {
+          root: "/tmp/tree",
+          kind: "partial-worktree",
+          skippedFiles: 3,
+          totalFiles: 10,
+          cleanup: async () => {
+            cleaned = true;
+          },
+        };
+      },
+    });
+    expect(resolved.workingTree).toBeDefined();
+    expect(lines).toContain(
+      "[review] head checkout: partial-worktree at /tmp/tree (3 of 10 files skipped: blobs not in the local object store)",
+    );
+    await resolved.cleanup();
+    expect(cleaned).toBe(true);
+  });
+});
+
+describe("runLocalReview --git with code context (real git, scripts/review/run.ts)", () => {
+  let dir: string;
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "t",
+    GIT_AUTHOR_EMAIL: "t@example.com",
+    GIT_COMMITTER_NAME: "t",
+    GIT_COMMITTER_EMAIL: "t@example.com",
+  };
+  const git = (...args: string[]) =>
+    execFileSync("git", ["-c", "init.defaultBranch=main", ...args], {
+      cwd: join(dir, "repo"),
+      env,
+      encoding: "utf8",
+    }).trim();
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "jevest-review-git-"));
+    await mkdir(join(dir, "repo", "src"), { recursive: true });
+    git("init", "-q");
+    await writeFile(
+      join(dir, "repo", "src/total.ts"),
+      "export function computeTotal(items) {\n  return items.reduce(sumPlain, 0);\n}\n",
+    );
+    await writeFile(join(dir, "repo", "src/pay.ts"), "const due = computeTotal(cart);\n");
+    git("add", ".");
+    git("commit", "-q", "-m", "base");
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("checks the head out in a temporary worktree, logs per-hunk context stats, and removes it", async () => {
+    const base = git("rev-parse", "HEAD");
+    await writeFile(
+      join(dir, "repo", "src/total.ts"),
+      "export function computeTotal(items) {\n  return items.reduce(sumWithTax, 0);\n}\n",
+    );
+    git("commit", "-q", "-am", "head");
+    const head = git("rev-parse", "HEAD");
+    git("checkout", "-q", base);
+
+    const { config: defaults } = await resolveConfig(join(dir, "missing.yml"));
+    const config: JevestConfig = {
+      ...defaults,
+      reviewer: {
+        ...defaults.reviewer,
+        fullFile: true,
+        impactContext: true,
+        requireEvidence: true,
+      },
+    };
+    const lines: string[] = [];
+    const result = await runLocalReview({
+      options: {
+        diffFile: null,
+        gitRange: { base, head },
+        mode: "dry-run",
+        outDir: join(dir, "out"),
+      },
+      config,
+      repoDir: join(dir, "repo"),
+      spendLedgerPath: join(dir, "ledger.json"),
+      log: (line) => lines.push(line),
+    });
+
+    expect(result.failedClosed).toBe(false);
+    expect(lines.some((l) => l.startsWith("[review] head checkout: worktree at "))).toBe(true);
+    expect(result.codeContext?.hunks[0]?.fullFile?.segments[0]?.lines[1]).toContain("sumWithTax");
+    const hunkLine = lines.find((l) => l.startsWith("[review] context src/total.ts"));
+    expect(hunkLine).toMatch(/symbols=\d+ \(.*sumWithTax.*\)/);
+    expect(hunkLine).toMatch(/fullFile=full \d+ chars/);
+    expect(lines.some((l) => l.startsWith("[review] code context: "))).toBe(true);
+    expect(git("worktree", "list").split("\n")).toHaveLength(1);
   });
 });

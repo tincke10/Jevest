@@ -3,12 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import {
   DEEPSEEK_BASE_URL,
+  DEEPSEEK_EVIDENCE_JSON_RULES,
   DEEPSEEK_SYSTEM_PROMPT,
   type DeepSeekChatClient,
   buildDeepSeekSystemPrompt,
   createDeepSeekReviewer,
 } from "./deepseek-reviewer.js";
-import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
+import {
+  AUTHOR_CONTEXT_REVIEW_RULES,
+  EVIDENCE_REVIEW_RULES,
+  REVIEW_SYSTEM_PROMPT,
+} from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -310,5 +315,41 @@ describe("createDeepSeekReviewer with the author's stated context", () => {
       `${DEEPSEEK_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
     );
     expect(withContext.messages[1].content).toContain("<author_context>");
+  });
+});
+
+describe("createDeepSeekReviewer with requireEvidence", () => {
+  const WITH_EVIDENCE = {
+    findings: [
+      {
+        ...ONE_FINDING.findings[0],
+        evidence: [
+          { file: "packages/zod/src/v4/core/compile.ts", line: 1268, quote: "newVar(ctx2)" },
+        ],
+      },
+    ],
+  };
+
+  it("adds the evidence rules and json shape, validates evidence, and maps it", async () => {
+    const client = fakeClient(async () =>
+      successResponse({
+        choices: [{ message: { content: JSON.stringify(WITH_EVIDENCE) }, finish_reason: "stop" }],
+      }),
+    );
+    const reviewer = createDeepSeekReviewer({ client });
+    const output = await reviewer.review({ ...SAMPLE_INPUT, requireEvidence: true });
+    const [request] = client.chat.completions.create.mock.calls[0]!;
+    expect(request.messages[0].content).toBe(
+      `${DEEPSEEK_SYSTEM_PROMPT}\n\n${EVIDENCE_REVIEW_RULES}\n\n${DEEPSEEK_EVIDENCE_JSON_RULES}`,
+    );
+    expect(output.findings[0]?.evidence).toEqual(WITH_EVIDENCE.findings[0]?.evidence);
+  });
+
+  it("treats a finding without evidence as a parse error when evidence is required", async () => {
+    const client = fakeClient(async () => successResponse());
+    const reviewer = createDeepSeekReviewer({ client });
+    await expect(reviewer.review({ ...SAMPLE_INPUT, requireEvidence: true })).rejects.toThrow(
+      ReviewerParseError,
+    );
   });
 });

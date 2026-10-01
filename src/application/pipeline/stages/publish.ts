@@ -492,6 +492,9 @@ function buildLowConfidenceSection(findingFilter: FindingFilterStageResult): str
     findingFilter.lowConfidence.length === 0
       ? ["No low-confidence findings."]
       : findingFilter.lowConfidence.map((f) => {
+          if (f.rejectedReason !== undefined) {
+            return `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (not published: ${f.rejectedReason})`;
+          }
           const confidence = noulConfidence(f.isRealDefectProb);
           // `isRealDefectProb` is the CALIBRATED probability when
           // `findingFilter.calibration` is on (SPEC §4.6.3) — the number that
@@ -710,6 +713,33 @@ function steeringLine(
   return `> **${lead}** ${shown}${suffix}.`;
 }
 
+/**
+ * Code context and evidence (`reviewer.fullFile` / `impactContext` /
+ * `requireEvidence`): what was added to the review prompts, or the one line
+ * saying it could not be (no checkout), and the evidence check's count.
+ * Nothing when the layers are off.
+ */
+function codeContextEfficiencyLines(metrics: RunMetrics): string[] {
+  const context = metrics.codeContext;
+  const lines: string[] = [];
+  if (context.unavailable !== null) {
+    lines.push(
+      `- ${context.unavailable} (reviewer.fullFile / reviewer.impactContext skipped; they need actions/checkout of the PR head)`,
+    );
+  } else if (context.ran) {
+    const chars = context.fullFileChars + context.impactChars;
+    lines.push(
+      `- Code context: ${plural(context.files, "file")}, ${plural(context.snippets, "snippet")}, ${chars} chars added to ${plural(context.hunks, "hunk")} (full file ${context.fullFileChars}, impact ${context.impactChars})`,
+    );
+  }
+  if (context.evidenceChecked > 0) {
+    lines.push(
+      `- Evidence: ${context.evidenceRejected} of ${plural(context.evidenceChecked, "finding")} not published (evidence not found in code)`,
+    );
+  }
+  return lines;
+}
+
 /** The closing section; see the module doc for why it is last and outside the fingerprint. */
 function buildEfficiencySection(
   metrics: RunMetrics,
@@ -726,6 +756,7 @@ function buildEfficiencySection(
     ...(descriptionContext?.status === "extracted"
       ? [descriptionContextEfficiencyLine(descriptionContext)]
       : []),
+    ...codeContextEfficiencyLines(metrics),
     `- ${llm.method}`,
   ];
 }
@@ -889,6 +920,7 @@ function buildReportBody(input: PublishStageInput): string[] {
     buildNeedsHumanSection(findingFilter, triage, input.hunkProfile, input.review),
     "",
     `### Findings discarded: ${findingFilter.discarded.length}`,
+    ...rejectedDiscardedLines(findingFilter),
     "",
     ...buildLowConfidenceSection(findingFilter),
     "",
@@ -899,6 +931,17 @@ function buildReportBody(input: PublishStageInput): string[] {
     `- Safe to automerge probability: ${mergeGate.safeToAutomergeProb}`,
     `- Gate conclusion: ${mergeGate.conclusion} (decides \`jevest:auto-merge-ok\` only; the check follows the review verdict)`,
   ];
+}
+
+/**
+ * Discarded findings are only counted, except the ones the evidence check
+ * rejected (`reviewer.requireEvidence`): those are listed with the reason,
+ * because "the code does not say that" is worth seeing, unlike a band.
+ */
+function rejectedDiscardedLines(findingFilter: FindingFilterStageResult): string[] {
+  return findingFilter.discarded
+    .filter((f) => f.rejectedReason !== undefined)
+    .map((f) => `- \`${f.file}\` line ${f.lineStart}: ${f.claim} (${f.rejectedReason})`);
 }
 
 /** The human queue: doubts to answer, plus what a human has to check by hand. */

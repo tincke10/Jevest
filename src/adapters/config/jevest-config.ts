@@ -123,6 +123,16 @@ export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 // to steer the review (src/application/pipeline/stages/description-context.ts).
 // Same resolution as `narrative`: unset follows the provider, explicit
 // `true` without an LLM is a config error.
+//
+// Code context (opt-in, all default false; with all three off every prompt,
+// schema and recorded-fixture key is byte-identical to before they existed):
+// `fullFile` adds the hunk's whole file at the PR head to the reviewer input
+// (windowed when large); `impactContext` adds the other code that
+// references what the hunk changes (an rg search in the checkout); both
+// need a checkout of the PR head and are skipped with a note without one.
+// `requireEvidence` makes every finding cite the code that proves it and
+// drops (to low-confidence/discarded) the findings whose quotes are not in
+// the code. See src/application/pipeline/stages/code-context.ts.
 const DEFAULT_REVIEW_LANGUAGE = "es";
 
 const reviewerSchema = z
@@ -132,6 +142,9 @@ const reviewerSchema = z
     language: z.string().trim().min(1).default(DEFAULT_REVIEW_LANGUAGE),
     narrative: z.boolean().optional(),
     descriptionContext: z.boolean().optional(),
+    fullFile: z.boolean().default(false),
+    impactContext: z.boolean().default(false),
+    requireEvidence: z.boolean().default(false),
   })
   .superRefine((r, ctx) => {
     if (r.provider !== "none" && !r.model) {
@@ -277,6 +290,12 @@ export interface JevestConfig {
     readonly narrative: boolean;
     /** Author context from the PR description for the reviewer; resolved like `narrative`. */
     readonly descriptionContext: boolean;
+    /** The hunk's full file at the PR head in the reviewer input (needs a checkout). Default false. */
+    readonly fullFile: boolean;
+    /** References to what the hunk changes, from the checkout, in the reviewer input. Default false. */
+    readonly impactContext: boolean;
+    /** Every finding must quote the code that proves it; unverified ones are not published. Default false. */
+    readonly requireEvidence: boolean;
   };
   readonly thresholds: ConfidencePolicyConfig;
   readonly sizeThresholds: SizeThresholds;
@@ -369,6 +388,9 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
       narrative: result.data.reviewer.narrative ?? result.data.reviewer.provider !== "none",
       descriptionContext:
         result.data.reviewer.descriptionContext ?? result.data.reviewer.provider !== "none",
+      fullFile: result.data.reviewer.fullFile,
+      impactContext: result.data.reviewer.impactContext,
+      requireEvidence: result.data.reviewer.requireEvidence,
     },
     thresholds: toConfidencePolicyConfig(result.data.thresholds),
     sizeThresholds: result.data.sizeThresholds,

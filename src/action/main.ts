@@ -15,9 +15,18 @@
  * `parseActionInputs` and the `pull_request` / `pull_request_target` event
  * parsing below have no dependency on the pipeline module, so they're safe
  * to unit test without touching a network or a missing module.
+ *
+ * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * the working tree is `GITHUB_WORKSPACE` only when it is a git checkout
+ * whose HEAD is the PR head sha (`actions/checkout` with
+ * `ref: ${{ github.event.pull_request.head.sha }}`; the default merge ref
+ * is another commit, with other line numbers, and is refused). Otherwise
+ * the layers that need the tree are skipped with one line in the comment
+ * and evidence is checked against the hunk text. Never a failure.
  */
-import { appendFile, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { execFile } from "node:child_process";
+import { appendFile, readFile, stat } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { Octokit } from "@octokit/rest";
@@ -49,6 +58,7 @@ import {
   type GitHubVcsAdapter,
   createGitHubVcsAdapter,
 } from "../adapters/vcs/github-vcs-adapter.js";
+import { createRipgrepWorkingTree } from "../adapters/working-tree/ripgrep-working-tree.js";
 import { type ProductContext, loadProductContext } from "../application/context/product-context.js";
 import { type PipelineResult, runPipeline } from "../application/pipeline/run-pipeline.js";
 import {
@@ -62,6 +72,7 @@ import type { DescriptionContextPort } from "../domain/ports/description-context
 import type { ReviewNarratorPort } from "../domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../domain/ports/reviewer-port.js";
 import type { VcsPort } from "../domain/ports/vcs-port.js";
+import type { WorkingTreePort } from "../domain/ports/working-tree-port.js";
 import type { PullRequestRef } from "../domain/pull-request.js";
 
 export class ActionInputError extends Error {
@@ -581,6 +592,66 @@ export async function resolveConfig(
  * present, zeros when a stage did not run; `llm-tokens-saved-pct` is an
  * estimate, see docs/BENCHMARK.md "H2 / H4 — measured per run".
  */
+/** Probes behind {@link resolveActionWorkingTree}, injectable for tests. */
+export interface WorkspaceProbe {
+  hasGitDir(dir: string): Promise<boolean>;
+  headSha(dir: string): Promise<string>;
+}
+
+const DEFAULT_WORKSPACE_PROBE: WorkspaceProbe = {
+  async hasGitDir(dir) {
+    try {
+      await stat(join(dir, ".git"));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  headSha(dir) {
+    return new Promise((resolvePromise, reject) => {
+      execFile(
+        "git",
+        ["rev-parse", "HEAD"],
+        { cwd: dir, env: { ...process.env, GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" } },
+        (error, stdout) => (error ? reject(error) : resolvePromise(stdout)),
+      );
+    });
+  },
+};
+
+/**
+ * The working tree for the code-context layers (see the module doc): `{}`
+ * when every layer is off, a tree over `workspace` when it is a checkout of
+ * the PR head, else the reason for the comment's one line.
+ */
+export async function resolveActionWorkingTree(
+  config: JevestConfig,
+  ref: PullRequestRef,
+  workspace: string | undefined,
+  probe: WorkspaceProbe = DEFAULT_WORKSPACE_PROBE,
+): Promise<{ workingTree?: WorkingTreePort; unavailableReason?: string }> {
+  const { reviewer } = config;
+  const wanted =
+    reviewer.provider !== "none" &&
+    (reviewer.fullFile || reviewer.impactContext || reviewer.requireEvidence);
+  if (!wanted) return {};
+  if (workspace === undefined || workspace === "" || !(await probe.hasGitDir(workspace))) {
+    return { unavailableReason: "no checkout" };
+  }
+  let head: string;
+  try {
+    head = (await probe.headSha(workspace)).trim();
+  } catch {
+    return { unavailableReason: "no checkout" };
+  }
+  if (head !== ref.headSha) {
+    return {
+      unavailableReason: `no checkout of the PR head (the workspace is at ${head.slice(0, 7)}; check out ref: the PR head sha)`,
+    };
+  }
+  return { workingTree: createRipgrepWorkingTree({ root: workspace }) };
+}
+
 export function buildOutputLines(result: PipelineResult): string {
   const { metrics } = result;
   return (
@@ -674,6 +745,10 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     const descriptionContext = createDescriptionContextExtractor(config, inputs);
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
+    const tree = await resolveActionWorkingTree(config, ref, env.GITHUB_WORKSPACE);
+    if (tree.unavailableReason) {
+      console.log(`jevest: code context unavailable: ${tree.unavailableReason}`);
+    }
     // Same token, same `issues: write` permission the summary comment and
     // labels already need — the ledger is one issue in the consumer repo.
     const spendLedger = createGitHubIssueSpendLedger({
@@ -693,7 +768,9 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
         ...(summarizer ? { summarizer } : {}),
         ...(narrator ? { narrator } : {}),
         ...(descriptionContext ? { descriptionContext } : {}),
+        ...(tree.workingTree ? { workingTree: tree.workingTree } : {}),
       },
+      ...(tree.unavailableReason ? { workingTreeUnavailableReason: tree.unavailableReason } : {}),
       config,
       productContext,
       calibration,

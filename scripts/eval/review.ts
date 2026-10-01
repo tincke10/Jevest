@@ -253,6 +253,25 @@ async function pipelineSource(
           findingsPublished: result.findingsPublished,
           findingsLowConfidence: result.findingsLowConfidence,
           metrics: result.metrics,
+          // Per-hunk stats of the code-context layers (reviewer.fullFile /
+          // impactContext), without the context text itself.
+          codeContext:
+            result.codeContext === null
+              ? null
+              : {
+                  unavailable: result.codeContext.unavailable,
+                  totals: result.codeContext.totals,
+                  hunks: result.codeContext.hunks.map((h) => ({
+                    hunkId: h.hunkId,
+                    symbols: h.symbols,
+                    matchesFound: h.matchesFound,
+                    snippets: h.impactContext?.snippets.length ?? 0,
+                    impactChars: h.impactContext?.chars ?? 0,
+                    fullFileMode: h.fullFile?.mode ?? null,
+                    fullFileChars: h.fullFile?.chars ?? 0,
+                    error: h.error,
+                  })),
+                },
         },
         null,
         2,

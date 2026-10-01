@@ -1,7 +1,12 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   REVIEW_OUTPUT_JSON_SCHEMA,
+  REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA,
+  reviewOutputJsonSchemaFor,
   reviewOutputSchema,
+  reviewOutputSchemaFor,
+  reviewOutputWithEvidenceSchema,
   toReviewFindingCandidates,
 } from "./review-output-schema.js";
 
@@ -92,5 +97,66 @@ describe("toReviewFindingCandidates", () => {
 
   it("returns an empty array for an empty findings list", () => {
     expect(toReviewFindingCandidates({ findings: [] })).toEqual([]);
+  });
+});
+
+describe("evidence schema (reviewer.requireEvidence)", () => {
+  const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+  const finding = {
+    line_start: 3,
+    line_end: 3,
+    claim: "the caller still passes the old flag",
+    rationale: "pay.ts derives it from the legacy map",
+    suggested_severity: "major" as const,
+  };
+
+  it("leaves the default JSON schema byte-identical (pinned)", () => {
+    expect(sha256(JSON.stringify(REVIEW_OUTPUT_JSON_SCHEMA))).toBe(
+      "1e603cca1c26983d4f13c5a0546e504e3677c03f2b07fa6125656f6db79859a2",
+    );
+  });
+
+  it("requires evidence on every finding", () => {
+    expect(reviewOutputWithEvidenceSchema.safeParse({ findings: [finding] }).success).toBe(false);
+    expect(
+      reviewOutputWithEvidenceSchema.safeParse({
+        findings: [
+          { ...finding, evidence: [{ file: "src/pay.ts", line: 20, quote: "legacyMap[flag]" }] },
+        ],
+      }).success,
+    ).toBe(true);
+    const json = REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA as {
+      properties: { findings: { items: { required: string[] } } };
+    };
+    expect(json.properties.findings.items.required).toContain("evidence");
+    expect(REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA).not.toHaveProperty("$schema");
+  });
+
+  it("picks the schema from the request", () => {
+    const input = {
+      hunkId: "h",
+      file: "a.ts",
+      language: "typescript",
+      hunkHeader: "",
+      before: "",
+      diff: "",
+    };
+    expect(reviewOutputSchemaFor(input)).toBe(reviewOutputSchema);
+    expect(reviewOutputJsonSchemaFor(input)).toBe(REVIEW_OUTPUT_JSON_SCHEMA);
+    expect(reviewOutputSchemaFor({ ...input, requireEvidence: true })).toBe(
+      reviewOutputWithEvidenceSchema,
+    );
+    expect(reviewOutputJsonSchemaFor({ ...input, requireEvidence: true })).toBe(
+      REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA,
+    );
+  });
+
+  it("maps evidence onto the candidate, and leaves it off when absent", () => {
+    expect(
+      toReviewFindingCandidates({
+        findings: [{ ...finding, evidence: [{ file: "src/pay.ts", line: 20, quote: "x()" }] }],
+      })[0]?.evidence,
+    ).toEqual([{ file: "src/pay.ts", line: 20, quote: "x()" }]);
+    expect(toReviewFindingCandidates({ findings: [finding] })[0]).not.toHaveProperty("evidence");
   });
 });

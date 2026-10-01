@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { JevestConfig } from "../adapters/config/jevest-config.js";
 import type { GitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
-import { ZERO_WALL_TIMES } from "../application/pipeline/run-metrics.js";
+import { ZERO_CODE_CONTEXT_METRICS, ZERO_WALL_TIMES } from "../application/pipeline/run-metrics.js";
 import type { PipelineResult } from "../application/pipeline/run-pipeline.js";
 import type { ReviewPublication } from "../domain/ports/vcs-port.js";
 import type { PullRequestData, PullRequestRef } from "../domain/pull-request.js";
@@ -21,6 +21,7 @@ import {
   loadPullRequestRefFromEvent,
   parseActionInputs,
   pullRequestRefFromEventPayload,
+  resolveActionWorkingTree,
   resolveCalibration,
   resolveConfig,
   resolveProductContext,
@@ -128,6 +129,9 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
       ...overrides,
     },
     thresholds: {},
@@ -693,6 +697,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     mergeGate: null,
     narrative: null,
     descriptionContext: null,
+    codeContext: null,
     publication,
     check: publication.check,
     findingsPublished: 2,
@@ -737,6 +742,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
         method: "estimate",
       },
       wallTime: ZERO_WALL_TIMES,
+      codeContext: ZERO_CODE_CONTEXT_METRICS,
     },
     ...overrides,
   };
@@ -800,5 +806,77 @@ describe("spendCapAnnotations", () => {
     expect(spendCapAnnotations(makeResult({ spendLedgerError: "issues 500" }))).toEqual([
       "::warning::Jevest spend ledger unavailable: issues 500 — cumulative cap not enforced on this run",
     ]);
+  });
+});
+
+describe("resolveActionWorkingTree (code context in the Action)", () => {
+  const REF: PullRequestRef = {
+    owner: "acme",
+    repo: "widgets",
+    number: 7,
+    headSha: "abc123head",
+    baseSha: "def456base",
+  };
+  const ON = makeConfig({ impactContext: true });
+
+  it("does nothing when every layer is off", async () => {
+    let probed = false;
+    const resolved = await resolveActionWorkingTree(makeConfig(), REF, "/ws", {
+      hasGitDir: async () => {
+        probed = true;
+        return true;
+      },
+      headSha: async () => REF.headSha,
+    });
+    expect(probed).toBe(false);
+    expect(resolved).toEqual({});
+  });
+
+  it("uses the workspace when it is a checkout of the PR head", async () => {
+    const resolved = await resolveActionWorkingTree(ON, REF, "/ws", {
+      hasGitDir: async () => true,
+      headSha: async (dir) => {
+        expect(dir).toBe("/ws");
+        return `${REF.headSha}\n`;
+      },
+    });
+    expect(resolved.workingTree).toBeDefined();
+    expect(resolved.unavailableReason).toBeUndefined();
+  });
+
+  it("has no checkout without a workspace or without .git", async () => {
+    expect(
+      await resolveActionWorkingTree(ON, REF, undefined, {
+        hasGitDir: async () => true,
+        headSha: async () => REF.headSha,
+      }),
+    ).toEqual({ unavailableReason: "no checkout" });
+    expect(
+      await resolveActionWorkingTree(ON, REF, "/ws", {
+        hasGitDir: async () => false,
+        headSha: async () => REF.headSha,
+      }),
+    ).toEqual({ unavailableReason: "no checkout" });
+  });
+
+  it("refuses a checkout of another commit (e.g. the default merge ref), naming it", async () => {
+    const resolved = await resolveActionWorkingTree(ON, REF, "/ws", {
+      hasGitDir: async () => true,
+      headSha: async () => "0123456789merge",
+    });
+    expect(resolved.workingTree).toBeUndefined();
+    expect(resolved.unavailableReason).toBe(
+      "no checkout of the PR head (the workspace is at 0123456; check out ref: the PR head sha)",
+    );
+  });
+
+  it("treats a git error as no checkout", async () => {
+    const resolved = await resolveActionWorkingTree(ON, REF, "/ws", {
+      hasGitDir: async () => true,
+      headSha: async () => {
+        throw new Error("not a git repository");
+      },
+    });
+    expect(resolved).toEqual({ unavailableReason: "no checkout" });
   });
 });

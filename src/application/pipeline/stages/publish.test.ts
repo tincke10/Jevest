@@ -2,12 +2,16 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
-import { type RunMetrics, ZERO_WALL_TIMES } from "../run-metrics.js";
+import { type RunMetrics, ZERO_CODE_CONTEXT_METRICS, ZERO_WALL_TIMES } from "../run-metrics.js";
 import {
   type DescriptionContextStageResult,
   descriptionContextSkipped,
 } from "./description-context.js";
-import type { FilteredFinding, FindingFilterStageResult } from "./finding-filter.js";
+import {
+  EVIDENCE_NOT_FOUND_REASON,
+  type FilteredFinding,
+  type FindingFilterStageResult,
+} from "./finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js";
 import type { MergeGateStageResult } from "./merge-gate.js";
 import type { NarrateStageResult } from "./narrate.js";
@@ -193,6 +197,7 @@ function makeMetrics(overrides: Partial<RunMetrics> = {}): RunMetrics {
       method: "Estimate, not a measurement: ceil(chars / 4) input tokens per skipped hunk.",
     },
     wallTime: ZERO_WALL_TIMES,
+    codeContext: ZERO_CODE_CONTEXT_METRICS,
     ...overrides,
   };
 }
@@ -1863,5 +1868,90 @@ describe("runPublishStage author context (from the PR description)", () => {
       publish({ descriptionContext: descriptionContextSkipped("x") }),
     ].map((p) => p.summaryFingerprint);
     expect(new Set(fingerprints).size).toBe(1);
+  });
+});
+
+describe("runPublishStage code context and evidence", () => {
+  function publish(
+    findingFilter: FindingFilterStageResult,
+    codeContext: Partial<RunMetrics["codeContext"]> = {},
+  ): ReviewPublication {
+    return runPublishStage({
+      triage: makeTriage(),
+      hunkProfile: makeHunkProfile([]),
+      review: makeReview(),
+      findingFilter,
+      mergeGate: makeMergeGate(),
+      inlineCommentsEnabled: true,
+      reviewDisabled: false,
+      metrics: makeMetrics({ codeContext: { ...ZERO_CODE_CONTEXT_METRICS, ...codeContext } }),
+    });
+  }
+
+  const rejected = makeFinding({
+    file: "src/pay.ts",
+    lineStart: 7,
+    claim: "headers missing on 5xx",
+    isRealDefectProb: Number.NaN,
+    rawIsRealDefectProb: Number.NaN,
+    rejectedReason: EVIDENCE_NOT_FOUND_REASON,
+  });
+
+  it("shows the rejection reason instead of a probability in the low-confidence list", () => {
+    const section =
+      publish(makeFindingFilter({ lowConfidence: [rejected] })).summaryMarkdown.split(
+        "<summary>Low-confidence",
+      )[1] ?? "";
+    expect(section).toContain(
+      "- `src/pay.ts` line 7: headers missing on 5xx (not published: evidence not found in code)",
+    );
+    expect(section).not.toContain("NaN");
+  });
+
+  it("lists discarded findings rejected for evidence under the discarded count", () => {
+    const markdown = publish(
+      makeFindingFilter({ discarded: [rejected, makeFinding({ claim: "jev said no" })] }),
+    ).summaryMarkdown;
+    expect(markdown).toContain(
+      "### Findings discarded: 2\n- `src/pay.ts` line 7: headers missing on 5xx (evidence not found in code)",
+    );
+    expect(markdown).not.toContain("jev said no (evidence");
+  });
+
+  it("adds no line to Efficiency when the layers are off", () => {
+    const efficiency =
+      publish(makeFindingFilter()).summaryMarkdown.split("### Efficiency")[1] ?? "";
+    expect(efficiency).not.toMatch(/Code context|Evidence|Impact context/);
+  });
+
+  it("reports the context added and the evidence check in Efficiency", () => {
+    const efficiency =
+      publish(makeFindingFilter(), {
+        ran: true,
+        hunks: 3,
+        files: 4,
+        snippets: 9,
+        fullFileChars: 12000,
+        impactChars: 3400,
+        evidenceChecked: 5,
+        evidenceRejected: 2,
+      }).summaryMarkdown.split("### Efficiency")[1] ?? "";
+    expect(efficiency).toContain(
+      "- Code context: 4 files, 9 snippets, 15400 chars added to 3 hunks (full file 12000, impact 3400)",
+    );
+    expect(efficiency).toContain(
+      "- Evidence: 2 of 5 findings not published (evidence not found in code)",
+    );
+  });
+
+  it("says in one line that the context was unavailable without a checkout", () => {
+    const markdown = publish(makeFindingFilter(), {
+      ran: true,
+      unavailable: "Impact context unavailable: no checkout",
+    }).summaryMarkdown;
+    expect(markdown).toContain(
+      "- Impact context unavailable: no checkout (reviewer.fullFile / reviewer.impactContext skipped; they need actions/checkout of the PR head)",
+    );
+    expect(markdown).not.toContain("- Code context:");
   });
 });

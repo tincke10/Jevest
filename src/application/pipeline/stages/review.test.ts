@@ -322,3 +322,159 @@ describe("runReviewStage and the author's stated context", () => {
     expect("authorContext" in inputs[0]!).toBe(false);
   });
 });
+
+describe("runReviewStage — code context and evidence", () => {
+  const HUNK = makeHunk({
+    id: "src/total.ts#0",
+    file: "src/total.ts",
+    hunkHeader: "@@ -1,1 +1,1 @@",
+    before: "return sum(items);",
+    diff: "@@ -1,1 +1,1 @@\n-return sum(items);\n+return sumWithTax(items);",
+  });
+  const FULL_FILE = {
+    path: "src/total.ts",
+    mode: "full" as const,
+    totalLines: 1,
+    segments: [{ startLine: 1, lines: ["return sumWithTax(items);"] }],
+    chars: 25,
+  };
+  const IMPACT = { symbols: ["sumWithTax"], snippets: [], chars: 0, truncated: false };
+  const CONTEXT = {
+    hunks: [
+      {
+        hunkId: "src/total.ts#0",
+        file: "src/total.ts",
+        fullFile: FULL_FILE,
+        impactContext: IMPACT,
+        symbols: ["sumWithTax"],
+        matchesFound: 0,
+        error: null,
+      },
+    ],
+    unavailable: null,
+    totals: { hunks: 1, files: 1, snippets: 0, fullFileChars: 25, impactChars: 0 },
+  };
+
+  function evidenceFinding(quote: string, file = "src/total.ts", line = 1) {
+    return {
+      lineStart: 1,
+      lineEnd: 1,
+      claim: "c",
+      rationale: "r",
+      suggestedSeverity: "major" as const,
+      evidence: [{ file, line, quote }],
+    };
+  }
+
+  it("adds no new keys to ReviewInput when every layer is off (fixture keys unchanged)", async () => {
+    let captured: ReviewInput | undefined;
+    await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async (input) => {
+        captured = input;
+        return makeReviewOutput();
+      }),
+      pricing,
+      budgetUsd: 10,
+    });
+    expect(Object.keys(captured ?? {}).sort()).toEqual(
+      ["before", "diff", "file", "hunkHeader", "hunkId", "language", "profile"].sort(),
+    );
+  });
+
+  it("puts the hunk's full file and impact context on its ReviewInput, and asks for evidence", async () => {
+    let captured: ReviewInput | undefined;
+    await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async (input) => {
+        captured = input;
+        return makeReviewOutput();
+      }),
+      pricing,
+      budgetUsd: 10,
+      codeContext: CONTEXT,
+      requireEvidence: true,
+    });
+    expect(captured?.fullFile).toEqual(FULL_FILE);
+    expect(captured?.impactContext).toEqual(IMPACT);
+    expect(captured?.requireEvidence).toBe(true);
+  });
+
+  it("leaves out a context layer that is null for the hunk", async () => {
+    let captured: ReviewInput | undefined;
+    await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async (input) => {
+        captured = input;
+        return makeReviewOutput();
+      }),
+      pricing,
+      budgetUsd: 10,
+      codeContext: {
+        ...CONTEXT,
+        hunks: [{ ...CONTEXT.hunks[0]!, fullFile: null, impactContext: null }],
+      },
+    });
+    expect(captured).not.toHaveProperty("fullFile");
+    expect(captured).not.toHaveProperty("impactContext");
+    expect(captured).not.toHaveProperty("requireEvidence");
+  });
+
+  it("checks each finding's evidence against the head files", async () => {
+    const reads: string[] = [];
+    const result = await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async () =>
+        makeReviewOutput({
+          findings: [
+            evidenceFinding("return sumWithTax(items);"),
+            evidenceFinding("legacyFlags[mode]", "src/caller.ts", 3),
+          ],
+        }),
+      ),
+      pricing,
+      budgetUsd: 10,
+      requireEvidence: true,
+      readHeadLines: async (path) => {
+        reads.push(path);
+        return path === "src/total.ts" ? ["return sumWithTax(items);"] : null;
+      },
+    });
+    const [verified, invented] = result.reviews[0]?.findings ?? [];
+    expect(verified?.evidenceCheck).toEqual({ verified: 1, checked: 1 });
+    expect(invented?.evidenceCheck).toEqual({ verified: 0, checked: 1 });
+    expect(reads).toContain("src/caller.ts");
+  });
+
+  it("verifies against the hunk text alone without a working tree, and fails a finding with no evidence", async () => {
+    const result = await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async () =>
+        makeReviewOutput({
+          findings: [
+            evidenceFinding("sumWithTax(items)"),
+            { lineStart: 1, lineEnd: 1, claim: "c", rationale: "r", suggestedSeverity: "minor" },
+          ],
+        }),
+      ),
+      pricing,
+      budgetUsd: 10,
+      requireEvidence: true,
+    });
+    const [fromHunk, none] = result.reviews[0]?.findings ?? [];
+    expect(fromHunk?.evidenceCheck).toEqual({ verified: 1, checked: 1 });
+    expect(none?.evidenceCheck).toEqual({ verified: 0, checked: 0 });
+  });
+
+  it("never checks evidence when requireEvidence is off", async () => {
+    const result = await runReviewStage({
+      hunks: [HUNK],
+      reviewerPort: fakeReviewer(async () =>
+        makeReviewOutput({ findings: [evidenceFinding("not in the code at all")] }),
+      ),
+      pricing,
+      budgetUsd: 10,
+    });
+    expect(result.reviews[0]?.findings[0]).not.toHaveProperty("evidenceCheck");
+  });
+});

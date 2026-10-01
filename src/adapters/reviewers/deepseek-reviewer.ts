@@ -28,7 +28,7 @@
  */
 import { APIError, AuthenticationError, RateLimitError } from "openai";
 import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
-import { reviewOutputSchema, toReviewFindingCandidates } from "./review-output-schema.js";
+import { reviewOutputSchemaFor, toReviewFindingCandidates } from "./review-output-schema.js";
 import {
   REVIEW_SYSTEM_PROMPT,
   buildReviewUserPrompt,
@@ -128,7 +128,35 @@ Rules for the JSON:
 
 export const DEEPSEEK_SYSTEM_PROMPT = buildDeepSeekSystemPrompt(REVIEW_SYSTEM_PROMPT);
 
-function parseReviewJson(content: string | null | undefined, hunkId: string) {
+const EVIDENCE_OUTPUT_EXAMPLE = JSON.stringify(
+  {
+    findings: [
+      {
+        line_start: 42,
+        line_end: 43,
+        claim: "<one-sentence defect claim>",
+        rationale: "<why this is a defect, pointing at the code>",
+        suggested_severity: "minor",
+        evidence: [
+          { file: "<repo-relative path>", line: 42, quote: "<exact code, max 200 chars>" },
+        ],
+      },
+    ],
+  },
+  null,
+  2,
+);
+
+/**
+ * `reviewer.requireEvidence`: json_object has no server-side schema, so the
+ * extra required field is restated in prose, after the evidence rules, and
+ * overrides the shape above.
+ */
+export const DEEPSEEK_EVIDENCE_JSON_RULES = `JSON with evidence: this request requires evidence, so each finding object must ALSO have an "evidence" array (1 to 3 items of {"file": string, "line": integer, "quote": string}). The full shape is:
+${EVIDENCE_OUTPUT_EXAMPLE}`;
+
+function parseReviewJson(content: string | null | undefined, input: ReviewInput) {
+  const hunkId = input.hunkId;
   const text = content?.trim() ?? "";
   if (text === "") {
     throw new ReviewerParseError(PROVIDER, hunkId);
@@ -139,7 +167,7 @@ function parseReviewJson(content: string | null | undefined, hunkId: string) {
   } catch {
     throw new ReviewerParseError(PROVIDER, hunkId);
   }
-  const result = reviewOutputSchema.safeParse(json);
+  const result = reviewOutputSchemaFor(input).safeParse(json);
   if (!result.success) {
     throw new ReviewerParseError(PROVIDER, hunkId);
   }
@@ -163,7 +191,12 @@ export function createDeepSeekReviewer(options: DeepSeekReviewerOptions): Review
         response = await options.client.chat.completions.create({
           model,
           messages: [
-            { role: "system", content: reviewSystemPromptForInput(systemPrompt, input) },
+            {
+              role: "system",
+              content:
+                reviewSystemPromptForInput(systemPrompt, input) +
+                (input.requireEvidence === true ? `\n\n${DEEPSEEK_EVIDENCE_JSON_RULES}` : ""),
+            },
             { role: "user", content: buildReviewUserPrompt(input) },
           ],
           response_format: { type: "json_object" },
@@ -188,7 +221,7 @@ export function createDeepSeekReviewer(options: DeepSeekReviewerOptions): Review
       }
       const latencyMs = now() - start;
 
-      const parsed = parseReviewJson(response.choices[0]?.message.content, input.hunkId);
+      const parsed = parseReviewJson(response.choices[0]?.message.content, input);
 
       const usage = response.usage;
       const promptTokens = usage?.prompt_tokens ?? 0;

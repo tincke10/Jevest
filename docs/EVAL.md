@@ -125,6 +125,48 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant full-repo \
 - `--cases a,b` runs a subset. A case whose run throws is recorded with its
   error; its issues still count as missed.
 
+### The code-context variant
+
+`reviewer.fullFile`, `reviewer.impactContext` and `reviewer.requireEvidence`
+(docs/ACTION.md "Code context") read the code at each case's `headRef`.
+The case's `repoPath` is used in place when it is checked out, clean, at
+that commit; otherwise each case gets a temporary `git worktree add
+--detach` that is removed when the case ends. A bare, blob-filtered mirror
+works: every git call runs with `GIT_NO_LAZY_FETCH=1` (never a network
+fetch, never a hang), and when some blobs of the head tree are not in the
+local object store the worktree is a partial checkout of the files that
+are (the log says how many were skipped). Every hunk logs what it got:
+
+```
+[pr-1] [review] head checkout: partial-worktree at /tmp/jevest-head-…/tree (1200 of 5000 files skipped: blobs not in the local object store)
+[pr-1] [review] context src/cart/total.ts#3: symbols=4 (computeTotal, sumWithTax, …) · matches=40 · snippets=12 · impact=4800 chars · fullFile=full 5100 chars
+[pr-1] [review] code context: 10 hunks with context, 30 files, 90 snippets, 150000 chars (full file 100000, impact 50000)
+```
+
+and `pipeline-result.json` keeps those per-hunk stats under `codeContext`.
+
+```bash
+# smoke test, no LLM at all: dry-run reviewer + the deterministic matcher
+pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant smoke-impact \
+  --config ~/.jevest/evals/<set>/jevest.yml \
+  --override reviewer.fullFile=true --override reviewer.impactContext=true \
+  --override reviewer.requireEvidence=true \
+  --mode dry-run --matcher prefilter --out /tmp/eval-smoke
+
+# the real variant (needs rg on PATH); raise budgetUsd: the context makes
+# each review request much bigger, and a capped run skips hunks
+pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant impact-evidence \
+  --config ~/.jevest/evals/<set>/jevest.yml \
+  --override reviewer.fullFile=true --override reviewer.impactContext=true \
+  --override reviewer.requireEvidence=true --override budgetUsd=10 \
+  --mode live --out ~/.jevest/evals/<set>/runs
+```
+
+`--mode dry-run` answers every Jev question at confidence 0.5, below every
+"auto" band, so no stage auto-skips and the whole pipeline (code context
+included) runs; the dry-run reviewer still finds nothing. Evidence-failed
+findings are candidates in the `low` bucket with source `evidence-failed`.
+
 Output: `<out>/<variant>/results.json` (every candidate with its match,
 per-case and total metrics) and `report.md`.
 

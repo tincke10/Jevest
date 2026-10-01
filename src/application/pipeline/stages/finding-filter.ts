@@ -15,6 +15,14 @@
  * "none"). The map is monotone, so it cannot reorder findings — what it
  * changes is where the fixed thresholds in `.jevest.yml` fall on the curve.
  * The raw answer is kept on every record as `rawIsRealDefectProb`.
+ *
+ * Evidence (`reviewer.requireEvidence`, stages/review.ts): a finding none
+ * of whose quotes was found in the code is never published and never
+ * costs a Jev request. It goes to `lowConfidence` ("annotate") or
+ * `discarded` ("discard") with `rejectedReason`
+ * {@link EVIDENCE_NOT_FOUND_REASON}, whatever its severity: the critical
+ * rule below protects a finding from Jev's judgment, and this is not a
+ * judgment — the code the finding cites does not say what it claims.
  */
 import {
   type CalibrationMap,
@@ -60,7 +68,15 @@ export interface FilteredFinding {
   readonly requestId: string;
   /** NFR-2 fail-closed: true when Jev failed to classify this finding — routed to needsHuman as "unverified" rather than dropped. */
   readonly unverified: boolean;
+  /**
+   * Set when the finding was kept from publication before Jev saw it
+   * ({@link EVIDENCE_NOT_FOUND_REASON}); the probabilities are then NaN.
+   */
+  readonly rejectedReason?: string;
 }
+
+/** Why a `requireEvidence` finding with no verified quote was not published. */
+export const EVIDENCE_NOT_FOUND_REASON = "evidence not found in code";
 
 /**
  * Product decision (2026-09-22, see docs/BENCHMARK.md "H1"): H1 found Jev's
@@ -131,9 +147,30 @@ export async function runFindingFilterStage(
   input: FindingFilterStageInput,
 ): Promise<FindingFilterStageResult> {
   const findingRecords: FindingRecord[] = [];
+  const evidenceRejected: FilteredFinding[] = [];
   for (const review of input.reviews) {
     if (review.error) continue;
     review.findings.forEach((candidate, index) => {
+      if (candidate.evidenceCheck !== undefined && candidate.evidenceCheck.verified === 0) {
+        evidenceRejected.push({
+          findingId: `${review.hunkId}-f${index}`,
+          hunkId: review.hunkId,
+          file: review.file,
+          lineStart: candidate.lineStart,
+          lineEnd: candidate.lineEnd,
+          claim: candidate.claim,
+          rationale: candidate.rationale,
+          isRealDefectProb: Number.NaN,
+          rawIsRealDefectProb: Number.NaN,
+          jevSeverityScore: Number.NaN,
+          isStyleOnlyProb: Number.NaN,
+          actionableProb: Number.NaN,
+          requestId: "",
+          unverified: false,
+          rejectedReason: EVIDENCE_NOT_FOUND_REASON,
+        });
+        return;
+      }
       findingRecords.push({
         id: `${review.hunkId}-f${index}`,
         hunkId: review.hunkId,
@@ -154,12 +191,15 @@ export async function runFindingFilterStage(
     });
   }
 
+  const rejectedDiscarded = input.mode === "discard" ? evidenceRejected : [];
+  const rejectedLowConfidence = input.mode === "discard" ? [] : evidenceRejected;
+
   if (findingRecords.length === 0) {
     return {
       published: [],
       needsHuman: [],
-      discarded: [],
-      lowConfidence: [],
+      discarded: [...rejectedDiscarded],
+      lowConfidence: [...rejectedLowConfidence],
       totalRequests: 0,
       totalLatencyMs: 0,
       totalUsage: { inputTokens: 0, outputTokens: 0 },
@@ -267,8 +307,8 @@ export async function runFindingFilterStage(
   return {
     published,
     needsHuman,
-    discarded,
-    lowConfidence,
+    discarded: [...discarded, ...rejectedDiscarded],
+    lowConfidence: [...lowConfidence, ...rejectedLowConfidence],
     totalRequests: run.totals.requests,
     totalLatencyMs: run.totals.totalLatencyMs,
     totalUsage: { inputTokens: run.totals.inputTokens, outputTokens: run.totals.outputTokens },

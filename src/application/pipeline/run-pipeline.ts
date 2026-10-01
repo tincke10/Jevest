@@ -56,6 +56,16 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * comment says so in one line. An extractor error never fails the run.
  * Its cost is LLM money like the others: it comes out of the per-run
  * budget before the review, and counts in `costUsd` and the ledger.
+ *
+ * Code context (stages/code-context.ts, `reviewer.fullFile` /
+ * `reviewer.impactContext`): when the LLM review really runs, the hunks'
+ * full files and the code that references what they change are read from
+ * `ports.workingTree` (a checkout of the PR head) and ride on each
+ * ReviewInput. Without a working tree nothing is built and the comment
+ * says so in one line (`workingTreeUnavailableReason`); never a failure.
+ * Its time counts in `wallTime.reviewMs`. `reviewer.requireEvidence` asks
+ * for evidence and checks it against the same tree (or the hunk text). With
+ * all three off the tree is never touched and every request is unchanged.
  */
 import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
@@ -66,6 +76,7 @@ import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port
 import type { ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
+import type { WorkingTreePort } from "../../domain/ports/working-tree-port.js";
 import type { PullRequestRef } from "../../domain/pull-request.js";
 import {
   type SpendCapEvaluation,
@@ -81,6 +92,11 @@ import {
   ZERO_WALL_TIMES,
   computeRunMetrics,
 } from "./run-metrics.js";
+import {
+  type CodeContextStageResult,
+  createHeadFileReader,
+  runCodeContextStage,
+} from "./stages/code-context.js";
 import {
   type DescriptionContextStageResult,
   descriptionContextSkipped,
@@ -138,7 +154,15 @@ export interface RunPipelineInput {
      * and `recordSpend` below.
      */
     readonly spendLedger?: SpendLedgerPort;
+    /**
+     * The working tree at the PR head (stages/code-context.ts). Used only
+     * when `reviewer.fullFile`, `reviewer.impactContext` or
+     * `reviewer.requireEvidence` is on; absent = no checkout.
+     */
+    readonly workingTree?: WorkingTreePort;
   };
+  /** Why there is no `ports.workingTree`, for the comment's one line. Default "no checkout". */
+  readonly workingTreeUnavailableReason?: string;
   readonly config: JevestConfig;
   /** Optional: full-file content at a given sha, for hunk-profile's §4.3 AST context. */
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
@@ -169,6 +193,8 @@ export interface PipelineResult {
   readonly narrative: NarrateStageResult | null;
   /** What the reviewer got from the PR description; `null` when the extractor was not configured or not applicable (see the module doc). */
   readonly descriptionContext: DescriptionContextStageResult | null;
+  /** The code context built for the reviewer; `null` when `reviewer.fullFile` and `reviewer.impactContext` are off or the review did not run. */
+  readonly codeContext: CodeContextStageResult | null;
   readonly publication: import("../../domain/ports/vcs-port.js").ReviewPublication;
   /**
    * Convenience top-level mirrors of `publication.check` and the
@@ -374,10 +400,12 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   let reviewSkippedForSpendCap = false;
   // Set right before the review stage; a fail-closed exit after it still reports it (and its cost).
   let descriptionContext: DescriptionContextStageResult | null = null;
+  let codeContext: CodeContextStageResult | null = null;
   let unprofiledHunkDiffs: readonly string[] = [];
   const metricsFor = (stages: StageResults): RunMetrics =>
     computeRunMetrics({
       ...stages,
+      codeContext,
       unprofiledHunkDiffs,
       reviewSkippedForSpendCap,
       reviewDisabled,
@@ -403,6 +431,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       ...stages,
       narrative: null,
       descriptionContext,
+      codeContext,
       publication,
       ...summaryFields(
         publication,
@@ -507,6 +536,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       ...stages,
       narrative: null,
       descriptionContext: null,
+      codeContext: null,
       publication,
       ...summaryFields(publication, null, null, triage),
       ...spendFields,
@@ -573,16 +603,35 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       );
     }
     const reviewerPort = ports.reviewer;
-    review = await timed("reviewMs", () =>
-      runReviewStage({
+    const { workingTree } = ports;
+    review = await timed("reviewMs", async () => {
+      if (config.reviewer.fullFile || config.reviewer.impactContext) {
+        codeContext = await runCodeContextStage({
+          hunks: hunkProfile.hunks,
+          ...(workingTree ? { workingTree } : {}),
+          ...(input.workingTreeUnavailableReason
+            ? { unavailableReason: input.workingTreeUnavailableReason }
+            : {}),
+          fullFile: config.reviewer.fullFile,
+          impactContext: config.reviewer.impactContext,
+        });
+      }
+      return runReviewStage({
         hunks: hunkProfile.hunks,
         reviewerPort,
         // config validation guarantees model is set whenever provider isn't "none".
         pricing: pricingForModel(config.reviewer.model ?? config.reviewer.provider),
         budgetUsd: reviewBudgetUsd,
         ...(authorContext ? { authorContext } : {}),
-      }),
-    );
+        ...(codeContext ? { codeContext } : {}),
+        ...(config.reviewer.requireEvidence
+          ? {
+              requireEvidence: true,
+              ...(workingTree ? { readHeadLines: createHeadFileReader(workingTree) } : {}),
+            }
+          : {}),
+      });
+    });
   }
 
   // The run's single ledger write (see `recordSpend`); `extraLlmUsd` is the
@@ -702,6 +751,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     ...stages,
     narrative,
     descriptionContext,
+    codeContext,
     publication,
     ...summaryFields(publication, findingFilter, review, triage, narrative, descriptionContext),
     ...spend,

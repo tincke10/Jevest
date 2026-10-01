@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type ClaudeCliSpawn, createClaudeCliReviewer } from "./claude-cli-reviewer.js";
-import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
+import {
+  REVIEW_OUTPUT_JSON_SCHEMA,
+  REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA,
+} from "./review-output-schema.js";
+import {
+  AUTHOR_CONTEXT_REVIEW_RULES,
+  EVIDENCE_REVIEW_RULES,
+  REVIEW_SYSTEM_PROMPT,
+} from "./review-prompt.js";
 import {
   ClaudeCliError,
   ClaudeCliProcessError,
@@ -294,5 +302,42 @@ describe("createClaudeCliReviewer with the author's stated context", () => {
       `${REVIEW_SYSTEM_PROMPT}\n\n${AUTHOR_CONTEXT_REVIEW_RULES}`,
     );
     expect(withContext.at(-1)).toContain("<author_context>");
+  });
+});
+
+describe("createClaudeCliReviewer with requireEvidence", () => {
+  it("passes the evidence JSON schema and rules only on requests that require it, and maps evidence", async () => {
+    const evidence = [
+      { file: "packages/zod/src/v4/core/compile.ts", line: 1268, quote: "newVar(ctx2)" },
+    ];
+    const spawn = okSpawn({
+      structured_output: {
+        findings: [
+          {
+            line_start: 1,
+            line_end: 1,
+            claim: "c",
+            rationale: "r",
+            suggested_severity: "nit",
+            evidence,
+          },
+        ],
+      },
+    });
+    const reviewer = createClaudeCliReviewer({ spawn });
+    await reviewer.review(SAMPLE_INPUT);
+    const output = await reviewer.review({ ...SAMPLE_INPUT, requireEvidence: true });
+    const [plain] = spawn.mock.calls[0]!;
+    const [withEvidence] = spawn.mock.calls[1]!;
+    expect(plain[plain.indexOf("--json-schema") + 1]).toBe(
+      JSON.stringify(REVIEW_OUTPUT_JSON_SCHEMA),
+    );
+    expect(withEvidence[withEvidence.indexOf("--json-schema") + 1]).toBe(
+      JSON.stringify(REVIEW_OUTPUT_WITH_EVIDENCE_JSON_SCHEMA),
+    );
+    expect(withEvidence[withEvidence.indexOf("--system-prompt") + 1]).toBe(
+      `${REVIEW_SYSTEM_PROMPT}\n\n${EVIDENCE_REVIEW_RULES}`,
+    );
+    expect(output.findings[0]?.evidence).toEqual(evidence);
   });
 });

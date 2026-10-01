@@ -9,6 +9,32 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Code context for the reviewer** (docs/ACTION.md "Code context"): three
+  opt-in layers under `reviewer:`, all off by default — with all three off
+  every prompt, output schema and recorded-fixture key is byte-identical
+  (pinned by tests). `fullFile` adds the hunk's file at the PR head (whole
+  up to 2000 lines / 80k chars, else ±150 lines around the hunk plus its
+  imports). `impactContext` extracts the symbols a hunk changes
+  (per-language: PHP, JS/TS/Vue, Python, Go, Ruby — definitions, route,
+  config and cache keys, Vue props/emits, test ids, calls, compound
+  identifiers; stoplist and caps), searches the checkout with ripgrep (new
+  `WorkingTreePort`, rg adapter and in-memory fake) and adds up to 25
+  ranked snippets (tests, then callers, then the same file) with an
+  instruction to check callers, tests and consumers. `requireEvidence`
+  adds required `evidence: [{file, line, quote}]` to the reviewer schema
+  for every provider plus prompt rules (unprovable claims become
+  "Question:" findings), and a deterministic verifier keeps any finding
+  whose quotes are not in the code (±5 lines at the head, or the hunk's
+  removed lines) out of publication, without a Jev request, as
+  low-confidence/discarded with reason "evidence not found in code";
+  the eval counts them as `low` (source `evidence-failed`). The Action uses
+  `GITHUB_WORKSPACE` only when it is a checkout of the PR head sha, and
+  otherwise skips the context with one line in the comment; `pnpm review
+  --git` / `pnpm eval:review` use the repo in place or a temporary
+  `git worktree` at the head, partial on a blob-filtered mirror and never
+  fetching. "Efficiency" reports files, snippets and characters added and
+  the findings the evidence check rejected; per-hunk stats are logged.
+
 - **Eval harness** (docs/EVAL.md): measures a review variant against a
   golden set of adjudicated PRs before it ships. `pnpm eval:review` runs a
   pipeline variant per case (the local `pnpm review` flow, now importable
@@ -97,6 +123,11 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Changed
 
+- `pnpm review --mode dry-run` (and `pnpm eval:review --mode dry-run`) now
+  answers every Jev question at confidence 0.5 instead of 0.9, below every
+  "auto" band, so triage's low-risk skip and the change-kind skip no longer
+  end a dry run after triage: every stage runs (still no Jev or LLM call,
+  and the dry-run reviewer still finds nothing).
 - **BREAKING: the `jevest` check and labels now say what to do, not whether
   the PR may auto-merge.** Every run ends in ONE review verdict
   (src/domain/review-verdict.ts): `fix` (at least one published finding;

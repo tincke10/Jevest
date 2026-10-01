@@ -2,7 +2,11 @@ import { AuthenticationError, BadRequestError, RateLimitError } from "@anthropic
 import { describe, expect, it, vi } from "vitest";
 import type { ReviewInput } from "../../domain/ports/reviewer-port.js";
 import { type AnthropicMessagesClient, createAnthropicReviewer } from "./anthropic-reviewer.js";
-import { AUTHOR_CONTEXT_REVIEW_RULES, REVIEW_SYSTEM_PROMPT } from "./review-prompt.js";
+import {
+  AUTHOR_CONTEXT_REVIEW_RULES,
+  EVIDENCE_REVIEW_RULES,
+  REVIEW_SYSTEM_PROMPT,
+} from "./review-prompt.js";
 import {
   ReviewerApiError,
   ReviewerAuthenticationError,
@@ -237,5 +241,32 @@ describe("createAnthropicReviewer with the author's stated context", () => {
     );
     expect(withContext.messages[0].content).toContain("<author_context>");
     expect(plain.messages[0].content).not.toContain("<author_context>");
+  });
+});
+
+describe("createAnthropicReviewer with requireEvidence", () => {
+  const EVIDENCE_FINDING = {
+    line_start: 1270,
+    line_end: 1270,
+    claim: "c",
+    rationale: "r",
+    suggested_severity: "major",
+    evidence: [{ file: "packages/zod/src/v4/core/compile.ts", line: 1268, quote: "newVar(ctx2)" }],
+  };
+
+  it("asks for the evidence schema and rules only on requests that require it, and maps evidence", async () => {
+    const client = fakeClient(async () =>
+      successResponse({ parsed_output: { findings: [EVIDENCE_FINDING] } }),
+    );
+    const reviewer = createAnthropicReviewer({ client });
+    await reviewer.review(SAMPLE_INPUT);
+    const output = await reviewer.review({ ...SAMPLE_INPUT, requireEvidence: true });
+    const [plain] = client.messages.parse.mock.calls[0]!;
+    const [withEvidence] = client.messages.parse.mock.calls[1]!;
+    expect(plain.system[0].text).toBe(REVIEW_SYSTEM_PROMPT);
+    expect(withEvidence.system[0].text).toBe(`${REVIEW_SYSTEM_PROMPT}\n\n${EVIDENCE_REVIEW_RULES}`);
+    expect(JSON.stringify(plain.output_config.format)).not.toContain("evidence");
+    expect(JSON.stringify(withEvidence.output_config.format)).toContain("evidence");
+    expect(output.findings[0]?.evidence).toEqual(EVIDENCE_FINDING.evidence);
   });
 });

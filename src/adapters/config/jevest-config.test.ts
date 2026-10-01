@@ -54,6 +54,9 @@ describe("loadJevestConfig", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
@@ -123,6 +126,9 @@ describe("loadJevestConfig", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     });
   });
 
@@ -152,6 +158,9 @@ describe("loadJevestConfig", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     });
   });
 
@@ -166,6 +175,40 @@ describe("loadJevestConfig", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
+    });
+  });
+
+  describe("reviewer.fullFile / impactContext / requireEvidence (code context, opt-in)", () => {
+    it("defaults all three to false, whatever the provider", async () => {
+      for (const yaml of [
+        "reviewer:\n  provider: openai\n  model: m\n",
+        "reviewer:\n  provider: none\n",
+      ]) {
+        const config = await loadJevestConfigFromString(yaml);
+        expect(config.reviewer.fullFile).toBe(false);
+        expect(config.reviewer.impactContext).toBe(false);
+        expect(config.reviewer.requireEvidence).toBe(false);
+      }
+    });
+
+    it("turns each one on explicitly", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: claude-cli\n  model: m\n  fullFile: true\n  impactContext: true\n  requireEvidence: true\n",
+      );
+      expect(config.reviewer.fullFile).toBe(true);
+      expect(config.reviewer.impactContext).toBe(true);
+      expect(config.reviewer.requireEvidence).toBe(true);
+    });
+
+    it("rejects a non-boolean", async () => {
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: openai\n  model: m\n  fullFile: yes please\n",
+        ),
+      ).rejects.toThrow(JevestConfigError);
     });
   });
 
@@ -305,6 +348,9 @@ describe("loadJevestConfig", () => {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     });
     expect(fromMissing.budgetUsd).toBe(5);
     expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });

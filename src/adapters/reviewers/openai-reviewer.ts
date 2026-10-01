@@ -19,6 +19,7 @@ import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports
 import {
   type ReviewOutputSchema,
   reviewOutputSchema,
+  reviewOutputWithEvidenceSchema,
   toReviewFindingCandidates,
 } from "./review-output-schema.js";
 import {
@@ -40,7 +41,9 @@ export interface OpenAiChatClient {
       parse(params: {
         model: string;
         messages: Array<{ role: "system" | "user"; content: string }>;
-        response_format: ReturnType<typeof zodResponseFormat<typeof reviewOutputSchema>>;
+        response_format:
+          | ReturnType<typeof zodResponseFormat<typeof reviewOutputSchema>>
+          | ReturnType<typeof zodResponseFormat<typeof reviewOutputWithEvidenceSchema>>;
       }): Promise<{
         id: string;
         model: string;
@@ -68,6 +71,11 @@ export interface OpenAiReviewerOptions {
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const PROVIDER = "openai";
 const RESPONSE_FORMAT = zodResponseFormat(reviewOutputSchema, "review_output");
+/** `reviewer.requireEvidence`: the same output plus a required `evidence` list per finding. */
+const RESPONSE_FORMAT_WITH_EVIDENCE = zodResponseFormat(
+  reviewOutputWithEvidenceSchema,
+  "review_output",
+);
 
 export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPort {
   const model = options.model ?? DEFAULT_MODEL;
@@ -85,7 +93,8 @@ export function createOpenAiReviewer(options: OpenAiReviewerOptions): ReviewerPo
             { role: "system", content: reviewSystemPromptForInput(systemPrompt, input) },
             { role: "user", content: buildReviewUserPrompt(input) },
           ],
-          response_format: RESPONSE_FORMAT,
+          response_format:
+            input.requireEvidence === true ? RESPONSE_FORMAT_WITH_EVIDENCE : RESPONSE_FORMAT,
         });
       } catch (error) {
         // Most-specific first: RateLimitError and AuthenticationError both

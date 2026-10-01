@@ -27,8 +27,8 @@
 import { spawn as nodeSpawn } from "node:child_process";
 import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import {
-  REVIEW_OUTPUT_JSON_SCHEMA,
-  reviewOutputSchema,
+  reviewOutputJsonSchemaFor,
+  reviewOutputSchemaFor,
   toReviewFindingCandidates,
 } from "./review-output-schema.js";
 import {
@@ -171,7 +171,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
         "--system-prompt",
         reviewSystemPromptForInput(systemPrompt, input),
         "--json-schema",
-        JSON.stringify(REVIEW_OUTPUT_JSON_SCHEMA),
+        JSON.stringify(reviewOutputJsonSchemaFor(input)),
         buildReviewUserPrompt(input),
       ];
 
@@ -230,7 +230,7 @@ export function createClaudeCliReviewer(options: ClaudeCliReviewerOptions = {}):
         );
       }
 
-      const validated = reviewOutputSchema.safeParse(envelope.structured_output);
+      const validated = reviewOutputSchemaFor(input).safeParse(envelope.structured_output);
       if (!validated.success) {
         throw new ClaudeCliError(
           `structured_output failed schema validation (${validated.error.message})`,

@@ -5,7 +5,10 @@
  * ../ports/decision-port.ts.
  */
 import type { AuthorContext } from "../author-context.js";
+import type { EvidenceItem } from "../evidence-verifier.js";
+import type { FullFileContext } from "../file-context.js";
 import type { FindingSeverity } from "../finding.js";
+import type { ImpactContext } from "../impact-context.js";
 
 /** One hunk of context to review, plus its Fase 0b-style surface profile (FR-3.3), if any. */
 export interface ReviewInput {
@@ -25,6 +28,23 @@ export interface ReviewInput {
    * recorded-fixture key stay exactly what they were without it.
    */
   readonly authorContext?: AuthorContext;
+  /**
+   * `reviewer.fullFile`: the hunk's file at the PR head, whole or windowed
+   * (../file-context.ts), redacted. Absent when the layer is off or there
+   * is no checkout, so the prompt and the fixture key stay as they were.
+   */
+  readonly fullFile?: FullFileContext;
+  /**
+   * `reviewer.impactContext`: other code that references what the hunk
+   * changes (../impact-context.ts), redacted. Absent like `fullFile`.
+   */
+  readonly impactContext?: ImpactContext;
+  /**
+   * `reviewer.requireEvidence`: the output schema requires `evidence` on
+   * every finding and the system prompt gets the evidence rules. Only ever
+   * `true` or absent (never `false`), for the same fixture-key reason.
+   */
+  readonly requireEvidence?: true;
 }
 
 /**
@@ -40,6 +60,12 @@ export interface ReviewFindingCandidate {
   readonly claim: string;
   readonly rationale: string;
   readonly suggestedSeverity: FindingSeverity;
+  /**
+   * The code that proves the claim (1–3 items asked; quote ≤ 200 chars),
+   * present only on requests with `requireEvidence`. Checked against the
+   * code by ../evidence-verifier.ts before the finding can be published.
+   */
+  readonly evidence?: readonly EvidenceItem[];
 }
 
 /** Token usage for one review request, camelCase mirror of the provider's snake_case usage block. */

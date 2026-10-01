@@ -92,3 +92,38 @@ describe("candidatesFromPipeline", () => {
     ).toEqual([]);
   });
 });
+
+describe("candidatesFromPipeline — evidence-failed findings (reviewer.requireEvidence)", () => {
+  const rejected = (id: string, claim: string): FilteredFinding => ({
+    ...finding(id, "src/e.ts", 50, claim),
+    isRealDefectProb: Number.NaN,
+    rawIsRealDefectProb: Number.NaN,
+    rejectedReason: "evidence not found in code",
+  });
+
+  it("puts them in the low bucket with their own source, whichever list they are in", () => {
+    const candidates = candidatesFromPipeline(
+      {
+        findingFilter: {
+          published: [finding("f1", "src/a.ts", 10, "Null deref")],
+          needsHuman: [rejected("f2", "never shown even if routed here")],
+          lowConfidence: [rejected("f3", "invented header claim")],
+          discarded: [rejected("f4", "invented import claim")],
+        },
+        narrative: null,
+        hunkProfile: null,
+      },
+      "case-1",
+    );
+    const failed = candidates.filter((c) => c.source === "evidence-failed");
+    expect(failed.map((c) => [c.text.split(" — ")[0], c.bucket])).toEqual([
+      ["never shown even if routed here", "low"],
+      ["invented header claim", "low"],
+      ["invented import claim", "low"],
+    ]);
+    expect(candidates.filter((c) => c.bucket === "shown").map((c) => c.source)).toEqual([
+      "finding",
+    ]);
+    expect(new Set(candidates.map((c) => c.id)).size).toBe(candidates.length);
+  });
+});

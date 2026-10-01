@@ -47,6 +47,21 @@ reviewer:
   # credential as the reviewer; its cost counts against budgetUsd and the
   # spend cap. Unset = true for any LLM provider, false for provider none.
   # descriptionContext: true
+  # Code context (opt-in, all false by default). fullFile and impactContext
+  # need a checkout of the PR head (in the Action: actions/checkout with
+  # `ref: ${{ github.event.pull_request.head.sha }}`); without one they are
+  # skipped with a note in the comment. No extra LLM call: they make each
+  # review call bigger (capped), see docs/ACTION.md "Code context".
+  # fullFile: the hunk's whole file at the PR head (a window of ±150 lines
+  # plus the imports when it is over 2000 lines / 80k chars).
+  # fullFile: false
+  # impactContext: other code that references what the hunk changes
+  # (callers, tests, consumers), found with ripgrep in the checkout.
+  # impactContext: false
+  # requireEvidence: every finding must quote the code that proves it; a
+  # finding whose quotes are not in the code is never published (it goes
+  # to low-confidence, or discarded in findingFilter.mode: discard).
+  # requireEvidence: false
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
 # auto_min/confirm_min per stage per risk level.

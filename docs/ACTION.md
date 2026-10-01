@@ -190,6 +190,92 @@ says "Extracting review context from the PR description failed
 `provider: none` is a config error. `pnpm review --mode replay` runs
 without it, so replayed reviewer requests keep their recorded keys.
 
+### Code context (`reviewer.fullFile`, `reviewer.impactContext`, `reviewer.requireEvidence`)
+
+The reviewer sees one hunk at a time. Measured on a private golden set of
+real PRs, that is where both its misses and its noise came from: the
+defects lived across files (a caller deriving a flag from another map, an
+unchanged e2e test that breaks, an unchanged command drifting from changed
+logic), and the false findings asserted facts about code it could not see
+("the imports were removed" when they moved up the same file, "headers
+missing on 5xx" when middleware sets them). Three opt-in layers address
+that; all are **off by default**, and with all three off every prompt,
+output schema and recorded-fixture key is byte-identical to before.
+
+```yaml
+reviewer:
+  fullFile: true         # the hunk's whole file at the PR head
+  impactContext: true    # other code that references what the hunk changes
+  requireEvidence: true  # every finding must quote the code that proves it
+```
+
+- **`fullFile`** adds the hunk's file at the PR head to that hunk's review
+  request: whole when it is at most 2000 lines and 80k characters,
+  otherwise a window of ±150 lines around the hunk plus the file's
+  import / use / require block. Redacted like everything sent out (NFR-3).
+- **`impactContext`** extracts the symbols the hunk changes (function,
+  method, class and const names; PHP `->method(` / `::method(`; route
+  names, `config('a.b')` and cache keys; Vue props and emits; test ids;
+  compound identifiers the changed lines use), searches the checkout with
+  ripgrep (`rg -w -F`, whole words, fixed strings, `.gitignore` respected,
+  `vendor`, `node_modules`, `dist`, `build`, `storage`, `public/build`,
+  minified and lock files excluded), and adds up to 25 snippets of ±3
+  lines (12k characters) to the request: test files first, then callers in
+  other files, then references elsewhere in the same file, with the
+  instruction to check that callers, tests and consumers still work. At
+  most 12 symbols per hunk and 20 matches per symbol; common words are on
+  a stoplist.
+- **`requireEvidence`** makes `evidence: [{file, line, quote}]` (1–3 items,
+  quote ≤ 200 characters of exact code) required in the reviewer's output
+  schema for every provider, and tells the reviewer to phrase anything that
+  would need code it was not shown as a question (`Question: …`, low
+  severity). Each quote is then checked deterministically: it must appear
+  (whitespace-insensitive) in the cited file at the PR head within ±5 lines
+  of the cited line, or, for removed code, in the hunk's before side. A
+  finding with no verified quote is **never published** and costs no Jev
+  request: it goes to "Low-confidence findings" (or is discarded in
+  `findingFilter.mode: discard`, listed under "Findings discarded") with
+  the reason `evidence not found in code`.
+
+**They need a checkout of the PR head.** `fullFile` and `impactContext`
+read the code from the workspace, so add `actions/checkout` at the head
+commit before Jevest (fetch-depth 1 is enough):
+
+```yaml
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: tincke10/Jevest@v0
+        with:
+          # ...as above
+```
+
+The `ref` matters: on `pull_request` the default checkout is the merge
+commit, whose line numbers differ from the head's, and Jevest uses the
+workspace only when its `HEAD` is the PR head sha. Without such a checkout
+the run does not fail: the two layers are skipped and the comment says so
+in one line (`Impact context unavailable: no checkout …`, under
+"Efficiency"), and `requireEvidence` checks quotes against the hunk text
+alone. `impactContext` needs `rg` on the runner (`sudo apt-get install -y
+ripgrep` if your image lacks it); without it each hunk records the error
+and is reviewed without impact context.
+
+**Tradeoffs.** No extra LLM call; the cost is bigger review requests.
+"Efficiency" shows what was added (`Code context: N files, M snippets, C
+chars added to H hunks`) and how many findings the evidence check
+rejected. Measured on a private set of 6 real PRs (PHP + Vue, 123 reviewed
+hunks): building the context took 0.1–5 s per PR, but it added ~3.9M
+characters (≈1M input tokens) in total — the full file dominates, because
+a large file is repeated in every one of its hunks' requests (a file
+near the 80k-char cap with six changed hunks is sent six times). On the
+largest PR of the set that was ~400k extra input tokens: raise `budgetUsd`
+accordingly, or turn on `impactContext` / `requireEvidence` without
+`fullFile`. The checkout itself is the other cost; see "Why no checkout"
+for what it measured on a large repo (`fetch-depth: 1` keeps it to a
+single commit's tree).
+
 ### Finding filter mode
 
 `findingFilter.mode` controls what stage 4 does with a low-confidence
@@ -337,7 +423,10 @@ that size, for zero loss of functionality.
 Add `actions/checkout` back only if you specifically want `config-path`
 read from a **modified working tree** — e.g. a prior step in the same job
 rewrites `.jevest.yml` before Jevest runs. In that case the local file
-wins over the API fetch, exactly as before.
+wins over the API fetch, exactly as before. The other reason is the
+opt-in code context (`reviewer.fullFile` / `reviewer.impactContext`, see
+"Code context" above), which reads the code at the PR head: check out
+`ref: ${{ github.event.pull_request.head.sha }}` with `fetch-depth: 1`.
 
 Two options worth knowing about before a first rollout:
 

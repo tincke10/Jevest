@@ -8,8 +8,18 @@
  * recorded and the stage continues (matches the spike/filter runners'
  * fail-per-item, continue-overall pattern). The author's stated context, when
  * the pipeline has one, rides along on every hunk's ReviewInput.
+ *
+ * Code context (stages/code-context.ts): a hunk's full file and impact
+ * context, when built, ride along on its ReviewInput; `requireEvidence`
+ * asks the reviewer for evidence and checks every finding's quotes against
+ * the head files (`readHeadLines`) or, without a working tree, the hunk's
+ * own text (../../../domain/evidence-verifier.ts). The result lands on the
+ * finding as `evidenceCheck`; the finding filter keeps a finding with no
+ * verified quote from being published. With every layer off the
+ * ReviewInput carries none of these keys, so recorded fixtures still match.
  */
 import type { AuthorContext } from "../../../domain/author-context.js";
+import { evidencePathCandidates, verifyEvidence } from "../../../domain/evidence-verifier.js";
 import { languageFromPath } from "../../../domain/language.js";
 import type {
   ReviewFindingCandidate,
@@ -18,6 +28,7 @@ import type {
   ReviewerPort,
 } from "../../../domain/ports/reviewer-port.js";
 import { type ModelPricing, reviewCostUsd } from "../../findings/pricing.js";
+import type { CodeContextStageResult, HeadFileReader } from "./code-context.js";
 import type { HunkProfileEntry } from "./hunk-profile.js";
 
 /**
@@ -54,10 +65,21 @@ function inferLanguage(path: string): string {
   return (ext && LANGUAGE_BY_EXTENSION[ext]) ?? "text";
 }
 
+/** How many of a finding's evidence items were found in the code (`requireEvidence` only). */
+export interface EvidenceCheckSummary {
+  readonly verified: number;
+  readonly checked: number;
+}
+
+export interface ReviewStageFinding extends ReviewFindingCandidate {
+  /** Present only under `requireEvidence`; `verified: 0` = not published (finding-filter.ts). */
+  readonly evidenceCheck?: EvidenceCheckSummary;
+}
+
 export interface ReviewStageEntry {
   readonly hunkId: string;
   readonly file: string;
-  readonly findings: readonly ReviewFindingCandidate[];
+  readonly findings: readonly ReviewStageFinding[];
   readonly model: string | null;
   readonly usage: ReviewUsage | null;
   readonly latencyMs: number;
@@ -76,6 +98,12 @@ export interface ReviewStageInput {
    * hunk. Absent when the description was not used or nothing was kept.
    */
   readonly authorContext?: AuthorContext;
+  /** stages/code-context.ts output; a hunk's non-null layers go on its ReviewInput. */
+  readonly codeContext?: CodeContextStageResult | null;
+  /** `reviewer.requireEvidence`: ask for evidence and check it. */
+  readonly requireEvidence?: boolean;
+  /** Redacted head-file lines for the evidence check; absent = no working tree (hunk text only). */
+  readonly readHeadLines?: HeadFileReader;
 }
 
 export interface ReviewStageResult {
@@ -85,7 +113,9 @@ export interface ReviewStageResult {
   readonly skippedForBudgetCount: number;
 }
 
-function toReviewInput(hunk: HunkProfileEntry, authorContext?: AuthorContext): ReviewInput {
+function toReviewInput(hunk: HunkProfileEntry, input: ReviewStageInput): ReviewInput {
+  const { authorContext } = input;
+  const context = input.codeContext?.hunks.find((h) => h.hunkId === hunk.id);
   return {
     hunkId: hunk.id,
     file: hunk.file,
@@ -102,7 +132,36 @@ function toReviewInput(hunk: HunkProfileEntry, authorContext?: AuthorContext): R
       astSkipped: hunk.astSkipped,
     },
     ...(authorContext ? { authorContext } : {}),
+    ...(context?.fullFile ? { fullFile: context.fullFile } : {}),
+    ...(context?.impactContext ? { impactContext: context.impactContext } : {}),
+    ...(input.requireEvidence === true ? { requireEvidence: true as const } : {}),
   };
+}
+
+async function checkEvidence(
+  findings: readonly ReviewFindingCandidate[],
+  hunk: HunkProfileEntry,
+  readHeadLines: HeadFileReader | undefined,
+): Promise<ReviewStageFinding[]> {
+  const checked: ReviewStageFinding[] = [];
+  for (const finding of findings) {
+    const evidence = finding.evidence ?? [];
+    let headFiles: Map<string, readonly string[] | null> | null = null;
+    if (readHeadLines) {
+      headFiles = new Map();
+      const paths = [hunk.file, ...evidence.flatMap((e) => evidencePathCandidates(e.file))];
+      for (const path of new Set(paths)) headFiles.set(path, await readHeadLines(path));
+    }
+    const result = verifyEvidence(evidence, {
+      hunk: { file: hunk.file, before: hunk.before, diff: hunk.diff },
+      headFiles,
+    });
+    checked.push({
+      ...finding,
+      evidenceCheck: { verified: result.verified, checked: result.checked },
+    });
+  }
+  return checked;
 }
 
 export async function runReviewStage(input: ReviewStageInput): Promise<ReviewStageResult> {
@@ -120,7 +179,7 @@ export async function runReviewStage(input: ReviewStageInput): Promise<ReviewSta
     }
 
     try {
-      const output = await input.reviewerPort.review(toReviewInput(hunk, input.authorContext));
+      const output = await input.reviewerPort.review(toReviewInput(hunk, input));
       // A subscription-billed reviewer (claude-cli) reports the CLI's own
       // nominal list-price cost; that number is what the budget cap should
       // track, not a re-computation from a per-token pricing table.
@@ -130,7 +189,10 @@ export async function runReviewStage(input: ReviewStageInput): Promise<ReviewSta
       reviews.push({
         hunkId: hunk.id,
         file: hunk.file,
-        findings: output.findings,
+        findings:
+          input.requireEvidence === true
+            ? await checkEvidence(output.findings, hunk, input.readHeadLines)
+            : output.findings,
         model: output.model,
         usage: output.usage,
         latencyMs: output.latencyMs,

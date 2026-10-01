@@ -22,6 +22,7 @@ import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports
 import {
   type ReviewOutputSchema,
   reviewOutputSchema,
+  reviewOutputWithEvidenceSchema,
   toReviewFindingCandidates,
 } from "./review-output-schema.js";
 import {
@@ -81,6 +82,8 @@ const DEFAULT_MAX_TOKENS = 4096;
 const PROVIDER = "anthropic";
 
 const OUTPUT_FORMAT = zodOutputFormat(reviewOutputSchema);
+/** `reviewer.requireEvidence`: the same output plus a required `evidence` list per finding. */
+const OUTPUT_FORMAT_WITH_EVIDENCE = zodOutputFormat(reviewOutputWithEvidenceSchema);
 
 export function createAnthropicReviewer(options: AnthropicReviewerOptions): ReviewerPort {
   const model = options.model ?? DEFAULT_MODEL;
@@ -105,7 +108,10 @@ export function createAnthropicReviewer(options: AnthropicReviewerOptions): Revi
             },
           ],
           messages: [{ role: "user", content: buildReviewUserPrompt(input) }],
-          output_config: { format: OUTPUT_FORMAT, effort },
+          output_config: {
+            format: input.requireEvidence === true ? OUTPUT_FORMAT_WITH_EVIDENCE : OUTPUT_FORMAT,
+            effort,
+          },
         });
       } catch (error) {
         // Most-specific first: RateLimitError and AuthenticationError both

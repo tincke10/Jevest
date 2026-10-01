@@ -10,8 +10,11 @@
  *   pnpm review --git <base>..<head> [--config .jevest.yml] [--mode live|replay|dry-run] [--out reports/review/]
  *
  * `--mode dry-run` (the default) never calls a real Jev or LLM endpoint —
- * every question gets a plausible low-risk answer, and the reviewer always
- * returns no findings. Use it to smoke-test the CLI wiring. `--mode live`
+ * every question gets a plausible low-risk answer at a middling confidence
+ * (0.5), so no stage auto-skips (triage's FR-2.3 skip and the hunk
+ * profile's change-kind skip need the "auto" band) and every stage runs —
+ * and the reviewer always returns no findings. Use it to smoke-test the CLI
+ * wiring, the code-context layers included. `--mode live`
  * requires `TYPESAFE_API_KEY` and the LLM provider's own API key
  * (`ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, matching `.jevest.yml`'s
  * `reviewer.provider`) per NFR-9. `--mode replay` reads recorded fixtures
@@ -32,6 +35,16 @@
  * rule (dry-run stub that keeps nothing, or the live provider) when
  * `reviewer.descriptionContext` is on. `--mode replay` runs without it, so
  * the replayed reviewer requests (and their fixture keys) stay unchanged.
+ *
+ * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * `--git` mode reads the code at the HEAD ref. The repo is used in place
+ * when it is checked out, clean, at that commit; otherwise (bare, another
+ * commit, local edits) a temporary `git worktree add --detach` is created
+ * and removed when the run ends (src/adapters/working-tree/git-head-checkout.ts;
+ * a blob-filtered mirror gets a partial checkout, never a network fetch).
+ * `--diff` mode has no head ref, so the context is skipped with a note and
+ * evidence is checked against the hunk text. One log line per hunk gives
+ * the symbols, matches, snippets and characters added.
  */
 import { readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
@@ -70,6 +83,12 @@ import {
   createLocalDiffVcsAdapter,
 } from "../../src/adapters/vcs/local-diff-vcs-adapter.js";
 import {
+  type HeadCheckout,
+  type PrepareHeadCheckoutOptions,
+  prepareHeadCheckout,
+} from "../../src/adapters/working-tree/git-head-checkout.js";
+import { createRipgrepWorkingTree } from "../../src/adapters/working-tree/ripgrep-working-tree.js";
+import {
   type ProductContext,
   loadProductContext,
 } from "../../src/application/context/product-context.js";
@@ -86,6 +105,7 @@ import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
 import type { DescriptionContextPort } from "../../src/domain/ports/description-context-port.js";
 import type { ReviewNarratorPort } from "../../src/domain/ports/review-narrator-port.js";
 import type { ReviewerPort } from "../../src/domain/ports/reviewer-port.js";
+import type { WorkingTreePort } from "../../src/domain/ports/working-tree-port.js";
 import type { PullRequestRef } from "../../src/domain/pull-request.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -167,6 +187,9 @@ export function parseArgs(argv: readonly string[]): CliOptions {
   return { diffFile, gitRange, configPath, mode, outDir };
 }
 
+/** Middling confidence: below every "auto" band, so a dry run never skips a stage. */
+const DRY_RUN_CONFIDENCE = 0.5;
+
 /** Answers every question with a plausible low-risk pick — never calls a real Jev endpoint. */
 function createDryRunDecisionPort(): DecisionPort {
   let counter = 0;
@@ -185,17 +208,33 @@ function createDryRunDecisionPort(): DecisionPort {
           }
           const probabilities: Record<string, number> = {};
           const rest = Math.max(options.length - 1, 1);
-          for (const option of options) probabilities[option] = option === pick ? 0.9 : 0.1 / rest;
-          answers[key] = { type: "choice", choice: pick, probabilities, confidence: 0.9 };
+          for (const option of options) {
+            probabilities[option] =
+              option === pick ? DRY_RUN_CONFIDENCE : (1 - DRY_RUN_CONFIDENCE) / rest;
+          }
+          answers[key] = {
+            type: "choice",
+            choice: pick,
+            probabilities,
+            confidence: DRY_RUN_CONFIDENCE,
+          };
         } else {
           const legend: Record<number, string> = {};
           const probabilities: Record<number, number> = {};
           question.criteria.forEach((label, index) => {
             legend[index] = label;
             probabilities[index] =
-              index === 0 ? 0.9 : 0.1 / Math.max(question.criteria.length - 1, 1);
+              index === 0
+                ? DRY_RUN_CONFIDENCE
+                : (1 - DRY_RUN_CONFIDENCE) / Math.max(question.criteria.length - 1, 1);
           });
-          answers[key] = { type: "score", score: 0, legend, probabilities, confidence: 0.9 };
+          answers[key] = {
+            type: "score",
+            score: 0,
+            legend,
+            probabilities,
+            confidence: DRY_RUN_CONFIDENCE,
+          };
         }
       }
       counter += 1;
@@ -626,6 +665,86 @@ export async function resolveConfig(
   return { config, usedDefault };
 }
 
+export interface LocalWorkingTreeOptions {
+  readonly config: JevestConfig;
+  readonly gitRange: CliOptions["gitRange"];
+  readonly repoDir: string;
+  readonly log: (line: string) => void;
+  /** Injectable for tests; default {@link prepareHeadCheckout}. */
+  readonly prepare?: (options: PrepareHeadCheckoutOptions) => Promise<HeadCheckout>;
+}
+
+export interface LocalWorkingTree {
+  readonly workingTree: WorkingTreePort | undefined;
+  readonly unavailableReason: string | undefined;
+  /** Removes a temporary worktree; call it in a `finally`. */
+  cleanup(): Promise<void>;
+}
+
+/**
+ * The working tree at the head for the code-context layers (see the module
+ * doc). Nothing at all when every layer is off or the review is Jev-only.
+ */
+export async function resolveLocalWorkingTree(
+  options: LocalWorkingTreeOptions,
+): Promise<LocalWorkingTree> {
+  const { reviewer } = options.config;
+  const wanted =
+    reviewer.provider !== "none" &&
+    (reviewer.fullFile || reviewer.impactContext || reviewer.requireEvidence);
+  const none = async (): Promise<void> => {};
+  if (!wanted) {
+    return { workingTree: undefined, unavailableReason: undefined, cleanup: none };
+  }
+  if (!options.gitRange) {
+    options.log("[review] code context: --diff mode has no checkout of the head; skipped");
+    return {
+      workingTree: undefined,
+      unavailableReason: "--diff mode has no checkout of the head",
+      cleanup: none,
+    };
+  }
+  const prepare = options.prepare ?? prepareHeadCheckout;
+  const checkout = await prepare({ repoDir: options.repoDir, head: options.gitRange.head });
+  const skipped =
+    checkout.skippedFiles > 0
+      ? ` (${checkout.skippedFiles} of ${checkout.totalFiles} files skipped: blobs not in the local object store)`
+      : "";
+  options.log(`[review] head checkout: ${checkout.kind} at ${checkout.root}${skipped}`);
+  return {
+    workingTree: createRipgrepWorkingTree({ root: checkout.root }),
+    unavailableReason: undefined,
+    cleanup: () => checkout.cleanup(),
+  };
+}
+
+/** One line per hunk with what the code-context stage added (symbols, matches, snippets, chars). */
+export function codeContextLogLines(result: PipelineResult): string[] {
+  const lines: string[] = [];
+  const context = result.codeContext;
+  if (context) {
+    if (context.unavailable) lines.push(`[review] ${context.unavailable}`);
+    for (const hunk of context.hunks) {
+      const full = hunk.fullFile ? `${hunk.fullFile.mode} ${hunk.fullFile.chars} chars` : "none";
+      const impact = hunk.impactContext;
+      lines.push(
+        `[review] context ${hunk.hunkId}: symbols=${hunk.symbols.length} (${hunk.symbols.join(", ")}) · matches=${hunk.matchesFound} · snippets=${impact?.snippets.length ?? 0} · impact=${impact?.chars ?? 0} chars${impact?.truncated ? " (capped)" : ""} · fullFile=${full}${hunk.error ? ` · error: ${hunk.error}` : ""}`,
+      );
+    }
+    const t = context.totals;
+    lines.push(
+      `[review] code context: ${t.hunks} hunks with context, ${t.files} files, ${t.snippets} snippets, ${t.fullFileChars + t.impactChars} chars (full file ${t.fullFileChars}, impact ${t.impactChars})`,
+    );
+  }
+  const { evidenceChecked, evidenceRejected } = result.metrics.codeContext;
+  if (evidenceChecked > 0) {
+    lines.push(
+      `[review] evidence: ${evidenceChecked} findings checked, ${evidenceRejected} rejected`,
+    );
+  }
+  return lines;
+}
+
 export interface LocalReviewInput {
   readonly options: Pick<CliOptions, "diffFile" | "gitRange" | "mode" | "outDir">;
   readonly config: JevestConfig;
@@ -719,25 +838,39 @@ export async function runLocalReview(input: LocalReviewInput): Promise<PipelineR
     filePath: input.spendLedgerPath ?? join(repoDir, LOCAL_SPEND_LEDGER_PATH),
   });
 
-  log(
-    `[review] running pipeline (mode=${options.mode}, config=${input.configLabel ?? "<config>"})...`,
-  );
-  return runPipeline({
-    ref,
-    ports: {
-      vcs,
-      decision,
-      spendLedger,
-      ...(reviewer ? { reviewer } : {}),
-      ...(summarizer ? { summarizer } : {}),
-      ...(narrator ? { narrator } : {}),
-      ...(descriptionContext ? { descriptionContext } : {}),
-    },
+  const tree = await resolveLocalWorkingTree({
     config,
-    productContext,
-    calibration,
-    ...(fetchFileContent ? { fetchFileContent } : {}),
+    gitRange: options.gitRange,
+    repoDir,
+    log,
   });
+  try {
+    log(
+      `[review] running pipeline (mode=${options.mode}, config=${input.configLabel ?? "<config>"})...`,
+    );
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs,
+        decision,
+        spendLedger,
+        ...(reviewer ? { reviewer } : {}),
+        ...(summarizer ? { summarizer } : {}),
+        ...(narrator ? { narrator } : {}),
+        ...(descriptionContext ? { descriptionContext } : {}),
+        ...(tree.workingTree ? { workingTree: tree.workingTree } : {}),
+      },
+      ...(tree.unavailableReason ? { workingTreeUnavailableReason: tree.unavailableReason } : {}),
+      config,
+      productContext,
+      calibration,
+      ...(fetchFileContent ? { fetchFileContent } : {}),
+    });
+    for (const line of codeContextLogLines(result)) log(line);
+    return result;
+  } finally {
+    await tree.cleanup();
+  }
 }
 
 async function main(): Promise<number> {

@@ -11,6 +11,7 @@ import {
   reviewSystemPromptForInput,
 } from "../../adapters/reviewers/review-prompt.js";
 import { createFakeSpendLedger } from "../../adapters/spend-ledger/fake-spend-ledger.js";
+import { createInMemoryWorkingTree } from "../../adapters/working-tree/in-memory-working-tree.js";
 import { EMPTY_AUTHOR_CONTEXT } from "../../domain/author-context.js";
 import type { CalibrationMap } from "../../domain/calibration.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
@@ -25,6 +26,7 @@ import type { ReviewNarratorPort } from "../../domain/ports/review-narrator-port
 import type { ReviewInput, ReviewOutput, ReviewerPort } from "../../domain/ports/reviewer-port.js";
 import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
+import type { WorkingTreePort } from "../../domain/ports/working-tree-port.js";
 import type { PullRequestData, PullRequestRef } from "../../domain/pull-request.js";
 import { parseProductContext } from "../context/product-context.js";
 import { type PipelineResult, runPipeline } from "./run-pipeline.js";
@@ -87,6 +89,9 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
       language: "es",
       narrative: true,
       descriptionContext: true,
+      fullFile: false,
+      impactContext: false,
+      requireEvidence: false,
     },
     thresholds: policyConfig,
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
@@ -512,6 +517,9 @@ describe("runPipeline", () => {
           language: "es",
           narrative: false,
           descriptionContext: false,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       }),
     });
@@ -576,6 +584,9 @@ describe("runPipeline", () => {
           language: "es",
           narrative: false,
           descriptionContext: false,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       }),
     });
@@ -1141,6 +1152,9 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: true,
           descriptionContext: true,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       }),
     });
@@ -1157,6 +1171,9 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: true,
           descriptionContext: true,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       }),
     });
@@ -1192,6 +1209,9 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: false,
           descriptionContext: false,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       }),
     });
@@ -1728,6 +1748,9 @@ describe("runPipeline colleague review (narrator)", () => {
           language: "es",
           narrative: true,
           descriptionContext: true,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       },
     });
@@ -1806,6 +1829,9 @@ describe("runPipeline colleague review (narrator)", () => {
           language: "es",
           narrative: false,
           descriptionContext: true,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       },
     });
@@ -2062,6 +2088,9 @@ describe("runPipeline author context from the PR description", () => {
           language: "es",
           narrative: true,
           descriptionContext: false,
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
         },
       },
     });
@@ -2086,5 +2115,161 @@ describe("runPipeline author context from the PR description", () => {
     });
     expect(result.review).toBeNull();
     expect(triageOnly.calls).toHaveLength(0);
+  });
+});
+
+describe("runPipeline code context and evidence (reviewer.fullFile / impactContext / requireEvidence)", () => {
+  const PR = makePr({
+    files: [
+      {
+        path: "src/total.ts",
+        status: "modified",
+        additions: 1,
+        deletions: 1,
+        patch: "@@ -1,1 +1,1 @@\n-return sum(items);\n+return sumWithTax(items);",
+      },
+    ],
+  });
+  const TREE = {
+    "src/total.ts": "return sumWithTax(items);\n",
+    "tests/total.test.ts": "expect(sumWithTax([1])).toBe(1);\n",
+  };
+
+  function recordingReviewer(
+    findings: ReviewOutput["findings"] = [],
+  ): ReviewerPort & { inputs: ReviewInput[] } {
+    const inputs: ReviewInput[] = [];
+    const base = fakeReviewer(findings);
+    return {
+      inputs,
+      async review(input) {
+        inputs.push(input);
+        return base.review(input);
+      },
+    };
+  }
+
+  function countingTree(): WorkingTreePort & { calls: number } {
+    const inner = createInMemoryWorkingTree(TREE);
+    const tree = {
+      calls: 0,
+      async readFile(path: string) {
+        tree.calls++;
+        return inner.readFile(path);
+      },
+      async searchSymbols(symbols: readonly string[]) {
+        tree.calls++;
+        return inner.searchSymbols(symbols);
+      },
+    };
+    return tree;
+  }
+
+  function run(options: {
+    reviewer: ReviewerPort;
+    reviewerConfig?: Partial<JevestConfig["reviewer"]>;
+    workingTree?: WorkingTreePort;
+    unavailableReason?: string;
+  }) {
+    return runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(PR),
+        decision: fullRunWithFindingPort(),
+        reviewer: options.reviewer,
+        ...(options.workingTree ? { workingTree: options.workingTree } : {}),
+      },
+      config: makeConfig({
+        reviewer: { ...makeConfig().reviewer, ...options.reviewerConfig },
+      }),
+      ...(options.unavailableReason
+        ? { workingTreeUnavailableReason: options.unavailableReason }
+        : {}),
+      now: () => new Date("2026-09-21T16:00:00.000Z"),
+    });
+  }
+
+  it("with every layer off: never touches the tree, and the reviewer gets exactly today's request", async () => {
+    const reviewer = recordingReviewer();
+    const tree = countingTree();
+    const result = await run({ reviewer, workingTree: tree });
+    expect(tree.calls).toBe(0);
+    expect(result.codeContext).toBeNull();
+    expect(result.metrics.codeContext.ran).toBe(false);
+    for (const input of reviewer.inputs) {
+      expect(input).not.toHaveProperty("fullFile");
+      expect(input).not.toHaveProperty("impactContext");
+      expect(input).not.toHaveProperty("requireEvidence");
+      expect(reviewSystemPromptForInput(REVIEW_SYSTEM_PROMPT, input)).toBe(REVIEW_SYSTEM_PROMPT);
+    }
+    const efficiency = result.publication.summaryMarkdown.split("### Efficiency")[1] ?? "";
+    expect(efficiency).not.toMatch(/Code context|Evidence|Impact context/);
+  });
+
+  it("gives the reviewer the full file and the impact context from the working tree", async () => {
+    const reviewer = recordingReviewer();
+    const result = await run({
+      reviewer,
+      workingTree: createInMemoryWorkingTree(TREE),
+      reviewerConfig: { fullFile: true, impactContext: true },
+    });
+    const [input] = reviewer.inputs;
+    expect(input?.fullFile?.segments[0]?.lines).toEqual(["return sumWithTax(items);"]);
+    expect(input?.impactContext?.snippets.map((s) => s.file)).toEqual(["tests/total.test.ts"]);
+    expect(buildReviewUserPrompt(input as ReviewInput)).toContain("<impact_context>");
+    expect(result.codeContext?.totals.snippets).toBe(1);
+    expect(result.metrics.codeContext).toMatchObject({ ran: true, files: 2, snippets: 1 });
+    expect(result.publication.summaryMarkdown).toContain("- Code context: 2 files, 1 snippet,");
+  });
+
+  it("without a working tree: skips the context with one line and still runs the review", async () => {
+    const reviewer = recordingReviewer();
+    const result = await run({
+      reviewer,
+      reviewerConfig: { fullFile: true, impactContext: true },
+      unavailableReason: "no checkout",
+    });
+    expect(reviewer.inputs.length).toBeGreaterThan(0);
+    expect(reviewer.inputs[0]).not.toHaveProperty("fullFile");
+    expect(result.publication.summaryMarkdown).toContain(
+      "- Impact context unavailable: no checkout",
+    );
+    expect(result.failedClosed).toBe(false);
+  });
+
+  it("requireEvidence: keeps a finding whose quote is not in the code out of published, with the reason", async () => {
+    const invented = {
+      ...OFF_BY_ONE,
+      claim: "headers missing on 5xx",
+      evidence: [{ file: "src/middleware.ts", line: 3, quote: "res.status(500).send()" }],
+    };
+    const reviewer = recordingReviewer([invented]);
+    const result = await run({
+      reviewer,
+      workingTree: createInMemoryWorkingTree(TREE),
+      reviewerConfig: { requireEvidence: true },
+    });
+    expect(reviewer.inputs[0]?.requireEvidence).toBe(true);
+    expect(result.findingFilter?.published).toHaveLength(0);
+    expect(result.findingFilter?.lowConfidence[0]?.rejectedReason).toBe(
+      "evidence not found in code",
+    );
+    expect(result.metrics.codeContext).toMatchObject({ evidenceChecked: 1, evidenceRejected: 1 });
+    expect(result.publication.summaryMarkdown).toContain(
+      "headers missing on 5xx (not published: evidence not found in code)",
+    );
+  });
+
+  it("requireEvidence without a working tree verifies against the hunk text", async () => {
+    const proven = {
+      ...OFF_BY_ONE,
+      evidence: [{ file: "src/total.ts", line: 1, quote: "return sumWithTax(items);" }],
+    };
+    const result = await run({
+      reviewer: recordingReviewer([proven]),
+      reviewerConfig: { requireEvidence: true },
+    });
+    expect(result.metrics.codeContext).toMatchObject({ evidenceChecked: 1, evidenceRejected: 0 });
+    expect(result.findingFilter?.lowConfidence.some((f) => f.rejectedReason)).toBe(false);
   });
 });

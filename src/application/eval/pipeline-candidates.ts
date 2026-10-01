@@ -8,6 +8,12 @@
  * narrative is what a reader actually reads first. A point that restates a
  * published finding matches the same golden issue, so recall is unchanged;
  * the shown-candidate counts say how much the reader had to read.
+ *
+ * Evidence-failed findings (`reviewer.requireEvidence`: none of their
+ * quotes is in the code, `rejectedReason` set) are `low` with their own
+ * source `evidence-failed`, whatever list they ended in: the run never
+ * publishes them, and the report can tell them apart from Jev's
+ * low-confidence calls.
  */
 import type { FilteredFinding } from "../pipeline/stages/finding-filter.js";
 import type { CandidateFinding, CandidateSource } from "./candidate.js";
@@ -66,21 +72,47 @@ export function narrativePoints(markdown: string): NarrativePoint[] {
   return points;
 }
 
-function fromFiltered(
-  findings: readonly FilteredFinding[],
-  caseId: string,
+function toCandidate(
+  f: FilteredFinding,
+  id: string,
   source: CandidateSource,
   bucket: CandidateFinding["bucket"],
-): CandidateFinding[] {
-  return findings.map((f, index) => ({
-    id: `${caseId}:${source}:${index}`,
+): CandidateFinding {
+  return {
+    id,
     file: f.file,
     line: f.lineStart,
     lineEnd: f.lineEnd,
     text: f.rationale ? `${f.claim} — ${f.rationale}` : f.claim,
     bucket,
     source,
-  }));
+  };
+}
+
+function fromFiltered(
+  findings: readonly FilteredFinding[],
+  caseId: string,
+  source: CandidateSource,
+  bucket: CandidateFinding["bucket"],
+): CandidateFinding[] {
+  return findings
+    .filter((f) => f.rejectedReason === undefined)
+    .map((f, index) => toCandidate(f, `${caseId}:${source}:${index}`, source, bucket));
+}
+
+function evidenceFailed(
+  filter: PipelineCandidateInput["findingFilter"],
+  caseId: string,
+): CandidateFinding[] {
+  const all = [
+    ...(filter?.published ?? []),
+    ...(filter?.needsHuman ?? []),
+    ...(filter?.lowConfidence ?? []),
+    ...(filter?.discarded ?? []),
+  ].filter((f) => f.rejectedReason !== undefined);
+  return all.map((f, index) =>
+    toCandidate(f, `${caseId}:evidence-failed:${index}`, "evidence-failed", "low"),
+  );
 }
 
 export function candidatesFromPipeline(
@@ -117,5 +149,6 @@ export function candidatesFromPipeline(
     ),
     ...fromFiltered(filter?.lowConfidence ?? [], caseId, "low-confidence", "low"),
     ...fromFiltered(filter?.discarded ?? [], caseId, "discarded", "low"),
+    ...evidenceFailed(filter, caseId),
   ];
 }

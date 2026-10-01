@@ -19,12 +19,18 @@
  *   call carries, so the saving is if anything understated. `method` says
  *   so in words wherever the numbers are shown.
  *
+ * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * what the code-context stage added to the review prompts (files,
+ * snippets, characters — the review tokens already include its cost) and
+ * how many findings the evidence check looked at and rejected.
+ *
  * Pure: no ports, no clock. The pipeline measures wall time itself with its
  * injectable `now` and hands the numbers in. Zeros, never null, when a
  * stage did not run, so the Action outputs are always well-formed.
  */
 import type { Usage } from "../../domain/decision.js";
 import { jevCostUsd } from "../findings/pricing.js";
+import type { CodeContextStageResult } from "./stages/code-context.js";
 import type { FindingFilterStageResult } from "./stages/finding-filter.js";
 import type { HunkProfileEntry, HunkProfileStageResult } from "./stages/hunk-profile.js";
 import type { MergeGateStageResult } from "./stages/merge-gate.js";
@@ -125,10 +131,40 @@ export interface StageWallTimes {
   readonly totalMs: number;
 }
 
+export interface CodeContextMetrics {
+  /** The code-context stage ran (`reviewer.fullFile` or `reviewer.impactContext` on). */
+  readonly ran: boolean;
+  /** "Impact context unavailable: <reason>" when it ran without a checkout. */
+  readonly unavailable: string | null;
+  /** Hunks that got any context. */
+  readonly hunks: number;
+  readonly files: number;
+  readonly snippets: number;
+  readonly fullFileChars: number;
+  readonly impactChars: number;
+  /** Findings whose evidence was checked (`reviewer.requireEvidence`). */
+  readonly evidenceChecked: number;
+  /** Of those, the ones with no quote found in the code: never published. */
+  readonly evidenceRejected: number;
+}
+
+export const ZERO_CODE_CONTEXT_METRICS: CodeContextMetrics = {
+  ran: false,
+  unavailable: null,
+  hunks: 0,
+  files: 0,
+  snippets: 0,
+  fullFileChars: 0,
+  impactChars: 0,
+  evidenceChecked: 0,
+  evidenceRejected: 0,
+};
+
 export interface RunMetrics {
   readonly jev: JevMetrics;
   readonly llm: LlmMetrics;
   readonly wallTime: StageWallTimes;
+  readonly codeContext: CodeContextMetrics;
 }
 
 export interface RunMetricsInput {
@@ -142,6 +178,8 @@ export interface RunMetricsInput {
   readonly reviewSkippedForSpendCap: boolean;
   readonly reviewDisabled: boolean;
   readonly wallTime: StageWallTimes;
+  /** stages/code-context.ts output; absent/`null` when the layers are off. */
+  readonly codeContext?: CodeContextStageResult | null;
 }
 
 export const ZERO_WALL_TIMES: StageWallTimes = {
@@ -326,5 +364,25 @@ export function computeRunMetrics(input: RunMetricsInput): RunMetrics {
     jev: computeJev(input),
     llm: computeLlm(input),
     wallTime: input.wallTime,
+    codeContext: computeCodeContext(input),
+  };
+}
+
+function computeCodeContext(input: RunMetricsInput): CodeContextMetrics {
+  let evidenceChecked = 0;
+  let evidenceRejected = 0;
+  for (const entry of input.review?.reviews ?? []) {
+    for (const finding of entry.findings) {
+      if (finding.evidenceCheck === undefined) continue;
+      evidenceChecked++;
+      if (finding.evidenceCheck.verified === 0) evidenceRejected++;
+    }
+  }
+  const stage = input.codeContext ?? null;
+  return {
+    ...ZERO_CODE_CONTEXT_METRICS,
+    ...(stage ? { ran: true, unavailable: stage.unavailable, ...stage.totals } : {}),
+    evidenceChecked,
+    evidenceRejected,
   };
 }

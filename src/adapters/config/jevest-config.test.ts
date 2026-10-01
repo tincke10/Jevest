@@ -59,7 +59,7 @@ describe("loadJevestConfig", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
@@ -140,7 +140,7 @@ describe("loadJevestConfig", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
@@ -181,7 +181,7 @@ describe("loadJevestConfig", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
@@ -207,7 +207,7 @@ describe("loadJevestConfig", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
@@ -257,7 +257,7 @@ describe("loadJevestConfig", () => {
       expect(config.reviewer.verifier).toBe("none");
       expect(config.reviewer.verifierModel).toBe("claude-sonnet-5");
       expect(config.reviewer.agentic).toEqual({
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,
@@ -446,7 +446,7 @@ describe("loadJevestConfig", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,

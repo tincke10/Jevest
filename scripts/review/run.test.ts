@@ -106,7 +106,7 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
       requireEvidence: false,
       mode: "hunks",
       agentic: {
-        maxTurns: 40,
+        maxTurns: 60,
         timeoutMs: 900_000,
         verifierMaxTurns: 12,
         verifierTimeoutMs: 300_000,

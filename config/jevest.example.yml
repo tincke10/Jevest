@@ -69,7 +69,7 @@ reviewer:
   # a silent fallback). See docs/ACTION.md "Agentic review".
   # mode: hunks
   # agentic:
-  #   maxTurns: 40          # the agent's turn cap
+  #   maxTurns: 60          # the agent's turn cap
   #   timeoutMs: 900000     # 15 minutes
   #   verifierMaxTurns: 12
   #   verifierTimeoutMs: 300000

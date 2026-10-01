@@ -148,7 +148,7 @@ export const VERIFIER_PROVIDERS = ["none", "claude-cli"] as const;
 export type VerifierProvider = (typeof VERIFIER_PROVIDERS)[number];
 
 const DEFAULT_AGENTIC = {
-  maxTurns: 40,
+  maxTurns: 60,
   timeoutMs: 900_000,
   verifierMaxTurns: 12,
   verifierTimeoutMs: 300_000,

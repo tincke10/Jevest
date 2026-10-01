@@ -339,19 +339,21 @@ What runs, per PR:
    its reason; `uncertain` (also a verifier error, or a spent budget) → at
    most a question; `confirmed` → on to Jev. At most 3 run at a time.
 6. **Jev's staged judge**, one typed request per step, stopping at the
-   first discard: `supports` (does the evidence, re-read from the checkout
+   first doubt: `supports` (does the evidence, re-read from the checkout
    ±5 lines and redacted, support the claim and the failing scenario?
    proves / partially / noMatch), `mechanism` (a per-category vocabulary
    with a `noIssue` escape hatch), `severity` (0 no impact … 3 critical).
-   Policy, in one module (`src/domain/agentic-policy.ts`): publish when
-   `proves` at confidence ≥ 0.7, severity ≥ 1 and the verifier was not
-   uncertain; a question when `partially`, `proves` under 0.7, or the
-   verifier was uncertain; discard on `noMatch`, any `supports` answer
-   under 0.55, `noIssue` or severity < 1 (low confidence in
-   `findingFilter.mode: annotate`). A finding the agent rated `critical`
-   is never discarded on Jev's judgment alone (FR-5.4): it becomes a
-   question. A Jev failure on a finding makes it an "unverified" question,
-   never a published finding (NFR-2).
+   Policy, in one module (`src/domain/agentic-policy.ts`): **Jev never
+   discards**, it only routes between publish and question (measured on a
+   private golden set: every finding its judge discarded was valid, while
+   the verifier removed false ones without losing a real one). A `noMatch`,
+   a `supports` answer under 0.55, `noIssue` or severity < 1 makes a
+   question. With the verifier on, a `confirmed` finding the agent rated
+   medium or above is published; without it, publish needs `proves` at
+   confidence ≥ 0.7. Discards come only from the hard exclusions, evidence
+   not found in the code, and a refuting verifier. A Jev failure on a
+   finding makes it an "unverified" question, never a published finding
+   (NFR-2).
 
 The result maps onto the usual buckets (published / questions / low
 confidence / discarded), so the verdict, labels, narrator, merge gate and

@@ -29,7 +29,7 @@
  */
 import type { AgenticSeverity } from "./agentic-finding.js";
 
-/** Below this `supports` confidence the finding is discarded, whatever Jev picked. */
+/** Below this `supports` confidence the finding is a question, whatever Jev picked. */
 export const AGENTIC_SUPPORTS_MIN_CONFIDENCE = 0.55;
 /** `proves` at or above this confidence can be published; below it is a question. */
 export const AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE = 0.7;
@@ -58,6 +58,7 @@ export type AgenticRouteCode =
   | "partial-support"
   | "support-under-publish-bar"
   | "verifier-uncertain"
+  | "verifier-confirmed"
   | "supported";
 
 export interface AgenticRoute {
@@ -70,79 +71,78 @@ function round(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** A Jev-driven discard, softened to a question for a finding the reviewer rated critical (FR-5.4). */
-function discard(
-  code: AgenticRouteCode,
-  reason: string,
-  agentSeverity: AgenticSeverity,
-): AgenticRoute {
-  if (agentSeverity === "critical") {
-    return {
-      route: "question",
-      code,
-      reason: `rated critical by the reviewer, so not discarded although ${reason}`,
-    };
-  }
-  return { route: "discard", code, reason };
+/**
+ * A Jev doubt: a question, never a discard. Measured on a private golden
+ * set: of the findings the staged judge discarded, none was false (3 real,
+ * 6 partly), while the LLM verifier removed false ones without losing a
+ * real one. So Jev routes between publish and question; discards come only
+ * from hard exclusions, unverified evidence and a refuting verifier.
+ */
+function doubt(code: AgenticRouteCode, reason: string): AgenticRoute {
+  return { route: "question", code, reason };
 }
+
+/** Reviewer severities that a verifier confirmation can publish. */
+const PUBLISHABLE_AGENT_SEVERITIES: ReadonlySet<AgenticSeverity> = new Set([
+  "medium",
+  "high",
+  "critical",
+]);
 
 /**
  * The route once enough of the chain is answered, or `"next"` when the
  * next Jev step is needed (the stage asks steps in order and stops at the
- * first discard).
+ * first doubt).
  */
 export function routeAgenticFinding(input: AgenticRouteInput): AgenticRoute | "next" {
   const { supports, mechanism, severity, agentSeverity } = input;
   if (supports.choice === "noMatch") {
-    return discard(
+    return doubt(
       "supports-noMatch",
       "Jev found the evidence does not support the claim (supports: noMatch)",
-      agentSeverity,
     );
   }
   if (supports.confidence < AGENTIC_SUPPORTS_MIN_CONFIDENCE) {
-    return discard(
+    return doubt(
       "supports-low-confidence",
       `Jev was unsure the evidence supports the claim (supports: ${supports.choice} at confidence ${round(supports.confidence)})`,
-      agentSeverity,
     );
   }
   if (mechanism === undefined) return "next";
   if (mechanism.choice === "noIssue") {
-    return discard(
+    return doubt(
       "mechanism-noIssue",
       "Jev found no concrete issue mechanism in the evidence (mechanism: noIssue)",
-      agentSeverity,
     );
   }
   if (severity === undefined) return "next";
   if (severity.score < AGENTIC_MIN_SEVERITY) {
-    return discard(
+    return doubt(
       "severity-low",
       `Jev rated the impact below minor (severity ${round(severity.score)})`,
-      agentSeverity,
     );
   }
+  if (input.verifier === "uncertain") {
+    return doubt("verifier-uncertain", "the verifier could not confirm it against the code");
+  }
+  if (input.verifier === "confirmed") {
+    if (PUBLISHABLE_AGENT_SEVERITIES.has(agentSeverity)) {
+      return {
+        route: "publish",
+        code: "verifier-confirmed",
+        reason: `confirmed by the verifier against the code, mechanism ${mechanism.choice}, rated ${agentSeverity}`,
+      };
+    }
+    return doubt("severity-low", `confirmed by the verifier but rated ${agentSeverity}`);
+  }
   if (supports.choice !== "proves") {
-    return {
-      route: "question",
-      code: "partial-support",
-      reason: "the evidence only partially supports the claim",
-    };
+    return doubt("partial-support", "the evidence only partially supports the claim");
   }
   if (supports.confidence < AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE) {
-    return {
-      route: "question",
-      code: "support-under-publish-bar",
-      reason: `Jev's support (${round(supports.confidence)}) is under the publish bar (${AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE})`,
-    };
-  }
-  if (input.verifier === "uncertain") {
-    return {
-      route: "question",
-      code: "verifier-uncertain",
-      reason: "the verifier could not confirm it against the code",
-    };
+    return doubt(
+      "support-under-publish-bar",
+      `Jev's support (${round(supports.confidence)}) is under the publish bar (${AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE})`,
+    );
   }
   return {
     route: "publish",

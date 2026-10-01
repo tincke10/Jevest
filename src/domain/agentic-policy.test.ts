@@ -26,30 +26,46 @@ describe("agentic policy constants", () => {
 });
 
 describe("routeAgenticFinding", () => {
-  it("publishes proves with confidence over the bar and severity >= 1", () => {
-    expect(routeAgenticFinding(input())).toEqual({
-      route: "publish",
-      code: "supported",
-      reason: expect.any(String),
+  describe("Jev never discards (measured: every finding its judge dropped was valid)", () => {
+    it("makes noMatch a question right after the supports step", () => {
+      const result = routeAgenticFinding(
+        input({ supports: { choice: "noMatch", confidence: 0.9 }, mechanism: undefined }),
+      );
+      expect(result).toMatchObject({ route: "question", code: "supports-noMatch" });
+      expect(result !== "next" && result.reason).toMatch(/noMatch/);
     });
-  });
 
-  it("discards on noMatch right after the supports step (no further question)", () => {
-    const result = routeAgenticFinding(
-      input({ supports: { choice: "noMatch", confidence: 0.9 }, mechanism: undefined }),
-    );
-    expect(result).toMatchObject({ route: "discard", code: "supports-noMatch" });
-    expect(result !== "next" && result.reason).toMatch(/noMatch/);
-  });
+    it("makes a support confidence under the minimum a question, whatever the pick", () => {
+      const result = routeAgenticFinding(
+        input({
+          supports: { choice: "proves", confidence: AGENTIC_SUPPORTS_MIN_CONFIDENCE - 0.01 },
+          mechanism: undefined,
+        }),
+      );
+      expect(result).toMatchObject({ route: "question", code: "supports-low-confidence" });
+    });
 
-  it("discards when Jev's support confidence is under the minimum, whatever the pick", () => {
-    const result = routeAgenticFinding(
-      input({
-        supports: { choice: "proves", confidence: AGENTIC_SUPPORTS_MIN_CONFIDENCE - 0.01 },
-        mechanism: undefined,
-      }),
-    );
-    expect(result).toMatchObject({ route: "discard" });
+    it("makes mechanism noIssue a question", () => {
+      const result = routeAgenticFinding(
+        input({ mechanism: { choice: "noIssue", confidence: 0.6 }, severity: undefined }),
+      );
+      expect(result).toMatchObject({ route: "question", code: "mechanism-noIssue" });
+      expect(result !== "next" && result.reason).toMatch(/noIssue/);
+    });
+
+    it("makes Jev severity below 1 a question", () => {
+      expect(
+        routeAgenticFinding(input({ severity: { score: 0.4, confidence: 0.8 } })),
+      ).toMatchObject({ route: "question", code: "severity-low" });
+    });
+
+    it("keeps a Jev doubt a question even when the verifier confirmed it", () => {
+      expect(
+        routeAgenticFinding(
+          input({ supports: { choice: "noMatch", confidence: 0.9 }, verifier: "confirmed" }),
+        ),
+      ).toMatchObject({ route: "question" });
+    });
   });
 
   it("asks for the next step while a stage is missing", () => {
@@ -57,60 +73,60 @@ describe("routeAgenticFinding", () => {
     expect(routeAgenticFinding(input({ severity: undefined }))).toBe("next");
   });
 
-  it("discards on mechanism noIssue", () => {
-    const result = routeAgenticFinding(
-      input({ mechanism: { choice: "noIssue", confidence: 0.6 }, severity: undefined }),
-    );
-    expect(result).toMatchObject({ route: "discard", code: "mechanism-noIssue" });
-    expect(result !== "next" && result.reason).toMatch(/noIssue/);
-  });
+  describe("with the verifier on, its confirmation decides publication", () => {
+    it("publishes a verifier-confirmed finding the reviewer rated medium or above, even when Jev says partially", () => {
+      for (const agentSeverity of ["medium", "high", "critical"] as const) {
+        expect(
+          routeAgenticFinding(
+            input({
+              supports: { choice: "partially", confidence: 0.6 },
+              verifier: "confirmed",
+              agentSeverity,
+            }),
+          ),
+        ).toMatchObject({ route: "publish", code: "verifier-confirmed" });
+      }
+    });
 
-  it("discards severity below 1 (no meaningful impact)", () => {
-    expect(routeAgenticFinding(input({ severity: { score: 0.4, confidence: 0.8 } }))).toMatchObject(
-      { route: "discard" },
-    );
-  });
+    it("keeps a verifier-confirmed low-severity finding a question", () => {
+      expect(
+        routeAgenticFinding(input({ verifier: "confirmed", agentSeverity: "low" })),
+      ).toMatchObject({ route: "question" });
+    });
 
-  it("makes partially a question", () => {
-    expect(
-      routeAgenticFinding(input({ supports: { choice: "partially", confidence: 0.8 } })),
-    ).toMatchObject({ route: "question" });
-  });
-
-  it("makes proves under the publish bar a question", () => {
-    expect(
-      routeAgenticFinding(
-        input({
-          supports: {
-            choice: "proves",
-            confidence: AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE - 0.01,
-          },
-        }),
-      ),
-    ).toMatchObject({ route: "question" });
-  });
-
-  it("caps a finding the verifier could not confirm at a question", () => {
-    const result = routeAgenticFinding(input({ verifier: "uncertain" }));
-    expect(result).toMatchObject({ route: "question" });
-    expect(result !== "next" && result.reason).toMatch(/verifier/);
-  });
-
-  it("publishes a verifier-confirmed finding like an unverified one", () => {
-    expect(routeAgenticFinding(input({ verifier: "confirmed" }))).toMatchObject({
-      route: "publish",
+    it("caps a finding the verifier could not confirm at a question", () => {
+      const result = routeAgenticFinding(input({ verifier: "uncertain" }));
+      expect(result).toMatchObject({ route: "question" });
+      expect(result !== "next" && result.reason).toMatch(/verifier/);
     });
   });
 
-  it("never discards on Jev's judgment a finding the reviewer rated critical: it becomes a question (FR-5.4)", () => {
-    const result = routeAgenticFinding(
-      input({
-        supports: { choice: "noMatch", confidence: 0.9 },
-        mechanism: undefined,
-        agentSeverity: "critical",
-      }),
-    );
-    expect(result).toMatchObject({ route: "question" });
-    expect(result !== "next" && result.reason).toMatch(/critical/);
+  describe("without a verifier, Jev's support bar decides publication", () => {
+    it("publishes proves over the bar with severity >= 1", () => {
+      expect(routeAgenticFinding(input())).toEqual({
+        route: "publish",
+        code: "supported",
+        reason: expect.any(String),
+      });
+    });
+
+    it("makes partially a question", () => {
+      expect(
+        routeAgenticFinding(input({ supports: { choice: "partially", confidence: 0.8 } })),
+      ).toMatchObject({ route: "question" });
+    });
+
+    it("makes proves under the publish bar a question", () => {
+      expect(
+        routeAgenticFinding(
+          input({
+            supports: {
+              choice: "proves",
+              confidence: AGENTIC_PUBLISH_MIN_SUPPORTS_CONFIDENCE - 0.01,
+            },
+          }),
+        ),
+      ).toMatchObject({ route: "question" });
+    });
   });
 });

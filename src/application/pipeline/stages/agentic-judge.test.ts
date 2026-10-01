@@ -221,7 +221,7 @@ describe("runAgenticJudgeStage", () => {
     expect(details.dropsByReason).toEqual({ "evidence-not-found": 1 });
   });
 
-  it("in discard mode, Jev's discards and evidence failures go to discarded", async () => {
+  it("in discard mode, evidence failures go to discarded while Jev's doubts stay questions", async () => {
     const { filter } = await runAgenticJudgeStage({
       ...base(
         [
@@ -233,15 +233,16 @@ describe("runAgenticJudgeStage", () => {
       mode: "discard",
     });
     expect(filter.lowConfidence).toEqual([]);
-    expect(filter.discarded.map((f) => f.findingId)).toEqual(["agentic-f0", "agentic-f1"]);
+    expect(filter.discarded.map((f) => f.findingId)).toEqual(["agentic-f0"]);
+    expect(filter.needsHuman.map((f) => f.findingId)).toEqual(["agentic-f1"]);
   });
 
-  it("stops the chain at the first discard: noMatch never asks mechanism or severity", async () => {
+  it("stops the chain at the first doubt: noMatch never asks mechanism or severity, and stays a question", async () => {
     const port = judgePort({ supports: { choice: "noMatch", confidence: 0.9 } });
-    const { filter, details } = await runAgenticJudgeStage(base([finding()], port));
+    const { filter } = await runAgenticJudgeStage(base([finding()], port));
     expect(port.calls).toHaveLength(1);
-    expect(filter.lowConfidence[0]?.rejectedReason).toMatch(/noMatch/);
-    expect(details.dropsByReason).toEqual({ "judge:supports-noMatch": 1 });
+    expect(filter.lowConfidence).toEqual([]);
+    expect(filter.needsHuman[0]?.agentic?.route).toMatch(/noMatch/);
   });
 
   it("makes partially supported findings questions", async () => {

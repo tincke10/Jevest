@@ -8,7 +8,7 @@ import { EVIDENCE_NOT_FOUND_REASON, runFindingFilterStage } from "./finding-filt
 import type { ReviewStageEntry } from "./review.js";
 
 const policyConfig: ConfidencePolicyConfig = {
-  finding_filter: {
+  findingFilter: {
     low: { autoMin: 0.9, confirmMin: 0.6 },
   },
 };
@@ -391,7 +391,7 @@ describe("runFindingFilterStage with a calibration map", () => {
   });
 });
 
-describe("runFindingFilterStage — evidence (reviewer.requireEvidence)", () => {
+describe("runFindingFilterStage — evidence (reviewer.hunks.requireEvidence)", () => {
   const unverified = {
     ...candidate({ claim: "invented" }),
     evidenceCheck: { verified: 0, checked: 2 },

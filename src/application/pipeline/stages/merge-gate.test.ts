@@ -5,7 +5,7 @@ import type { Decision } from "../../../domain/decision.js";
 import { runMergeGateStage } from "./merge-gate.js";
 
 const policyConfig: ConfidencePolicyConfig = {
-  merge_gate: {
+  mergeGate: {
     low: { autoMin: 0.9, confirmMin: 0.6 },
   },
 };

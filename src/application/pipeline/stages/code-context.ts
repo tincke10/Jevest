@@ -1,7 +1,7 @@
 /**
  * Stage 3a (opt-in, before the review): code context for the reviewer from
- * the working tree at the PR head. `reviewer.fullFile` adds the hunk's
- * whole file (../../../domain/file-context.ts); `reviewer.impactContext`
+ * the working tree at the PR head. `reviewer.hunks.fullFile` adds the hunk's
+ * whole file (../../../domain/file-context.ts); `reviewer.hunks.impactContext`
  * adds the other code that references what the hunk changes — changed
  * symbols (../../../domain/changed-symbols.ts), one search per hunk through
  * WorkingTreePort, ranked and cut into snippets

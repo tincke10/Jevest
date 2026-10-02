@@ -13,10 +13,10 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 - **Action input `claude-code-version`** (default `2.1.286`): the Claude Code CLI is now installed pinned (`npm install -g @anthropic-ai/claude-code@<version>`) instead of floating on `latest`. The agent's safety flags (`--safe-mode`, `--restricted`, `--tools`, the deny rules) were verified on 2.1.286; docs/ACTION.md "Claude Code CLI version".
 - **Action input `config-from-checkout`** (default `false`): the explicit opt-in to read `config-path` from the workspace before the PR base sha (see the BREAKING entry under Changed for the risk).
 
-- **Spanish variants for `reviewer.language`**: `es` is now explicitly neutral Latin American Spanish (the narrator and the description-context extractor are told to prefer impersonal phrasing, never "vosotros" or Peninsular wording; the secret warning now reads "conviene verificarlo y rotarlo si es real" instead of the voseo it had), and the new `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish with voseo in the prompts and in every static string that has a second-person form (verdict titles "Corregí N problemas antes de mergear" / "Respondé N dudas", the secret warning "revisalo y rotalo"). Other `es-*` tags fall back to `es`. Label names and descriptions are identical for both variants, so switching never duplicates labels. Resolution is centralized in `src/domain/review-language.ts`. Default stays `es`.
+- **Spanish variants for `reviewer.language`**: `es` is now explicitly neutral Latin American Spanish (the narrator and the description-context extractor are told to prefer impersonal phrasing, never "vosotros" or Peninsular wording; the secret warning now reads "conviene verificarlo y rotarlo si es real" instead of the voseo it had), and the new `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish with voseo in the prompts and in every static string that has a second-person form (verdict titles "Corregí N problemas antes de mergear" / "Respondé N dudas", the secret warning "revisalo y rotalo"). Other `es-*` tags fall back to `es`. Resolution is centralized in `src/domain/review-language.ts`. (The default became `en` and label names stopped depending on the language; see Changed.)
 - **`pnpm eval:rescore`** (docs/EVAL.md "Re-scoring a run"): `--run <out>/<variant> --set <golden.jsonl> [--matcher llm|prefilter] [--matcher-model] [--matcher-effort] [--as <newVariantName>]` re-matches the candidates a run stored in its `results.json` against a (possibly updated) golden set and rewrites `results.json` + `report.md` (in place, or as a new variant with `--as`) without re-running the pipeline; per-case cost, tokens, wall time and errors are kept, the matcher cache is shared with `eval:review`.
 
-- **Explicit agent effort** (`reviewer.agentic.effort`, default `xhigh` — measured: weighted recall 29% at high vs 42% at xhigh on a private golden set, at about 2x the cost — and `reviewer.verifierEffort`, default `medium`; levels `low|medium|high|xhigh|max`): the agentic reviewer and verifier now pass `--effort <level>` right after `--model`. `--safe-mode` ignores the user's settings, so the agent used to run at the CLI default effort (16-62 s runs, 0-3 findings) instead of the effort an interactive session inherits. Overridable in `pnpm eval:review` (`--override reviewer.agentic.effort=xhigh`).
+- **Explicit agent effort** (`reviewer.agentic.effort`, default `xhigh` — measured: weighted recall 29% at high vs 42% at xhigh on a private golden set, at about 2x the cost — and `reviewer.verifier.effort`, default `medium`; levels `low|medium|high|xhigh|max`): the agentic reviewer and verifier now pass `--effort <level>` right after `--model`. `--safe-mode` ignores the user's settings, so the agent used to run at the CLI default effort (16-62 s runs, 0-3 findings) instead of the effort an interactive session inherits. Overridable in `pnpm eval:review` (`--override reviewer.agentic.effort=xhigh`).
 - **Parallel eval cases** (`pnpm eval:review --concurrency <n>`, docs/EVAL.md): a bounded pool runs up to `n` golden cases at once (default 1 = sequential, outputs unchanged); results and report keep the set order, logs are prefixed per case, the matcher cache and spend ledger write atomically/serialized, head worktree creation per repo is serialized with lock retry, and the total wall time is the real elapsed time.
 - **Agentic review** (`reviewer.mode: agentic`, docs/ACTION.md "Agentic
   review"): ONE read-only `claude -p` agent per PR in a checkout of the
@@ -33,15 +33,15 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   allowlist, evidence in a changed file, generated/lock/minified/markdown
   files, DoS/rate-limit/logging/style claims), the existing evidence
   verifier, an optional refuting verifier agent per finding
-  (`reviewer.verifier: claude-cli`, `reviewer.verifierModel`, 3 at a
-  time), and Jev's staged judge — `supports` (proves/partially/noMatch on
+  (`reviewer.verifier.provider: claude-cli`, `reviewer.verifier.model`, 3
+  at a time), and Jev's staged judge — `supports` (proves/partially/noMatch on
   the evidence re-read ±5 lines), `mechanism` (per-category vocabulary
   with `noIssue`), `severity` (0–3) — routed by one policy module
   (`src/domain/agentic-policy.ts`) onto the usual published / question /
   low / discarded buckets. Without a checkout the run fails closed to
   `unavailable` (no silent fallback). Caps: `reviewer.agentic.maxTurns`
-  (60), `timeoutMs` (15 min), `verifierMaxTurns` (12),
-  `verifierTimeoutMs` (5 min). Metrics and "Efficiency" report turns,
+  (60), `reviewer.agentic.timeoutMs` (15 min), `reviewer.verifier.maxTurns`
+  (12), `reviewer.verifier.timeoutMs` (5 min). Metrics and "Efficiency" report turns,
   tokens, cost, tool usage, denied calls, verifier and Jev judge calls
   and drops by reason; `pnpm review` / `pnpm eval:review` log every tool
   call and support it via `--override reviewer.mode=agentic` (eval: drops
@@ -52,7 +52,7 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   `{what, examples, not_for}`), passed to the SDK as-is.
 
 - **Code context for the reviewer** (docs/ACTION.md "Code context"): three
-  opt-in layers under `reviewer:`, all off by default — with all three off
+  opt-in layers under `reviewer.hunks`, all off by default — with all three off
   every prompt, output schema and recorded-fixture key is byte-identical
   (pinned by tests). `fullFile` adds the hunk's file at the PR head (whole
   up to 2000 lines / 80k chars, else ±150 lines around the hunk plus its
@@ -119,7 +119,7 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   LLM call per PR, after the finding filter, writes the top of the summary
   comment as a senior colleague would — an overall take, each point tied to
   `file:line` with what to change and why, and a verdict line that agrees
-  with the `jevest` check — in the configured language (`es` by default).
+  with the `jevest` check — in the configured language (`en` by default).
   New `ReviewNarratorPort` with claude-cli, anthropic, openai and deepseek
   adapters and a fake, using the reviewer's provider, model and credential.
   The narrator only phrases what Jev kept: it gets the published and
@@ -165,17 +165,26 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Changed
 
-- **BREAKING: `.jevest.yml` is strict at every level.** An unknown key anywhere (not only at the top level) is a config error naming its full dotted path, with a hint when a known key is within edit distance 2: ``unknown config key `reviewer.mdoe` (did you mean `reviewer.mode`?)``. Every unknown key is reported at once. `skipChangeKinds` items are validated against the hunk profile's change kinds (`add-behavior`, `modify-behavior`, `delete`, `rename-or-format`), so a misspelled kind no longer silently never matches. The stage and risk names under `thresholds` stay open (the `auto_min`/`confirm_min` band is strict). Every `.jevest.yml` snippet in README.md and docs/ is loaded by a test.
+- **BREAKING: label names are fixed English, always `jevest: `-prefixed, and never depend on `reviewer.language`.** Only the label description (the tooltip) is localized, in `en`, `es` or `es-AR` (`src/domain/labels.ts`). Before → after: `jevest: corregir antes de mergear` → `jevest: fix before merge`, `jevest: responder dudas` → `jevest: answer questions`, `jevest: listo para aprobar` → `jevest: ready to approve`, `jevest: revisar a mano` → `jevest: review manually`, `riesgo: alto` / `risk: high` → `jevest: risk high`, `riesgo: medio` / `risk: medium` → `jevest: risk medium`, `jevest:auto-merge-ok` → `jevest: auto-merge ok`, `jevest:description-mismatch` → `jevest: description mismatch`, `jevest:needs-product-owner` → `jevest: needs product owner`, `jevest:injected-instructions` → `jevest: injected instructions`, `jevest:spend-warning` → `jevest: spend warning`, `jevest:spend-cap-reached` → `jevest: spend cap reached`. Every label a run adds now carries a definition (color + localized description), so every Jevest label is created looking right; an existing label is still left as the repo has it. Every run removes the old names it finds on the PR (from the fetched PR's labels, so a PR without them costs no extra API call) together with `jevest:needs-human`, so open PRs migrate on their next run. **Automations, saved searches and branch rules that match a label name must switch to the new names.** The spend ledger's issue label `jevest` is unchanged. docs/MIGRATING.md item 5.
+- **BREAKING: `reviewer.language` defaults to `en`** (was `es`): the colleague review, the check title and summary, the notices and the label descriptions are English unless `.jevest.yml` sets `reviewer.language: es` (or `es-AR`, both still supported). Before: no `reviewer.language` → Spanish. After: no `reviewer.language` → English; add `reviewer.language: es` to keep Spanish. Code that resolves an unset language (`resolveReviewLanguage(undefined)`) also gets `en` now. docs/MIGRATING.md item 10.
+- **BREAKING: config keys are camelCase everywhere and grouped by what they configure.** Before → after:
+  - `thresholds.hunk_profile` / `finding_filter` / `merge_gate` → `thresholds.hunkProfile` / `findingFilter` / `mergeGate`; the band keys `auto_min` / `confirm_min` → `autoMin` / `confirmMin` (`thresholds.triage` and the risk names are unchanged). The stage and risk keys are now strict (an unknown one is an error with a did-you-mean hint), and the confidence policy's internal stage names match (`policy.band("findingFilter", …)`).
+  - The verifier is one group, `reviewer.verifier: { provider, model, effort, maxTurns, timeoutMs }`: `reviewer.verifier: claude-cli | none` → `reviewer.verifier.provider`, `reviewer.verifierModel` → `reviewer.verifier.model`, `reviewer.verifierEffort` → `reviewer.verifier.effort`, `reviewer.agentic.verifierMaxTurns` → `reviewer.verifier.maxTurns`, `reviewer.agentic.verifierTimeoutMs` → `reviewer.verifier.timeoutMs`. Same defaults and the same provider-dependent rule (`verifier.provider` unset: `claude-cli` in agentic mode with claude-sonnet-5 / medium / 12 turns / 300000 ms, `none` otherwise); tuning `verifier.model` or a cap never switches it on or off.
+  - The per-hunk mode's code-context options are one group, `reviewer.hunks: { fullFile, impactContext, requireEvidence }`: `reviewer.fullFile` → `reviewer.hunks.fullFile`, `reviewer.impactContext` → `reviewer.hunks.impactContext`, `reviewer.requireEvidence` → `reviewer.hunks.requireEvidence`.
+  - `reviewer.agentic` keeps `maxTurns`, `timeoutMs` and `effort`.
+  - Every old path gets a targeted error instead of the generic unknown-key one, e.g. `` `reviewer.verifierModel` was renamed to `reviewer.verifier.model` in 1.0 — see docs/MIGRATING.md `` (all of them reported at once). The same applies to `pnpm eval:review --override` paths and stored variant configs: `--override reviewer.verifier=claude-cli` → `--override reviewer.verifier.provider=claude-cli`, `--override reviewer.verifierModel=…` → `--override reviewer.verifier.model=…`, `--override reviewer.fullFile=true` → `--override reviewer.hunks.fullFile=true`. `JevestConfig.reviewer` changes shape accordingly (`verifier` and `hunks` objects). No prompt, request or recorded-fixture key changes. docs/MIGRATING.md item 9.
+- The hunk profile's change-kind list (`PROFILE_CHANGE_KINDS`, used to validate `skipChangeKinds`) moved to `src/domain/change-kind.ts`, so the config adapter no longer imports from `src/application`.
+- **BREAKING: `.jevest.yml` is strict at every level.** An unknown key anywhere (not only at the top level) is a config error naming its full dotted path, with a hint when a known key is within edit distance 2: ``unknown config key `reviewer.mdoe` (did you mean `reviewer.mode`?)``. Every unknown key is reported at once. `skipChangeKinds` items are validated against the hunk profile's change kinds (`add-behavior`, `modify-behavior`, `delete`, `rename-or-format`), so a misspelled kind no longer silently never matches. The stage and risk names under `thresholds` are strict too. Every `.jevest.yml` snippet in README.md and docs/ is loaded by a test.
 - **BREAKING: the Action always reads `.jevest.yml` from the PR BASE sha.** It used to read the local checkout first, and in agentic mode the checkout is the PR head, so a PR could pick its own provider, thresholds, budget and skip rules. The workspace is read only with `config-from-checkout: true` (default `false`; only for a workflow that checks out a trusted ref). The product context and the calibration map were already base-only. Local `pnpm review` runs (no PR event) still read the file from disk.
 - **Node 22**: the Action's `setup-node`, CI, `.nvmrc`, `engines` (`>=22`), `@types/node` (^22) and the README badge.
 - **BREAKING: agentic review is the default.** The built-in
   `reviewer.provider` is now `claude-cli` (was `anthropic`), and
-  `reviewer.mode`, `reviewer.model` and `reviewer.verifier`, when unset,
+  `reviewer.mode`, `reviewer.model` and `reviewer.verifier.provider`, when unset,
   follow the provider (`resolveReviewerDefaults` in
   `src/adapters/config/jevest-config.ts`; `config/jevest.example.yml` no
   longer sets them): with `claude-cli` they resolve to the measured stack —
   `mode: agentic`, `model: claude-opus-5-5`, `agentic.effort: xhigh`,
-  `verifier: claude-cli` on `claude-sonnet-5` at `verifierEffort: medium`
+  `verifier.provider: claude-cli` on `claude-sonnet-5` at `verifier.effort: medium`
   (≈ $1.60 nominal and 2.5–7 min per PR, docs/BENCHMARK.md "Review quality
   on real PRs"). Any other provider resolves to `mode: hunks` without a
   verifier, because agentic mode needs claude-cli: `provider: anthropic`
@@ -218,7 +227,7 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   review, or instructions to a reviewer were suspected; `neutral`). Before,
   the check carried the merge gate's conclusion, so a PR with zero
   findings and zero doubts could go red just for not being safe to
-  auto-merge. The merge gate now only decides `jevest:auto-merge-ok`,
+  auto-merge. The merge gate now only decides `jevest: auto-merge ok`,
   which additionally requires a `clear` verdict. Kept as they were: the
   NFR-2 fail-closed exit still publishes a red check; a suspected
   injection or an auto-band description mismatch can never produce a
@@ -226,27 +235,25 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   Jev flagged nothing.
 - **BREAKING: `jevest:needs-human` is gone.** It was on nearly every PR and
   said nothing. It is replaced by exactly one verdict label per run, created
-  with a color and a description and localized by `reviewer.language`:
-  `jevest: corregir antes de mergear` / `jevest: fix before merge`,
-  `jevest: responder dudas` / `jevest: answer questions`,
-  `jevest: listo para aprobar` / `jevest: ready to approve`,
-  `jevest: revisar a mano` / `jevest: review manually`; plus a risk label
-  (`riesgo: alto` / `risk: high` for high and critical, `riesgo: medio` /
-  `risk: medium`). Every run removes the other verdict labels and the
-  legacy `jevest:needs-human`, so open PRs migrate on their next run.
+  with a color and a description: `jevest: fix before merge`,
+  `jevest: answer questions`, `jevest: ready to approve`,
+  `jevest: review manually`; plus a risk label (`jevest: risk high` for
+  high and critical, `jevest: risk medium`). Every run removes the other
+  verdict labels and the legacy `jevest:needs-human`, so open PRs migrate
+  on their next run (see the label rename entry above for every name).
   **Anyone filtering PRs, issues or automations on `jevest:needs-human`
   must switch to the new labels.** Triage's needs-human signal (FR-2.4) is
   still reported in the summary comment.
-- The check title and summary are action-oriented and localized (es by
-  default, en for any other language), e.g. "Corregir 2 problemas antes de
-  mergear" or "Nothing to fix", instead of "Jevest: failure".
+- The check title and summary are action-oriented and localized (en by
+  default, es / es-AR), e.g. "Fix 2 issues before merging" or "Nada para
+  corregir", instead of "Jevest: failure".
 - The colleague review's closing line is the check title word for word,
   taken from the same verdict function, so a review with nothing to flag
   can no longer end with "needs changes". `ReviewNarrativeInput.verdict` is
   now the review verdict and gains `verdictLine`.
 - The summary comment's "Needs human review" section is now "Questions and
   manual checks", and the merge gate line says it only decides
-  `jevest:auto-merge-ok`.
+  `jevest: auto-merge ok`.
 - The GitHub adapter creates missing labels with their color and
   description (`ReviewPublication.labelDefinitions`), leaves existing
   labels untouched, and tolerates a 422 when another run created the label
@@ -318,10 +325,9 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 - **A run whose LLM review failed entirely could be marked safe to merge**:
   when every attempted reviewer call threw (e.g. a 401 from an expired
   token), Jev's merge gate saw zero findings and could return green, and
-  `jevest:auto-merge-ok` was applied. Per NFR-2 the check is now at most
+  `jevest:auto-merge-ok` (now `jevest: auto-merge ok`) was applied. Per NFR-2 the check is now at most
   `neutral` in that case, the auto-merge label is never applied, and the
-  verdict is `unavailable` (label `jevest: revisar a mano` /
-  `jevest: review manually`, see the verdict change above). A partial
+  verdict is `unavailable` (label `jevest: review manually`, see the verdict change above). A partial
   failure keeps the gate's conclusion and the existing warning.
 - **`config-path` read Jevest's own `.jevest.yml`** in a workflow without
   checkout: the action step runs in `github.action_path`, so the relative path

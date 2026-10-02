@@ -19,8 +19,8 @@
  * Triage v2 (H7) adds an "Intent vs change" section (what the change
  * summary says, product areas touched with their criticality, the
  * description-vs-change verdict with its probability, the product-owner
- * flag), two labels (`jevest:description-mismatch`,
- * `jevest:needs-product-owner`) and one consequence on the check: a
+ * flag), two labels (`jevest: description mismatch`,
+ * `jevest: needs product owner`) and one consequence on the check: a
  * mismatch in the AUTO band is a question for the author (verdict
  * `questions`, neutral) and lists the PR in the human queue. It never
  * turns a check red on its own.
@@ -28,7 +28,7 @@
  * In-diff injection (NFR-7): the Triage section reports both injection
  * probabilities (triage's, over the description; the hunk profile's, over
  * the diff) and the flagged hunks; at or above the hunk profile's "yes"
- * bar the PR gets `jevest:injected-instructions` and a human-queue line
+ * bar the PR gets `jevest: injected instructions` and a human-queue line
  * naming the hunks. The verdict is `unavailable` (neutral) unless findings
  * were published: the review may have been steered. The merge gate already
  * failed in code on the same signal, so auto-merge-ok is never applied.
@@ -64,11 +64,14 @@
  * Review verdict (src/domain/review-verdict.ts): ONE action per run — fix,
  * questions, clear or unavailable — decides the check conclusion
  * (failure / neutral / success / neutral), its title and summary in
- * `reviewer.language`, and exactly one verdict label (the other three and
- * the legacy `jevest:needs-human` are removed on every run). The merge
- * gate no longer colors the check: it only decides `jevest:auto-merge-ok`,
- * which also needs a `clear` verdict. A risk label (`risk: high` /
- * `risk: medium`, localized) mirrors triage's risk level.
+ * `reviewer.language`, and exactly one verdict label (the other three are
+ * removed on every run). The merge gate no longer colors the check: it only
+ * decides `jevest: auto-merge ok`, which also needs a `clear` verdict. A
+ * risk label (`jevest: risk high` / `jevest: risk medium`) mirrors
+ * triage's risk level. Label names are fixed English (src/domain/labels.ts);
+ * every label added carries a definition whose description is in
+ * `reviewer.language`. Labels from earlier versions are removed by the
+ * pipeline, which knows the PR's current labels (run-pipeline.ts).
  *
  * Colleague review (stages/narrate.ts): when the narrator wrote a review,
  * it is the TOP of the summary comment under a "## Review" heading in
@@ -99,6 +102,12 @@
 import { createHash } from "node:crypto";
 import { AUTHOR_CONTEXT_HEADINGS, AUTHOR_CONTEXT_KINDS } from "../../../domain/author-context.js";
 import { mapBeforeLineToAfterLine } from "../../../domain/hunk-splitter.js";
+import {
+  JEVEST_LABEL_KEYS,
+  type JevestLabelKey,
+  labelDefinition,
+  labelName,
+} from "../../../domain/labels.js";
 import type {
   InlineComment,
   LabelDefinition,
@@ -167,9 +176,9 @@ export interface PublishStageInput {
    */
   readonly narrative?: NarrateStageResult | null;
   /**
-   * `reviewer.language`: the narrative's heading (default English) and the
-   * verdict's check title, summary and labels (es by default, en for any
-   * other language; see review-verdict.ts).
+   * `reviewer.language`: the narrative's heading (default English), the
+   * verdict's check title and summary, and the labels' descriptions (en by
+   * default; es / es-AR; see review-language.ts). Label names never change.
    */
   readonly language?: string;
   /**
@@ -186,13 +195,32 @@ export interface PublishStageInput {
   readonly descriptionContext?: DescriptionContextStageResult | null;
 }
 
-const AUTO_MERGE_OK_LABEL = "jevest:auto-merge-ok";
+const AUTO_MERGE_OK_LABEL = labelName("autoMergeOk");
 const MISMATCH_CHECK_LINE = " The PR description does not match the change; a human should look.";
-const SPEND_WARNING_LABEL = "jevest:spend-warning";
-const SPEND_CAP_REACHED_LABEL = "jevest:spend-cap-reached";
-const DESCRIPTION_MISMATCH_LABEL = "jevest:description-mismatch";
-const NEEDS_PRODUCT_OWNER_LABEL = "jevest:needs-product-owner";
-const INJECTED_INSTRUCTIONS_LABEL = "jevest:injected-instructions";
+const SPEND_WARNING_LABEL = labelName("spendWarning");
+const SPEND_CAP_REACHED_LABEL = labelName("spendCapReached");
+const DESCRIPTION_MISMATCH_LABEL = labelName("descriptionMismatch");
+const NEEDS_PRODUCT_OWNER_LABEL = labelName("needsProductOwner");
+const INJECTED_INSTRUCTIONS_LABEL = labelName("injectedInstructions");
+
+const LABEL_KEY_BY_NAME: ReadonlyMap<string, JevestLabelKey> = new Map(
+  JEVEST_LABEL_KEYS.map((key) => [labelName(key), key]),
+);
+
+/**
+ * A definition (fixed name and color, description in `reviewer.language`) for
+ * every label the run adds, so the adapter can create a missing one looking
+ * right. Existing labels are left as the repo has them (see the VCS port).
+ */
+function labelDefinitionsFor(
+  labelsToAdd: readonly string[],
+  language: string | undefined,
+): LabelDefinition[] {
+  return labelsToAdd.flatMap((name) => {
+    const key = LABEL_KEY_BY_NAME.get(name);
+    return key === undefined ? [] : [labelDefinition(key, language)];
+  });
+}
 
 function usd(value: number): string {
   return value.toFixed(2);
@@ -785,7 +813,7 @@ function steeringLine(
 }
 
 /**
- * Code context and evidence (`reviewer.fullFile` / `impactContext` /
+ * Code context and evidence (`reviewer.hunks.fullFile` / `impactContext` /
  * `requireEvidence`): what was added to the review prompts, or the one line
  * saying it could not be (no checkout), and the evidence check's count.
  * Nothing when the layers are off.
@@ -795,7 +823,7 @@ function codeContextEfficiencyLines(metrics: RunMetrics): string[] {
   const lines: string[] = [];
   if (context.unavailable !== null) {
     lines.push(
-      `- ${context.unavailable} (reviewer.fullFile / reviewer.impactContext skipped; they need actions/checkout of the PR head)`,
+      `- ${context.unavailable} (reviewer.hunks.fullFile / reviewer.hunks.impactContext skipped; they need actions/checkout of the PR head)`,
     );
   } else if (context.ran) {
     const chars = context.fullFileChars + context.impactChars;
@@ -1018,13 +1046,13 @@ function buildReportBody(input: PublishStageInput): string[] {
     "",
     "### Merge gate",
     `- Safe to automerge probability: ${mergeGate.safeToAutomergeProb}`,
-    `- Gate conclusion: ${mergeGate.conclusion} (decides \`jevest:auto-merge-ok\` only; the check follows the review verdict)`,
+    `- Gate conclusion: ${mergeGate.conclusion} (decides \`jevest: auto-merge ok\` only; the check follows the review verdict)`,
   ];
 }
 
 /**
  * Discarded findings are only counted, except the ones the evidence check
- * rejected (`reviewer.requireEvidence`): those are listed with the reason,
+ * rejected (`reviewer.hunks.requireEvidence`): those are listed with the reason,
  * because "the code does not say that" is worth seeing, unlike a band.
  */
 function rejectedDiscardedLines(findingFilter: FindingFilterStageResult): string[] {
@@ -1041,18 +1069,14 @@ function triageHumanReviewLine(triage: TriageStageResult): string {
   return `- Careful human review suggested by triage: ${triage.needsHumanLabel ? "yes" : "no"}`;
 }
 
-/**
- * The verdict and risk labels (review-verdict.ts `verdictLabelChanges`)
- * pushed onto the run's add/remove lists, with their definitions so the
- * adapter can create them with a color and a description.
- */
+/** The verdict and risk labels (review-verdict.ts `verdictLabelChanges`) pushed onto the run's add/remove lists. */
 function applyVerdictLabels(
   verdict: ReviewVerdictResult,
   triage: TriageStageResult | null,
   language: string | undefined,
   labelsToAdd: string[],
   labelsToRemove: string[],
-): LabelDefinition[] {
+): void {
   const { add, remove } = verdictLabelChanges(
     verdict.verdict,
     triage ? triage.riskLevel : null,
@@ -1060,7 +1084,6 @@ function applyVerdictLabels(
   );
   labelsToAdd.push(...add.map((l) => l.name));
   labelsToRemove.push(...remove);
-  return add;
 }
 
 /**
@@ -1120,14 +1143,9 @@ export function runTriageOnlyPublishStage(
 
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
-  const labelDefinitions = applyVerdictLabels(
-    verdict,
-    triage,
-    language,
-    labelsToAdd,
-    labelsToRemove,
-  );
+  applyVerdictLabels(verdict, triage, language, labelsToAdd, labelsToRemove);
   applyTriageV2Labels(triage, labelsToAdd, labelsToRemove);
+  const labelDefinitions = labelDefinitionsFor(labelsToAdd, language);
 
   return {
     ...withEfficiency(summaryLines, metrics),
@@ -1164,13 +1182,8 @@ export function buildFailClosedPublication(
   const verdict = resolveFailClosedVerdict();
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
-  const labelDefinitions = applyVerdictLabels(
-    verdict,
-    lastKnownTriage,
-    language,
-    labelsToAdd,
-    labelsToRemove,
-  );
+  applyVerdictLabels(verdict, lastKnownTriage, language, labelsToAdd, labelsToRemove);
+  const labelDefinitions = labelDefinitionsFor(labelsToAdd, language);
   const summaryMarkdown = [
     "## Jevest review",
     "",
@@ -1209,7 +1222,7 @@ export interface PublishVerdict {
   readonly verdict: ReviewVerdictResult;
   /** The check conclusion: the verdict's, always. */
   readonly conclusion: "success" | "neutral" | "failure";
-  /** `jevest:auto-merge-ok`: the merge gate is green AND the verdict is clear. */
+  /** `jevest: auto-merge ok`: the merge gate is green AND the verdict is clear. */
   readonly autoMergeOk: boolean;
   /** Every attempted reviewer call failed (NFR-2). */
   readonly reviewFailedEntirely: boolean;
@@ -1300,16 +1313,11 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
   } else {
     labelsToRemove.push(AUTO_MERGE_OK_LABEL);
   }
-  const labelDefinitions = applyVerdictLabels(
-    verdict,
-    input.triage,
-    input.language,
-    labelsToAdd,
-    labelsToRemove,
-  );
+  applyVerdictLabels(verdict, input.triage, input.language, labelsToAdd, labelsToRemove);
   applyTriageV2Labels(input.triage, labelsToAdd, labelsToRemove);
   applyInjectedInstructionsLabel(input.hunkProfile, labelsToAdd, labelsToRemove);
   applySpendCapLabels(input.spendCap, labelsToAdd, labelsToRemove);
+  const labelDefinitions = labelDefinitionsFor(labelsToAdd, input.language);
 
   const failedCount = failedReviews(input.review).length;
   const reviewFailedCheckLine =

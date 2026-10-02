@@ -34,12 +34,12 @@ reviewer:
 thresholds:
   triage:
     low:
-      auto_min: 0.9
-      confirm_min: 0.6
-  merge_gate:
+      autoMin: 0.9
+      confirmMin: 0.6
+  mergeGate:
     low:
-      auto_min: 0.95
-      confirm_min: 0.7
+      autoMin: 0.95
+      confirmMin: 0.7
 budgetUsd: 5
 maxHunks: 50
 `;
@@ -52,28 +52,24 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer).toEqual({
       provider: "anthropic",
       model: "claude-sonnet-5",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "hunks",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "none",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
     expect(config.budgetUsd).toBe(5);
     expect(config.maxHunks).toBe(50);
     expect(config.thresholds.triage!.low).toEqual({ autoMin: 0.9, confirmMin: 0.6 });
-    expect(config.thresholds.merge_gate!.low).toEqual({ autoMin: 0.95, confirmMin: 0.7 });
+    expect(config.thresholds.mergeGate!.low).toEqual({ autoMin: 0.95, confirmMin: 0.7 });
   });
 
   it("defaults sizeThresholds to smallMaxChangedLines=50, mediumMaxChangedLines=300 when omitted", async () => {
@@ -135,23 +131,19 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer).toEqual({
       provider: "anthropic",
       model: "claude-sonnet-5",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "hunks",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "none",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
   });
 
@@ -178,23 +170,19 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer).toEqual({
       provider: "deepseek",
       model: "deepseek-v4-pro",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "hunks",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "none",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
   });
 
@@ -206,23 +194,19 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer).toEqual({
       provider: "claude-cli",
       model: "claude-opus-5",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "agentic",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "claude-cli",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "claude-cli",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
   });
 
@@ -233,9 +217,13 @@ describe("loadJevestConfig", () => {
         provider: "claude-cli",
         model: "claude-opus-5-5",
         mode: "agentic",
-        verifier: "claude-cli",
-        verifierModel: "claude-sonnet-5",
-        verifierEffort: "medium",
+        verifier: {
+          provider: "claude-cli",
+          model: "claude-sonnet-5",
+          effort: "medium",
+          maxTurns: 12,
+          timeoutMs: 300_000,
+        },
         agentic: { effort: "xhigh" },
       });
     });
@@ -248,7 +236,7 @@ describe("loadJevestConfig", () => {
         provider: "claude-cli",
         model: "claude-sonnet-5",
         mode: "hunks",
-        verifier: "none",
+        verifier: { provider: "none" },
       });
     });
 
@@ -261,7 +249,7 @@ describe("loadJevestConfig", () => {
       ]) {
         const config = await loadJevestConfigFromString(yaml);
         expect(config.reviewer.mode).toBe("hunks");
-        expect(config.reviewer.verifier).toBe("none");
+        expect(config.reviewer.verifier.provider).toBe("none");
       }
     });
 
@@ -282,61 +270,75 @@ describe("loadJevestConfig", () => {
 
     it("an explicit model, verifier: none or mode always wins over the resolved default", async () => {
       const config = await loadJevestConfigFromString(
-        "reviewer:\n  provider: claude-cli\n  model: claude-sonnet-5\n  verifier: none\n",
+        "reviewer:\n  provider: claude-cli\n  model: claude-sonnet-5\n  verifier:\n    provider: none\n",
       );
       expect(config.reviewer).toMatchObject({
         model: "claude-sonnet-5",
         mode: "agentic",
-        verifier: "none",
+        verifier: { provider: "none" },
       });
     });
   });
 
-  describe("reviewer.fullFile / impactContext / requireEvidence (code context, opt-in)", () => {
+  describe("reviewer.hunks: fullFile / impactContext / requireEvidence (code context, opt-in)", () => {
     it("defaults all three to false, whatever the provider", async () => {
       for (const yaml of [
         "reviewer:\n  provider: openai\n  model: m\n",
         "reviewer:\n  provider: none\n",
       ]) {
         const config = await loadJevestConfigFromString(yaml);
-        expect(config.reviewer.fullFile).toBe(false);
-        expect(config.reviewer.impactContext).toBe(false);
-        expect(config.reviewer.requireEvidence).toBe(false);
+        expect(config.reviewer.hunks).toEqual({
+          fullFile: false,
+          impactContext: false,
+          requireEvidence: false,
+        });
       }
     });
 
-    it("turns each one on explicitly", async () => {
+    it("turns each one on explicitly, and a partial block keeps the others at their default", async () => {
       const config = await loadJevestConfigFromString(
-        "reviewer:\n  provider: claude-cli\n  model: m\n  fullFile: true\n  impactContext: true\n  requireEvidence: true\n",
+        "reviewer:\n  provider: claude-cli\n  model: m\n  hunks:\n    fullFile: true\n    impactContext: true\n    requireEvidence: true\n",
       );
-      expect(config.reviewer.fullFile).toBe(true);
-      expect(config.reviewer.impactContext).toBe(true);
-      expect(config.reviewer.requireEvidence).toBe(true);
+      expect(config.reviewer.hunks).toEqual({
+        fullFile: true,
+        impactContext: true,
+        requireEvidence: true,
+      });
+      const partial = await loadJevestConfigFromString(
+        "reviewer:\n  provider: openai\n  model: m\n  hunks:\n    requireEvidence: true\n",
+      );
+      expect(partial.reviewer.hunks).toEqual({
+        fullFile: false,
+        impactContext: false,
+        requireEvidence: true,
+      });
     });
 
     it("rejects a non-boolean", async () => {
       await expect(
         loadJevestConfigFromString(
-          "reviewer:\n  provider: openai\n  model: m\n  fullFile: yes please\n",
+          "reviewer:\n  provider: openai\n  model: m\n  hunks:\n    fullFile: yes please\n",
         ),
       ).rejects.toThrow(JevestConfigError);
     });
   });
 
-  describe("reviewer.mode (hunks | agentic) and the agentic verifier", () => {
-    it("defaults to the per-hunk mode, no verifier, and the documented agentic caps", async () => {
+  describe("reviewer.mode (hunks | agentic) and reviewer.verifier", () => {
+    it("defaults to the per-hunk mode, no verifier, and the documented agentic and verifier caps", async () => {
       const config = await loadJevestConfigFromString(
         "reviewer:\n  provider: openai\n  model: m\n",
       );
       expect(config.reviewer.mode).toBe("hunks");
-      expect(config.reviewer.verifier).toBe("none");
-      expect(config.reviewer.verifierModel).toBe("claude-sonnet-5");
-      expect(config.reviewer.verifierEffort).toBe("medium");
+      expect(config.reviewer.verifier).toEqual({
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
+      });
       expect(config.reviewer.agentic).toEqual({
         maxTurns: 60,
         timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
         effort: "xhigh",
       });
     });
@@ -344,10 +346,10 @@ describe("loadJevestConfig", () => {
     it("accepts every effort level for the agent and the verifier", async () => {
       for (const level of ["low", "medium", "high", "xhigh", "max"]) {
         const config = await loadJevestConfigFromString(
-          `reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifierEffort: ${level}\n  agentic:\n    effort: ${level}\n`,
+          `reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifier:\n    effort: ${level}\n  agentic:\n    effort: ${level}\n`,
         );
         expect(config.reviewer.agentic.effort).toBe(level);
-        expect(config.reviewer.verifierEffort).toBe(level);
+        expect(config.reviewer.verifier.effort).toBe(level);
       }
     });
 
@@ -359,20 +361,37 @@ describe("loadJevestConfig", () => {
       ).rejects.toThrow(JevestConfigError);
       await expect(
         loadJevestConfigFromString(
-          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifierEffort: ultra\n",
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifier:\n    effort: ultra\n",
         ),
       ).rejects.toThrow(JevestConfigError);
     });
 
     it("accepts agentic mode with the claude-cli provider, a verifier and custom caps", async () => {
       const config = await loadJevestConfigFromString(
-        "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifier: claude-cli\n  verifierModel: v\n  agentic:\n    maxTurns: 25\n",
+        "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  verifier:\n    provider: claude-cli\n    model: v\n    maxTurns: 6\n    timeoutMs: 1000\n  agentic:\n    maxTurns: 25\n",
       );
       expect(config.reviewer.mode).toBe("agentic");
-      expect(config.reviewer.verifier).toBe("claude-cli");
-      expect(config.reviewer.verifierModel).toBe("v");
+      expect(config.reviewer.verifier).toEqual({
+        provider: "claude-cli",
+        model: "v",
+        effort: "medium",
+        maxTurns: 6,
+        timeoutMs: 1000,
+      });
       expect(config.reviewer.agentic.maxTurns).toBe(25);
       expect(config.reviewer.agentic.timeoutMs).toBe(900_000);
+    });
+
+    it("tuning the verifier without naming its provider keeps the provider-dependent default", async () => {
+      const agentic = await loadJevestConfigFromString(
+        "reviewer:\n  provider: claude-cli\n  verifier:\n    model: claude-opus-5-5\n",
+      );
+      expect(agentic.reviewer.verifier.provider).toBe("claude-cli");
+      expect(agentic.reviewer.verifier.model).toBe("claude-opus-5-5");
+      const hunks = await loadJevestConfigFromString(
+        "reviewer:\n  provider: anthropic\n  verifier:\n    effort: low\n",
+      );
+      expect(hunks.reviewer.verifier.provider).toBe("none");
     });
 
     it("rejects agentic mode with any other provider, naming the requirement", async () => {
@@ -388,29 +407,39 @@ describe("loadJevestConfig", () => {
     it("rejects a verifier outside agentic mode instead of silently ignoring it", async () => {
       await expect(
         loadJevestConfigFromString(
-          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: hunks\n  verifier: claude-cli\n",
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: hunks\n  verifier:\n    provider: claude-cli\n",
         ),
-      ).rejects.toThrow(/reviewer\.verifier needs reviewer\.mode: agentic/);
+      ).rejects.toThrow(/reviewer\.verifier\.provider needs reviewer\.mode: agentic/);
     });
 
-    it("rejects an unknown mode and a non-positive turn cap", async () => {
+    it("rejects an unknown mode, an unknown verifier provider and a non-positive turn cap", async () => {
       await expect(
         loadJevestConfigFromString("reviewer:\n  provider: claude-cli\n  model: m\n  mode: repo\n"),
+      ).rejects.toThrow(JevestConfigError);
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  verifier:\n    provider: anthropic\n",
+        ),
       ).rejects.toThrow(JevestConfigError);
       await expect(
         loadJevestConfigFromString(
           "reviewer:\n  provider: claude-cli\n  model: m\n  mode: agentic\n  agentic:\n    maxTurns: 0\n",
         ),
       ).rejects.toThrow(JevestConfigError);
+      await expect(
+        loadJevestConfigFromString(
+          "reviewer:\n  provider: claude-cli\n  verifier:\n    maxTurns: 0\n",
+        ),
+      ).rejects.toThrow(JevestConfigError);
     });
   });
 
   describe("reviewer.language and reviewer.narrative (colleague review)", () => {
-    it('defaults language to "es" and narrative to true when an LLM provider is configured', async () => {
+    it('defaults language to "en" and narrative to true when an LLM provider is configured', async () => {
       const config = await loadJevestConfigFromString(
         "reviewer:\n  provider: openai\n  model: m\n",
       );
-      expect(config.reviewer.language).toBe("es");
+      expect(config.reviewer.language).toBe("en");
       expect(config.reviewer.narrative).toBe(true);
     });
 
@@ -421,9 +450,9 @@ describe("loadJevestConfig", () => {
 
     it("accepts an explicit language and narrative: false", async () => {
       const config = await loadJevestConfigFromString(
-        "reviewer:\n  provider: anthropic\n  language: en\n  narrative: false\n",
+        "reviewer:\n  provider: anthropic\n  language: es-AR\n  narrative: false\n",
       );
-      expect(config.reviewer.language).toBe("en");
+      expect(config.reviewer.language).toBe("es-AR");
       expect(config.reviewer.narrative).toBe(false);
     });
 
@@ -520,10 +549,10 @@ describe("loadJevestConfig", () => {
     });
   });
 
-  it("throws when a threshold's confirm_min exceeds auto_min", async () => {
+  it("throws when a threshold's confirmMin exceeds autoMin", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: anthropic\n  model: x\n" +
-        "thresholds:\n  triage:\n    low:\n      auto_min: 0.5\n      confirm_min: 0.9\n" +
+        "thresholds:\n  triage:\n    low:\n      autoMin: 0.5\n      confirmMin: 0.9\n" +
         "budgetUsd: 1\nmaxHunks: 10\n",
     );
     await expect(loadJevestConfig(filePath)).rejects.toThrow(JevestConfigError);
@@ -538,26 +567,22 @@ describe("loadJevestConfig", () => {
     expect(fromMissing.reviewer).toEqual({
       provider: "claude-cli",
       model: "claude-opus-5-5",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "agentic",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "claude-cli",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "claude-cli",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
     expect(fromMissing.budgetUsd).toBe(5);
-    expect(fromMissing.thresholds.hunk_profile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });
+    expect(fromMissing.thresholds.hunkProfile!.medium).toEqual({ autoMin: 0.9, confirmMin: 0.65 });
   });
 
   it("still throws for a non-ENOENT read error (e.g. the path is a directory)", async () => {
@@ -588,7 +613,7 @@ describe("loadJevestConfig", () => {
 
     it("overriding one nested threshold leaves every sibling stage/risk at its default value", async () => {
       const filePath = await writeConfig(
-        "thresholds:\n  triage:\n    low:\n      auto_min: 0.99\n      confirm_min: 0.95\n",
+        "thresholds:\n  triage:\n    low:\n      autoMin: 0.99\n      confirmMin: 0.95\n",
       );
       const defaults = await loadJevestConfig(EXAMPLE_CONFIG_PATH);
       const config = await loadJevestConfig(filePath);
@@ -598,9 +623,9 @@ describe("loadJevestConfig", () => {
       // is untouched by the override.
       expect(config.thresholds.triage!.medium).toEqual(defaults.thresholds.triage!.medium);
       expect(config.thresholds.triage!.high).toEqual(defaults.thresholds.triage!.high);
-      expect(config.thresholds.hunk_profile).toEqual(defaults.thresholds.hunk_profile);
-      expect(config.thresholds.finding_filter).toEqual(defaults.thresholds.finding_filter);
-      expect(config.thresholds.merge_gate).toEqual(defaults.thresholds.merge_gate);
+      expect(config.thresholds.hunkProfile).toEqual(defaults.thresholds.hunkProfile);
+      expect(config.thresholds.findingFilter).toEqual(defaults.thresholds.findingFilter);
+      expect(config.thresholds.mergeGate).toEqual(defaults.thresholds.mergeGate);
     });
 
     it("replaces an array wholesale rather than merging it (skipChangeKinds)", async () => {
@@ -858,9 +883,41 @@ describe("strict config at every level (typo protection)", () => {
   });
 
   it("rejects an unknown key inside a threshold band, naming stage and risk in the path", async () => {
-    await expect(load("thresholds:\n  triage:\n    low:\n      auto_mn: 0.9\n")).rejects.toThrow(
-      "unknown config key `thresholds.triage.low.auto_mn` (did you mean `thresholds.triage.low.auto_min`?)",
+    await expect(load("thresholds:\n  triage:\n    low:\n      autoMn: 0.9\n")).rejects.toThrow(
+      "unknown config key `thresholds.triage.low.autoMn` (did you mean `thresholds.triage.low.autoMin`?)",
     );
+  });
+
+  it("rejects an unknown threshold stage or risk level, with a hint", async () => {
+    await expect(load("thresholds:\n  mergeGat:\n    low:\n      autoMin: 0.9\n")).rejects.toThrow(
+      "unknown config key `thresholds.mergeGat` (did you mean `thresholds.mergeGate`?)",
+    );
+    await expect(load("thresholds:\n  triage:\n    hihg:\n      autoMin: 0.99\n")).rejects.toThrow(
+      "unknown config key `thresholds.triage.hihg` (did you mean `thresholds.triage.high`?)",
+    );
+    await expect(load("thresholds:\n  review:\n    low:\n      autoMin: 0.9\n")).rejects.toThrow(
+      "unknown config key `thresholds.review`",
+    );
+  });
+
+  it("loads the camelCase stage names into the confidence policy", async () => {
+    const config = await load(
+      "thresholds:\n  hunkProfile:\n    low:\n      autoMin: 0.91\n      confirmMin: 0.51\n",
+    );
+    expect(Object.keys(config.thresholds).sort()).toEqual([
+      "findingFilter",
+      "hunkProfile",
+      "mergeGate",
+      "triage",
+    ]);
+    expect(config.thresholds.hunkProfile!.low).toEqual({ autoMin: 0.91, confirmMin: 0.51 });
+    expect(Object.keys(config.thresholds.mergeGate!).sort()).toEqual([
+      "critical",
+      "high",
+      "low",
+      "medium",
+      "none",
+    ]);
   });
 
   it("gives no hint when no known key is within edit distance 2", async () => {
@@ -906,6 +963,97 @@ describe("strict config at every level (typo protection)", () => {
     const root = join(import.meta.dirname, "../../..");
     await expect(loadJevestConfig(join(root, ".jevest.yml"))).resolves.toBeDefined();
     await expect(loadJevestConfig(EXAMPLE_CONFIG_PATH)).resolves.toBeDefined();
+  });
+});
+
+describe("0.1 key paths renamed in 1.0 get a targeted error", () => {
+  const load = (yaml: string) => loadJevestConfigFromString(yaml, "<config>");
+  const renamed = (from: string, to: string) =>
+    `\`${from}\` was renamed to \`${to}\` in 1.0 — see docs/MIGRATING.md`;
+
+  it("names the new path for every moved reviewer key", async () => {
+    const cases: Array<[string, string, string]> = [
+      ["reviewer:\n  verifier: claude-cli\n", "reviewer.verifier", "reviewer.verifier.provider"],
+      ["reviewer:\n  verifier: none\n", "reviewer.verifier", "reviewer.verifier.provider"],
+      ["reviewer:\n  verifierModel: m\n", "reviewer.verifierModel", "reviewer.verifier.model"],
+      ["reviewer:\n  verifierEffort: low\n", "reviewer.verifierEffort", "reviewer.verifier.effort"],
+      [
+        "reviewer:\n  agentic:\n    verifierMaxTurns: 5\n",
+        "reviewer.agentic.verifierMaxTurns",
+        "reviewer.verifier.maxTurns",
+      ],
+      [
+        "reviewer:\n  agentic:\n    verifierTimeoutMs: 5\n",
+        "reviewer.agentic.verifierTimeoutMs",
+        "reviewer.verifier.timeoutMs",
+      ],
+      ["reviewer:\n  fullFile: true\n", "reviewer.fullFile", "reviewer.hunks.fullFile"],
+      [
+        "reviewer:\n  impactContext: true\n",
+        "reviewer.impactContext",
+        "reviewer.hunks.impactContext",
+      ],
+      [
+        "reviewer:\n  requireEvidence: true\n",
+        "reviewer.requireEvidence",
+        "reviewer.hunks.requireEvidence",
+      ],
+    ];
+    for (const [yaml, from, to] of cases) {
+      const error = await load(yaml).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(JevestConfigError);
+      expect((error as Error).message).toBe(`<config>: ${renamed(from, to)}`);
+    }
+  });
+
+  it("names the camelCase path for the snake_case threshold stages and band keys", async () => {
+    await expect(
+      load("thresholds:\n  merge_gate:\n    low:\n      autoMin: 0.9\n"),
+    ).rejects.toThrow(renamed("thresholds.merge_gate", "thresholds.mergeGate"));
+    await expect(
+      load("thresholds:\n  hunk_profile:\n    low:\n      autoMin: 0.9\n"),
+    ).rejects.toThrow(renamed("thresholds.hunk_profile", "thresholds.hunkProfile"));
+    await expect(
+      load("thresholds:\n  finding_filter:\n    low:\n      autoMin: 0.9\n"),
+    ).rejects.toThrow(renamed("thresholds.finding_filter", "thresholds.findingFilter"));
+    await expect(load("thresholds:\n  triage:\n    low:\n      auto_min: 0.9\n")).rejects.toThrow(
+      renamed("thresholds.triage.low.auto_min", "thresholds.triage.low.autoMin"),
+    );
+    await expect(
+      load("thresholds:\n  triage:\n    low:\n      confirm_min: 0.5\n"),
+    ).rejects.toThrow(
+      renamed("thresholds.triage.low.confirm_min", "thresholds.triage.low.confirmMin"),
+    );
+  });
+
+  it("reports a whole 0.1 threshold block at once, stage and band keys alike", async () => {
+    const error = await load(
+      "thresholds:\n  merge_gate:\n    low: { auto_min: 0.95, confirm_min: 0.7 }\n",
+    ).catch((e: unknown) => e);
+    const message = (error as Error).message;
+    expect(message).toContain(renamed("thresholds.merge_gate", "thresholds.mergeGate"));
+    expect(message).toContain(
+      renamed("thresholds.merge_gate.low.auto_min", "thresholds.mergeGate.low.autoMin"),
+    );
+    expect(message).toContain(
+      renamed("thresholds.merge_gate.low.confirm_min", "thresholds.mergeGate.low.confirmMin"),
+    );
+  });
+
+  it("reports every renamed key in one error", async () => {
+    const error = await load(
+      "reviewer:\n  verifierModel: m\n  fullFile: true\nthresholds:\n  merge_gate: {}\n",
+    ).catch((e: unknown) => e);
+    const message = (error as Error).message;
+    expect(message).toContain("`reviewer.verifierModel`");
+    expect(message).toContain("`reviewer.fullFile`");
+    expect(message).toContain("`thresholds.merge_gate`");
+  });
+
+  it("applies to eval overrides too: the 0.1 dotted paths are rejected with the new path", async () => {
+    await expect(
+      load("reviewer:\n  provider: claude-cli\n  verifier: claude-cli\n"),
+    ).rejects.toThrow(/reviewer\.verifier\.provider/);
   });
 });
 

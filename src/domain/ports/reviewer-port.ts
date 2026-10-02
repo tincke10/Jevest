@@ -29,18 +29,18 @@ export interface ReviewInput {
    */
   readonly authorContext?: AuthorContext;
   /**
-   * `reviewer.fullFile`: the hunk's file at the PR head, whole or windowed
+   * `reviewer.hunks.fullFile`: the hunk's file at the PR head, whole or windowed
    * (../file-context.ts), redacted. Absent when the layer is off or there
    * is no checkout, so the prompt and the fixture key stay as they were.
    */
   readonly fullFile?: FullFileContext;
   /**
-   * `reviewer.impactContext`: other code that references what the hunk
+   * `reviewer.hunks.impactContext`: other code that references what the hunk
    * changes (../impact-context.ts), redacted. Absent like `fullFile`.
    */
   readonly impactContext?: ImpactContext;
   /**
-   * `reviewer.requireEvidence`: the output schema requires `evidence` on
+   * `reviewer.hunks.requireEvidence`: the output schema requires `evidence` on
    * every finding and the system prompt gets the evidence rules. Only ever
    * `true` or absent (never `false`), for the same fixture-key reason.
    */

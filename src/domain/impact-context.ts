@@ -1,5 +1,5 @@
 /**
- * Impact context for the reviewer (`reviewer.impactContext`,
+ * Impact context for the reviewer (`reviewer.hunks.impactContext`,
  * ../application/pipeline/stages/code-context.ts): the other code that
  * references what a hunk changes. Pure — the search and the file reads
  * happen behind WorkingTreePort; this ranks what came back and cuts it into

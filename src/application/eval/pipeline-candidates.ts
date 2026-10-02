@@ -9,7 +9,7 @@
  * published finding matches the same golden issue, so recall is unchanged;
  * the shown-candidate counts say how much the reader had to read.
  *
- * Evidence-failed findings (`reviewer.requireEvidence`: none of their
+ * Evidence-failed findings (`reviewer.hunks.requireEvidence`: none of their
  * quotes is in the code, `rejectedReason` set) are `low` with their own
  * source `evidence-failed`, whatever list they ended in: the run never
  * publishes them, and the report can tell them apart from Jev's

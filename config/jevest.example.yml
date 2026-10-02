@@ -19,8 +19,8 @@
 # and the merge gate still runs on triage + CI status. Useful to validate
 # triage/merge-gate behavior on a new repo before spending on LLM reviews.
 #
-# 1.0 default rule: reviewer.mode, reviewer.model and reviewer.verifier are
-# deliberately NOT set here; left unset in your .jevest.yml they follow the
+# 1.0 default rule: reviewer.mode, reviewer.model and
+# reviewer.verifier.provider are deliberately NOT set here; left unset in your .jevest.yml they follow the
 # provider (src/adapters/config/jevest-config.ts, resolveReviewerDefaults):
 #   provider       mode     model (unset)      verifier
 #   claude-cli     agentic  claude-opus-5-5    claude-cli (claude-sonnet-5)
@@ -42,15 +42,16 @@ reviewer:
   # docs/ACTION.md "Claude subscription in CI".
   # deepseek: model deepseek-v4-pro (default quality) or deepseek-flash
   # (cheapest). Needs the DEEPSEEK_API_KEY secret / deepseek-api-key input.
-  # Language the review narrative is written in: es | es-AR | en | ...
-  #   es     neutral Latin American Spanish (default)
+  # Language the review narrative is written in: en | es | es-AR | ...
+  #   en     English (default)
+  #   es     neutral Latin American Spanish
   #   es-AR  Rioplatense Spanish with voseo ("revisá", "fijate", "tenés")
-  #   en     English
   # Anything else the model understands works for the narrative. Also picks
-  # the language of the check title/summary, the notices and the verdict and
-  # risk labels (Spanish for es / es-AR / es-*, English for anything else).
-  # es and es-AR share the same label names.
-  language: es
+  # the language of the check title/summary, the notices and the labels'
+  # descriptions (Spanish for es / es-AR / es-*, English for anything else).
+  # Label NAMES never change with the language: they are fixed English,
+  # always "jevest: "-prefixed (docs/ACTION.md "Labels").
+  language: en
   # Colleague review: one extra LLM call per PR, after the finding filter,
   # that writes the top of the summary comment as a senior colleague would,
   # from the findings Jev kept ONLY (it never raises issues of its own).
@@ -68,21 +69,6 @@ reviewer:
   # credential as the reviewer; its cost counts against budgetUsd and the
   # spend cap. Unset = true for any LLM provider, false for provider none.
   # descriptionContext: true
-  # Code context (opt-in, all false by default). fullFile and impactContext
-  # need a checkout of the PR head (in the Action: actions/checkout with
-  # `ref: ${{ github.event.pull_request.head.sha }}`); without one they are
-  # skipped with a note in the comment. No extra LLM call: they make each
-  # review call bigger (capped), see docs/ACTION.md "Code context".
-  # fullFile: the hunk's whole file at the PR head (a window of ±150 lines
-  # plus the imports when it is over 2000 lines / 80k chars).
-  # fullFile: false
-  # impactContext: other code that references what the hunk changes
-  # (callers, tests, consumers), found with ripgrep in the checkout.
-  # impactContext: false
-  # requireEvidence: every finding must quote the code that proves it; a
-  # finding whose quotes are not in the code is never published (it goes
-  # to low-confidence, or discarded in findingFilter.mode: discard).
-  # requireEvidence: false
   # Review mode. agentic (the default with claude-cli): ONE read-only agent
   # per PR in a checkout of the PR head, then hard exclusions, the evidence
   # check, the verifier and Jev's staged judge. It needs an actions/checkout
@@ -95,52 +81,72 @@ reviewer:
   # (legacy, the default with any other provider): the per-hunk reviewer,
   # no checkout needed. See docs/ACTION.md "Agentic review".
   # mode: agentic
-  # agentic:
-  #   maxTurns: 60          # the agent's turn cap
-  #   timeoutMs: 900000     # 15 minutes
-  #   verifierMaxTurns: 12
-  #   verifierTimeoutMs: 300000
-  #   # The agent's --effort: low | medium | high | xhigh | max. Explicit
-  #   # because the agent runs in safe mode, which ignores your settings.
-  #   effort: xhigh
-  # Agentic mode only: claude-cli (the default in agentic mode), a fresh
-  # agent per finding that tries to refute it before Jev judges it, or none.
-  # Must stay none (unset) in hunks mode.
-  # verifier: claude-cli
-  # verifierModel: claude-sonnet-5
-  # The verifier's --effort (same levels). Default medium.
-  # verifierEffort: medium
+  # The agent (agentic mode only).
+  agentic:
+    maxTurns: 60 # the agent's turn cap
+    timeoutMs: 900000 # 15 minutes
+    # The agent's --effort: low | medium | high | xhigh | max. Explicit
+    # because the agent runs in safe mode, which ignores your settings.
+    effort: xhigh
+  # The per-finding verifier (agentic mode only): a fresh agent per finding
+  # that tries to refute it before Jev judges it.
+  verifier:
+    # provider: claude-cli (the default in agentic mode) or none. Left unset
+    # here on purpose (see the table above); must stay none (unset) in hunks
+    # mode.
+    # provider: claude-cli
+    model: claude-sonnet-5
+    effort: medium # same levels as agentic.effort
+    maxTurns: 12
+    timeoutMs: 300000 # 5 minutes
+  # Code context for the per-hunk reviewer (hunks mode only; opt-in, all
+  # false by default). fullFile and impactContext need a checkout of the PR
+  # head (in the Action: actions/checkout with
+  # `ref: ${{ github.event.pull_request.head.sha }}`); without one they are
+  # skipped with a note in the comment. No extra LLM call: they make each
+  # review call bigger (capped), see docs/ACTION.md "Code context".
+  hunks:
+    # The hunk's whole file at the PR head (a window of ±150 lines plus the
+    # imports when it is over 2000 lines / 80k chars).
+    fullFile: false
+    # Other code that references what the hunk changes (callers, tests,
+    # consumers), found with ripgrep in the checkout.
+    impactContext: false
+    # Every finding must quote the code that proves it; a finding whose
+    # quotes are not in the code is never published (it goes to
+    # low-confidence, or discarded in findingFilter.mode: discard).
+    requireEvidence: false
 
 # Confidence bands per pipeline stage and risk level (NFR-13):
-# auto_min/confirm_min per stage per risk level.
-# confidence >= auto_min    -> act automatically
-# confidence >= confirm_min -> ask for human confirmation
-# confidence <  confirm_min -> escalate to a human
+# autoMin/confirmMin per stage per risk level.
+# confidence >= autoMin    -> act automatically
+# confidence >= confirmMin -> ask for human confirmation
+# confidence <  confirmMin -> escalate to a human
 thresholds:
   triage:
-    none: { auto_min: 0.85, confirm_min: 0.55 }
-    low: { auto_min: 0.90, confirm_min: 0.60 }
-    medium: { auto_min: 0.95, confirm_min: 0.70 }
-    high: { auto_min: 0.98, confirm_min: 0.80 }
-    critical: { auto_min: 0.99, confirm_min: 0.90 }
-  hunk_profile:
-    none: { auto_min: 0.80, confirm_min: 0.50 }
-    low: { auto_min: 0.85, confirm_min: 0.55 }
-    medium: { auto_min: 0.90, confirm_min: 0.65 }
-    high: { auto_min: 0.95, confirm_min: 0.75 }
-    critical: { auto_min: 0.97, confirm_min: 0.85 }
-  finding_filter:
-    none: { auto_min: 0.85, confirm_min: 0.55 }
-    low: { auto_min: 0.90, confirm_min: 0.60 }
-    medium: { auto_min: 0.93, confirm_min: 0.68 }
-    high: { auto_min: 0.96, confirm_min: 0.78 }
-    critical: { auto_min: 0.99, confirm_min: 0.90 }
-  merge_gate:
-    none: { auto_min: 0.90, confirm_min: 0.65 }
-    low: { auto_min: 0.95, confirm_min: 0.70 }
-    medium: { auto_min: 0.97, confirm_min: 0.80 }
-    high: { auto_min: 0.99, confirm_min: 0.90 }
-    critical: { auto_min: 0.999, confirm_min: 0.95 }
+    none: { autoMin: 0.85, confirmMin: 0.55 }
+    low: { autoMin: 0.90, confirmMin: 0.60 }
+    medium: { autoMin: 0.95, confirmMin: 0.70 }
+    high: { autoMin: 0.98, confirmMin: 0.80 }
+    critical: { autoMin: 0.99, confirmMin: 0.90 }
+  hunkProfile:
+    none: { autoMin: 0.80, confirmMin: 0.50 }
+    low: { autoMin: 0.85, confirmMin: 0.55 }
+    medium: { autoMin: 0.90, confirmMin: 0.65 }
+    high: { autoMin: 0.95, confirmMin: 0.75 }
+    critical: { autoMin: 0.97, confirmMin: 0.85 }
+  findingFilter:
+    none: { autoMin: 0.85, confirmMin: 0.55 }
+    low: { autoMin: 0.90, confirmMin: 0.60 }
+    medium: { autoMin: 0.93, confirmMin: 0.68 }
+    high: { autoMin: 0.96, confirmMin: 0.78 }
+    critical: { autoMin: 0.99, confirmMin: 0.90 }
+  mergeGate:
+    none: { autoMin: 0.90, confirmMin: 0.65 }
+    low: { autoMin: 0.95, confirmMin: 0.70 }
+    medium: { autoMin: 0.97, confirmMin: 0.80 }
+    high: { autoMin: 0.99, confirmMin: 0.90 }
+    critical: { autoMin: 0.999, confirmMin: 0.95 }
 
 # Size classification thresholds (NFR-5: counts are resolved in code, never
 # asked to Jev as numbers). changedLines = additions + deletions.

@@ -533,7 +533,7 @@ Regla: el dominio y las etapas no importan ningún SDK. Cambiar de TypeSafe a ot
 ### FR-6 Merge gate (etapa 5)
 - FR-6.1 State: resumen de triage, cantidad de findings publicados por severidad (ya clasificada en código), resultado de CI si está disponible.
 - FR-6.2 Pregunta: `safe_to_automerge` (noul).
-- FR-6.3 Bandas: alta → check verde con label `jevest:auto-merge-ok`; media → check neutral, pide humano; baja o `contains_injected_instructions` alto en triage → check rojo.
+- FR-6.3 Bandas: alta → check verde con label `jevest: auto-merge ok`; media → check neutral, pide humano; baja o `contains_injected_instructions` alto en triage → check rojo.
 - FR-6.4 **Nunca ejecuta el merge.** Solo emite señal. El merge lo dispara una regla del repo consumidor.
 
 ### FR-7 Publicación (etapa 6)

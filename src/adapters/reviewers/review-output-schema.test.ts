@@ -100,7 +100,7 @@ describe("toReviewFindingCandidates", () => {
   });
 });
 
-describe("evidence schema (reviewer.requireEvidence)", () => {
+describe("evidence schema (reviewer.hunks.requireEvidence)", () => {
   const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
   const finding = {
     line_start: 3,

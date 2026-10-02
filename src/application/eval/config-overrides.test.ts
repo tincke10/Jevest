@@ -9,8 +9,8 @@ describe("parseOverride", () => {
       path: ["reviewer", "model"],
       value: "claude-sonnet-5",
     });
-    expect(parseOverride("thresholds.autoHigh=0.9")).toEqual({
-      path: ["thresholds", "autoHigh"],
+    expect(parseOverride("thresholds.triage.low.autoMin=0.9")).toEqual({
+      path: ["thresholds", "triage", "low", "autoMin"],
       value: 0.9,
     });
     expect(parseOverride("reviewer.narrative=false").value).toBe(false);
@@ -56,20 +56,25 @@ describe("agentic variants via --override", () => {
       undefined,
       [
         "reviewer.mode=agentic",
-        "reviewer.verifier=claude-cli",
-        "reviewer.verifierModel=claude-sonnet-5",
+        "reviewer.verifier.provider=claude-cli",
+        "reviewer.verifier.model=claude-sonnet-5",
         "reviewer.agentic.maxTurns=30",
         "reviewer.agentic.effort=xhigh",
-        "reviewer.verifierEffort=low",
+        "reviewer.verifier.effort=low",
+        "reviewer.verifier.maxTurns=6",
       ].map(parseOverride),
     );
     const config = await loadJevestConfigFromString(yaml);
     expect(config.reviewer).toMatchObject({
       provider: "claude-cli",
       mode: "agentic",
-      verifier: "claude-cli",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "low",
+      verifier: {
+        provider: "claude-cli",
+        model: "claude-sonnet-5",
+        effort: "low",
+        maxTurns: 6,
+        timeoutMs: 300_000,
+      },
       agentic: { maxTurns: 30, timeoutMs: 900_000, effort: "xhigh" },
     });
     expect(config.budgetUsd).toBe(2);

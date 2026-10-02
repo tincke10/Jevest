@@ -276,7 +276,7 @@ async function pipelineSource(
           findingsPublished: result.findingsPublished,
           findingsLowConfidence: result.findingsLowConfidence,
           metrics: result.metrics,
-          // Per-hunk stats of the code-context layers (reviewer.fullFile /
+          // Per-hunk stats of the code-context layers (reviewer.hunks.fullFile /
           // impactContext), without the context text itself.
           codeContext:
             result.codeContext === null

@@ -82,7 +82,7 @@ const DEFAULT_MAX_TOKENS = 4096;
 const PROVIDER = "anthropic";
 
 const OUTPUT_FORMAT = zodOutputFormat(reviewOutputSchema);
-/** `reviewer.requireEvidence`: the same output plus a required `evidence` list per finding. */
+/** `reviewer.hunks.requireEvidence`: the same output plus a required `evidence` list per finding. */
 const OUTPUT_FORMAT_WITH_EVIDENCE = zodOutputFormat(reviewOutputWithEvidenceSchema);
 
 export function createAnthropicReviewer(options: AnthropicReviewerOptions): ReviewerPort {

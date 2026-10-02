@@ -2,10 +2,18 @@
  * Confidence bands (SPEC §1.1, NFR-13): resolves calibrated confidence into
  * one of three actions — automate, ask for confirmation, or escalate to a
  * human — using thresholds that live in configuration, never hardcoded here,
- * per stage (triage, hunk_profile, finding_filter, merge_gate) and risk level.
+ * per stage (triage, hunkProfile, findingFilter, mergeGate) and risk level.
  */
 
 export type Band = "auto" | "confirm" | "escalate";
+
+/** The stages that band a confidence; also the stage keys of `.jevest.yml` `thresholds`. */
+export const CONFIDENCE_STAGES = ["triage", "hunkProfile", "findingFilter", "mergeGate"] as const;
+export type ConfidenceStage = (typeof CONFIDENCE_STAGES)[number];
+
+/** The risk levels triage assigns; also the risk keys under each `thresholds` stage. */
+export const CONFIDENCE_RISK_LEVELS = ["none", "low", "medium", "high", "critical"] as const;
+export type ConfidenceRiskLevel = (typeof CONFIDENCE_RISK_LEVELS)[number];
 
 /** Confidence thresholds for one (stage, risk) pair. */
 export interface ConfidenceThresholds {

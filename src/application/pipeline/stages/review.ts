@@ -100,7 +100,7 @@ export interface ReviewStageInput {
   readonly authorContext?: AuthorContext;
   /** stages/code-context.ts output; a hunk's non-null layers go on its ReviewInput. */
   readonly codeContext?: CodeContextStageResult | null;
-  /** `reviewer.requireEvidence`: ask for evidence and check it. */
+  /** `reviewer.hunks.requireEvidence`: ask for evidence and check it. */
   readonly requireEvidence?: boolean;
   /** Redacted head-file lines for the evidence check; absent = no working tree (hunk text only). */
   readonly readHeadLines?: HeadFileReader;

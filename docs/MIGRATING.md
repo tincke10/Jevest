@@ -4,8 +4,9 @@
 
 1.0 changes what a run does by default and what it leaves on the PR. Most
 repositories need two edits to the workflow (a checkout step and the Claude
-token) and none to `.jevest.yml`; a repository that wants to keep 0.1's
-per-hunk review needs one line in `.jevest.yml` instead. Read the whole list
+token) and, unless `.jevest.yml` overrides `thresholds`, none to
+`.jevest.yml`; a repository that wants to keep 0.1's per-hunk review needs
+one line in `.jevest.yml` instead. Read the whole list
 if anything (branch protection, an automation, a dashboard) reads Jevest's
 labels or check.
 
@@ -20,8 +21,9 @@ page is the upgrade view of it.
    and the `claude-code-oauth-token` input (a **repository** secret) — or pin
    the legacy per-hunk mode in `.jevest.yml` (see
    [Staying on the legacy per-hunk mode](#staying-on-the-legacy-per-hunk-mode)).
-3. Replace every use of the `jevest:needs-human` label (filters, automations,
-   saved searches) with the verdict labels.
+3. Replace every use of a Jevest label name (filters, automations, saved
+   searches, branch rules): `jevest:needs-human` is gone and every other
+   label was renamed to a fixed English `jevest: …` name (item 5).
 4. Re-read your branch protection rule on the `jevest` check: it now goes red
    only when there is something to fix.
 5. Size `spendCap` (and the job's `timeout-minutes`) for agentic runs: about
@@ -29,6 +31,11 @@ page is the upgrade view of it.
 6. Make sure `.jevest.yml` on the **base branch** is the one you mean (the
    Action no longer reads the workspace copy) and has no misspelled nested
    key (items 7 and 8).
+7. Rename the `thresholds` keys to camelCase (`mergeGate`, `autoMin`, …)
+   and, if you used a pre-1.0 build, the moved `reviewer` keys (item 9);
+   the loader names every old path and its new one.
+8. Set `reviewer.language: es` (or `es-AR`) if you want the review in
+   Spanish; the default is English (item 10).
 
 ### Breaking changes
 
@@ -40,10 +47,11 @@ page is the upgrade view of it.
 | `reviewer.mode` | `hunks` (the only mode) | `agentic` with `claude-cli`; `hunks` with any other provider |
 | `reviewer.model` | `claude-sonnet-5` for every provider | `claude-opus-5-5` in agentic mode; `claude-sonnet-5` for `anthropic` and for `claude-cli` in `hunks` mode; **required** for `openai` / `deepseek` |
 | `reviewer.agentic.effort` | — | `xhigh` |
-| `reviewer.verifier` | — | `claude-cli` in agentic mode; `none` in `hunks` mode |
-| `reviewer.verifierModel` / `verifierEffort` | — | `claude-sonnet-5` / `medium` |
+| `reviewer.verifier.provider` | — | `claude-cli` in agentic mode; `none` in `hunks` mode |
+| `reviewer.verifier.model` / `effort` | — | `claude-sonnet-5` / `medium` |
+| `reviewer.verifier.maxTurns` / `timeoutMs` | — | `12` / `300000` (5 minutes) |
 
-The rule: `mode`, `model` and `verifier` are left out of
+The rule: `mode`, `model` and `verifier.provider` are left out of
 `config/jevest.example.yml` and, when your `.jevest.yml` does not set them,
 follow the provider (`resolveReviewerDefaults` in
 `src/adapters/config/jevest-config.ts`). Agentic mode only runs on
@@ -51,7 +59,8 @@ follow the provider (`resolveReviewerDefaults` in
 any other provider would be a config error out of the box), and naming any
 other provider resolves to `hunks` instead of failing. An explicit value
 always wins and is validated as before (`mode: agentic` with another
-provider, or a `verifier` in `hunks` mode, is still an error).
+provider, or `verifier.provider: claude-cli` in `hunks` mode, is still an
+error).
 
 What that means for the `.jevest.yml` you have today:
 
@@ -120,7 +129,7 @@ Every run ends in one verdict, and the check conclusion comes from it:
 In 0.1 the check carried the merge gate's conclusion, so a PR with nothing to
 fix could go red for not being safe to auto-merge. Now:
 
-- the merge gate only decides `jevest:auto-merge-ok`, which also requires a
+- the merge gate only decides `jevest: auto-merge ok`, which also requires a
   `clear` verdict;
 - the `check-conclusion` output and `fail-on: failure` follow the verdict
   (`fail-on: failure` fails the job on `fix` or a fail-closed run);
@@ -128,33 +137,56 @@ fix could go red for not being safe to auto-merge. Now:
   injection or an auto-band description mismatch still never produces a green
   one;
 - the check title and summary are action-oriented and localized by
-  `reviewer.language` (Spanish by default, English for any other language),
-  e.g. "Corregir 2 problemas antes de mergear" / "Fix 2 issues before
-  merging", instead of "Jevest: failure".
+  `reviewer.language` (English by default, Spanish for `es` / `es-AR`),
+  e.g. "Fix 2 issues before merging" / "Corregir 2 problemas antes de
+  mergear", instead of "Jevest: failure".
 
 If branch protection requires the `jevest` check, it now blocks only on
 `fix`. Note that `neutral` (questions, unavailable) does not block a required
 check on GitHub; gate on the verdict label if you want `unavailable` to block.
 
-#### 5. `jevest:needs-human` is gone: one verdict label per run
+#### 5. Labels: one verdict label per run, fixed English `jevest: ` names
 
-| Verdict | Spanish (`es`, `es-AR`, `es-*`) | English (any other language) |
-|---|---|---|
-| fix | `jevest: corregir antes de mergear` | `jevest: fix before merge` |
-| questions | `jevest: responder dudas` | `jevest: answer questions` |
-| clear | `jevest: listo para aprobar` | `jevest: ready to approve` |
-| unavailable | `jevest: revisar a mano` | `jevest: review manually` |
+`jevest:needs-human` is gone: it was on nearly every PR and said nothing.
+Each run puts exactly one verdict label on the PR, plus a risk label at
+medium risk and above. Every label Jevest manages now has a fixed English
+name, always prefixed with `jevest: `, whatever `reviewer.language` says;
+only the label's description (the tooltip) is localized (en / es / es-AR).
+Pre-1.0 builds localized the verdict and risk label NAMES, so a filter on a
+label could break when someone changed the language; that is gone too.
 
-Plus a risk label for high/critical (`riesgo: alto` / `risk: high`) and medium
-(`riesgo: medio` / `risk: medium`) triage risk. Every run removes the other
-verdict labels and the legacy `jevest:needs-human`, so open PRs migrate on
-their next run. **Anything filtering PRs, issues or automations on
-`jevest:needs-human` must switch to these labels.** Only the current
-language's names are managed: after changing `reviewer.language`, delete the
-old-language labels by hand. Unchanged: `jevest:auto-merge-ok`,
-`jevest:description-mismatch`, `jevest:needs-product-owner`,
-`jevest:injected-instructions`, `jevest:spend-warning`,
-`jevest:spend-cap-reached`.
+| What | 0.1 | pre-1.0 builds (`main`) | 1.0 |
+|---|---|---|---|
+| verdict `fix` | — | `jevest: corregir antes de mergear` / `jevest: fix before merge` | `jevest: fix before merge` |
+| verdict `questions` | — | `jevest: responder dudas` / `jevest: answer questions` | `jevest: answer questions` |
+| verdict `clear` | — | `jevest: listo para aprobar` / `jevest: ready to approve` | `jevest: ready to approve` |
+| verdict `unavailable` | — | `jevest: revisar a mano` / `jevest: review manually` | `jevest: review manually` |
+| (any verdict) | `jevest:needs-human` | — | gone (use the verdict labels) |
+| risk high / critical | — | `riesgo: alto` / `risk: high` | `jevest: risk high` |
+| risk medium | — | `riesgo: medio` / `risk: medium` | `jevest: risk medium` |
+| merge gate green + `clear` | `jevest:auto-merge-ok` | `jevest:auto-merge-ok` | `jevest: auto-merge ok` |
+| description mismatch | `jevest:description-mismatch` | same | `jevest: description mismatch` |
+| product owner needed | `jevest:needs-product-owner` | same | `jevest: needs product owner` |
+| instructions in the diff | `jevest:injected-instructions` | same | `jevest: injected instructions` |
+| spend at `warnAtUsd` | `jevest:spend-warning` | same | `jevest: spend warning` |
+| spend at `usd` | `jevest:spend-cap-reached` | same | `jevest: spend cap reached` |
+
+**Migration is automatic on the PR, not in your automations.** Every run
+removes the old names it finds on the PR (all of the left-hand names above)
+and applies the new ones, so open PRs migrate on their next run. New labels
+are created with their color and a description in `reviewer.language`; a
+label that already exists is left exactly as your repository has it. The
+old label definitions stay in the repository's label list: delete them once
+no open PR carries them. **Anything filtering PRs, issues or automations on
+an old name must switch to the new one**, e.g.:
+
+```diff
+- if: contains(github.event.pull_request.labels.*.name, 'jevest:auto-merge-ok')
++ if: contains(github.event.pull_request.labels.*.name, 'jevest: auto-merge ok')
+```
+
+The spend ledger's issue label, `jevest`, is unchanged (it is only ever on
+the ledger issue).
 
 #### 6. Smaller behavior changes you may notice
 
@@ -204,10 +236,96 @@ for you:
 (`reviewer.mdoe`, `spendCap.usdd`) was silently ignored and the default ran
 instead. 1.0 rejects an unknown key at any level, naming the dotted path and
 the closest known key (``unknown config key `reviewer.mdoe` (did you mean
-`reviewer.mode`?)``), and `skipChangeKinds` only accepts `add-behavior`,
-`modify-behavior`, `delete` and `rename-or-format`. A config that loaded in
+`reviewer.mode`?)``), including the stage and risk names under
+`thresholds` (`triage`, `hunkProfile`, `findingFilter`, `mergeGate`;
+`none`, `low`, `medium`, `high`, `critical`), and `skipChangeKinds` only
+accepts `add-behavior`, `modify-behavior`, `delete` and
+`rename-or-format`. A config that loaded in
 0.1 with a misspelled nested key now fails the run (red "jevest: run failed"
 check naming the key): fix the key, or drop it if it never did anything.
+
+#### 9. Config keys: camelCase everywhere, grouped by what they configure
+
+Every key is camelCase, and the options that only mean something to one part
+of the reviewer live under it. A renamed path is not silently ignored: the
+loader fails with a message naming the new path, e.g.
+`` `reviewer.verifierModel` was renamed to `reviewer.verifier.model` in 1.0 — see docs/MIGRATING.md ``.
+
+| 0.1 / pre-1.0 path | 1.0 path | In 0.1? |
+|---|---|---|
+| `thresholds.hunk_profile` | `thresholds.hunkProfile` | yes |
+| `thresholds.finding_filter` | `thresholds.findingFilter` | yes |
+| `thresholds.merge_gate` | `thresholds.mergeGate` | yes |
+| `thresholds.<stage>.<risk>.auto_min` | `thresholds.<stage>.<risk>.autoMin` | yes |
+| `thresholds.<stage>.<risk>.confirm_min` | `thresholds.<stage>.<risk>.confirmMin` | yes |
+| `reviewer.verifier: claude-cli \| none` | `reviewer.verifier.provider` | no (pre-1.0 builds) |
+| `reviewer.verifierModel` | `reviewer.verifier.model` | no |
+| `reviewer.verifierEffort` | `reviewer.verifier.effort` | no |
+| `reviewer.agentic.verifierMaxTurns` | `reviewer.verifier.maxTurns` | no |
+| `reviewer.agentic.verifierTimeoutMs` | `reviewer.verifier.timeoutMs` | no |
+| `reviewer.fullFile` | `reviewer.hunks.fullFile` | no |
+| `reviewer.impactContext` | `reviewer.hunks.impactContext` | no |
+| `reviewer.requireEvidence` | `reviewer.hunks.requireEvidence` | no |
+
+Unchanged: `thresholds.triage`, the risk names, `reviewer.agentic.maxTurns` /
+`timeoutMs` / `effort`, and every other key. The defaults are the same; only
+the paths moved. Before and after:
+
+```diff
+ thresholds:
+-  merge_gate:
+-    high: { auto_min: 0.99, confirm_min: 0.9 }
++  mergeGate:
++    high: { autoMin: 0.99, confirmMin: 0.9 }
+ reviewer:
+   provider: claude-cli
+-  verifier: claude-cli
+-  verifierModel: claude-opus-5-5
+-  verifierEffort: high
++  verifier:
++    provider: claude-cli
++    model: claude-opus-5-5
++    effort: high
++    maxTurns: 20
+   agentic:
+     maxTurns: 80
+-    verifierMaxTurns: 20
+```
+
+```diff
+ reviewer:
+   provider: anthropic
+-  fullFile: true
+-  requireEvidence: true
++  hunks:
++    fullFile: true
++    requireEvidence: true
+```
+
+The same paths apply to `pnpm eval:review --override` (docs/EVAL.md):
+`--override reviewer.verifier=claude-cli` is now
+`--override reviewer.verifier.provider=claude-cli`,
+`--override reviewer.verifierModel=…` is
+`--override reviewer.verifier.model=…`, and `--override reviewer.fullFile=true`
+is `--override reviewer.hunks.fullFile=true`. Stored variant configs
+(`--config`, `--overrides`) need the same rename; an old path fails the
+variant before it runs.
+
+#### 10. `reviewer.language` defaults to `en`
+
+0.1 had no `reviewer.language` (its check text was English); pre-1.0 builds
+added it with `es` as the default. 1.0 defaults to `en`: the colleague
+review, the check title and summary, the notices (e.g. the possible-secret
+warning) and the label descriptions are English unless you ask otherwise.
+`es` (neutral Latin American Spanish) and `es-AR` (Rioplatense, with
+voseo) stay fully supported:
+
+```yaml
+reviewer:
+  language: es   # or es-AR; the default is en
+```
+
+Label names do not change with the language (item 5).
 
 
 ### Before and after
@@ -259,7 +377,7 @@ per-hunk mode). Optionally:
 
 ```yaml
 reviewer:
-  language: en
+  language: es    # the default is en (item 10)
 spendCap:
   usd: 150        # ~90 PRs a month at ~$1.60 nominal
   warnAtUsd: 120

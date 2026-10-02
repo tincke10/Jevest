@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  LEGACY_NEEDS_HUMAN_LABEL,
   type ReviewVerdictInput,
   allRiskLabels,
   allVerdictLabels,
@@ -125,8 +124,8 @@ describe("verdictConclusion", () => {
 });
 
 describe("verdictLanguage", () => {
-  it("is es for Spanish tags and by default, en for English and every other language", () => {
-    expect(verdictLanguage(undefined)).toBe("es");
+  it("is es for Spanish tags, en by default, for English and for every other language", () => {
+    expect(verdictLanguage(undefined)).toBe("en");
     expect(verdictLanguage("es")).toBe("es");
     expect(verdictLanguage("es-MX")).toBe("es");
     expect(verdictLanguage(" ES ")).toBe("es");
@@ -196,38 +195,33 @@ describe("verdictSummary", () => {
 });
 
 describe("verdict labels", () => {
-  it("names, colors and describes one label per verdict, per language", () => {
+  it("names one label per verdict in fixed English, whatever the language; only the description is localized", () => {
+    for (const language of ["en", "es", "es-AR", "pt"]) {
+      expect(allVerdictLabels(language).map((l) => l.name)).toEqual([
+        "jevest: fix before merge",
+        "jevest: answer questions",
+        "jevest: ready to approve",
+        "jevest: review manually",
+      ]);
+    }
     expect(verdictLabel("fix", "es")).toEqual({
-      name: "jevest: corregir antes de mergear",
+      name: "jevest: fix before merge",
       color: "b60205",
       description:
         "Jev confirmó problemas en el código: el autor tiene que corregirlos antes de mergear.",
     });
-    expect(verdictLabel("questions", "es")).toEqual({
-      name: "jevest: responder dudas",
-      color: "fbca04",
-      description: "Hay dudas que el autor tiene que confirmar. No bloquea por sí solo.",
+    expect(verdictLabel("fix", "en")).toEqual({
+      name: "jevest: fix before merge",
+      color: "b60205",
+      description: "Jev confirmed issues in the code: the author has to fix them before merging.",
     });
-    expect(verdictLabel("clear", "es")).toEqual({
-      name: "jevest: listo para aprobar",
-      color: "0e8a16",
-      description: "Jevest no encontró nada para corregir. Falta la aprobación humana habitual.",
-    });
-    expect(verdictLabel("unavailable", "es")).toEqual({
-      name: "jevest: revisar a mano",
-      color: "bfbfbf",
-      description:
-        "El review automático no pudo completarse: hace falta un review humano completo.",
-    });
-    expect(verdictLabel("fix", "en").name).toBe("jevest: fix before merge");
-    expect(verdictLabel("questions", "en").name).toBe("jevest: answer questions");
-    expect(verdictLabel("clear", "en").name).toBe("jevest: ready to approve");
-    expect(verdictLabel("unavailable", "en").name).toBe("jevest: review manually");
-    expect(verdictLabel("fix", "en").color).toBe("b60205");
+    expect(verdictLabel("clear", "es").color).toBe("0e8a16");
+    expect(verdictLabel("questions", "en").color).toBe("fbca04");
+    expect(verdictLabel("unavailable", "en").color).toBe("bfbfbf");
   });
 
   it("lists the four verdict labels and keeps every description within GitHub's 100-char limit", () => {
-    for (const language of ["es", "en"] as const) {
+    for (const language of ["es", "es-AR", "en"] as const) {
       const labels = [...allVerdictLabels(language), ...allRiskLabels(language)];
       expect(allVerdictLabels(language)).toHaveLength(4);
       for (const label of labels) {
@@ -237,53 +231,53 @@ describe("verdict labels", () => {
       }
     }
   });
-
-  it("keeps the legacy label name for migration", () => {
-    expect(LEGACY_NEEDS_HUMAN_LABEL).toBe("jevest:needs-human");
-  });
 });
 
 describe("riskLabel", () => {
   it("labels high and critical as high, medium as medium, and nothing below", () => {
-    expect(riskLabel("high", "es")).toMatchObject({ name: "riesgo: alto", color: "d93f0b" });
-    expect(riskLabel("critical", "es")?.name).toBe("riesgo: alto");
-    expect(riskLabel("medium", "es")).toMatchObject({ name: "riesgo: medio", color: "e99695" });
-    expect(riskLabel("high", "en")?.name).toBe("risk: high");
-    expect(riskLabel("medium", "en")?.name).toBe("risk: medium");
+    expect(riskLabel("high", "es")).toMatchObject({ name: "jevest: risk high", color: "d93f0b" });
+    expect(riskLabel("critical", "es")?.name).toBe("jevest: risk high");
+    expect(riskLabel("medium", "es")).toMatchObject({
+      name: "jevest: risk medium",
+      color: "e99695",
+    });
+    expect(riskLabel("high", "en")?.name).toBe("jevest: risk high");
+    expect(riskLabel("medium", "en")?.name).toBe("jevest: risk medium");
+    expect(riskLabel("high", "es")?.description).toContain("riesgo alto");
+    expect(riskLabel("high", "en")?.description).toContain("high risk");
     expect(riskLabel("low", "es")).toBeNull();
     expect(riskLabel("none", "en")).toBeNull();
-    expect(allRiskLabels("en").map((l) => l.name)).toEqual(["risk: high", "risk: medium"]);
+    expect(allRiskLabels("en").map((l) => l.name)).toEqual([
+      "jevest: risk high",
+      "jevest: risk medium",
+    ]);
   });
 });
 
 describe("verdictLabelChanges", () => {
-  it("adds exactly one verdict label, removes the other three and the legacy label", () => {
+  it("adds exactly one verdict label and removes the other three and the risk labels below medium", () => {
     const { add, remove } = verdictLabelChanges("questions", "low", "en");
     expect(add.map((l) => l.name)).toEqual(["jevest: answer questions"]);
-    expect(remove).toEqual(
-      expect.arrayContaining([
-        "jevest: fix before merge",
-        "jevest: ready to approve",
-        "jevest: review manually",
-        "jevest:needs-human",
-        "risk: high",
-        "risk: medium",
-      ]),
-    );
-    expect(remove).not.toContain("jevest: answer questions");
+    expect(remove).toEqual([
+      "jevest: fix before merge",
+      "jevest: ready to approve",
+      "jevest: review manually",
+      "jevest: risk high",
+      "jevest: risk medium",
+    ]);
   });
 
   it("adds the risk label and removes only the stale one", () => {
     const { add, remove } = verdictLabelChanges("fix", "high", "es");
-    expect(add.map((l) => l.name)).toEqual(["jevest: corregir antes de mergear", "riesgo: alto"]);
-    expect(remove).toContain("riesgo: medio");
-    expect(remove).not.toContain("riesgo: alto");
+    expect(add.map((l) => l.name)).toEqual(["jevest: fix before merge", "jevest: risk high"]);
+    expect(remove).toContain("jevest: risk medium");
+    expect(remove).not.toContain("jevest: risk high");
   });
 
   it("leaves risk labels untouched when the risk is unknown", () => {
     const { remove } = verdictLabelChanges("unavailable", null, "es");
-    expect(remove).not.toContain("riesgo: alto");
-    expect(remove).not.toContain("riesgo: medio");
+    expect(remove).not.toContain("jevest: risk high");
+    expect(remove).not.toContain("jevest: risk medium");
   });
 
   it("never adds and removes the same label", () => {
@@ -293,6 +287,15 @@ describe("verdictLabelChanges", () => {
         for (const label of add) expect(remove).not.toContain(label.name);
       }
     }
+  });
+
+  it("manages the same names in every language, so switching reviewer.language never duplicates labels", () => {
+    const names = (language: string) => {
+      const { add, remove } = verdictLabelChanges("fix", "high", language);
+      return { add: add.map((l) => l.name), remove };
+    };
+    expect(names("es")).toEqual(names("en"));
+    expect(names("es-AR")).toEqual(names("en"));
   });
 });
 
@@ -332,12 +335,12 @@ describe("es-AR (voseo)", () => {
     }
   });
 
-  it("keeps label names, colors and descriptions identical to es, so switching variants never duplicates labels", () => {
+  it("keeps the label names and colors of es, and only addresses the reader with voseo in a description", () => {
     expect(allVerdictLabels("es-AR")).toEqual(allVerdictLabels("es"));
-    expect(allRiskLabels("es-AR")).toEqual(allRiskLabels("es"));
-    expect(verdictLabelChanges("fix", "high", "es-AR")).toEqual(
-      verdictLabelChanges("fix", "high", "es"),
+    expect(allRiskLabels("es-AR").map((l) => [l.name, l.color])).toEqual(
+      allRiskLabels("es").map((l) => [l.name, l.color]),
     );
+    expect(riskLabel("high", "es_AR")?.description).toContain("revisalo");
     expect(riskLabel("medium", "es_AR")).toEqual(riskLabel("medium", "es"));
   });
 });

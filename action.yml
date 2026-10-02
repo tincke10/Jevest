@@ -88,7 +88,7 @@ outputs:
       The `jevest` check conclusion, from the review verdict: "failure"
       (fix, or a fail-closed run), "neutral" (questions, unavailable) or
       "success" (clear). Not the merge gate's, which only decides the
-      jevest:auto-merge-ok label.
+      `jevest: auto-merge ok` label.
   verdict:
     description: >-
       The review verdict behind check-conclusion: "fix", "questions",

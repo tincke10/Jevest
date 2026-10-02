@@ -148,7 +148,7 @@ const EVIDENCE_OUTPUT_EXAMPLE = JSON.stringify(
 );
 
 /**
- * `reviewer.requireEvidence`: json_object has no server-side schema, so the
+ * `reviewer.hunks.requireEvidence`: json_object has no server-side schema, so the
  * extra required field is restated in prose, after the evidence rules, and
  * overrides the shape above.
  */

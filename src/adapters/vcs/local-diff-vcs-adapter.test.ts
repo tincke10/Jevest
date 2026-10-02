@@ -166,7 +166,7 @@ describe("createLocalDiffVcsAdapter", () => {
       summaryMarkdown: "## Summary\nAll good.",
       summaryFingerprint: "fp1",
       inlineComments: [],
-      labelsToAdd: ["jevest:auto-merge-ok"],
+      labelsToAdd: ["jevest: auto-merge ok"],
       labelsToRemove: [],
       check: { conclusion: "success", title: "Jevest: success", summary: "ok" },
     };

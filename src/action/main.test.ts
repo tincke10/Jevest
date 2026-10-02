@@ -30,6 +30,14 @@ import {
   workingTreeAnnotations,
 } from "./main.js";
 
+const VERIFIER_DEFAULTS = {
+  model: "claude-sonnet-5",
+  effort: "medium",
+  maxTurns: 12,
+  timeoutMs: 300_000,
+} as const;
+const HUNKS_OFF = { fullFile: false, impactContext: false, requireEvidence: false } as const;
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(__dirname, "../../tests/fixtures/github/pull_request.event.json");
 
@@ -143,20 +151,16 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
       language: "es",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "hunks",
-      agentic: {
-        maxTurns: 40,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "high",
+      agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+      verifier: {
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "none",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
       ...overrides,
     },
     thresholds: {},
@@ -920,7 +924,7 @@ describe("createAgenticPorts (reviewer.mode: agentic)", () => {
     expect(agentOnly.agenticReviewer).toBeDefined();
     expect(agentOnly.findingVerifier).toBeUndefined();
     const both = createAgenticPorts(
-      makeConfig({ ...AGENTIC, verifier: "claude-cli" }),
+      makeConfig({ ...AGENTIC, verifier: { ...VERIFIER_DEFAULTS, provider: "claude-cli" } }),
       makeInputs(token),
     );
     expect(both.findingVerifier).toBeDefined();
@@ -946,9 +950,12 @@ describe("workingTreeAnnotations", () => {
   });
 
   it("is a plain log line for the optional code-context layers, and nothing with a checkout", () => {
-    expect(workingTreeAnnotations(makeConfig({ impactContext: true }), "no checkout")).toEqual([
-      "jevest: code context unavailable: no checkout",
-    ]);
+    expect(
+      workingTreeAnnotations(
+        makeConfig({ hunks: { ...HUNKS_OFF, impactContext: true } }),
+        "no checkout",
+      ),
+    ).toEqual(["jevest: code context unavailable: no checkout"]);
     expect(workingTreeAnnotations(AGENTIC, undefined)).toEqual([]);
   });
 });
@@ -961,7 +968,7 @@ describe("resolveActionWorkingTree (code context in the Action)", () => {
     headSha: "abc123head",
     baseSha: "def456base",
   };
-  const ON = makeConfig({ impactContext: true });
+  const ON = makeConfig({ hunks: { ...HUNKS_OFF, impactContext: true } });
 
   it("does nothing when every layer is off", async () => {
     let probed = false;

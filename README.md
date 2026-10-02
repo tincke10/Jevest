@@ -51,7 +51,7 @@ Every run leaves on the PR:
 
 - **one summary comment** (triage decision, hunks skipped and why, findings by band, cost, merge-gate verdict), upserted in place on every push;
 - **inline comments** only for high-confidence findings, fingerprinted so re-runs never duplicate them;
-- **one verdict label** saying what to do next (`jevest: fix before merge`, `jevest: answer questions`, `jevest: ready to approve` or `jevest: review manually`, in Spanish by default), a risk label, and others such as `jevest:auto-merge-ok`, `jevest:spend-warning`;
+- **one verdict label** saying what to do next (`jevest: fix before merge`, `jevest: answer questions`, `jevest: ready to approve` or `jevest: review manually`), a risk label (`jevest: risk high` / `jevest: risk medium`), and others such as `jevest: auto-merge ok`, `jevest: spend warning`. Label names are fixed English in every language; only their descriptions follow `reviewer.language` (English by default, `es` / `es-AR` supported);
 - **a `jevest` check run** carrying that verdict: red only when there is something to fix, neutral for questions or when the automated review could not run, green when there is nothing to fix (see [docs/ACTION.md](docs/ACTION.md#review-verdict)).
 
 If Jev does not answer, the run **fails closed**: triage assumes high risk, nothing is published inline, everything goes to the human queue, the check goes red with the reason.
@@ -62,9 +62,9 @@ Every answer comes back with a probability and a confidence. The confidence land
 
 ```mermaid
 flowchart LR
-    A([Jev answer<br/>+ confidence]) --> B{confidence ≥ auto_min?}
+    A([Jev answer<br/>+ confidence]) --> B{confidence ≥ autoMin?}
     B -- yes --> C[act automatically<br/>publish · skip · green check]
-    B -- no --> D{confidence ≥ confirm_min?}
+    B -- no --> D{confidence ≥ confirmMin?}
     D -- yes --> E[ask a human<br/>needs-human queue · neutral check]
     D -- no --> F[escalate / fail closed<br/>red check · nothing inline]
     style C fill:#065f46,color:#ecfdf5,stroke:#10b981
@@ -222,7 +222,7 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] Phase 0b · H0′ surface profile, AST labeler, batch-anchoring fix
 - [x] Phase 1b · six-stage local pipeline, fail-closed, idempotent publishing
 - [x] Phase 2 · composite GitHub Action, no checkout, partial `.jevest.yml`, spend cap
-- [x] Phase 0c · H7 intent–change coherence (PASS with an LLM diff summary) → product-aware triage: three-layer state, `.jevest/context.yml` read from the base branch, `jevest:description-mismatch` and `jevest:needs-product-owner` labels
+- [x] Phase 0c · H7 intent–change coherence (PASS with an LLM diff summary) → product-aware triage: three-layer state, `.jevest/context.yml` read from the base branch, `jevest: description mismatch` and `jevest: needs product owner` labels
 - [x] Phase 3a · adversarial suite H5 (14 cases, PASS, replayed in CI), consolidated [benchmark](docs/BENCHMARK.md), [published datasets](datasets/README.md), changelog and [release guide](docs/RELEASING.md)
 - [x] Phase 1a · H1 finding filter measured (2026-09-22, thorough reviewer pass, 299 findings): **FAIL / inconclusive** — the DeepSeek LLM-judge control scores AUC 0.567 on the same labels Jev scores 0.592 on, so the line-overlap label doesn't separate real defects from noise either. H6 (judge cost) **PASS**, H3 (calibration) **FAIL** on the same caveat. Re-scored against a fix-aware oracle label the same day (AUC 0.708 Jev / 0.700 judge, n=7 real — too few for a recall verdict), then measured → **PASS** on H1b below. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
 - [x] Fix-aware oracle label (automatic, non-circular — labeler sees the real fix, commit message and issue/PR text, 2026-09-22): re-scored H1 AUC 0.592 → 0.708 (Jev) and 0.567 → 0.700 (DeepSeek judge), proving the label carries real signal, but the set yields only 7 real findings in 299 — too few for a recall verdict. H1 stays FAIL formally, H6 PASS (182×), H3 FAIL (ECE 0.504). Stage 4 stays annotate-only. See [docs/BENCHMARK.md](docs/BENCHMARK.md)

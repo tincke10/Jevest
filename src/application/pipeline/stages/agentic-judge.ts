@@ -8,7 +8,7 @@
  *    reason `excluded (<rule>): <detail>`. Deterministic policy, so
  *    discarded whatever `findingFilter.mode` says.
  * 2. Evidence check (../../../domain/evidence-verifier.ts, the same one
- *    `reviewer.requireEvidence` uses): each quote is looked for in the
+ *    `reviewer.hunks.requireEvidence` uses): each quote is looked for in the
  *    redacted head file around its line, or in the file's diff for removed
  *    code. None found → low confidence (`discarded` in mode discard),
  *    reason {@link EVIDENCE_NOT_FOUND_REASON}.

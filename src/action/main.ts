@@ -16,7 +16,7 @@
  * parsing below have no dependency on the pipeline module, so they're safe
  * to unit test without touching a network or a missing module.
  *
- * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * Code context (`reviewer.hunks.fullFile` / `impactContext` / `requireEvidence`):
  * the working tree is `GITHUB_WORKSPACE` only when it is a git checkout
  * whose HEAD is the PR head sha (`actions/checkout` with
  * `ref: ${{ github.event.pull_request.head.sha }}`; the default merge ref
@@ -310,7 +310,7 @@ export function createReviewer(
 
 /**
  * Agentic mode's ports (`reviewer.mode: agentic`): the one-agent-per-PR
- * reviewer and, when `reviewer.verifier` is "claude-cli", the per-finding
+ * reviewer and, when `reviewer.verifier.provider` is "claude-cli", the per-finding
  * verifier. Both run `claude -p` on the same subscription token as the
  * claude-cli reviewer (config validation already requires that provider).
  * `{}` in the per-hunk mode.
@@ -334,13 +334,13 @@ export function createAgenticPorts(
       effort: reviewer.agentic.effort,
       timeoutMs: reviewer.agentic.timeoutMs,
     }),
-    ...(reviewer.verifier === "claude-cli"
+    ...(reviewer.verifier.provider === "claude-cli"
       ? {
           findingVerifier: createClaudeCliFindingVerifier({
-            model: reviewer.verifierModel,
-            maxTurns: reviewer.agentic.verifierMaxTurns,
-            effort: reviewer.verifierEffort,
-            timeoutMs: reviewer.agentic.verifierTimeoutMs,
+            model: reviewer.verifier.model,
+            maxTurns: reviewer.verifier.maxTurns,
+            effort: reviewer.verifier.effort,
+            timeoutMs: reviewer.verifier.timeoutMs,
           }),
         }
       : {}),
@@ -720,9 +720,9 @@ export async function resolveActionWorkingTree(
   const wanted =
     reviewer.provider !== "none" &&
     (reviewer.mode === "agentic" ||
-      reviewer.fullFile ||
-      reviewer.impactContext ||
-      reviewer.requireEvidence);
+      reviewer.hunks.fullFile ||
+      reviewer.hunks.impactContext ||
+      reviewer.hunks.requireEvidence);
   if (!wanted) return {};
   if (workspace === undefined || workspace === "" || !(await probe.hasGitDir(workspace))) {
     return { unavailableReason: "no checkout" };

@@ -13,7 +13,7 @@
  *   `neutral`.
  * - `clear`: nothing to fix or answer. `success`; the usual human approval
  *   is still needed. Whether the PR may auto-merge is the merge gate's
- *   separate call (`jevest:auto-merge-ok`), not this verdict's.
+ *   separate call (`jevest: auto-merge ok`), not this verdict's.
  * - `unavailable`: the automated review could not be done or cannot be
  *   trusted, so a human reviews the whole PR. `neutral`.
  *
@@ -34,6 +34,7 @@
  * Pure: no ports, no I/O. Text is es/es-AR/en (see review-language.ts); any other `reviewer.language`
  * falls back to English.
  */
+import { type JevestLabelKey, labelDefinition } from "./labels.js";
 import type { LabelDefinition } from "./ports/vcs-port.js";
 import { type ReviewLanguage, resolveReviewLanguage } from "./review-language.js";
 
@@ -108,7 +109,8 @@ export type VerdictLanguage = ReviewLanguage;
 
 /**
  * `reviewer.language` to the verdict text's variant (see review-language.ts):
- * es by default, es-AR for the Rioplatense variant, en for everything else.
+ * en by default and for any non-Spanish language, es, es-AR for the
+ * Rioplatense variant.
  */
 export function verdictLanguage(language: string | undefined): VerdictLanguage {
   return resolveReviewLanguage(language);
@@ -164,74 +166,21 @@ export function verdictSummary(result: ReviewVerdictResult, language: string | u
   }
 }
 
-/** Legacy label, removed on every run so PRs migrate to the verdict labels. */
-export const LEGACY_NEEDS_HUMAN_LABEL = "jevest:needs-human";
-
-const VERDICT_LABELS_ES: Record<ReviewVerdict, LabelDefinition> = {
-  fix: {
-    name: "jevest: corregir antes de mergear",
-    color: "b60205",
-    description:
-      "Jev confirmó problemas en el código: el autor tiene que corregirlos antes de mergear.",
-  },
-  questions: {
-    name: "jevest: responder dudas",
-    color: "fbca04",
-    description: "Hay dudas que el autor tiene que confirmar. No bloquea por sí solo.",
-  },
-  clear: {
-    name: "jevest: listo para aprobar",
-    color: "0e8a16",
-    description: "Jevest no encontró nada para corregir. Falta la aprobación humana habitual.",
-  },
-  unavailable: {
-    name: "jevest: revisar a mano",
-    color: "bfbfbf",
-    description: "El review automático no pudo completarse: hace falta un review humano completo.",
-  },
-};
-
-const VERDICT_LABELS_EN: Record<ReviewVerdict, LabelDefinition> = {
-  fix: {
-    name: "jevest: fix before merge",
-    color: "b60205",
-    description: "Jev confirmed issues in the code: the author has to fix them before merging.",
-  },
-  questions: {
-    name: "jevest: answer questions",
-    color: "fbca04",
-    description: "There are doubts the author has to confirm. Not blocking on its own.",
-  },
-  clear: {
-    name: "jevest: ready to approve",
-    color: "0e8a16",
-    description: "Jevest found nothing to fix. The usual human approval is still needed.",
-  },
-  unavailable: {
-    name: "jevest: review manually",
-    color: "bfbfbf",
-    description: "The automated review could not be completed: a full human review is needed.",
-  },
-};
-
-/**
- * es-AR reuses the es labels as is (names, colors and descriptions): none of
- * them has a verb form that differs under voseo, and identical names mean a
- * repo switching between es and es-AR does not end up with duplicate labels.
- */
-const VERDICT_LABELS: Readonly<Record<VerdictLanguage, Record<ReviewVerdict, LabelDefinition>>> = {
-  es: VERDICT_LABELS_ES,
-  "es-AR": VERDICT_LABELS_ES,
-  en: VERDICT_LABELS_EN,
+const VERDICT_LABEL_KEYS: Readonly<Record<ReviewVerdict, JevestLabelKey>> = {
+  fix: "fix",
+  questions: "questions",
+  clear: "clear",
+  unavailable: "unavailable",
 };
 
 const VERDICTS: readonly ReviewVerdict[] = ["fix", "questions", "clear", "unavailable"];
 
+/** The verdict's label (src/domain/labels.ts): fixed English name, description in `language`. */
 export function verdictLabel(
   verdict: ReviewVerdict,
   language: string | undefined,
 ): LabelDefinition {
-  return VERDICT_LABELS[verdictLanguage(language)][verdict];
+  return labelDefinition(VERDICT_LABEL_KEYS[verdict], language);
 }
 
 export function allVerdictLabels(language: string | undefined): LabelDefinition[] {
@@ -241,50 +190,14 @@ export function allVerdictLabels(language: string | undefined): LabelDefinition[
 /** Triage's risk words (application/pipeline/stages/triage.ts `RISK_LEVELS`). */
 export type RiskWord = "none" | "low" | "medium" | "high" | "critical";
 
-type RiskLabels = { high: LabelDefinition; medium: LabelDefinition };
-
-const RISK_LABELS_ES: RiskLabels = {
-  high: {
-    name: "riesgo: alto",
-    color: "d93f0b",
-    description: "El triage de Jevest marcó este PR como de riesgo alto: revisarlo con cuidado.",
-  },
-  medium: {
-    name: "riesgo: medio",
-    color: "e99695",
-    description: "El triage de Jevest marcó este PR como de riesgo medio.",
-  },
-};
-
-const RISK_LABELS_EN: RiskLabels = {
-  high: {
-    name: "risk: high",
-    color: "d93f0b",
-    description: "Jevest triage rated this PR high risk: review it carefully.",
-  },
-  medium: {
-    name: "risk: medium",
-    color: "e99695",
-    description: "Jevest triage rated this PR medium risk.",
-  },
-};
-
-/** es-AR reuses the es risk labels (see VERDICT_LABELS). */
-const RISK_LABELS: Readonly<Record<VerdictLanguage, RiskLabels>> = {
-  es: RISK_LABELS_ES,
-  "es-AR": RISK_LABELS_ES,
-  en: RISK_LABELS_EN,
-};
-
 /** high and critical share the "high" label; low and none get no label. */
 export function riskLabel(risk: RiskWord, language: string | undefined): LabelDefinition | null {
-  const labels = RISK_LABELS[verdictLanguage(language)];
   switch (risk) {
     case "high":
     case "critical":
-      return labels.high;
+      return labelDefinition("riskHigh", language);
     case "medium":
-      return labels.medium;
+      return labelDefinition("riskMedium", language);
     case "low":
     case "none":
       return null;
@@ -292,16 +205,16 @@ export function riskLabel(risk: RiskWord, language: string | undefined): LabelDe
 }
 
 export function allRiskLabels(language: string | undefined): LabelDefinition[] {
-  const labels = RISK_LABELS[verdictLanguage(language)];
-  return [labels.high, labels.medium];
+  return [labelDefinition("riskHigh", language), labelDefinition("riskMedium", language)];
 }
 
 /**
  * The verdict and risk labels for one run: exactly one verdict label added,
- * the other three removed, the legacy `jevest:needs-human` removed, and the
- * risk label added (or every risk label removed below medium). Only the
- * current language's names are managed: a repo that switches
- * `reviewer.language` keeps the old-language labels until removed by hand.
+ * the other three removed, and the risk label added (or every risk label
+ * removed below medium; untouched when the risk is unknown). Names do not
+ * depend on `language` (only the descriptions do), so a repo that switches
+ * `reviewer.language` keeps managing the same labels. Labels from earlier
+ * versions are cleaned up separately (labels.ts `withLegacyLabelCleanup`).
  */
 export function verdictLabelChanges(
   verdict: ReviewVerdict,
@@ -315,5 +228,5 @@ export function verdictLabelChanges(
     ...allVerdictLabels(language).filter((l) => l.name !== chosen.name),
     ...(risk === null ? [] : allRiskLabels(language).filter((l) => l.name !== riskChosen?.name)),
   ].map((l) => l.name);
-  return { add, remove: [...remove, LEGACY_NEEDS_HUMAN_LABEL] };
+  return { add, remove };
 }

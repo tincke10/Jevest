@@ -36,7 +36,7 @@
  * `reviewer.descriptionContext` is on. `--mode replay` runs without it, so
  * the replayed reviewer requests (and their fixture keys) stay unchanged.
  *
- * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * Code context (`reviewer.hunks.fullFile` / `impactContext` / `requireEvidence`):
  * `--git` mode reads the code at the HEAD ref. The repo is used in place
  * when it is checked out, clean, at that commit; otherwise (bare, another
  * commit, local edits) a temporary `git worktree add --detach` is created
@@ -581,7 +581,7 @@ export interface AgenticPorts {
 export function buildAgenticPorts(mode: Mode, config: JevestConfig): AgenticPorts {
   const { reviewer } = config;
   if (reviewer.mode !== "agentic") return {};
-  const withVerifier = reviewer.verifier === "claude-cli";
+  const withVerifier = reviewer.verifier.provider === "claude-cli";
   switch (mode) {
     case "dry-run":
       return {
@@ -604,10 +604,10 @@ export function buildAgenticPorts(mode: Mode, config: JevestConfig): AgenticPort
         ...(withVerifier
           ? {
               findingVerifier: createClaudeCliFindingVerifier({
-                model: reviewer.verifierModel,
-                maxTurns: reviewer.agentic.verifierMaxTurns,
-                effort: reviewer.verifierEffort,
-                timeoutMs: reviewer.agentic.verifierTimeoutMs,
+                model: reviewer.verifier.model,
+                maxTurns: reviewer.verifier.maxTurns,
+                effort: reviewer.verifier.effort,
+                timeoutMs: reviewer.verifier.timeoutMs,
               }),
             }
           : {}),
@@ -764,9 +764,9 @@ export async function resolveLocalWorkingTree(
   const wanted =
     reviewer.provider !== "none" &&
     (reviewer.mode === "agentic" ||
-      reviewer.fullFile ||
-      reviewer.impactContext ||
-      reviewer.requireEvidence);
+      reviewer.hunks.fullFile ||
+      reviewer.hunks.impactContext ||
+      reviewer.hunks.requireEvidence);
   const none = async (): Promise<void> => {};
   if (!wanted) {
     return { workingTree: undefined, unavailableReason: undefined, cleanup: none };

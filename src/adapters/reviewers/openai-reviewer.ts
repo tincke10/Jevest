@@ -71,7 +71,7 @@ export interface OpenAiReviewerOptions {
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const PROVIDER = "openai";
 const RESPONSE_FORMAT = zodResponseFormat(reviewOutputSchema, "review_output");
-/** `reviewer.requireEvidence`: the same output plus a required `evidence` list per finding. */
+/** `reviewer.hunks.requireEvidence`: the same output plus a required `evidence` list per finding. */
 const RESPONSE_FORMAT_WITH_EVIDENCE = zodResponseFormat(
   reviewOutputWithEvidenceSchema,
   "review_output",

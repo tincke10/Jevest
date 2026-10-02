@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { PROFILE_CHANGE_KINDS } from "../../domain/change-kind.js";
 import type { Decision } from "../../domain/decision.js";
 import type { HunkRecord } from "../spike/hunk-record.js";
-import { PROFILE_CHANGE_KINDS } from "../spike/question-sets/profile.js";
 import { fanOutKey } from "../spike/questions.js";
 import { generateDryRunProfileScript } from "./dry-run-profile-script.js";
 

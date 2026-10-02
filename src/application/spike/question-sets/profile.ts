@@ -7,13 +7,6 @@
 import type { ChoiceQuestion, NoulQuestion } from "../../../domain/question.js";
 import type { QuestionSet } from "../questions.js";
 
-export const PROFILE_CHANGE_KINDS = [
-  "add-behavior",
-  "modify-behavior",
-  "delete",
-  "rename-or-format",
-] as const;
-
 function changeKindQuestion(): ChoiceQuestion {
   return {
     type: "choice",

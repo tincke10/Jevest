@@ -16,7 +16,7 @@
  * changes is where the fixed thresholds in `.jevest.yml` fall on the curve.
  * The raw answer is kept on every record as `rawIsRealDefectProb`.
  *
- * Evidence (`reviewer.requireEvidence`, stages/review.ts): a finding none
+ * Evidence (`reviewer.hunks.requireEvidence`, stages/review.ts): a finding none
  * of whose quotes was found in the code is never published and never
  * costs a Jev request. It goes to `lowConfidence` ("annotate") or
  * `discarded` ("discard") with `rejectedReason`
@@ -279,7 +279,7 @@ export async function runFindingFilterStage(
     };
 
     const confidence = noulConfidence(calibratedProb);
-    const band = policy.band("finding_filter", input.riskLevel, confidence);
+    const band = policy.band("findingFilter", input.riskLevel, confidence);
     const predictedReal = calibratedProb >= 0.5;
     // FR-5.4: "critical" by EITHER source. The reviewer's suggested severity
     // counts as much as Jev's own score: H0 showed Jev cannot judge whether

@@ -14,6 +14,14 @@ import {
   runLocalReview,
 } from "./run.js";
 
+const VERIFIER_DEFAULTS = {
+  model: "claude-sonnet-5",
+  effort: "medium",
+  maxTurns: 12,
+  timeoutMs: 300_000,
+} as const;
+const HUNKS_OFF = { fullFile: false, impactContext: false, requireEvidence: false } as const;
+
 describe("parseArgs (scripts/review/run.ts)", () => {
   it("throws when neither --diff nor --git is given", () => {
     expect(() => parseArgs([])).toThrow(/--diff.*--git/);
@@ -98,23 +106,19 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
     expect(config.reviewer).toEqual({
       provider: "claude-cli",
       model: "claude-opus-5-5",
-      language: "es",
+      language: "en",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "agentic",
-      agentic: {
-        maxTurns: 60,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "xhigh",
+      agentic: { maxTurns: 60, timeoutMs: 900_000, effort: "xhigh" },
+      verifier: {
+        provider: "claude-cli",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "claude-cli",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     });
   });
 });
@@ -320,15 +324,18 @@ describe("buildAgenticPorts (scripts/review/run.ts)", () => {
   const AGENTIC = { provider: "claude-cli" as const, model: "m", mode: "agentic" as const };
 
   it("builds nothing in the per-hunk mode", async () => {
-    expect(buildAgenticPorts("live", await config({ mode: "hunks", verifier: "none" }))).toEqual(
-      {},
-    );
+    expect(
+      buildAgenticPorts(
+        "live",
+        await config({ mode: "hunks", verifier: { ...VERIFIER_DEFAULTS, provider: "none" } }),
+      ),
+    ).toEqual({});
   });
 
   it("dry-run: an agent that reports nothing and never spawns a process; a verifier only when configured", async () => {
     const ports = buildAgenticPorts(
       "dry-run",
-      await config({ ...AGENTIC, verifier: "claude-cli" }),
+      await config({ ...AGENTIC, verifier: { ...VERIFIER_DEFAULTS, provider: "claude-cli" } }),
     );
     const output = await ports.agenticReviewer?.reviewPullRequest({
       prId: "p",
@@ -340,7 +347,10 @@ describe("buildAgenticPorts (scripts/review/run.ts)", () => {
     expect(output?.findings).toEqual([]);
     expect(ports.findingVerifier).toBeDefined();
     expect(
-      buildAgenticPorts("dry-run", await config({ ...AGENTIC, verifier: "none" })).findingVerifier,
+      buildAgenticPorts(
+        "dry-run",
+        await config({ ...AGENTIC, verifier: { ...VERIFIER_DEFAULTS, provider: "none" } }),
+      ).findingVerifier,
     ).toBeUndefined();
   });
 
@@ -360,7 +370,7 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
         provider: "anthropic",
         model: "m",
         mode: "hunks",
-        verifier: "none",
+        verifier: { ...VERIFIER_DEFAULTS, provider: "none" },
         ...reviewer,
       },
     };
@@ -402,7 +412,7 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
 
   it("has no checkout in --diff mode, and says why", async () => {
     const resolved = await resolveLocalWorkingTree({
-      config: await config({ impactContext: true }),
+      config: await config({ hunks: { ...HUNKS_OFF, impactContext: true } }),
       gitRange: null,
       repoDir: "/repo",
       log: () => {},
@@ -415,7 +425,7 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
     const lines: string[] = [];
     let cleaned = false;
     const resolved = await resolveLocalWorkingTree({
-      config: await config({ requireEvidence: true }),
+      config: await config({ hunks: { ...HUNKS_OFF, requireEvidence: true } }),
       gitRange: { base: "a", head: "feedface" },
       repoDir: "/repo",
       log: (line) => lines.push(line),
@@ -491,10 +501,8 @@ describe("runLocalReview --git with code context (real git, scripts/review/run.t
       reviewer: {
         ...defaults.reviewer,
         mode: "hunks",
-        verifier: "none",
-        fullFile: true,
-        impactContext: true,
-        requireEvidence: true,
+        verifier: { ...VERIFIER_DEFAULTS, provider: "none" },
+        hunks: { fullFile: true, impactContext: true, requireEvidence: true },
       },
     };
     const lines: string[] = [];

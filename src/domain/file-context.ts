@@ -1,6 +1,6 @@
 /**
  * The full post-change content of a hunk's file, for the reviewer
- * (`reviewer.fullFile`, ../application/pipeline/stages/code-context.ts).
+ * (`reviewer.hunks.fullFile`, ../application/pipeline/stages/code-context.ts).
  * Pure: the caller reads the file from the working tree at the PR head and
  * redacts it (NFR-3) before handing it in.
  *

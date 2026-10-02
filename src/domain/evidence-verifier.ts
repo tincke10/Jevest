@@ -1,6 +1,6 @@
 /**
  * Deterministic check of a reviewer finding's evidence
- * (`reviewer.requireEvidence`). Pure: the caller hands in the head files it
+ * (`reviewer.hunks.requireEvidence`). Pure: the caller hands in the head files it
  * read from the working tree (redacted, like everything the reviewer saw).
  *
  * Measured motivation: on a private golden set the per-hunk reviewer's

@@ -1,6 +1,6 @@
 /**
  * Changed-symbol extraction for the reviewer's impact context
- * (`reviewer.impactContext`, ../application/pipeline/stages/code-context.ts).
+ * (`reviewer.hunks.impactContext`, ../application/pipeline/stages/code-context.ts).
  * Pure: per-language regexes over a hunk's changed lines (`+`/`-`, never
  * context lines) and the enclosing definition git prints in the hunk
  * header (`@@ -a,b +c,d @@ function foo(`).

@@ -93,7 +93,7 @@ describe("candidatesFromPipeline", () => {
   });
 });
 
-describe("candidatesFromPipeline — evidence-failed findings (reviewer.requireEvidence)", () => {
+describe("candidatesFromPipeline — evidence-failed findings (reviewer.hunks.requireEvidence)", () => {
   const rejected = (id: string, claim: string): FilteredFinding => ({
     ...finding(id, "src/e.ts", 50, claim),
     isRealDefectProb: Number.NaN,

@@ -35,6 +35,14 @@ import type { PullRequestData, PullRequestRef } from "../../domain/pull-request.
 import { parseProductContext } from "../context/product-context.js";
 import { type PipelineResult, runPipeline } from "./run-pipeline.js";
 
+const VERIFIER_DEFAULTS = {
+  model: "claude-sonnet-5",
+  effort: "medium",
+  maxTurns: 12,
+  timeoutMs: 300_000,
+} as const;
+const HUNKS_OFF = { fullFile: false, impactContext: false, requireEvidence: false } as const;
+
 const ref: PullRequestRef = {
   owner: "acme",
   repo: "widgets",
@@ -71,15 +79,15 @@ const policyConfig: ConfidencePolicyConfig = {
     medium: { autoMin: 0.95, confirmMin: 0.7 },
     high: { autoMin: 0.98, confirmMin: 0.8 },
   },
-  hunk_profile: {
+  hunkProfile: {
     low: { autoMin: 0.85, confirmMin: 0.55 },
     medium: { autoMin: 0.9, confirmMin: 0.65 },
   },
-  finding_filter: {
+  findingFilter: {
     low: { autoMin: 0.9, confirmMin: 0.6 },
     medium: { autoMin: 0.93, confirmMin: 0.68 },
   },
-  merge_gate: {
+  mergeGate: {
     low: { autoMin: 0.9, confirmMin: 0.6 },
     medium: { autoMin: 0.97, confirmMin: 0.8 },
   },
@@ -93,20 +101,16 @@ function makeConfig(overrides: Partial<JevestConfig> = {}): JevestConfig {
       language: "es",
       narrative: true,
       descriptionContext: true,
-      fullFile: false,
-      impactContext: false,
-      requireEvidence: false,
       mode: "hunks",
-      agentic: {
-        maxTurns: 40,
-        timeoutMs: 900_000,
-        verifierMaxTurns: 12,
-        verifierTimeoutMs: 300_000,
-        effort: "high",
+      agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+      verifier: {
+        provider: "none",
+        model: "claude-sonnet-5",
+        effort: "medium",
+        maxTurns: 12,
+        timeoutMs: 300_000,
       },
-      verifier: "none",
-      verifierModel: "claude-sonnet-5",
-      verifierEffort: "medium",
+      hunks: { fullFile: false, impactContext: false, requireEvidence: false },
     },
     thresholds: policyConfig,
     sizeThresholds: { smallMaxChangedLines: 50, mediumMaxChangedLines: 300 },
@@ -535,20 +539,16 @@ describe("runPipeline", () => {
           language: "es",
           narrative: false,
           descriptionContext: false,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       }),
     });
@@ -576,8 +576,8 @@ describe("runPipeline", () => {
     expect(result.publication.check.conclusion).toBe("success");
     expect(result.verdict).toBe("clear");
     expect(result.publication.check.title).toBe("Nada para corregir");
-    expect(result.publication.labelsToAdd).toContain("jevest: listo para aprobar");
-    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
+    expect(result.publication.labelsToAdd).toContain("jevest: ready to approve");
+    expect(result.publication.labelsToRemove).toContain("jevest: auto-merge ok");
   });
 
   it("does not require a reviewer port at all when reviewer.provider is 'none'", async () => {
@@ -614,20 +614,16 @@ describe("runPipeline", () => {
           language: "es",
           narrative: false,
           descriptionContext: false,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       }),
     });
@@ -711,7 +707,7 @@ describe("runPipeline finding filter mode (stage 4 annotate vs discard, product 
       touches_error_handling: { type: "noul", noul: 0.1 },
       touches_async: { type: "noul", noul: 0.1 },
       contains_reviewer_instructions: { type: "noul", noul: 0.02 },
-      // finding_filter medium: autoMin=0.93, confirmMin=0.68. isReal=0.3 ->
+      // findingFilter medium: autoMin=0.93, confirmMin=0.68. isReal=0.3 ->
       // confidence=|0.3-0.5|*2=0.4 < confirmMin -> escalate band,
       // predictedReal=false, severity 0 (nit): non-critical.
       "a.ts#0-f0__is_real_defect": { type: "noul", noul: 0.3 },
@@ -903,7 +899,7 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
       capUsd: 50,
     });
     expect(result.publication.summaryMarkdown).toContain("### Spend cap");
-    expect(result.publication.labelsToRemove).toContain("jevest:spend-warning");
+    expect(result.publication.labelsToRemove).toContain("jevest: spend warning");
   });
 
   it("skips the LLM review (Jev-only run) when the cap is already reached, still records the run", async () => {
@@ -934,7 +930,7 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
     expect(spendLedger.entries[0]?.llmUsd).toBe(0);
     expect(spendLedger.current()?.runs).toBe(11);
     expect(result.publication.summaryMarkdown).toContain("LLM review skipped: spend cap reached");
-    expect(result.publication.labelsToAdd).toContain("jevest:spend-cap-reached");
+    expect(result.publication.labelsToAdd).toContain("jevest: spend cap reached");
     expect(result.publication.summaryMarkdown).not.toContain("LLM review disabled by config");
   });
 
@@ -1017,7 +1013,7 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
 
     expect(result.reviewSkippedForSpendCap).toBe(false);
     expect(result.spendCap?.status).toBe("warning");
-    expect(result.publication.labelsToAdd).toContain("jevest:spend-warning");
+    expect(result.publication.labelsToAdd).toContain("jevest: spend warning");
     expect(result.publication.check.summary).toContain("Spend cap warning");
   });
 
@@ -1193,20 +1189,16 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: true,
           descriptionContext: true,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       }),
     });
@@ -1223,20 +1215,16 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: true,
           descriptionContext: true,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       }),
     });
@@ -1272,20 +1260,16 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
           language: "es",
           narrative: false,
           descriptionContext: false,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       }),
     });
@@ -1433,8 +1417,8 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(result.mergeGate?.conclusion).toBe("failure");
     // Never green: the review may have been steered, so a human reviews by hand.
     expect(result.check.conclusion).not.toBe("success");
-    expect(result.publication.labelsToAdd).toContain("jevest:injected-instructions");
-    expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
+    expect(result.publication.labelsToAdd).toContain("jevest: injected instructions");
+    expect(result.publication.labelsToAdd).not.toContain("jevest: auto-merge ok");
     expect(result.publication.summaryMarkdown).toContain(
       "Injected instructions: in description P=0.02 · in diff P=0.91 (hunks: a.ts#0)",
     );
@@ -1453,7 +1437,7 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
       }),
     });
     expect(result.hunkProfile?.injectedInstructionsInDiff).toEqual({ maxProb: 0.02, hunkIds: [] });
-    expect(result.publication.labelsToRemove).toContain("jevest:injected-instructions");
+    expect(result.publication.labelsToRemove).toContain("jevest: injected instructions");
     expect(result.publication.summaryMarkdown).toContain(
       "Injected instructions: in description P=0.02 · in diff P=0.02 (hunks: none)",
     );
@@ -1487,7 +1471,7 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(result.spendCap).not.toBeNull();
     expect(result.check.conclusion).toBe("neutral");
     expect(result.verdict).toBe("questions");
-    expect(result.publication.labelsToAdd).toContain("jevest:description-mismatch");
+    expect(result.publication.labelsToAdd).toContain("jevest: description mismatch");
   });
 
   it("subtracts the summary cost from the per-run budget handed to the review stage", async () => {
@@ -1772,10 +1756,10 @@ describe("runPipeline when every reviewer call failed (NFR-2 fail closed)", () =
     // Jev's gate saw zero findings and said "safe"; the code overrides it.
     expect(result.mergeGate?.conclusion).toBe("success");
     expect(result.check.conclusion).toBe("neutral");
-    expect(result.publication.labelsToAdd).not.toContain("jevest:auto-merge-ok");
-    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
-    expect(result.publication.labelsToAdd).toContain("jevest: revisar a mano");
-    expect(result.publication.labelsToRemove).toContain("jevest:needs-human");
+    expect(result.publication.labelsToAdd).not.toContain("jevest: auto-merge ok");
+    expect(result.publication.labelsToRemove).toContain("jevest: auto-merge ok");
+    expect(result.publication.labelsToAdd).toContain("jevest: review manually");
+
     expect(result.check.title).toBe("Review automático no disponible: revisar a mano");
     expect(result.publication.summaryMarkdown).toContain("### ⚠️ LLM review failed");
   });
@@ -1823,20 +1807,16 @@ describe("runPipeline colleague review (narrator)", () => {
           language: "es",
           narrative: true,
           descriptionContext: true,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       },
     });
@@ -1915,20 +1895,16 @@ describe("runPipeline colleague review (narrator)", () => {
           language: "es",
           narrative: false,
           descriptionContext: true,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       },
     });
@@ -2185,20 +2161,16 @@ describe("runPipeline author context from the PR description", () => {
           language: "es",
           narrative: true,
           descriptionContext: false,
-          fullFile: false,
-          impactContext: false,
-          requireEvidence: false,
           mode: "hunks",
-          agentic: {
-            maxTurns: 40,
-            timeoutMs: 900_000,
-            verifierMaxTurns: 12,
-            verifierTimeoutMs: 300_000,
-            effort: "high",
+          agentic: { maxTurns: 40, timeoutMs: 900_000, effort: "high" },
+          verifier: {
+            provider: "none",
+            model: "claude-sonnet-5",
+            effort: "medium",
+            maxTurns: 12,
+            timeoutMs: 300_000,
           },
-          verifier: "none",
-          verifierModel: "claude-sonnet-5",
-          verifierEffort: "medium",
+          hunks: { fullFile: false, impactContext: false, requireEvidence: false },
         },
       },
     });
@@ -2226,7 +2198,7 @@ describe("runPipeline author context from the PR description", () => {
   });
 });
 
-describe("runPipeline code context and evidence (reviewer.fullFile / impactContext / requireEvidence)", () => {
+describe("runPipeline code context and evidence (reviewer.hunks.fullFile / impactContext / requireEvidence)", () => {
   const PR = makePr({
     files: [
       {
@@ -2319,7 +2291,7 @@ describe("runPipeline code context and evidence (reviewer.fullFile / impactConte
     const result = await run({
       reviewer,
       workingTree: createInMemoryWorkingTree(TREE),
-      reviewerConfig: { fullFile: true, impactContext: true },
+      reviewerConfig: { hunks: { ...HUNKS_OFF, fullFile: true, impactContext: true } },
     });
     const [input] = reviewer.inputs;
     expect(input?.fullFile?.segments[0]?.lines).toEqual(["return sumWithTax(items);"]);
@@ -2334,7 +2306,7 @@ describe("runPipeline code context and evidence (reviewer.fullFile / impactConte
     const reviewer = recordingReviewer();
     const result = await run({
       reviewer,
-      reviewerConfig: { fullFile: true, impactContext: true },
+      reviewerConfig: { hunks: { ...HUNKS_OFF, fullFile: true, impactContext: true } },
       unavailableReason: "no checkout",
     });
     expect(reviewer.inputs.length).toBeGreaterThan(0);
@@ -2355,7 +2327,7 @@ describe("runPipeline code context and evidence (reviewer.fullFile / impactConte
     const result = await run({
       reviewer,
       workingTree: createInMemoryWorkingTree(TREE),
-      reviewerConfig: { requireEvidence: true },
+      reviewerConfig: { hunks: { ...HUNKS_OFF, requireEvidence: true } },
     });
     expect(reviewer.inputs[0]?.requireEvidence).toBe(true);
     expect(result.findingFilter?.published).toHaveLength(0);
@@ -2375,7 +2347,7 @@ describe("runPipeline code context and evidence (reviewer.fullFile / impactConte
     };
     const result = await run({
       reviewer: recordingReviewer([proven]),
-      reviewerConfig: { requireEvidence: true },
+      reviewerConfig: { hunks: { ...HUNKS_OFF, requireEvidence: true } },
     });
     expect(result.metrics.codeContext).toMatchObject({ evidenceChecked: 1, evidenceRejected: 0 });
     expect(result.findingFilter?.lowConfidence.some((f) => f.rejectedReason)).toBe(false);
@@ -2485,7 +2457,7 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
         workingTree: createInMemoryWorkingTree(TREE),
       },
       headCheckoutRoot: "/checkout",
-      config: agenticConfig({ fullFile: true, impactContext: true }),
+      config: agenticConfig({ hunks: { ...HUNKS_OFF, fullFile: true, impactContext: true } }),
     });
     expect(reviewer.calls).toBe(0);
     expect(agent.calls).toHaveLength(1);
@@ -2536,7 +2508,7 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
     expect(result.agentic?.review.status).toBe("unavailable");
     expect(result.publication.check.conclusion).toBe("neutral");
     expect(result.verdict).toBe("unavailable");
-    expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
+    expect(result.publication.labelsToRemove).toContain("jevest: auto-merge ok");
     expect(result.publication.summaryMarkdown).toContain(
       "agentic review unavailable: no checkout (agentic mode needs a checkout of the PR head)",
     );
@@ -2555,7 +2527,7 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
         workingTree: createInMemoryWorkingTree(TREE),
       },
       headCheckoutRoot: "/checkout",
-      config: agenticConfig({ verifier: "claude-cli" }),
+      config: agenticConfig({ verifier: { ...VERIFIER_DEFAULTS, provider: "claude-cli" } }),
     });
     expect(verifier.calls).toHaveLength(1);
     expect(result.metrics.agentic?.verifier).toMatchObject({ calls: 1, costUsd: 0.25 });
@@ -2587,5 +2559,103 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
     expect(plain).not.toHaveProperty("agentic");
     expect(plain.metrics).not.toHaveProperty("agentic");
     expect(plain.publication.summaryMarkdown).not.toContain("Agentic");
+  });
+});
+
+describe("runPipeline legacy label cleanup (labels from 0.1 and pre-1.0 builds)", () => {
+  const LEGACY_ON_PR = ["jevest:needs-human", "riesgo: alto", "jevest:auto-merge-ok"];
+
+  function prWithLegacyLabels(): PullRequestData {
+    return makePr({ labels: [...LEGACY_ON_PR, "bug"] });
+  }
+
+  it("removes the legacy labels the PR carries on a full run, and nothing else", async () => {
+    const decision = scriptedPort({
+      ...HIGH_RISK_TRIAGE_SCRIPT,
+      risk: {
+        type: "score",
+        score: 2,
+        confidence: 0.95,
+        legend: { 0: "none", 1: "low", 2: "medium", 3: "high", 4: "critical" },
+        probabilities: { 0: 0.01, 1: 0.02, 2: 0.9, 3: 0.05, 4: 0.02 },
+      },
+      change_kind: {
+        type: "choice",
+        choice: "modify-behavior",
+        confidence: 0.9,
+        probabilities: { "modify-behavior": 0.9 },
+      },
+      touches_error_handling: { type: "noul", noul: 0.1 },
+      touches_async: { type: "noul", noul: 0.1 },
+      contains_reviewer_instructions: { type: "noul", noul: 0.02 },
+      safe_to_automerge: { type: "noul", noul: 0.95 },
+    });
+    const vcs = makeVcs(prWithLegacyLabels());
+    const result = await runPipeline({
+      ref,
+      ports: { vcs, decision },
+      config: makeConfig({
+        reviewer: {
+          ...makeConfig().reviewer,
+          provider: "none",
+          model: undefined,
+          narrative: false,
+          descriptionContext: false,
+        },
+      }),
+    });
+
+    expect(result.failedClosed).toBe(false);
+    expect(result.publication.labelsToRemove).toEqual(expect.arrayContaining(LEGACY_ON_PR));
+    expect(result.publication.labelsToRemove).not.toContain("bug");
+    expect(result.publication.labelsToRemove).not.toContain("risk: high");
+    expect(vcs.published).toEqual([result.publication]);
+  });
+
+  it("removes them on a triage-only run (FR-2.3)", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(prWithLegacyLabels()),
+        decision: scriptedPort(HIGH_RISK_TRIAGE_SCRIPT),
+        reviewer: fakeReviewer(),
+      },
+      config: makeConfig(),
+    });
+    expect(result.triage?.skipLlmReview).toBe(true);
+    expect(result.publication.labelsToRemove).toEqual(expect.arrayContaining(LEGACY_ON_PR));
+  });
+
+  it("removes them on a fail-closed run (NFR-2)", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(prWithLegacyLabels()),
+        decision: {
+          decide: async () => {
+            throw new Error("jev timeout");
+          },
+        },
+        reviewer: fakeReviewer(),
+      },
+      config: makeConfig(),
+    });
+    expect(result.failedClosed).toBe(true);
+    expect(result.publication.labelsToRemove).toEqual(expect.arrayContaining(LEGACY_ON_PR));
+  });
+
+  it("adds no removal when the PR has no legacy label", async () => {
+    const result = await runPipeline({
+      ref,
+      ports: {
+        vcs: makeVcs(makePr()),
+        decision: scriptedPort(HIGH_RISK_TRIAGE_SCRIPT),
+        reviewer: fakeReviewer(),
+      },
+      config: makeConfig(),
+    });
+    for (const legacy of LEGACY_ON_PR) {
+      expect(result.publication.labelsToRemove).not.toContain(legacy);
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { PROFILE_CHANGE_KINDS } from "../../domain/change-kind.js";
 /**
  * Turns raw surface-profile spike results into the H0' evaluation report
  * (SPEC §4.2, §5 Fase 0b): choice accuracy + per-class precision/recall/F1
@@ -19,7 +20,6 @@ import {
   summarizeConfidence,
   thresholdSweep,
 } from "../../domain/metrics.js";
-import { PROFILE_CHANGE_KINDS } from "../spike/question-sets/profile.js";
 import type { ProfileChangeKind, ProfileLabels } from "./profile-label-record.js";
 import type { ProfileHunkFailure, ProfileHunkResult } from "./profile-runner.js";
 

@@ -1,9 +1,9 @@
 /**
  * Port onto the repository's working tree at the PR head (SPEC §7 style:
  * zero SDK imports). Feeds the reviewer's code context — the full file
- * (`reviewer.fullFile`), the references to what a hunk changes
- * (`reviewer.impactContext`) — and the evidence check
- * (`reviewer.requireEvidence`). Adapters: ripgrep over a checkout
+ * (`reviewer.hunks.fullFile`), the references to what a hunk changes
+ * (`reviewer.hunks.impactContext`) — and the evidence check
+ * (`reviewer.hunks.requireEvidence`). Adapters: ripgrep over a checkout
  * (../../adapters/working-tree/ripgrep-working-tree.ts) and an in-memory
  * fake for tests. Absent from the pipeline when there is no checkout of
  * the head (e.g. the Action without `actions/checkout`).

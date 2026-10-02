@@ -12,8 +12,8 @@
  * prompt gets {@link AUTHOR_CONTEXT_REVIEW_RULES} appended. Without it both
  * are byte-identical to what they were before the feature existed.
  *
- * Code context and evidence (`reviewer.fullFile`, `reviewer.impactContext`,
- * `reviewer.requireEvidence`): the full file and the impact context are
+ * Code context and evidence (`reviewer.hunks.fullFile`, `reviewer.hunks.impactContext`,
+ * `reviewer.hunks.requireEvidence`): the full file and the impact context are
  * delimited blocks appended to the user message after the author context;
  * evidence adds {@link EVIDENCE_REVIEW_RULES} to the system prompt (the
  * output schema changes in review-output-schema.ts). Each is absent from
@@ -95,7 +95,7 @@ function hasAuthorContext(input: ReviewInput): input is ReviewInput & {
 }
 
 /**
- * Evidence rules (`reviewer.requireEvidence`), appended to the system prompt
+ * Evidence rules (`reviewer.hunks.requireEvidence`), appended to the system prompt
  * ONLY on requests that ask for evidence. A claim about code the reviewer
  * was not shown becomes a question ("Question:" prefix, low severity)
  * instead of an assertion: the finding filter already sends doubtful

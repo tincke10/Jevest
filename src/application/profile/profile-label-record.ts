@@ -4,9 +4,9 @@
  * question set (H0'), written by `scripts/profile/label.ts` and read back
  * by the profile report as ground truth.
  */
-import { PROFILE_CHANGE_KINDS } from "../spike/question-sets/profile.js";
+import { PROFILE_CHANGE_KINDS, type ProfileChangeKind } from "../../domain/change-kind.js";
 
-export type ProfileChangeKind = (typeof PROFILE_CHANGE_KINDS)[number];
+export type { ProfileChangeKind };
 
 export interface ProfileLabels {
   readonly changeKind: ProfileChangeKind;

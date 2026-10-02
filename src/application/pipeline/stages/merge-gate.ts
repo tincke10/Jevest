@@ -98,7 +98,7 @@ export async function runMergeGateStage(input: MergeGateStageInput): Promise<Mer
     conclusion = "failure";
   } else {
     const policy = createConfidencePolicy(input.policyConfig);
-    const band = policy.band("merge_gate", input.riskLevel, safe.noul);
+    const band = policy.band("mergeGate", input.riskLevel, safe.noul);
     conclusion = band === "auto" ? "success" : band === "confirm" ? "neutral" : "failure";
   }
 

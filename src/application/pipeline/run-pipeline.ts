@@ -57,13 +57,13 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * Its cost is LLM money like the others: it comes out of the per-run
  * budget before the review, and counts in `costUsd` and the ledger.
  *
- * Code context (stages/code-context.ts, `reviewer.fullFile` /
- * `reviewer.impactContext`): when the LLM review really runs, the hunks'
+ * Code context (stages/code-context.ts, `reviewer.hunks.fullFile` /
+ * `reviewer.hunks.impactContext`): when the LLM review really runs, the hunks'
  * full files and the code that references what they change are read from
  * `ports.workingTree` (a checkout of the PR head) and ride on each
  * ReviewInput. Without a working tree nothing is built and the comment
  * says so in one line (`workingTreeUnavailableReason`); never a failure.
- * Its time counts in `wallTime.reviewMs`. `reviewer.requireEvidence` asks
+ * Its time counts in `wallTime.reviewMs`. `reviewer.hunks.requireEvidence` asks
  * for evidence and checks it against the same tree (or the hunk text). With
  * all three off the tree is never touched and every request is unchanged.
  *
@@ -81,9 +81,15 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * to the per-hunk review). The verifier's cost counts in `costUsd`, the
  * ledger and the budget like every other LLM call. With `mode: hunks` none
  * of this runs and the result carries no `agentic` key.
+ *
+ * Label migration: every publication (full run, triage-only, fail closed)
+ * also removes the labels of earlier versions that the fetched PR still
+ * carries (domain/labels.ts `withLegacyLabelCleanup`), so open PRs move to
+ * the 1.0 names on their next run without one API call per legacy name.
  */
 import { type CalibrationMap, NO_CALIBRATION } from "../../domain/calibration.js";
 import { splitFileIntoHunks } from "../../domain/hunk-splitter.js";
+import { withLegacyLabelCleanup } from "../../domain/labels.js";
 import type { AgenticReviewerPort } from "../../domain/ports/agentic-reviewer-port.js";
 import type { ChangeSummarizerPort } from "../../domain/ports/change-summarizer-port.js";
 import type { DecisionPort } from "../../domain/ports/decision-port.js";
@@ -178,8 +184,8 @@ export interface RunPipelineInput {
     readonly spendLedger?: SpendLedgerPort;
     /**
      * The working tree at the PR head (stages/code-context.ts). Used only
-     * when `reviewer.fullFile`, `reviewer.impactContext` or
-     * `reviewer.requireEvidence` is on; absent = no checkout.
+     * when `reviewer.hunks.fullFile`, `reviewer.hunks.impactContext` or
+     * `reviewer.hunks.requireEvidence` is on; absent = no checkout.
      */
     readonly workingTree?: WorkingTreePort;
     /** The one-agent-per-PR reviewer. Required when `config.reviewer.mode` is "agentic"; ignored otherwise. */
@@ -225,7 +231,7 @@ export interface PipelineResult {
   readonly narrative: NarrateStageResult | null;
   /** What the reviewer got from the PR description; `null` when the extractor was not configured or not applicable (see the module doc). */
   readonly descriptionContext: DescriptionContextStageResult | null;
-  /** The code context built for the reviewer; `null` when `reviewer.fullFile` and `reviewer.impactContext` are off or the review did not run. */
+  /** The code context built for the reviewer; `null` when `reviewer.hunks.fullFile` and `reviewer.hunks.impactContext` are off or the review did not run. */
   readonly codeContext: CodeContextStageResult | null;
   readonly publication: import("../../domain/ports/vcs-port.js").ReviewPublication;
   /**
@@ -468,11 +474,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     stages: StageResults,
     spendFields: SpendFields,
   ): Promise<PipelineResult> => {
-    const publication = buildFailClosedPublication(
-      stage,
-      stages.triage,
-      undefined,
-      config.reviewer.language,
+    const publication = withLegacyLabelCleanup(
+      buildFailClosedPublication(stage, stages.triage, undefined, config.reviewer.language),
+      pr.labels,
     );
     await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
     return {
@@ -577,10 +581,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       mergeGate: null,
     };
     const spendFields = await bookSummaryOnly();
-    const publication = runTriageOnlyPublishStage(
-      triage,
-      metricsFor(stages),
-      config.reviewer.language,
+    const publication = withLegacyLabelCleanup(
+      runTriageOnlyPublishStage(triage, metricsFor(stages), config.reviewer.language),
+      pr.labels,
     );
     await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
     return {
@@ -665,9 +668,9 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         'internal: reviewer.mode is "agentic" but no AgenticReviewerPort was provided',
       );
     }
-    if (config.reviewer.verifier !== "none" && !ports.findingVerifier) {
+    if (config.reviewer.verifier.provider !== "none" && !ports.findingVerifier) {
       throw new Error(
-        `internal: reviewer.verifier is "${config.reviewer.verifier}" but no FindingVerifierPort was provided`,
+        `internal: reviewer.verifier.provider is "${config.reviewer.verifier.provider}" but no FindingVerifierPort was provided`,
       );
     }
     // The raw description only when no extractor result exists (or it
@@ -700,15 +703,15 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     const reviewerPort = ports.reviewer;
     const { workingTree } = ports;
     review = await timed("reviewMs", async () => {
-      if (config.reviewer.fullFile || config.reviewer.impactContext) {
+      if (config.reviewer.hunks.fullFile || config.reviewer.hunks.impactContext) {
         codeContext = await runCodeContextStage({
           hunks: hunkProfile.hunks,
           ...(workingTree ? { workingTree } : {}),
           ...(input.workingTreeUnavailableReason
             ? { unavailableReason: input.workingTreeUnavailableReason }
             : {}),
-          fullFile: config.reviewer.fullFile,
-          impactContext: config.reviewer.impactContext,
+          fullFile: config.reviewer.hunks.fullFile,
+          impactContext: config.reviewer.hunks.impactContext,
         });
       }
       return runReviewStage({
@@ -719,7 +722,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         budgetUsd: reviewBudgetUsd,
         ...(authorContext ? { authorContext } : {}),
         ...(codeContext ? { codeContext } : {}),
-        ...(config.reviewer.requireEvidence
+        ...(config.reviewer.hunks.requireEvidence
           ? {
               requireEvidence: true,
               ...(workingTree ? { readHeadLines: createHeadFileReader(workingTree) } : {}),
@@ -766,7 +769,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         decisionPort: ports.decision,
         mode: config.findingFilter.mode,
         readHeadLines: ports.workingTree ? createHeadFileReader(ports.workingTree) : undefined,
-        verifier: config.reviewer.verifier !== "none" ? ports.findingVerifier : undefined,
+        verifier: config.reviewer.verifier.provider !== "none" ? ports.findingVerifier : undefined,
         repoRoot: agenticRoot,
         verifierBudgetUsd: Math.max(0, reviewBudgetUsd - review.totalCostUsd),
       });
@@ -856,7 +859,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     injectedInstructionsInDescription: containsInjectedInstructionsHigh,
     descriptionContext,
   };
-  const publication = runPublishStage(publishInput);
+  const publication = withLegacyLabelCleanup(runPublishStage(publishInput), pr.labels);
   await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
   return {

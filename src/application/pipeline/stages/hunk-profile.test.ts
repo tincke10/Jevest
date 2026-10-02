@@ -6,7 +6,7 @@ import type { PullRequestData } from "../../../domain/pull-request.js";
 import { injectedInstructionsInDiffWord, runHunkProfileStage } from "./hunk-profile.js";
 
 const policyConfig: ConfidencePolicyConfig = {
-  hunk_profile: {
+  hunkProfile: {
     low: { autoMin: 0.85, confirmMin: 0.55 },
     medium: { autoMin: 0.9, confirmMin: 0.6 },
   },

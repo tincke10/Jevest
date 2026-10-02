@@ -115,7 +115,14 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant full-repo \
   GitHub. The variant's config is the `--config` file, then the
   `--overrides` document (YAML or JSON), then each `--override key=value`
   (the value parsed as YAML), validated like any `.jevest.yml` and saved as
-  `<out>/<variant>/config.yml`. `--mode` is `live`, `replay` or `dry-run`
+  `<out>/<variant>/config.yml`. Override paths use the 1.0 keys:
+  `reviewer.verifier.provider=claude-cli`, `reviewer.verifier.model=…`,
+  `reviewer.hunks.requireEvidence=true`,
+  `thresholds.findingFilter.medium.autoMin=0.9`. A 0.1 path
+  (`reviewer.verifier=claude-cli`, `reviewer.verifierModel=…`,
+  `thresholds.finding_filter…`) is rejected with the new path, so stored
+  variant configs and scripts from before 1.0 need the same rename
+  (docs/MIGRATING.md). `--mode` is `live`, `replay` or `dry-run`
   (the default; the dry-run reviewer finds nothing, so it only proves the
   wiring). The spend ledger is `<out>/<variant>/spend-ledger.json`.
 - **Import** (`--import <dir>`): one `<caseId>.json` per case, `{ findings:
@@ -141,8 +148,8 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant full-repo \
 
 ### The code-context variant
 
-`reviewer.fullFile`, `reviewer.impactContext` and `reviewer.requireEvidence`
-(docs/ACTION.md "Code context") read the code at each case's `headRef`.
+`reviewer.hunks.fullFile`, `reviewer.hunks.impactContext` and
+`reviewer.hunks.requireEvidence` (docs/ACTION.md "Code context") read the code at each case's `headRef`.
 The case's `repoPath` is used in place when it is checked out, clean, at
 that commit; otherwise each case gets a temporary `git worktree add
 --detach` that is removed when the case ends. A bare, blob-filtered mirror
@@ -163,16 +170,16 @@ and `pipeline-result.json` keeps those per-hunk stats under `codeContext`.
 # smoke test, no LLM at all: dry-run reviewer + the deterministic matcher
 pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant smoke-impact \
   --config ~/.jevest/evals/<set>/jevest.yml \
-  --override reviewer.fullFile=true --override reviewer.impactContext=true \
-  --override reviewer.requireEvidence=true \
+  --override reviewer.hunks.fullFile=true --override reviewer.hunks.impactContext=true \
+  --override reviewer.hunks.requireEvidence=true \
   --mode dry-run --matcher prefilter --out /tmp/eval-smoke
 
 # the real variant (needs rg on PATH); raise budgetUsd: the context makes
 # each review request much bigger, and a capped run skips hunks
 pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant impact-evidence \
   --config ~/.jevest/evals/<set>/jevest.yml \
-  --override reviewer.fullFile=true --override reviewer.impactContext=true \
-  --override reviewer.requireEvidence=true --override budgetUsd=10 \
+  --override reviewer.hunks.fullFile=true --override reviewer.hunks.impactContext=true \
+  --override reviewer.hunks.requireEvidence=true --override budgetUsd=10 \
   --mode live --out ~/.jevest/evals/<set>/runs
 ```
 
@@ -197,18 +204,18 @@ or a temporary worktree), so it needs `--mode live` and
 # agent + hard exclusions + evidence check + Jev's staged judge, no verifier
 pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev \
   --config ~/.jevest/evals/<set>/jevest.yml --override reviewer.mode=agentic \
-  --override reviewer.verifier=none \
+  --override reviewer.verifier.provider=none \
   --mode live --out ~/.jevest/evals/<set>/runs
 
 # the same, with a refuting verifier agent per surviving finding
 pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev-verifier \
   --config ~/.jevest/evals/<set>/jevest.yml --override reviewer.mode=agentic \
-  --override reviewer.verifier=claude-cli --override reviewer.verifierModel=claude-sonnet-5 \
+  --override reviewer.verifier.provider=claude-cli --override reviewer.verifier.model=claude-sonnet-5 \
   --mode live --out ~/.jevest/evals/<set>/runs
 ```
 
 The config must use `reviewer.provider: claude-cli`. Since 1.0 a claude-cli
-config that leaves `reviewer.mode`, `model` and `verifier` unset already
+config that leaves `reviewer.mode`, `model` and `verifier.provider` unset already
 resolves to agentic + the verifier on `claude-opus-5-5`
 (docs/MIGRATING.md); pin `--override reviewer.mode=hunks` for the per-hunk
 baseline, and set `mode` explicitly in stored variant configs so an old run

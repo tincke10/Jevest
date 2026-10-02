@@ -53,8 +53,8 @@ function createFakeClient(overrides: Partial<GitHubApiClient> = {}): GitHubApiCl
       listComments: vi.fn().mockResolvedValue(ghResponse([])),
       createComment: vi.fn().mockResolvedValue(ghResponse({ id: 1, body: "" })),
       updateComment: vi.fn().mockResolvedValue(ghResponse({ id: 1, body: "" })),
-      getLabel: vi.fn().mockResolvedValue(ghResponse({ name: "jevest:auto-merge-ok" })),
-      createLabel: vi.fn().mockResolvedValue(ghResponse({ name: "jevest:auto-merge-ok" })),
+      getLabel: vi.fn().mockResolvedValue(ghResponse({ name: "jevest: auto-merge ok" })),
+      createLabel: vi.fn().mockResolvedValue(ghResponse({ name: "jevest: auto-merge ok" })),
       addLabels: vi.fn().mockResolvedValue(ghResponse([])),
       removeLabel: vi.fn().mockResolvedValue(ghResponse({})),
     },
@@ -352,7 +352,7 @@ describe("createGitHubVcsAdapter — publishReview summary", () => {
 describe("createGitHubVcsAdapter — publishReview labels", () => {
   it("creates a missing label before adding it, and adds all requested labels in one call", async () => {
     const getLabel = vi.fn().mockRejectedValue(githubError(404));
-    const createLabel = vi.fn().mockResolvedValue(ghResponse({ name: "jevest:auto-merge-ok" }));
+    const createLabel = vi.fn().mockResolvedValue(ghResponse({ name: "jevest: auto-merge ok" }));
     const addLabels = vi.fn().mockResolvedValue(ghResponse([]));
     const client = createFakeClient({
       issues: { ...createFakeClient().issues, getLabel, createLabel, addLabels },
@@ -361,24 +361,24 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
 
     await adapter.publishReview(REF, {
       ...PUBLICATION_BASE,
-      labelsToAdd: ["jevest:auto-merge-ok"],
+      labelsToAdd: ["jevest: auto-merge ok"],
     });
 
     expect(createLabel).toHaveBeenCalledWith({
       owner: "tincke10",
       repo: "jevest",
-      name: "jevest:auto-merge-ok",
+      name: "jevest: auto-merge ok",
     });
     expect(addLabels).toHaveBeenCalledWith({
       owner: "tincke10",
       repo: "jevest",
       issue_number: 42,
-      labels: ["jevest:auto-merge-ok"],
+      labels: ["jevest: auto-merge ok"],
     });
   });
 
   it("does not create a label that already exists", async () => {
-    const getLabel = vi.fn().mockResolvedValue(ghResponse({ name: "jevest:auto-merge-ok" }));
+    const getLabel = vi.fn().mockResolvedValue(ghResponse({ name: "jevest: auto-merge ok" }));
     const createLabel = vi.fn();
     const client = createFakeClient({
       issues: { ...createFakeClient().issues, getLabel, createLabel },
@@ -387,7 +387,7 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
 
     await adapter.publishReview(REF, {
       ...PUBLICATION_BASE,
-      labelsToAdd: ["jevest:auto-merge-ok"],
+      labelsToAdd: ["jevest: auto-merge ok"],
     });
 
     expect(createLabel).not.toHaveBeenCalled();
@@ -403,7 +403,7 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
 
     await adapter.publishReview(REF, {
       ...PUBLICATION_BASE,
-      labelsToAdd: ["jevest: fix before merge", "jevest:auto-merge-ok"],
+      labelsToAdd: ["jevest: fix before merge", "jevest: auto-merge ok"],
       labelDefinitions: [
         { name: "jevest: fix before merge", color: "b60205", description: "Fix it." },
       ],
@@ -419,7 +419,7 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
     expect(createLabel).toHaveBeenCalledWith({
       owner: "tincke10",
       repo: "jevest",
-      name: "jevest:auto-merge-ok",
+      name: "jevest: auto-merge ok",
     });
   });
 
@@ -483,14 +483,14 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
 
     await adapter.publishReview(REF, {
       ...PUBLICATION_BASE,
-      labelsToRemove: ["jevest: corregir antes de mergear"],
+      labelsToRemove: ["jevest: fix before merge"],
     });
 
     expect(removeLabel).toHaveBeenCalledWith({
       owner: "tincke10",
       repo: "jevest",
       issue_number: 42,
-      name: "jevest: corregir antes de mergear",
+      name: "jevest: fix before merge",
     });
   });
 
@@ -500,7 +500,10 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
     const adapter = createGitHubVcsAdapter({ client });
 
     await expect(
-      adapter.publishReview(REF, { ...PUBLICATION_BASE, labelsToRemove: ["jevest:auto-merge-ok"] }),
+      adapter.publishReview(REF, {
+        ...PUBLICATION_BASE,
+        labelsToRemove: ["jevest: auto-merge ok"],
+      }),
     ).resolves.toBeUndefined();
   });
 
@@ -510,7 +513,10 @@ describe("createGitHubVcsAdapter — publishReview labels", () => {
     const adapter = createGitHubVcsAdapter({ client });
 
     await expect(
-      adapter.publishReview(REF, { ...PUBLICATION_BASE, labelsToRemove: ["jevest:auto-merge-ok"] }),
+      adapter.publishReview(REF, {
+        ...PUBLICATION_BASE,
+        labelsToRemove: ["jevest: auto-merge ok"],
+      }),
     ).rejects.toThrow();
   });
 });

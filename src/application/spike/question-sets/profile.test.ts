@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PROFILE_CHANGE_KINDS, profileQuestionSet } from "./profile.js";
+import { PROFILE_CHANGE_KINDS } from "../../../domain/change-kind.js";
+import { profileQuestionSet } from "./profile.js";
 
 describe("profileQuestionSet", () => {
   it("is named 'profile' with the five questions in a stable order", () => {

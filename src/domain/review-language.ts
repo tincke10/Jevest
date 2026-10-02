@@ -2,8 +2,8 @@
  * `reviewer.language` resolution, shared by every localized string and every
  * LLM prompt that writes user-facing text.
  *
- * Variants: `es` (neutral Latin American Spanish, the default), `es-AR`
- * (Rioplatense Spanish with voseo) and `en`. Matching is case-insensitive and
+ * Variants: `en` (the default, like `reviewer.language`), `es` (neutral
+ * Latin American Spanish) and `es-AR` (Rioplatense Spanish with voseo). Matching is case-insensitive and
  * accepts `-` or `_` (`es-ar`, `es_AR`); any other `es-*` falls back to `es`;
  * anything else is `en` for the static strings (the narrator still writes in
  * whatever language was asked, the model understands it).
@@ -14,13 +14,13 @@
 export type ReviewLanguage = "es" | "es-AR" | "en";
 
 export function resolveReviewLanguage(language: string | undefined): ReviewLanguage {
-  if (language === undefined) return "es";
+  if (language === undefined) return "en";
   const [primary = "", region = ""] = language.trim().toLowerCase().split(/[-_]/);
   if (primary !== "es") return "en";
   return region === "ar" ? "es-AR" : "es";
 }
 
-/** True for `es` and `es-AR`: both share the Spanish label names and most strings. */
+/** True for `es` and `es-AR`: both share most Spanish strings. */
 export function isSpanish(language: string | undefined): boolean {
   return resolveReviewLanguage(language) !== "en";
 }

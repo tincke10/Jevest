@@ -1,16 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONFIDENCE_RISK_LEVELS,
+  CONFIDENCE_STAGES,
   type ConfidencePolicyConfig,
   ConfidencePolicyConfigError,
   createConfidencePolicy,
 } from "./confidence-policy.js";
+
+describe("the policy vocabulary", () => {
+  it("names the four banded stages in camelCase, as .jevest.yml thresholds does", () => {
+    expect(CONFIDENCE_STAGES).toEqual(["triage", "hunkProfile", "findingFilter", "mergeGate"]);
+  });
+
+  it("names the five risk levels triage assigns", () => {
+    expect(CONFIDENCE_RISK_LEVELS).toEqual(["none", "low", "medium", "high", "critical"]);
+  });
+});
 
 const config: ConfidencePolicyConfig = {
   triage: {
     low: { autoMin: 0.9, confirmMin: 0.6 },
     high: { autoMin: 0.99, confirmMin: 0.8 },
   },
-  merge_gate: {
+  mergeGate: {
     low: { autoMin: 0.95, confirmMin: 0.7 },
   },
 };
@@ -55,17 +67,17 @@ describe("createConfidencePolicy", () => {
 
   it("resolves thresholds independently per risk level within a stage", () => {
     const policy = createConfidencePolicy(config);
-    expect(policy.band("merge_gate", "low", 0.96)).toBe("auto");
+    expect(policy.band("mergeGate", "low", 0.96)).toBe("auto");
   });
 
   it("throws when the stage is not configured", () => {
     const policy = createConfidencePolicy(config);
-    expect(() => policy.band("hunk_profile", "low", 0.9)).toThrow(ConfidencePolicyConfigError);
+    expect(() => policy.band("hunkProfile", "low", 0.9)).toThrow(ConfidencePolicyConfigError);
   });
 
   it("throws when the risk level is not configured for a known stage", () => {
     const policy = createConfidencePolicy(config);
-    expect(() => policy.band("merge_gate", "critical", 0.9)).toThrow(ConfidencePolicyConfigError);
+    expect(() => policy.band("mergeGate", "critical", 0.9)).toThrow(ConfidencePolicyConfigError);
   });
 
   it("throws on a confidence below 0", () => {

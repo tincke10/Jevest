@@ -24,7 +24,7 @@ export const reviewOutputSchema = z.object({
 export type ReviewOutputSchema = z.infer<typeof reviewOutputSchema>;
 
 /**
- * `reviewer.requireEvidence`: the same finding plus a REQUIRED `evidence`
+ * `reviewer.hunks.requireEvidence`: the same finding plus a REQUIRED `evidence`
  * list. The 1–3 items and the 200-char quote cap are prompt rules, not
  * schema constraints, on purpose: a provider that rejects or truncates on
  * `maxItems`/`maxLength` would turn one over-long quote into a failed hunk.

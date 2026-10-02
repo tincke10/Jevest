@@ -7,8 +7,8 @@ import {
 } from "./review-language.js";
 
 describe("resolveReviewLanguage", () => {
-  it("defaults to es", () => {
-    expect(resolveReviewLanguage(undefined)).toBe("es");
+  it("defaults to en, like reviewer.language", () => {
+    expect(resolveReviewLanguage(undefined)).toBe("en");
   });
 
   it.each(["es-AR", "es-ar", "ES-AR", "es_AR", " es_ar "])("accepts %s as es-AR", (tag) => {

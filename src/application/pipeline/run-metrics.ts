@@ -19,7 +19,7 @@
  *   call carries, so the saving is if anything understated. `method` says
  *   so in words wherever the numbers are shown.
  *
- * Code context (`reviewer.fullFile` / `impactContext` / `requireEvidence`):
+ * Code context (`reviewer.hunks.fullFile` / `impactContext` / `requireEvidence`):
  * what the code-context stage added to the review prompts (files,
  * snippets, characters — the review tokens already include its cost) and
  * how many findings the evidence check looked at and rejected.
@@ -134,7 +134,7 @@ export interface StageWallTimes {
 }
 
 export interface CodeContextMetrics {
-  /** The code-context stage ran (`reviewer.fullFile` or `reviewer.impactContext` on). */
+  /** The code-context stage ran (`reviewer.hunks.fullFile` or `reviewer.hunks.impactContext` on). */
   readonly ran: boolean;
   /** "Impact context unavailable: <reason>" when it ran without a checkout. */
   readonly unavailable: string | null;
@@ -144,7 +144,7 @@ export interface CodeContextMetrics {
   readonly snippets: number;
   readonly fullFileChars: number;
   readonly impactChars: number;
-  /** Findings whose evidence was checked (`reviewer.requireEvidence`). */
+  /** Findings whose evidence was checked (`reviewer.hunks.requireEvidence`). */
   readonly evidenceChecked: number;
   /** Of those, the ones with no quote found in the code: never published. */
   readonly evidenceRejected: number;

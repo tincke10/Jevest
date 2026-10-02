@@ -179,7 +179,7 @@ describe("runReviewStage", () => {
         touches_async: { type: "noul", noul: 0.1 },
       }),
       policyConfig: {
-        hunk_profile: {
+        hunkProfile: {
           low: { autoMin: 0.85, confirmMin: 0.55 },
           medium: { autoMin: 0.9, confirmMin: 0.6 },
         },

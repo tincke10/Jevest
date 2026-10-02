@@ -1,5 +1,5 @@
 /**
- * FindingVerifierPort over `claude -p` (`reviewer.verifier: claude-cli`):
+ * FindingVerifierPort over `claude -p` (`reviewer.verifier.provider: claude-cli`):
  * a FRESH agent per finding, same read-only tools and deny list as the
  * reviewer (../claude-cli/claude-cli-agent.ts), a small turn cap, asked to
  * refute the finding, decision first. The reason and quotes come back
@@ -26,20 +26,20 @@ import {
   buildFindingVerifierUserPrompt,
 } from "./agentic-prompt.js";
 
-/** `reviewer.verifierModel` default. */
+/** `reviewer.verifier.model` default. */
 export const VERIFIER_DEFAULT_MODEL = "claude-sonnet-5";
-/** `reviewer.verifierEffort` default. */
+/** `reviewer.verifier.effort` default. */
 export const VERIFIER_DEFAULT_EFFORT: AgentEffort = "medium";
-/** `reviewer.agentic.verifierMaxTurns` default. */
+/** `reviewer.verifier.maxTurns` default. */
 export const VERIFIER_DEFAULT_MAX_TURNS = 12;
-/** `reviewer.agentic.verifierTimeoutMs` default: 5 minutes. */
+/** `reviewer.verifier.timeoutMs` default: 5 minutes. */
 export const VERIFIER_DEFAULT_TIMEOUT_MS = 300_000;
 
 export interface ClaudeCliFindingVerifierOptions {
   readonly spawn?: AgentSpawn;
   readonly model?: string;
   readonly maxTurns?: number;
-  /** `reviewer.verifierEffort`. Default "medium". */
+  /** `reviewer.verifier.effort`. Default "medium". */
   readonly effort?: AgentEffort;
   readonly timeoutMs?: number;
   readonly now?: () => number;

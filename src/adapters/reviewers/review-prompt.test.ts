@@ -178,7 +178,7 @@ describe("author context (untrusted, extracted from the PR description)", () => 
   });
 });
 
-describe("code context and evidence (reviewer.fullFile / impactContext / requireEvidence)", () => {
+describe("code context and evidence (reviewer.hunks.fullFile / impactContext / requireEvidence)", () => {
   const BASE: ReviewInput = { ...SAMPLE_INPUT, profile: { changeKind: "modify-behavior" } };
   const FULL_FILE: FullFileContext = {
     path: "src/cart/total.ts",

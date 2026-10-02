@@ -303,7 +303,7 @@ export async function runHunkProfileStage(
 
     const skipEligible = input.skipChangeKinds.includes(changeKindDecision.choice);
     const confidenceBand = policy.band(
-      "hunk_profile",
+      "hunkProfile",
       input.riskLevel,
       changeKindDecision.confidence,
     );

@@ -50,3 +50,20 @@ describe("buildDescriptionContextUserPrompt", () => {
     expect(prompt.match(/<\/description>/g)).toHaveLength(1);
   });
 });
+
+describe("Spanish style rules", () => {
+  it("asks for neutral Latin American Spanish for es and voseo for es-AR", () => {
+    expect(buildDescriptionContextUserPrompt({ ...SAMPLE, language: "es" })).toContain(
+      "neutral Latin American Spanish",
+    );
+    const ar = buildDescriptionContextUserPrompt({ ...SAMPLE, language: "es-AR" });
+    expect(ar).toContain("Rioplatense");
+    expect(ar).toContain("fijate");
+  });
+
+  it("adds nothing for other languages", () => {
+    expect(buildDescriptionContextUserPrompt({ ...SAMPLE, language: "en" })).not.toContain(
+      "Spanish style",
+    );
+  });
+});

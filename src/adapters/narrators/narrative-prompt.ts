@@ -30,6 +30,7 @@ import type {
   NarratedHunk,
   ReviewNarrativeInput,
 } from "../../domain/ports/review-narrator-port.js";
+import { spanishStyleRule } from "../../domain/review-language.js";
 import { MAX_PROMPT_CHARS, truncatePatch } from "../summarizers/summary-prompt.js";
 
 export const MAX_DESCRIPTION_CHARS = 4_000;
@@ -117,6 +118,12 @@ function formatDiff(hunks: readonly NarratedHunk[]): string {
   return `${sections.join("")}${note}`;
 }
 
+/** The Spanish variant's style rule (kept out of the system prompt so that stays constant); nothing for other languages. */
+function styleRuleLines(language: string): string[] {
+  const rule = spanishStyleRule(language);
+  return rule === null ? [] : [rule];
+}
+
 /** Builds the per-request user message. The PR id never reaches the model. */
 export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
   const findings =
@@ -125,6 +132,7 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
       : input.findings.map(formatFinding).join("\n");
   return [
     `Write the review in: ${input.language}`,
+    ...styleRuleLines(input.language),
     `Verdict to state at the end: ${input.verdictLine}`,
     "",
     "## Pull request",

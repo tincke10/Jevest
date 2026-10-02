@@ -104,6 +104,7 @@ import type {
   LabelDefinition,
   ReviewPublication,
 } from "../../../domain/ports/vcs-port.js";
+import { primaryLanguage } from "../../../domain/review-language.js";
 import {
   type LlmReviewOutcome,
   type ReviewVerdictResult,
@@ -455,11 +456,14 @@ function buildSecretWarnings(
   if (hunks.length === 0) {
     return [];
   }
-  const es = verdictLanguage(language) === "es";
+  const lang = verdictLanguage(language);
   const lines = hunks.map((h) => {
     const where = `\`${h.file}\` (\`${inlineSafe(h.hunkHeader)}\`)`;
-    return es
-      ? `> ⚠️ **Posible secreto commiteado** en ${where}: revisá y rotalo si es real.`
+    if (lang === "es-AR") {
+      return `> ⚠️ **Posible secreto commiteado** en ${where}: revisalo y rotalo si es real.`;
+    }
+    return lang === "es"
+      ? `> ⚠️ **Posible secreto commiteado** en ${where}: conviene verificarlo y rotarlo si es real.`
       : `> ⚠️ **Possible committed secret** in ${where}: check it and rotate it if it is real.`;
   });
   return [lines.join("\n>\n"), ""];
@@ -739,7 +743,7 @@ function steeringLine(
   if (!context || context.discarded.length === 0) {
     return null;
   }
-  const es = verdictLanguage(language) === "es";
+  const es = verdictLanguage(language) !== "en";
   const shown = context.discarded
     .slice(0, MAX_VISIBLE_DISCARDED)
     .map((item) => `"${inlineSafe(item)}"`)
@@ -845,7 +849,7 @@ function withEfficiency(
   };
 }
 
-/** `## Review` in `reviewer.language`; the language tag's primary subtag decides ("es-AR" is "es"). */
+/** `## Review` in `reviewer.language`; the primary subtag decides, so es-AR shares the es heading. */
 const REVIEW_HEADINGS: Readonly<Record<string, string>> = {
   es: "Revisión",
   en: "Review",
@@ -856,8 +860,7 @@ const REVIEW_HEADINGS: Readonly<Record<string, string>> = {
 };
 
 function reviewHeading(language: string | undefined): string {
-  const primary = (language ?? "").trim().toLowerCase().split(/[-_]/)[0] ?? "";
-  return `## ${REVIEW_HEADINGS[primary] ?? "Review"}`;
+  return `## ${REVIEW_HEADINGS[primaryLanguage(language)] ?? "Review"}`;
 }
 
 /**

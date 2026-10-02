@@ -691,7 +691,9 @@ describe("runPublishStage possible secrets in the diff (NFR-3)", () => {
   }
 
   const ES_WARNING =
-    "> ⚠️ **Posible secreto commiteado** en `config/app.php` (`@@ -10,3 +10,4 @@ return [`): revisá y rotalo si es real.";
+    "> ⚠️ **Posible secreto commiteado** en `config/app.php` (`@@ -10,3 +10,4 @@ return [`): conviene verificarlo y rotarlo si es real.";
+  const AR_WARNING =
+    "> ⚠️ **Posible secreto commiteado** en `config/app.php` (`@@ -10,3 +10,4 @@ return [`): revisalo y rotalo si es real.";
   const EN_WARNING =
     "> ⚠️ **Possible committed secret** in `config/app.php` (`@@ -10,3 +10,4 @@ return [`): check it and rotate it if it is real.";
 
@@ -700,6 +702,15 @@ describe("runPublishStage possible secrets in the diff (NFR-3)", () => {
     expect(md).toContain(ES_WARNING);
     expect(md.indexOf(ES_WARNING)).toBeLessThan(md.indexOf("### Triage"));
     expect(md).not.toContain("hunk contains a redacted secret");
+  });
+
+  it("renders the warning with voseo for reviewer.language es-AR, and neutral for es-MX", () => {
+    const ar = publish({ language: "es-AR" }).summaryMarkdown;
+    expect(ar).toContain(AR_WARNING);
+    expect(ar).not.toContain("conviene verificarlo");
+    const mx = publish({ language: "es-MX" }).summaryMarkdown;
+    expect(mx).toContain(ES_WARNING);
+    expect(mx).not.toContain("revisalo");
   });
 
   it("renders the warning in English for reviewer.language en", () => {

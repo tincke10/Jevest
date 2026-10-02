@@ -31,10 +31,11 @@
  * - The NFR-2 fail-closed exit is `unavailable`, but its check stays
  *   `failure` (see publish.ts `buildFailClosedPublication`).
  *
- * Pure: no ports, no I/O. Text is es/en; any other `reviewer.language`
+ * Pure: no ports, no I/O. Text is es/es-AR/en (see review-language.ts); any other `reviewer.language`
  * falls back to English.
  */
 import type { LabelDefinition } from "./ports/vcs-port.js";
+import { type ReviewLanguage, resolveReviewLanguage } from "./review-language.js";
 
 export type ReviewVerdict = "fix" | "questions" | "clear" | "unavailable";
 
@@ -103,13 +104,14 @@ export function verdictConclusion(verdict: ReviewVerdict): "success" | "neutral"
   }
 }
 
-export type VerdictLanguage = "es" | "en";
+export type VerdictLanguage = ReviewLanguage;
 
-/** `reviewer.language` to the verdict text's language: es by default (the config's default), en for everything else. */
+/**
+ * `reviewer.language` to the verdict text's variant (see review-language.ts):
+ * es by default, es-AR for the Rioplatense variant, en for everything else.
+ */
 export function verdictLanguage(language: string | undefined): VerdictLanguage {
-  if (language === undefined) return "es";
-  const primary = language.trim().toLowerCase().split(/[-_]/)[0] ?? "";
-  return primary === "es" ? "es" : "en";
+  return resolveReviewLanguage(language);
 }
 
 function count(n: number, one: string, many: string): string {
@@ -118,28 +120,30 @@ function count(n: number, one: string, many: string): string {
 
 /** The check title and the narrative's verdict line. */
 export function verdictTitle(result: ReviewVerdictResult, language: string | undefined): string {
-  const es = verdictLanguage(language) === "es";
+  const lang = verdictLanguage(language);
+  const es = lang !== "en";
+  const ar = lang === "es-AR";
   switch (result.verdict) {
     case "fix":
       return es
-        ? `Corregir ${count(result.published, "problema", "problemas")} antes de mergear`
+        ? `${ar ? "Corregí" : "Corregir"} ${count(result.published, "problema", "problemas")} antes de mergear`
         : `Fix ${count(result.published, "issue", "issues")} before merging`;
     case "questions":
       return es
-        ? `Responder ${count(result.questions, "duda", "dudas")} (no bloquea)`
+        ? `${ar ? "Respondé" : "Responder"} ${count(result.questions, "duda", "dudas")} (no bloquea)`
         : `Answer ${count(result.questions, "question", "questions")} (not blocking)`;
     case "clear":
       return es ? "Nada para corregir" : "Nothing to fix";
     case "unavailable":
       return es
-        ? "Review automático no disponible: revisar a mano"
+        ? `Review automático no disponible: ${ar ? "revisalo" : "revisar"} a mano`
         : "Automated review unavailable: review manually";
   }
 }
 
 /** One or two sentences for the check summary: who does what. */
 export function verdictSummary(result: ReviewVerdictResult, language: string | undefined): string {
-  const es = verdictLanguage(language) === "es";
+  const es = verdictLanguage(language) !== "en";
   switch (result.verdict) {
     case "fix":
       return es
@@ -163,53 +167,62 @@ export function verdictSummary(result: ReviewVerdictResult, language: string | u
 /** Legacy label, removed on every run so PRs migrate to the verdict labels. */
 export const LEGACY_NEEDS_HUMAN_LABEL = "jevest:needs-human";
 
+const VERDICT_LABELS_ES: Record<ReviewVerdict, LabelDefinition> = {
+  fix: {
+    name: "jevest: corregir antes de mergear",
+    color: "b60205",
+    description:
+      "Jev confirmó problemas en el código: el autor tiene que corregirlos antes de mergear.",
+  },
+  questions: {
+    name: "jevest: responder dudas",
+    color: "fbca04",
+    description: "Hay dudas que el autor tiene que confirmar. No bloquea por sí solo.",
+  },
+  clear: {
+    name: "jevest: listo para aprobar",
+    color: "0e8a16",
+    description: "Jevest no encontró nada para corregir. Falta la aprobación humana habitual.",
+  },
+  unavailable: {
+    name: "jevest: revisar a mano",
+    color: "bfbfbf",
+    description: "El review automático no pudo completarse: hace falta un review humano completo.",
+  },
+};
+
+const VERDICT_LABELS_EN: Record<ReviewVerdict, LabelDefinition> = {
+  fix: {
+    name: "jevest: fix before merge",
+    color: "b60205",
+    description: "Jev confirmed issues in the code: the author has to fix them before merging.",
+  },
+  questions: {
+    name: "jevest: answer questions",
+    color: "fbca04",
+    description: "There are doubts the author has to confirm. Not blocking on its own.",
+  },
+  clear: {
+    name: "jevest: ready to approve",
+    color: "0e8a16",
+    description: "Jevest found nothing to fix. The usual human approval is still needed.",
+  },
+  unavailable: {
+    name: "jevest: review manually",
+    color: "bfbfbf",
+    description: "The automated review could not be completed: a full human review is needed.",
+  },
+};
+
+/**
+ * es-AR reuses the es labels as is (names, colors and descriptions): none of
+ * them has a verb form that differs under voseo, and identical names mean a
+ * repo switching between es and es-AR does not end up with duplicate labels.
+ */
 const VERDICT_LABELS: Readonly<Record<VerdictLanguage, Record<ReviewVerdict, LabelDefinition>>> = {
-  es: {
-    fix: {
-      name: "jevest: corregir antes de mergear",
-      color: "b60205",
-      description:
-        "Jev confirmó problemas en el código: el autor tiene que corregirlos antes de mergear.",
-    },
-    questions: {
-      name: "jevest: responder dudas",
-      color: "fbca04",
-      description: "Hay dudas que el autor tiene que confirmar. No bloquea por sí solo.",
-    },
-    clear: {
-      name: "jevest: listo para aprobar",
-      color: "0e8a16",
-      description: "Jevest no encontró nada para corregir. Falta la aprobación humana habitual.",
-    },
-    unavailable: {
-      name: "jevest: revisar a mano",
-      color: "bfbfbf",
-      description:
-        "El review automático no pudo completarse: hace falta un review humano completo.",
-    },
-  },
-  en: {
-    fix: {
-      name: "jevest: fix before merge",
-      color: "b60205",
-      description: "Jev confirmed issues in the code: the author has to fix them before merging.",
-    },
-    questions: {
-      name: "jevest: answer questions",
-      color: "fbca04",
-      description: "There are doubts the author has to confirm. Not blocking on its own.",
-    },
-    clear: {
-      name: "jevest: ready to approve",
-      color: "0e8a16",
-      description: "Jevest found nothing to fix. The usual human approval is still needed.",
-    },
-    unavailable: {
-      name: "jevest: review manually",
-      color: "bfbfbf",
-      description: "The automated review could not be completed: a full human review is needed.",
-    },
-  },
+  es: VERDICT_LABELS_ES,
+  "es-AR": VERDICT_LABELS_ES,
+  en: VERDICT_LABELS_EN,
 };
 
 const VERDICTS: readonly ReviewVerdict[] = ["fix", "questions", "clear", "unavailable"];
@@ -228,33 +241,39 @@ export function allVerdictLabels(language: string | undefined): LabelDefinition[
 /** Triage's risk words (application/pipeline/stages/triage.ts `RISK_LEVELS`). */
 export type RiskWord = "none" | "low" | "medium" | "high" | "critical";
 
-const RISK_LABELS: Readonly<
-  Record<VerdictLanguage, { high: LabelDefinition; medium: LabelDefinition }>
-> = {
-  es: {
-    high: {
-      name: "riesgo: alto",
-      color: "d93f0b",
-      description: "El triage de Jevest marcó este PR como de riesgo alto: revisarlo con cuidado.",
-    },
-    medium: {
-      name: "riesgo: medio",
-      color: "e99695",
-      description: "El triage de Jevest marcó este PR como de riesgo medio.",
-    },
+type RiskLabels = { high: LabelDefinition; medium: LabelDefinition };
+
+const RISK_LABELS_ES: RiskLabels = {
+  high: {
+    name: "riesgo: alto",
+    color: "d93f0b",
+    description: "El triage de Jevest marcó este PR como de riesgo alto: revisarlo con cuidado.",
   },
-  en: {
-    high: {
-      name: "risk: high",
-      color: "d93f0b",
-      description: "Jevest triage rated this PR high risk: review it carefully.",
-    },
-    medium: {
-      name: "risk: medium",
-      color: "e99695",
-      description: "Jevest triage rated this PR medium risk.",
-    },
+  medium: {
+    name: "riesgo: medio",
+    color: "e99695",
+    description: "El triage de Jevest marcó este PR como de riesgo medio.",
   },
+};
+
+const RISK_LABELS_EN: RiskLabels = {
+  high: {
+    name: "risk: high",
+    color: "d93f0b",
+    description: "Jevest triage rated this PR high risk: review it carefully.",
+  },
+  medium: {
+    name: "risk: medium",
+    color: "e99695",
+    description: "Jevest triage rated this PR medium risk.",
+  },
+};
+
+/** es-AR reuses the es risk labels (see VERDICT_LABELS). */
+const RISK_LABELS: Readonly<Record<VerdictLanguage, RiskLabels>> = {
+  es: RISK_LABELS_ES,
+  "es-AR": RISK_LABELS_ES,
+  en: RISK_LABELS_EN,
 };
 
 /** high and critical share the "high" label; low and none get no label. */

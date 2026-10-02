@@ -128,8 +128,10 @@ describe("verdictLanguage", () => {
   it("is es for Spanish tags and by default, en for English and every other language", () => {
     expect(verdictLanguage(undefined)).toBe("es");
     expect(verdictLanguage("es")).toBe("es");
-    expect(verdictLanguage("es-AR")).toBe("es");
+    expect(verdictLanguage("es-MX")).toBe("es");
     expect(verdictLanguage(" ES ")).toBe("es");
+    expect(verdictLanguage("es-AR")).toBe("es-AR");
+    expect(verdictLanguage("es_ar")).toBe("es-AR");
     expect(verdictLanguage("en")).toBe("en");
     expect(verdictLanguage("pt")).toBe("en");
   });
@@ -291,5 +293,51 @@ describe("verdictLabelChanges", () => {
         for (const label of add) expect(remove).not.toContain(label.name);
       }
     }
+  });
+});
+
+describe("es-AR (voseo)", () => {
+  it("titles use voseo imperatives where es uses infinitives", () => {
+    const fix = { verdict: "fix" as const, published: 2, needsHuman: 0, questions: 0 };
+    const questions = { verdict: "questions" as const, published: 0, needsHuman: 1, questions: 1 };
+    const unavailable = {
+      verdict: "unavailable" as const,
+      published: 0,
+      needsHuman: 0,
+      questions: 0,
+    };
+    expect(verdictTitle(fix, "es")).toBe("Corregir 2 problemas antes de mergear");
+    expect(verdictTitle(fix, "es-AR")).toBe("Corregí 2 problemas antes de mergear");
+    expect(verdictTitle(questions, "es")).toBe("Responder 1 duda (no bloquea)");
+    expect(verdictTitle(questions, "es-AR")).toBe("Respondé 1 duda (no bloquea)");
+    expect(verdictTitle(unavailable, "es-AR")).toBe(
+      "Review automático no disponible: revisalo a mano",
+    );
+    expect(verdictTitle(unavailable, "es")).toBe("Review automático no disponible: revisar a mano");
+  });
+
+  it("has no Peninsular or tú verb forms in any Spanish title or summary", () => {
+    const results = [
+      { verdict: "fix" as const, published: 2, needsHuman: 0, questions: 0 },
+      { verdict: "questions" as const, published: 0, needsHuman: 1, questions: 1 },
+      { verdict: "clear" as const, published: 0, needsHuman: 0, questions: 0 },
+      { verdict: "unavailable" as const, published: 0, needsHuman: 0, questions: 0 },
+    ];
+    for (const lang of ["es", "es-AR"]) {
+      for (const r of results) {
+        expect(`${verdictTitle(r, lang)} ${verdictSummary(r, lang)}`).not.toMatch(
+          /vosotros|\bvale\b|ordenador|contigo/i,
+        );
+      }
+    }
+  });
+
+  it("keeps label names, colors and descriptions identical to es, so switching variants never duplicates labels", () => {
+    expect(allVerdictLabels("es-AR")).toEqual(allVerdictLabels("es"));
+    expect(allRiskLabels("es-AR")).toEqual(allRiskLabels("es"));
+    expect(verdictLabelChanges("fix", "high", "es-AR")).toEqual(
+      verdictLabelChanges("fix", "high", "es"),
+    );
+    expect(riskLabel("medium", "es_AR")).toEqual(riskLabel("medium", "es"));
   });
 });

@@ -16,6 +16,7 @@ import {
   MAX_AUTHOR_CONTEXT_ITEM_CHARS,
 } from "../../domain/author-context.js";
 import type { DescriptionContextInput } from "../../domain/ports/description-context-port.js";
+import { spanishStyleRule } from "../../domain/review-language.js";
 import { MAX_DESCRIPTION_CHARS } from "../narrators/narrative-prompt.js";
 
 const MAX_LISTED_FILES = 100;
@@ -60,10 +61,17 @@ function formatFiles(files: readonly string[]): string {
   return [...listed, ...(more > 0 ? [`- … and ${more} more`] : [])].join("\n");
 }
 
+/** The Spanish variant's style rule (the system prompt stays constant); nothing for other languages. */
+function styleRuleLines(language: string): string[] {
+  const rule = spanishStyleRule(language);
+  return rule === null ? [] : [rule];
+}
+
 /** Builds the per-request user message. The PR id never reaches the model. */
 export function buildDescriptionContextUserPrompt(input: DescriptionContextInput): string {
   return [
     `Write every item in: ${input.language}`,
+    ...styleRuleLines(input.language),
     "",
     `Title: ${input.title}`,
     "",

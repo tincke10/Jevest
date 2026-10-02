@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { EMPTY_AUTHOR_CONTEXT } from "../../domain/author-context.js";
 import type { ReviewNarrativeInput } from "../../domain/ports/review-narrator-port.js";
+import { spanishStyleRule } from "../../domain/review-language.js";
 import { MAX_PATCH_CHARS, MAX_PROMPT_CHARS } from "../summarizers/summary-prompt.js";
 import {
   MAX_DESCRIPTION_CHARS,
@@ -120,8 +121,11 @@ describe("buildNarrativeUserPrompt", () => {
 describe("buildNarrativeUserPrompt with the author's stated context", () => {
   const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
-  it("is byte-identical to before when no author context was extracted (raw description)", () => {
-    expect(sha256(buildNarrativeUserPrompt(INPUT))).toBe(
+  it("is byte-identical to before (apart from the Spanish style rule line) when no author context was extracted", () => {
+    const rule = spanishStyleRule(INPUT.language) as string;
+    const withoutRule = buildNarrativeUserPrompt(INPUT).replace(`${rule}\n`, "");
+    expect(withoutRule).not.toContain("Spanish style");
+    expect(sha256(withoutRule)).toBe(
       "078411bf91703a036720ae671b3407b1bd70587f9cb6d0973dffdf1e3743c885",
     );
   });
@@ -146,5 +150,27 @@ describe("buildNarrativeUserPrompt with the author's stated context", () => {
     });
     expect(prompt).not.toContain(INPUT.description);
     expect(prompt).toContain("(nothing from the description was kept)");
+  });
+});
+
+describe("Spanish style rules", () => {
+  it("es asks for neutral Latin American Spanish and bans vosotros and Peninsular wording", () => {
+    const prompt = buildNarrativeUserPrompt({ ...INPUT, language: "es" });
+    expect(prompt).toContain("neutral Latin American Spanish");
+    expect(prompt).toContain("vosotros");
+    expect(prompt).not.toContain("Rioplatense");
+  });
+
+  it("es-AR asks for Rioplatense voseo", () => {
+    const prompt = buildNarrativeUserPrompt({ ...INPUT, language: "es_AR" });
+    expect(prompt).toContain("Rioplatense");
+    expect(prompt).toContain("revisá");
+    expect(prompt).toContain("tenés");
+  });
+
+  it("adds no style rule for other languages, and the system prompt stays constant", () => {
+    const prompt = buildNarrativeUserPrompt({ ...INPUT, language: "en" });
+    expect(prompt).not.toContain("Spanish style");
+    expect(NARRATIVE_SYSTEM_PROMPT).not.toContain("Spanish style");
   });
 });

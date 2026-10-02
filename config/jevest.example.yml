@@ -25,10 +25,14 @@ reviewer:
   # claude-cli: bills a Claude Pro/Max subscription via `claude -p`; needs
   # the CLAUDE_CODE_OAUTH_TOKEN secret / claude-code-oauth-token input
   # (generate it with `claude setup-token`). See docs/ACTION.md.
-  # Language the review narrative is written in: a language code such as
-  # "es" or "en" (anything the model understands works). Also picks the
-  # language of the check title/summary and the verdict and risk labels
-  # (Spanish for "es", English for anything else).
+  # Language the review narrative is written in: es | es-AR | en | ...
+  #   es     neutral Latin American Spanish (default)
+  #   es-AR  Rioplatense Spanish with voseo ("revisá", "fijate", "tenés")
+  #   en     English
+  # Anything else the model understands works for the narrative. Also picks
+  # the language of the check title/summary, the notices and the verdict and
+  # risk labels (Spanish for es / es-AR / es-*, English for anything else).
+  # es and es-AR share the same label names.
   language: es
   # Colleague review: one extra LLM call per PR, after the finding filter,
   # that writes the top of the summary comment as a senior colleague would,

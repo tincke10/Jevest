@@ -90,7 +90,7 @@ filter:
 reviewer:
   provider: anthropic
   model: claude-sonnet-5
-  language: es     # default "es"; any language code or name the model understands
+  language: es     # default "es"; es | es-AR | en | any language the model understands
   narrative: true  # default: true for any LLM provider, false for provider none
 ```
 
@@ -283,7 +283,12 @@ through a keyhole. Measured on a private golden set of 6 real PRs
 (severity-weighted recall / precision): per hunk 7.7% / 25%; per hunk +
 full file + impact context + evidence 26.9% / ~40% at 3.6x the cost; a
 Jev-only reviewer 0%; ONE agent per PR with read-only tools over the
-repository 61.5% / ~90% at ~80k tokens per PR. Industry reviewers
+repository (Opus 5.5, effort xhigh, verifier) 41.7% / 87% at $1.60
+nominal per PR. On 10 held-out PRs it reached 58.2% / 82.4% against
+67.3% / 87% for an independent full-repo review. Every variant, caveat and
+lesson: [docs/BENCHMARK.md](BENCHMARK.md#review-quality-on-real-prs-eval-harness).
+This is the **recommended mode**; `hunks` stays the default only for
+compatibility, because agentic mode needs a checkout. Industry reviewers
 (Cursor Bugbot, Copilot, Greptile v3, Anthropic's code-review plugin,
 ByteDance BitsAI-CR) converged on the same shape: one agent per PR, then
 per-finding verification, hard exclusions and a decision-first filter.
@@ -522,7 +527,10 @@ authenticates with a long-lived OAuth token, the same mechanism Anthropic's
 own `claude-code-action` documents for subscribers:
 
 1. On your machine, run `claude setup-token` and copy the token it prints.
-2. Store it as the repository secret `CLAUDE_CODE_OAUTH_TOKEN`.
+2. Store it as the repository secret `CLAUDE_CODE_OAUTH_TOKEN`, one per
+   repository that runs the Action. Do not share it as an organization
+   secret: a per-repository secret keeps each project's usage, rotation
+   and revocation independent.
 3. Pass it to the Action as `claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}`
    and set `reviewer.provider: claude-cli` in `.jevest.yml`.
 
@@ -818,6 +826,16 @@ Per the six-stage pipeline (SPEC §3, §5 Fase 2):
 - **A `jevest` check run** (or commit status, see above) whose conclusion,
   title and summary come from the review verdict: red only when there is
   something to fix.
+
+`reviewer.language` variants: `es` (default) is neutral Latin American
+Spanish (impersonal phrasing or "tú", never "vosotros" or Peninsular
+wording); `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish
+with voseo ("revisá", "fijate", "tenés", "podés"), both in the narrative and
+in the static notices (the secret warning reads "revisalo y rotalo si es
+real"); any other `es-*` falls back to `es`; other languages get the English
+static text and a narrative in the language you asked for. Label names are
+identical for `es` and `es-AR`, so switching between them never creates
+duplicate labels.
 
 ### Review verdict
 

@@ -28,7 +28,18 @@ LLM review bots get switched off for three reasons: they comment too much, they 
 | **Indiscriminate cost** | Triage on the PR's metadata, then a surface profile per hunk; format-only hunks never reach the LLM; per-run and cumulative spend caps | Jev + code |
 | **Blind auto-merge** | A merge gate that only ever emits a check conclusion. Jevest has no merge call wired at all | Jev, one request |
 
-And one rule that came from measuring, not from the pitch: **Jev never judges code.** It recognizes text: what kind of change a hunk is, what a finding claims, what a PR says about itself. Asking it "does this hunk have a bug?" failed on a clean dataset (see [Evidence](#evidence-so-far)). Asking it "what does this hunk touch?" works.
+And one rule that came from measuring, not from the pitch: **Jev never judges code.** It recognizes text: what kind of change a hunk is, what a finding claims, what a PR says about itself. Asking it "does this hunk have a bug?" failed on a clean dataset (see [Evidence](#evidence-so-far)), and a Jev-only reviewer found 0 of 44 issues on real PRs (see [Results](#results)). Asking it "what does this hunk touch?" works.
+
+## How it reviews
+
+Two review modes, one pipeline around them (triage, hunk profile, verdict, labels, merge gate and publishing are the same):
+
+| `reviewer.mode` | What finds the issues | Needs | Status |
+|---|---|---|---|
+| `agentic` | **One read-only agent per PR** (`claude -p`, only Read / Grep / Glob, confined to a checkout of the head, secrets deny-listed). It opens the changed files, greps for callers, tests and consumers, and reports every problem with a failing scenario and quoted evidence. Then: deterministic hard exclusions, the evidence quotes checked against the code, an optional refuting verifier agent per finding, and Jev routing each survivor to *publish* or *question* (Jev never discards here) | `reviewer.provider: claude-cli` and `actions/checkout` of the PR head | **Recommended** |
+| `hunks` | One LLM request per hunk, optionally with the full file and impact context; Jev's finding filter bands the results | nothing beyond the install below | Default, kept for compatibility (no checkout); legacy |
+
+The agentic mode is not the default only because it needs a checkout; on real PRs it shows over five times the weighted recall of the per-hunk reviewer, at a third of the cost of per-hunk review with full context ([Results](#results)). Setup, trust model and cost: [docs/ACTION.md](docs/ACTION.md#agentic-review-reviewermode-agentic).
 
 ## What a run looks like
 
@@ -65,7 +76,7 @@ Thresholds rise with risk: a `critical` merge gate needs 0.999 to go green, a `l
 
 ## Install in a repo
 
-Three steps, no checkout, about 25 seconds per run.
+Three steps, no checkout, about 25 seconds per run, in the default `hunks` mode. For the recommended agentic mode add an `actions/checkout` of the PR head (`ref: ${{ github.event.pull_request.head.sha }}`) before the Jevest step, use the `claude-cli` reviewer and set `reviewer.mode: agentic` ([docs/ACTION.md](docs/ACTION.md#agentic-review-reviewermode-agentic)); a run then takes a few minutes.
 
 **1. Add the workflow** `.github/workflows/jevest.yml`:
 
@@ -129,6 +140,21 @@ Three cost controls stack on top of each other:
 | `maxHunks` | one run | 50 | extra hunks are not profiled or reviewed |
 
 The cumulative ledger lives in an issue of your own repo ("Jevest spend ledger"), updated by every run. Reset it by editing or closing the issue.
+
+## Results
+
+The whole review, measured end to end on real pull requests from a production Laravel + Vue application, against issues an adjudicator verified in the code ([eval harness](docs/EVAL.md)). Weighted recall is the severity-weighted share of real issues the review shows; precision is the share of shown findings adjudicated real or partly real.
+
+| Set | Variant | Weighted recall | Precision | Cost / PR |
+|---|---|---|---|---|
+| tuning, 6 PRs | per-hunk reviewer (v0.1 default) | 7.7% | 25% | $1.4 |
+| tuning, 6 PRs | per-hunk + full file + impact context + evidence | 26.9% | ~40% | $5 |
+| tuning, 6 PRs | Jev-only reviewer, diff only | 0% | — | < $0.01 |
+| tuning, 6 PRs | **agentic, Opus 5.5, effort xhigh + verifier** | **41.7%** | **87%** | $1.60 |
+| held-out, 10 PRs | **agentic, Opus 5.5, effort xhigh + verifier** | **58.2%** | **82.4%** | $1.60 |
+| held-out, 10 PRs | independent full-repo agent review (reference) | 67.3% | 87% | — |
+
+What it taught us: per-hunk review without repository context misses cross-file bugs and invents claims about code it never saw; one read-only agent per PR is cheaper and better; the agent's effort must be set explicitly (`--safe-mode` ignores user settings: at the CLI default the agent reached 18% weighted recall, at an explicit `xhigh` with the verifier 42%); the finder should report everything and leave precision to evidence checks and a refuting verifier; and Jev earns its place in triage, injection detection, routing and labels (~10–20 s per PR), not as a judge of code findings — its staged judge discarded only valid ones, so it no longer discards. Recall is relative to the issues two reviewers found (absolute recall is unknown), the sets are small, the adjudicator is an LLM, and costs are nominal list-price equivalents from a subscription. Every variant and caveat: [docs/BENCHMARK.md](docs/BENCHMARK.md#review-quality-on-real-prs-eval-harness).
 
 ## Evidence so far
 
@@ -199,6 +225,7 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] In-diff injection detection as a hunk-profile question (`contains_reviewer_instructions`: 0.99 on hidden instructions, 0.01–0.02 elsewhere), H2/H4 instrumented on every run (Efficiency section, action outputs)
 - [x] H7 hard · near-duplicate crossed descriptions (2026-09-23): PASS with summary R 0.97 P 1.00, PARTIAL without (R 0.83). Near-duplicate donors (by directory Jaccard, same repo) cost 2 points of recall with the summary and 5 without it. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
 - [x] H3 post-hoc calibration study (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 (from 0.284) with the ranking and the AUC untouched, but carries 0.216 to a set with a ten-times-lower base rate. Shipped as `findingFilter.calibration`, **default off**, with Jevest's own map published under `config/calibration/`. H3 stays FAIL. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
+- [x] Review quality on real PRs (2026-09/10): eval harness with private golden sets, adjudication, re-scoring and a same-root-cause matcher; agentic mode (one read-only agent per PR + evidence check + refuting verifier, Jev routes but never discards) reaches 41.7% weighted recall / 87% precision on a 6-PR tuning set and 58.2% / 82.4% on 10 held-out PRs, against 7.7% / 25% for the per-hunk reviewer. See [docs/BENCHMARK.md](docs/BENCHMARK.md#review-quality-on-real-prs-eval-harness)
 - [ ] Next · a verdict on H2 once ≥ 20 real PRs have run
 - [ ] Next · flip stage 4 to discard after ≥ 20 real PRs; refit `is_real_defect` calibration on real-PR findings, where the base rate is the one that matters
 

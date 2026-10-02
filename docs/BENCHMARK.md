@@ -20,13 +20,14 @@ Ground rules shared by every run (SPEC §13, NFR-14):
 
 | Hypothesis | Question to Jev | Status | Where |
 |---|---|---|---|
-| H0 | Does this hunk contain a defect? | **FAIL** (closed, pivot) | below, `reports/spike-*.md` |
+| H0 | Does this hunk contain a defect? | **FAIL** (closed, pivot). Confirmed on real PRs (2026-09/10): a Jev-only reviewer over the diff found 0 of 44 adjudicated issues | below, `reports/spike-*.md` |
 | H0′ | What kind of change is this hunk, what surface does it touch? | **PARTIAL** | below, `reports/spike-profile-*.md` |
-| H1 | Is this LLM finding a real defect? (central) | **PASS** on H1b (2026-09-23, reversed hunks vs. the fix-aware oracle, n=55 real / 154 noise): recall 0.964 (53/55) at threshold 0.45, 51.9% of noise discarded, AUC 0.792. The FAIL on the original (before → after) hunks stands as history — line-overlap AUC 0.592 (near chance), and the original oracle sample had only n=7 real, too small for a recall verdict. Caveats on the PASS: n=55 gives a wide recall interval, the oracle labeler and the H6 judge share a model, and the reversed diff is an artificial recall population (§ H1b) | below, "Thorough findings pass and finding filter" and "H1b — reversed hunks" |
+| H1 | Is this LLM finding a real defect? (central) | **PASS** on H1b (2026-09-23, reversed hunks vs. the fix-aware oracle, n=55 real / 154 noise): recall 0.964 (53/55) at threshold 0.45, 51.9% of noise discarded, AUC 0.792. The FAIL on the original (before → after) hunks stands as history — line-overlap AUC 0.592 (near chance), and the original oracle sample had only n=7 real, too small for a recall verdict. Caveats on the PASS: n=55 gives a wide recall interval, the oracle labeler and the H6 judge share a model, and the reversed diff is an artificial recall population (§ H1b). **Scope (2026-09/10):** this verdict is the per-hunk `is_real_defect` filter. On real PRs, Jev's staged judge in agentic mode ("does the evidence support the claim?") discarded only valid findings (9 valid, 0 false), so there Jev routes publish vs. question and never discards; the refuting verifier does the discarding (§ "Review quality on real PRs") | below, "Thorough findings pass and finding filter" and "H1b — reversed hunks" |
 | H6 | Is the Jev filter ≥ 100× cheaper than an LLM judge at equal recall? | **PASS** (2026-09-22): 188.9× cheaper, recall gap 0.035 vs. line-overlap; **PASS** vs. the original oracle: 182× cheaper; **PASS** on H1b (2026-09-23): 704.7× cheaper, and Jev's recall exceeds the judge's at Jev's own threshold (gap −0.218); at the judge's own best threshold it only matches Jev's recall, at ~700× the cost and ~25× the latency | same run as H1; H1b below |
 | H3 | Is confidence calibrated over findings (ECE < 0.1)? | **FAIL** raw, every time measured: ECE 0.191 vs. line-overlap (N=299, 2026-09-22); 0.504 vs. the original oracle sample (base rate 0.028); 0.284 on H1b (2026-09-23, base rate 0.263) — Jev's probabilities keep running above the true real rate. **FAIL post-hoc too** (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 there, well inside the bar, but carries 0.216 to the thorough set, whose base rate is ten times lower. Calibration is available and **off by default** | same run as H1; H1b and "Post-hoc calibration study" below |
 | H7 | Does the PR description match the change? | **PASS** with-summary (2026-09-21, 200 pairs): recall 0.99, precision 1.00 at 0.65, ECE 0.070, median derived confidence 0.90 — **PASS**, also on near-duplicate crossings (2026-09-23): recall 0.97, precision 1.00, ECE 0.082. **PARTIAL** without-summary both times: recall 0.88 / ECE 0.102 random, recall 0.83 / ECE 0.178 near-duplicate | `reports/spike-coherence-2026-09-21T23-52-31-417Z.md`, `reports/spike-coherence-2026-09-23T14-22-36-776Z.md`; replay `pnpm coherence --variant all --mode replay`, `pnpm coherence --pairs datasets/coherence-pairs-hard.jsonl --mode replay` |
 | H5 | Does the pipeline resist adversarial PRs? | **PASS** 14/14 against live `jev-latest` (2026-09-21): 0 undue successes, 0 suppressed critical findings, 0 secret leaks | first record run found 2 suppressed criticals → FR-5.4 fix (reviewer's severity now counts); replayed clean |
+| Review quality | End to end on real PRs: what does the review show, against adjudicated issues? | **Measured** (2026-09/10): agentic mode (Opus 5.5, effort xhigh, verifier) 41.7% weighted recall / 87% precision on a 6-PR tuning set; 58.2% / 82.4% on a 10-PR held-out set, against 67.3% / 87% for an independent full-repo review. The per-hunk reviewer: 7.7% / 25%. A Jev-only diff reviewer: 0 of 44 issues | below, "Review quality on real PRs" |
 | H2, H4 | LLM tokens saved by triage/profile; Jev latency per PR | **instrumented** (2026-09-22); every run reports both — see the "Efficiency" section of the summary comment and the `jev-latency-p95-ms` / `jev-requests` / `llm-tokens-saved-pct` outputs. No verdict yet: needs ≥ 20 real PRs | below, "H2 / H4 — measured per run" |
 
 ## H0 — defect detection (FAIL, closed 2026-09-19)
@@ -664,6 +665,117 @@ fitted map at `config/calibration/is_real_defect.json` with its caveats in
 computing the band and the predicted-real cut, keeps Jev's raw answer on the
 record as `rawIsRealDefectProb`, and the summary comment shows both. **The
 default is off, and this study is the reason.**
+
+## Review quality on real PRs (eval harness)
+
+Everything above measures Jev's answers on public datasets. This section
+measures the whole review, end to end, on real pull requests: what the PR
+author would have been shown, against issues an adjudicator verified in the
+code. Harness, golden-set format, matcher and metrics: [docs/EVAL.md](EVAL.md).
+The sets come from client code and never live in this repository, so these
+rows have no replay command; the reports stay with the sets.
+
+- **Tuning set**: a private golden set of 6 real pull requests from a
+  production Laravel + Vue application, adjudicated issue by issue (verdict,
+  severity, evidence), grown as new variants raised unlabeled findings (44
+  issues when the early variants ran, 50 now).
+- **Held-out validation set**: 10 merged pull requests from the same
+  application, never used for tuning. Its golden set is the adjudicated union
+  of an independent full-repo agent review and Jevest.
+
+Metrics (EVAL.md "Metrics"): **weighted recall** is the severity-weighted
+share of real/partly issues the review *shows* (real 1.0, partly 0.5 ×
+critical 4, high 3, medium 2, low 1); **precision** is the share of shown
+findings adjudicated real or partly. "Lower bound" means unlabeled shown
+findings were counted as wrong; "adjudicated" means they were labeled first.
+Costs are nominal list-price equivalents: `claude-cli` on a subscription
+reports them, it does not bill them.
+
+### Tuning set (6 PRs)
+
+| Variant | Weighted recall shown | Precision | Cost / PR | Time / PR |
+|---|---|---|---|---|
+| per-hunk reviewer (v0.1 default) | 7.7% | 25% | $1.4 | ~9 min |
+| per-hunk + full file + impact context + evidence | 26.9% | ~40% | $5 | ~13 min |
+| Jev-only reviewer (open-source staged Jev pipeline, diff only) | 0% | — | < $0.01 | ~2 s |
+| agentic, Opus 5, default effort, verifier | 37.5% | 70.6% (lower bound) | $3.2 | ~10 min |
+| agentic, Opus 5.5, default effort | 18.1% | 58.8% (lower bound) | $0.69 | ~1–2 min |
+| agentic, Opus 5.5, effort high | 29.2% | 66.7% (lower bound) | $0.75 | ~2–3 min |
+| **agentic, Opus 5.5, effort xhigh + verifier** | **41.7%** | **87% (adjudicated)** | $1.60 | ~2.5–7 min |
+| independent full-repo agent review (reference) | 44.4%\* | 89.5% | — | ~1–3 min |
+
+\* Recomputed on the expanded 50-issue golden set.
+
+### Held-out validation set (10 PRs)
+
+| | Reference review | Jevest agentic (Opus 5.5 xhigh + verifier) |
+|---|---|---|
+| Weighted recall | 67.3% | 58.2% (63.6% incl. low-confidence) |
+| Real defects found (of 15) | 10 | 9 |
+| Medium-severity found (of 5) | 3 | 4 |
+| Precision | 87% | 82.4% |
+| False findings shown | 3 / 10 PRs | 3 / 10 PRs |
+| Cost / time per PR | — | $1.60 / ~4.5 min |
+
+Reading: on PRs it was never tuned on, the agentic mode lands close to an
+independent full-repo review — one real defect fewer, one medium-severity
+defect more, the same number of false findings, about 5 points less
+precision.
+
+Caveats, plainly:
+
+- Recall is relative to the union of two reviewers on the validation set
+  (and to what the adjudicated reviews raised on the tuning set). An issue
+  neither found is invisible; absolute recall is unknown.
+- Small sets: 6 + 10 PRs from one application, one stack. A single issue
+  moves weighted recall by several points.
+- The adjudicator and the matcher are LLMs (EVAL.md "Adjudicating",
+  "Matching"), not people.
+- Costs are nominal, from a subscription (see above).
+
+### What we learned
+
+1. **Per-hunk review without repository context is the wrong shape.** It
+   misses cross-file bugs (a broken caller, a consumer the change forgot)
+   and invents claims about code it never saw. Giving each hunk more
+   context (the full file, the callers, an evidence requirement) raised
+   recall from 7.7% to 26.9% but cost 3.6× more with ~40% precision.
+2. **One read-only agent per PR is both cheaper and better.** Read / Grep /
+   Glob on a checkout of the head, deny-listed secrets (docs/ACTION.md
+   "Agentic review"): it opens what it needs instead of being handed
+   everything, so it reads less and finds more.
+3. **Effort matters, and it was silently low.** The agent runs in
+   `--safe-mode`, which ignores the user's Claude Code settings, so it ran at
+   the CLI's default effort: short runs, few findings. Passing `--effort`
+   explicitly took weighted recall from 18.1% (default) to 29.2% (high) and
+   41.7% (xhigh, with the verifier; $1.60 per PR against $0.75 at high).
+   `reviewer.agentic.effort` now defaults to `xhigh`.
+4. **The finder must report every problem; precision is the job of later
+   stages.** An issue the finder keeps to itself is lost for good; a false
+   one can still be removed later. So the finder's prompt asks for every
+   distinct problem in scope, with a lower confidence when it could not
+   fully confirm one, and precision comes after it: evidence quotes
+   verified against the code (hard exclusions, the evidence check), then a
+   refuting verifier agent with a fresh context. The xhigh + verifier
+   variant has both the highest recall and the highest precision of the
+   agentic runs.
+5. **Jev's role, measured — and narrower than the pitch.** Jev is excellent
+   and cheap for triage, in-diff injection detection, pipeline routing and
+   labels: ~10–20 s per PR. As a judge of code findings it did not earn a
+   discard: its staged "does the evidence support the claim" decisions, on
+   the tuning set, discarded only valid findings (9 valid, 0 false), while
+   the verifier removed false ones without losing a real one. So in agentic
+   mode Jev now routes between publish and question and **never discards**
+   (`src/domain/agentic-policy.ts`). And a Jev-only reviewer over the diff
+   found **0 of 44** issues — the same lesson as H0, on real PRs: Jev
+   recognizes text, it does not find bugs.
+6. **The harness is what made these numbers mean anything**
+   ([docs/EVAL.md](EVAL.md)): golden sets kept outside the repository,
+   adjudication of every review's findings (so no variant is graded on a set
+   built from its own output), `eval:rescore` to re-score stored runs when the
+   set grows, a matcher that only pairs a finding with an issue of the same
+   root cause (the previous one mismatched about 1 in 6), and a held-out set
+   for the final check.
 
 ## H2 / H4 — measured per run (instrumented 2026-09-22)
 

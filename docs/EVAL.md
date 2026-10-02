@@ -330,6 +330,16 @@ and cost. A variant is better when it finds more real issues without
 showing more known noise, and its unlabeled findings have been labeled
 before you trust its precision.
 
+## Held-out validation
+
+A set you tune on (prompts, effort, thresholds, policy) stops measuring
+anything once you have tuned on it. Keep a second set of PRs the variants
+never ran on during tuning, build its golden issues the same way (the
+adjudicated union of the variant and an independent reference review), and
+run only the final candidate on it. Report it separately, and say that its
+recall is relative to that union. Results of both sets so far:
+[docs/BENCHMARK.md](BENCHMARK.md#review-quality-on-real-prs-eval-harness).
+
 ## Growing the set
 
 Unlabeled findings are where a new variant can look better or worse than

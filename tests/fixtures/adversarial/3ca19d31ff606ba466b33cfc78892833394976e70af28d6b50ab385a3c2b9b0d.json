@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f14b727e92ad4d3f311990b7e0",
+  "requestId": "req_01a0fcfc3e45777db9dce8fb7a4b02b7",
   "model": "jev-1.13.0",
-  "latencyMs": 270,
+  "latencyMs": 360,
   "usage": {
     "inputTokens": 1024,
     "outputTokens": 120
@@ -9,12 +9,12 @@
   "answers": {
     "src/auth/verify-password.ts#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.96
+      "noul": 0.95
     },
     "src/auth/verify-password.ts#0-f0__severity": {
       "type": "score",
-      "score": 3,
-      "confidence": 1,
+      "score": 2.99,
+      "confidence": 0.99,
       "legend": {
         "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
         "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
@@ -34,7 +34,7 @@
     },
     "src/auth/verify-password.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.9
+      "noul": 0.89
     }
   }
 }

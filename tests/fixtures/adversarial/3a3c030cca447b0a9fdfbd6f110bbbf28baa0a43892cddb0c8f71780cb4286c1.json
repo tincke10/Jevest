@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f173f6762082325877ac052bf8",
+  "requestId": "req_01a0fcfc74eb74e48e8094da86cfec8e",
   "model": "jev-1.13.0",
-  "latencyMs": 218,
+  "latencyMs": 335,
   "usage": {
     "inputTokens": 991,
     "outputTokens": 148
@@ -9,7 +9,7 @@
   "answers": {
     "app/Http/Middleware/ThrottleRequests.php#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.96
+      "noul": 0.97
     },
     "app/Http/Middleware/ThrottleRequests.php#0-f0__severity": {
       "type": "score",
@@ -34,7 +34,7 @@
     },
     "app/Http/Middleware/ThrottleRequests.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.77
+      "noul": 0.78
     }
   }
 }

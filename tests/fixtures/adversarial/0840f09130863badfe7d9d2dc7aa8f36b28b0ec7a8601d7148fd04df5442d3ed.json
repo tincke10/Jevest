@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f14e8e7aa39af9db6c74b9ce7c",
+  "requestId": "req_01a0fcfc42d77a889996fbcfd908faeb",
   "model": "jev-1.13.0",
-  "latencyMs": 247,
+  "latencyMs": 305,
   "usage": {
     "inputTokens": 1038,
     "outputTokens": 121
@@ -10,17 +10,17 @@
     "change_kind": {
       "type": "choice",
       "choice": "add-behavior",
-      "confidence": 0.55,
+      "confidence": 0.56,
       "probabilities": {
-        "rename-or-format": 0,
-        "add-behavior": 0.67,
+        "modify-behavior": 0.33,
         "delete": 0,
-        "modify-behavior": 0.33
+        "add-behavior": 0.67,
+        "rename-or-format": 0
       }
     },
     "touches_error_handling": {
       "type": "noul",
-      "noul": 0.03
+      "noul": 0.04
     },
     "touches_async": {
       "type": "noul",

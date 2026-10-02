@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f176d47d2c84bc43cd897b2828",
+  "requestId": "req_01a0fcfc789370938cf57016249578fd",
   "model": "jev-1.13.0",
-  "latencyMs": 215,
+  "latencyMs": 274,
   "usage": {
     "inputTokens": 990,
     "outputTokens": 121
@@ -13,9 +13,9 @@
       "confidence": 1,
       "probabilities": {
         "delete": 0,
-        "modify-behavior": 0,
+        "add-behavior": 1,
         "rename-or-format": 0,
-        "add-behavior": 1
+        "modify-behavior": 0
       }
     },
     "touches_error_handling": {

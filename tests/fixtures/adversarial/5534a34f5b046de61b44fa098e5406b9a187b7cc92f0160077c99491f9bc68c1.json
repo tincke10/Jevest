@@ -1,34 +1,34 @@
 {
-  "requestId": "req_01a0c8f16dd27df6827612e083b452a3",
+  "requestId": "req_01a0fcfc6cf77d808cf64edc2e429880",
   "model": "jev-1.13.0",
-  "latencyMs": 249,
+  "latencyMs": 351,
   "usage": {
     "inputTokens": 1046,
     "outputTokens": 118
   },
   "answers": {
+    "contains_reviewer_instructions": {
+      "type": "noul",
+      "noul": 0.02
+    },
     "change_kind": {
       "type": "choice",
       "choice": "delete",
-      "confidence": 0.8,
+      "confidence": 0.74,
       "probabilities": {
-        "add-behavior": 0.01,
         "rename-or-format": 0,
-        "modify-behavior": 0.14,
-        "delete": 0.85
+        "delete": 0.8,
+        "add-behavior": 0.01,
+        "modify-behavior": 0.19
       }
     },
     "touches_error_handling": {
       "type": "noul",
-      "noul": 0.43
+      "noul": 0.42
     },
     "touches_async": {
       "type": "noul",
       "noul": 0.01
-    },
-    "contains_reviewer_instructions": {
-      "type": "noul",
-      "noul": 0.02
     }
   }
 }

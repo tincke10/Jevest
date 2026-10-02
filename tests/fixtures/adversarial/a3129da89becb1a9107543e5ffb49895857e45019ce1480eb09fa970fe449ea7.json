@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f157237f8cbb4bf89a7d772bdb",
+  "requestId": "req_01a0fcfc4e1a738580cb9d5a6f7d4e5f",
   "model": "jev-1.13.0",
-  "latencyMs": 213,
+  "latencyMs": 272,
   "usage": {
     "inputTokens": 907,
     "outputTokens": 152
@@ -34,7 +34,7 @@
     },
     "app/Http/Controllers/AdminUsersController.php#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.76
+      "noul": 0.77
     }
   }
 }

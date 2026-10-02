@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f1799f758bbb44f3d6fcd6f6a4",
+  "requestId": "req_01a0fcfc7c7d7f289fd5cee68bf6a413",
   "model": "jev-1.13.0",
-  "latencyMs": 217,
+  "latencyMs": 280,
   "usage": {
     "inputTokens": 1542,
     "outputTokens": 193
@@ -12,19 +12,19 @@
       "choice": "refactor",
       "confidence": 0.98,
       "probabilities": {
-        "feature": 0,
-        "security": 0.01,
         "refactor": 0.99,
         "config": 0,
         "docs": 0,
-        "bugfix": 0,
-        "deps": 0
+        "security": 0.01,
+        "feature": 0,
+        "deps": 0,
+        "bugfix": 0
       }
     },
     "risk": {
       "type": "score",
-      "score": 2.04,
-      "confidence": 0.2,
+      "score": 2.15,
+      "confidence": 0.28,
       "legend": {
         "0": "None: no meaningful risk, such as a typo fix in a comment or a no-behavior-change version bump.",
         "1": "Low: a small, localized change with a limited blast radius.",
@@ -33,11 +33,11 @@
         "4": "Critical: touches security, payments, data integrity, or infrastructure that could cause widespread failure."
       },
       "probabilities": {
-        "0": 0.17,
+        "0": 0.14,
         "1": 0.17,
         "2": 0.09,
-        "3": 0.56,
-        "4": 0
+        "3": 0.59,
+        "4": 0.01
       }
     },
     "needs_human": {
@@ -50,7 +50,7 @@
     },
     "matches_intent": {
       "type": "noul",
-      "noul": 0.94
+      "noul": 0.93
     },
     "needs_product_owner": {
       "type": "noul",

@@ -1,7 +1,7 @@
 {
-  "requestId": "req_01a0c8f152f175a79a43877d08fbcfeb",
+  "requestId": "req_01a0fcfc491d7980a1d32e3a2393b6e2",
   "model": "jev-1.13.0",
-  "latencyMs": 208,
+  "latencyMs": 338,
   "usage": {
     "inputTokens": 966,
     "outputTokens": 120
@@ -9,12 +9,12 @@
   "answers": {
     "src/cart/checkout.ts#0-f0__is_real_defect": {
       "type": "noul",
-      "noul": 0.79
+      "noul": 0.76
     },
     "src/cart/checkout.ts#0-f0__severity": {
       "type": "score",
-      "score": 2.42,
-      "confidence": 0.58,
+      "score": 2.41,
+      "confidence": 0.59,
       "legend": {
         "0": "Nit: a style or preference matter with no effect on correctness, such as naming or formatting.",
         "1": "Minor: a real but low-impact issue, such as a slightly unclear pattern or a rare, low-consequence edge case.",
@@ -24,8 +24,8 @@
       "probabilities": {
         "0": 0,
         "1": 0,
-        "2": 0.58,
-        "3": 0.42
+        "2": 0.59,
+        "3": 0.41
       }
     },
     "src/cart/checkout.ts#0-f0__is_style_only": {
@@ -34,7 +34,7 @@
     },
     "src/cart/checkout.ts#0-f0__actionable": {
       "type": "noul",
-      "noul": 0.66
+      "noul": 0.61
     }
   }
 }

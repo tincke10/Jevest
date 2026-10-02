@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { JevestConfig } from "../adapters/config/jevest-config.js";
+import { type JevestConfig, loadJevestConfigFromString } from "../adapters/config/jevest-config.js";
 import type { GitHubVcsAdapter } from "../adapters/vcs/github-vcs-adapter.js";
 import { ZERO_CODE_CONTEXT_METRICS, ZERO_WALL_TIMES } from "../application/pipeline/run-metrics.js";
 import type { PipelineResult } from "../application/pipeline/run-pipeline.js";
@@ -43,6 +43,7 @@ describe("parseActionInputs", () => {
     const inputs = parseActionInputs(BASE_ENV);
     expect(inputs).toEqual({
       configPath: ".jevest.yml",
+      configFromCheckout: false,
       typesafeApiKey: "ts_test",
       githubToken: "ghp_test",
       failOn: "never",
@@ -58,9 +59,11 @@ describe("parseActionInputs", () => {
       INPUT_DEEPSEEK_API_KEY: "sk-ds-test",
       INPUT_CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-test",
       INPUT_FAIL_ON: "failure",
+      INPUT_CONFIG_FROM_CHECKOUT: "true",
     });
     expect(inputs).toEqual({
       configPath: "config/jevest.yml",
+      configFromCheckout: true,
       typesafeApiKey: "ts_test",
       anthropicApiKey: "sk-ant-test",
       openaiApiKey: "sk-oai-test",
@@ -79,6 +82,15 @@ describe("parseActionInputs", () => {
   it("throws when typesafe-api-key is missing", () => {
     const { INPUT_TYPESAFE_API_KEY: _omit, ...rest } = BASE_ENV;
     expect(() => parseActionInputs(rest)).toThrow(ActionInputError);
+  });
+
+  it('throws on a config-from-checkout value other than "true" or "false"', () => {
+    expect(() => parseActionInputs({ ...BASE_ENV, INPUT_CONFIG_FROM_CHECKOUT: "yes" })).toThrow(
+      ActionInputError,
+    );
+    expect(parseActionInputs({ ...BASE_ENV, INPUT_CONFIG_FROM_CHECKOUT: "false" })).toMatchObject({
+      configFromCheckout: false,
+    });
   });
 
   it("throws on an invalid fail-on value", () => {
@@ -167,6 +179,7 @@ function makeConfig(overrides: Partial<JevestConfig["reviewer"]> = {}): JevestCo
 function makeInputs(overrides: Partial<ActionInputs> = {}): ActionInputs {
   return {
     configPath: ".jevest.yml",
+    configFromCheckout: false,
     typesafeApiKey: "ts_test",
     githubToken: "ghp_test",
     failOn: "never",
@@ -602,104 +615,144 @@ describe("resolveConfig", () => {
 
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true });
-  });
-
-  it("reads config-path off the local checkout when it exists, without calling the GitHub API", async () => {
-    const configPath = join(dir, ".jevest.yml");
-    await writeFile(configPath, "budgetUsd: 3\n", "utf8");
-    const fetchRepoFileContent = vi.fn();
-    const vcs = makeFakeVcs(fetchRepoFileContent);
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    const config = await resolveConfig(vcs, REF, configPath);
-
-    expect(config.budgetUsd).toBe(3);
-    expect(fetchRepoFileContent).not.toHaveBeenCalled();
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("local checkout"));
-    log.mockRestore();
-  });
-
-  it("resolves a relative config-path against GITHUB_WORKSPACE, never the action's own directory (the step's cwd holds Jevest's own .jevest.yml)", async () => {
-    // cwd here is the Jevest repo root, which HAS a .jevest.yml, exactly like
-    // the composite step whose working-directory is github.action_path.
-    vi.stubEnv("GITHUB_WORKSPACE", dir);
-    const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
-    const vcs = makeFakeVcs(fetchRepoFileContent);
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    const config = await resolveConfig(vcs, REF, ".jevest.yml");
-
-    expect(config.budgetUsd).toBe(7);
-    expect(fetchRepoFileContent).toHaveBeenCalledWith({
-      owner: "tincke10",
-      repo: "jevest",
-      path: ".jevest.yml",
-      ref: "base-sha",
-    });
-    log.mockRestore();
     vi.unstubAllEnvs();
   });
 
-  it("reads a relative config-path from GITHUB_WORKSPACE when the consumer checked out", async () => {
-    vi.stubEnv("GITHUB_WORKSPACE", dir);
-    await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 4\n", "utf8");
-    const fetchRepoFileContent = vi.fn();
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+  describe("by default (config-from-checkout: false): always the PR BASE sha via the API", () => {
+    it("ignores a config in the checkout, which may be the PR head (agentic mode): a PR must not choose its own config", async () => {
+      vi.stubEnv("GITHUB_WORKSPACE", dir);
+      await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 999\n", "utf8");
+      const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    const config = await resolveConfig(makeFakeVcs(fetchRepoFileContent), REF, ".jevest.yml");
+      const config = await resolveConfig(makeFakeVcs(fetchRepoFileContent), REF, ".jevest.yml");
 
-    expect(config.budgetUsd).toBe(4);
-    expect(fetchRepoFileContent).not.toHaveBeenCalled();
-    log.mockRestore();
-    vi.unstubAllEnvs();
-  });
-
-  it("fetches config-path from the PR BASE sha via the API when it is not on disk (never the head: a PR must not rewrite the rules that judge it)", async () => {
-    const configPath = join(dir, "does-not-exist.jevest.yml");
-    const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
-    const vcs = makeFakeVcs(fetchRepoFileContent);
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-
-    const config = await resolveConfig(vcs, REF, configPath);
-
-    expect(config.budgetUsd).toBe(7);
-    expect(fetchRepoFileContent).toHaveBeenCalledWith({
-      owner: "tincke10",
-      repo: "jevest",
-      path: configPath,
-      ref: "base-sha",
+      expect(config.budgetUsd).toBe(7);
+      expect(fetchRepoFileContent).toHaveBeenCalledWith({
+        owner: "tincke10",
+        repo: "jevest",
+        path: ".jevest.yml",
+        ref: "base-sha",
+      });
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("via the GitHub API"));
+      log.mockRestore();
     });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining("via the GitHub API"));
-    log.mockRestore();
+
+    it("falls back to the built-in defaults, logging one line, when the file is absent at the base sha", async () => {
+      vi.stubEnv("GITHUB_WORKSPACE", dir);
+      await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 999\n", "utf8");
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const defaults = await loadJevestConfigFromString("");
+
+      const config = await resolveConfig(
+        makeFakeVcs(vi.fn().mockResolvedValue(null)),
+        REF,
+        ".jevest.yml",
+      );
+
+      expect(config).toEqual(defaults);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("using the built-in defaults"));
+      log.mockRestore();
+    });
+
+    it("propagates an API failure (fail closed) instead of reading the checkout", async () => {
+      vi.stubEnv("GITHUB_WORKSPACE", dir);
+      await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 999\n", "utf8");
+      const vcs = makeFakeVcs(vi.fn().mockRejectedValue(new Error("502")));
+
+      await expect(resolveConfig(vcs, REF, ".jevest.yml")).rejects.toThrow("502");
+    });
   });
 
-  it("falls back to the built-in defaults, logging one line, when the file is absent both locally and in the repo", async () => {
-    const configPath = join(dir, "does-not-exist.jevest.yml");
-    const vcs = makeFakeVcs(vi.fn().mockResolvedValue(null));
-    const silencedLog = vi.spyOn(console, "log").mockImplementation(() => {});
-    const defaults = await resolveConfig(
-      makeFakeVcs(vi.fn().mockResolvedValue(null)),
-      REF,
-      join(dir, "also-does-not-exist.jevest.yml"),
-    );
-    silencedLog.mockClear();
+  describe("config-from-checkout: true (explicit opt-in)", () => {
+    const fromCheckout = { fromCheckout: true };
 
-    const config = await resolveConfig(vcs, REF, configPath);
+    it("reads config-path off the local checkout when it exists, without calling the GitHub API", async () => {
+      const configPath = join(dir, ".jevest.yml");
+      await writeFile(configPath, "budgetUsd: 3\n", "utf8");
+      const fetchRepoFileContent = vi.fn();
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
 
-    expect(config).toEqual(defaults);
-    expect(silencedLog).toHaveBeenCalledWith(
-      expect.stringContaining("using the built-in defaults"),
-    );
-    silencedLog.mockRestore();
-  });
+      const config = await resolveConfig(
+        makeFakeVcs(fetchRepoFileContent),
+        REF,
+        configPath,
+        fromCheckout,
+      );
 
-  it("propagates a non-ENOENT local read error instead of falling through to the API", async () => {
-    // `dir` itself is a directory, not a file: readFile on it reliably fails EISDIR, not ENOENT.
-    const fetchRepoFileContent = vi.fn();
-    const vcs = makeFakeVcs(fetchRepoFileContent);
+      expect(config.budgetUsd).toBe(3);
+      expect(fetchRepoFileContent).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("local checkout"));
+      log.mockRestore();
+    });
 
-    await expect(resolveConfig(vcs, REF, dir)).rejects.toThrow();
-    expect(fetchRepoFileContent).not.toHaveBeenCalled();
+    it("resolves a relative config-path against GITHUB_WORKSPACE, never the action's own directory (the step's cwd holds Jevest's own .jevest.yml)", async () => {
+      // cwd here is the Jevest repo root, which HAS a .jevest.yml, exactly like
+      // the composite step whose working-directory is github.action_path.
+      vi.stubEnv("GITHUB_WORKSPACE", dir);
+      const fetchRepoFileContent = vi.fn().mockResolvedValue("budgetUsd: 7\n");
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const config = await resolveConfig(
+        makeFakeVcs(fetchRepoFileContent),
+        REF,
+        ".jevest.yml",
+        fromCheckout,
+      );
+
+      expect(config.budgetUsd).toBe(7);
+      expect(fetchRepoFileContent).toHaveBeenCalledWith({
+        owner: "tincke10",
+        repo: "jevest",
+        path: ".jevest.yml",
+        ref: "base-sha",
+      });
+      log.mockRestore();
+    });
+
+    it("reads a relative config-path from GITHUB_WORKSPACE when the consumer checked out", async () => {
+      vi.stubEnv("GITHUB_WORKSPACE", dir);
+      await writeFile(join(dir, ".jevest.yml"), "budgetUsd: 4\n", "utf8");
+      const fetchRepoFileContent = vi.fn();
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      const config = await resolveConfig(
+        makeFakeVcs(fetchRepoFileContent),
+        REF,
+        ".jevest.yml",
+        fromCheckout,
+      );
+
+      expect(config.budgetUsd).toBe(4);
+      expect(fetchRepoFileContent).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it("falls back to the built-in defaults when the file is absent both locally and in the repo", async () => {
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const defaults = await loadJevestConfigFromString("");
+
+      const config = await resolveConfig(
+        makeFakeVcs(vi.fn().mockResolvedValue(null)),
+        REF,
+        join(dir, "does-not-exist.jevest.yml"),
+        fromCheckout,
+      );
+
+      expect(config).toEqual(defaults);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("using the built-in defaults"));
+      log.mockRestore();
+    });
+
+    it("propagates a non-ENOENT local read error instead of falling through to the API", async () => {
+      // `dir` itself is a directory, not a file: readFile on it reliably fails EISDIR, not ENOENT.
+      const fetchRepoFileContent = vi.fn();
+
+      await expect(
+        resolveConfig(makeFakeVcs(fetchRepoFileContent), REF, dir, fromCheckout),
+      ).rejects.toThrow();
+      expect(fetchRepoFileContent).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -726,6 +779,7 @@ function makeResult(overrides: Partial<PipelineResult> = {}): PipelineResult {
     codeContext: null,
     publication,
     check: publication.check,
+    verdict: "clear",
     findingsPublished: 2,
     findingsLowConfidence: 3,
     costUsd: 0.1234,
@@ -789,11 +843,25 @@ function evaluation(overrides: Partial<SpendCapEvaluation> = {}): SpendCapEvalua
 }
 
 describe("buildOutputLines", () => {
-  it("emits the eight outputs, with spend-usd as the cumulative total after this run and the H2 / H4 numbers", () => {
+  it("emits the nine outputs, with spend-usd as the cumulative total after this run and the H2 / H4 numbers", () => {
     expect(buildOutputLines(makeResult({ spendCap: evaluation() }))).toBe(
-      "check-conclusion=success\nfindings-published=2\nfindings-low-confidence=3\ncost-usd=0.1234\nspend-usd=12.5\n" +
+      "check-conclusion=success\nverdict=clear\nfindings-published=2\nfindings-low-confidence=3\ncost-usd=0.1234\nspend-usd=12.5\n" +
         "jev-latency-p95-ms=400\njev-requests=6\nllm-tokens-saved-pct=30.5\n",
     );
+  });
+
+  it("emits the verdict next to the check conclusion, which it does not always match (fail closed: failure / unavailable)", () => {
+    const failedClosed = makeResult({
+      failedClosed: true,
+      check: { conclusion: "failure", title: "t", summary: "s" },
+      verdict: "unavailable",
+    });
+    expect(buildOutputLines(failedClosed)).toContain(
+      "check-conclusion=failure\nverdict=unavailable\n",
+    );
+    for (const verdict of ["fix", "questions", "clear", "unavailable"] as const) {
+      expect(buildOutputLines(makeResult({ verdict }))).toContain(`\nverdict=${verdict}\n`);
+    }
   });
 
   it("emits an empty spend-usd when the cumulative total is unknown", () => {

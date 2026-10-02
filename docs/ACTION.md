@@ -72,10 +72,14 @@ falls back to the default shown in the example file: overriding
 `thresholds.triage.low` alone leaves every other risk level and every
 other stage exactly as shown there. Arrays and plain values
 (`budgetUsd`, `skipChangeKinds`, etc.) are replaced wholesale by your
-override, never merged. An unknown top-level key throws immediately,
-naming the key — with most keys absent being the normal case for a
-partial file, a typo would otherwise silently do nothing. For example, a
-repo doing a Jev-only dry run needs only:
+override, never merged. An unknown key at **any** level throws, naming its
+full dotted path and the closest known key when one is within two edits
+(``unknown config key `reviewer.mdoe` (did you mean `reviewer.mode`?)``) —
+with most keys absent being the normal case for a partial file, a typo
+would otherwise silently do nothing. `skipChangeKinds` only accepts the hunk
+profile's change kinds (`add-behavior`, `modify-behavior`, `delete`,
+`rename-or-format`). The stage and risk names under `thresholds` are not
+checked. For example, a repo doing a Jev-only dry run needs only:
 
 ```yaml
 reviewer:
@@ -86,6 +90,24 @@ budgetUsd: 1
 ```
 
 Point `config-path` elsewhere if you'd rather not use the repo root.
+
+### Config source (`config-path`, `config-from-checkout`)
+
+The Action reads `config-path` from the PR's **base** sha via the GitHub
+contents API, never from the workspace: in agentic mode the workspace is a
+checkout of the PR head, and a PR must not be able to choose the provider,
+thresholds, budget or skip rules that judge it. The product context and the
+calibration map follow the same rule. A file missing at the base sha means
+the built-in defaults, so a PR that adds `.jevest.yml` is reviewed with the
+defaults until it merges.
+
+`config-from-checkout: true` (default `false`) reads the workspace file
+first and falls back to the base sha. **Risk:** with a checkout of the PR
+head (agentic mode, or code context) that hands the config to the PR's
+author. Only turn it on in a workflow that checks out a trusted ref (for
+example a prior step that generates `.jevest.yml`) and never on a PR-head
+checkout. Local `pnpm review` runs have no PR event and read the file from
+disk.
 
 ### Colleague review (`reviewer.narrative`, `reviewer.language`)
 
@@ -568,6 +590,17 @@ own `claude-code-action` documents for subscribers:
 The Action installs `@anthropic-ai/claude-code` on the runner only when
 that input is present (about 15–20 s extra per run).
 
+#### Claude Code CLI version (`claude-code-version`)
+
+The CLI is installed **pinned**, `npm install -g
+@anthropic-ai/claude-code@<claude-code-version>`, default `2.1.286`, never
+`latest`. The agentic reviewer's safety layer is a set of CLI flags and
+rules (`--safe-mode`, `--restricted`, `--tools`, the permission deny rules,
+see "Agentic review"), and they were verified on 2.1.286. A floating
+install could change what those flags do under a running review. Override
+the input only after checking the flags on the new version (the gated live
+test, `CLAUDE_CLI_LIVE_TEST=1`).
+
 Know what you are signing up for:
 
 - **The token is one person's subscription.** Every PR review on the repo
@@ -605,19 +638,19 @@ opt-in code context of the per-hunk mode (`reviewer.fullFile` /
 
 **The per-hunk mode (`reviewer.mode: hunks`) needs no checkout**:
 `fetchPullRequest`, `.jevest.yml`, and everything else the pipeline reads
-come from the GitHub API, not from a working tree; `config-path` falls back
-to fetching the file from the PR base sha via the contents API when it isn't
-on disk (`resolveConfig` in `src/action/main.ts`). That matters on large
+come from the GitHub API, not from a working tree; `config-path` is fetched
+from the PR base sha via the contents API (`resolveConfig` in
+`src/action/main.ts`, see "Config source"). That matters on large
 repos, because checkout is not free. Measured on a real consumer repo (a
 private PHP + Vue monorepo, 9.7 GB tree): `actions/checkout@v4` took
 **2m43s** of a 3m09s run, versus **22s** for Jevest's own work. If that
 cost is a problem and you can give up the agentic review, `mode: hunks`
 without a checkout turns it into a ~25-second job.
 
-With a checkout present, `config-path` is read from it (the local file wins
-over the API fetch), so a prior step in the same job can rewrite
-`.jevest.yml` before Jevest runs. Note that this also means a checkout of
-the PR head reads the PR's own `.jevest.yml`, not the base branch's.
+A checkout never changes where the config comes from: `config-path` is
+always the base sha's, so a checkout of the PR head does not read the PR's
+own `.jevest.yml` (unless `config-from-checkout: true`, see "Config
+source").
 
 Two options worth knowing about before a first rollout:
 
@@ -820,7 +853,7 @@ The workflow's `permissions:` block needs:
 - `issues: write` — labels, the summary comment and the "Jevest spend
   ledger" issue (see "Spend cap") all go through the issues API
 - `contents: read` — fetches `.jevest.yml` from the PR base sha via the
-  contents API when it isn't in a local checkout (see "Checkout" above);
+  contents API (see "Config source" above);
   also what `actions/checkout` needs (agentic mode)
 - `statuses: read` — reads the PR head commit's combined CI status for the
   merge gate's CI signal; without it, Jevest reports CI status as
@@ -899,6 +932,19 @@ make it `fix`); and the NFR-2 fail-closed exit, whose check stays
 **red** as before. No LLM review *by design* — `reviewer.provider: none`
 (Jev-only mode) or triage's low-risk skip (FR-2.3) — is `clear` when Jev's
 own stages flagged nothing.
+
+The verdict is also the action output `verdict` (`fix`, `questions`,
+`clear` or `unavailable`), next to `check-conclusion`. Use it rather than the
+conclusion when a later step must tell `questions` from `unavailable` (both
+`neutral`) or a fail-closed run (`unavailable`, check `failure`) from `fix`.
+
+```yaml
+      - uses: tincke10/Jevest@v1
+        id: jevest
+        # ...
+      - if: steps.jevest.outputs.verdict == 'unavailable'
+        run: echo "Jevest could not review this PR; review it by hand."
+```
 
 Green means "nothing for the author to fix"; the usual human approval is
 still needed. Whether the PR may merge on its own is a separate signal:

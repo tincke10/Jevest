@@ -95,6 +95,7 @@ import type { SpendLedgerPort } from "../../domain/ports/spend-ledger-port.js";
 import type { VcsPort } from "../../domain/ports/vcs-port.js";
 import type { WorkingTreePort } from "../../domain/ports/working-tree-port.js";
 import type { PullRequestRef } from "../../domain/pull-request.js";
+import type { ReviewVerdict } from "../../domain/review-verdict.js";
 import {
   type SpendCapEvaluation,
   type SpendLedger,
@@ -133,7 +134,9 @@ import { type NarrateStageResult, narrativeSkipped, runNarrateStage } from "./st
 import {
   allReviewsFailed,
   buildFailClosedPublication,
+  resolveFailClosedVerdict,
   resolvePublishVerdict,
+  resolveTriageOnlyVerdict,
   runPublishStage,
   runTriageOnlyPublishStage,
 } from "./stages/publish.js";
@@ -231,6 +234,12 @@ export interface PipelineResult {
    * need the CI-facing summary rather than the full per-stage breakdown.
    */
   readonly check: import("../../domain/ports/vcs-port.js").ReviewPublication["check"];
+  /**
+   * The review verdict the check carries (review-verdict.ts). Matches the
+   * check conclusion except on a fail-closed run (NFR-2): verdict
+   * `unavailable`, check `failure`.
+   */
+  readonly verdict: ReviewVerdict;
   readonly findingsPublished: number;
   /** `findingFilter.lowConfidence.length` (`mode: "annotate"` only; 0 in `mode: "discard"`). See stages/finding-filter.ts. */
   readonly findingsLowConfidence: number;
@@ -470,6 +479,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       ref: input.ref,
       failedClosed: true,
       failureReason: stage,
+      verdict: resolveFailClosedVerdict().verdict,
       ...stages,
       narrative: null,
       descriptionContext,
@@ -582,6 +592,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       descriptionContext: null,
       codeContext: null,
       publication,
+      verdict: resolveTriageOnlyVerdict(triage).verdict,
       ...summaryFields(publication, null, null, triage),
       ...spendFields,
       metrics: metricsFor(stages),
@@ -832,7 +843,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
   });
   spend = await bookRunSpend(narrative?.costUsd ?? 0);
 
-  const publication = runPublishStage({
+  const publishInput = {
     ...stages,
     inlineCommentsEnabled: config.publish.inlineComments,
     reviewDisabled,
@@ -844,13 +855,15 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     language: config.reviewer.language,
     injectedInstructionsInDescription: containsInjectedInstructionsHigh,
     descriptionContext,
-  });
+  };
+  const publication = runPublishStage(publishInput);
   await timed("publishMs", () => ports.vcs.publishReview(input.ref, publication));
 
   return {
     ref: input.ref,
     failedClosed: false,
     failureReason: null,
+    verdict: resolvePublishVerdict(publishInput).verdict.verdict,
     ...stages,
     narrative,
     descriptionContext,

@@ -444,7 +444,7 @@ al lado. **El default queda apagado, y este estudio es la razón.**
 - Suite adversarial.
 
 ### Fase 2 — GitHub Action
-- Action reutilizable (`uses: <org>/jevest@v1`), Node 20.
+- Action reutilizable (`uses: <org>/jevest@v1`), Node 22.
 - Publica comentarios inline, resumen, labels y check status.
 - Configuración por archivo `.jevest.yml` en el repo consumidor: umbrales, tools, presupuesto.
 
@@ -461,7 +461,7 @@ al lado. **El default queda apagado, y este estudio es la razón.**
 
 | Opción | Pros | Contras |
 |---|---|---|
-| **TypeScript + Node 20 + `@typesafe-ai/sdk`** (elegida) | Runtime nativo de GitHub Actions; stack del equipo; SDK con tipos inferidos; cero fricción para publicar la Action | Sin middlewares oficiales de LangChain (no los necesitamos: el pipeline no es un agent loop) |
+| **TypeScript + Node 22 + `@typesafe-ai/sdk`** (elegida) | Runtime nativo de GitHub Actions; stack del equipo; SDK con tipos inferidos; cero fricción para publicar la Action | Sin middlewares oficiales de LangChain (no los necesitamos: el pipeline no es un agent loop) |
 | Python + `langchain-typesafe` | Middlewares listos | Los middlewares son para agent loops, no para pipelines por etapas; Action en Python es más pesada |
 
 **Decisión**: TypeScript. El pipeline es un flujo por etapas, no un agente con tools, así que los middlewares de LangChain no aportan. El revisor LLM se llama detrás de un port, con el proveedor configurable.

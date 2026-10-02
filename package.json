@@ -5,7 +5,7 @@
   "description": "Automated PR review pipeline using Jev (TypeSafe AI) as a decision layer over an LLM reviewer.",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "test": "vitest run",
@@ -45,7 +45,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@types/node": "^20.14.0",
+    "@types/node": "^22.20.5",
     "@types/picomatch": "^4.0.3",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",

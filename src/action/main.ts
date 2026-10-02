@@ -95,6 +95,13 @@ export type FailOn = "never" | "failure";
 
 export interface ActionInputs {
   readonly configPath: string;
+  /**
+   * `config-from-checkout` (default false): read `configPath` from the
+   * workspace before the PR base sha. Off by default because the workspace
+   * may be the PR head (agentic mode), which would let a PR pick its own
+   * config; see {@link resolveConfig}.
+   */
+  readonly configFromCheckout: boolean;
   readonly typesafeApiKey: string;
   readonly anthropicApiKey?: string;
   readonly openaiApiKey?: string;
@@ -148,6 +155,12 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
   const deepseekApiKey = readInput(env, "deepseek-api-key");
   const claudeCodeOauthToken = readInput(env, "claude-code-oauth-token");
   const configPath = readInput(env, "config-path") ?? DEFAULT_CONFIG_PATH;
+  const configFromCheckoutRaw = readInput(env, "config-from-checkout") ?? "false";
+  if (configFromCheckoutRaw !== "true" && configFromCheckoutRaw !== "false") {
+    throw new ActionInputError(
+      `input "config-from-checkout" must be "true" or "false", got "${configFromCheckoutRaw}"`,
+    );
+  }
   const failOnRaw = readInput(env, "fail-on") ?? DEFAULT_FAIL_ON;
   if (failOnRaw !== "never" && failOnRaw !== "failure") {
     throw new ActionInputError(`input "fail-on" must be "never" or "failure", got "${failOnRaw}"`);
@@ -155,6 +168,7 @@ export function parseActionInputs(env: NodeJS.ProcessEnv): ActionInputs {
 
   return {
     configPath,
+    configFromCheckout: configFromCheckoutRaw === "true",
     typesafeApiKey,
     githubToken,
     failOn: failOnRaw,
@@ -516,8 +530,9 @@ export function createDescriptionContextExtractor(
 /**
  * Resolves `.jevest/context.yml` (see src/application/context/product-context.ts)
  * from the PR's BASE sha via the contents API — deliberately NOT from the
- * local checkout, unlike `resolveConfig`: a checkout is the PR head, and a
- * PR must not be able to rewrite the rules that judge it. A missing file
+ * local checkout, like `resolveConfig` (which has no opt-out here: there is
+ * no `config-from-checkout` for the context): a checkout is the PR head,
+ * and a PR must not be able to rewrite the rules that judge it. A missing file
  * is the empty context; an invalid one throws, naming the source, and the
  * run fails closed exactly like a bad `.jevest.yml`. Logs one line.
  */
@@ -591,29 +606,38 @@ function isEnoent(error: unknown): boolean {
 
 /**
  * Resolves `.jevest.yml` without requiring a checkout (see docs/ACTION.md
- * "Checkout"): reads `configPath` off disk first — covers a
- * workflow that DOES check out anyway, or a local `pnpm action` run — and
- * only if it's not there, fetches it from the PR head sha via the GitHub
- * contents API instead. A file absent from BOTH places is not an error:
- * exactly like an empty file, it means "use the built-in defaults from
- * config/jevest.example.yml" (`loadJevestConfigFromString("", ...)`).
- * Always logs exactly one line naming which of the three sources was used.
+ * "Config source"): fetched from the PR BASE sha via the GitHub contents
+ * API. The local workspace is read only with the explicit opt-in
+ * `fromCheckout` (input `config-from-checkout: true`), and then first,
+ * falling back to the base sha when the file is not there: in agentic mode
+ * the workspace is a checkout of the PR HEAD, so reading it would let the
+ * PR rewrite the provider, thresholds and budget that judge it. A file
+ * absent from every place looked at is not an error: exactly like an empty
+ * file, it means "use the built-in defaults from config/jevest.example.yml"
+ * (`loadJevestConfigFromString("", ...)`). Always logs exactly one line
+ * naming which source was used. (Local `pnpm review` runs have no PR event
+ * and read the file directly: scripts/review/run.ts.)
  */
 export async function resolveConfig(
   vcs: GitHubVcsAdapter,
   ref: PullRequestRef,
   configPath: string,
+  options: { readonly fromCheckout?: boolean } = {},
 ): Promise<JevestConfig> {
-  // Relative to the CONSUMER's workspace, not the cwd: the action step runs
-  // in github.action_path, where Jevest's own .jevest.yml would win.
-  const localPath = resolve(process.env.GITHUB_WORKSPACE ?? process.cwd(), configPath);
-  try {
-    const raw = await readFile(localPath, "utf8");
-    console.log(`jevest: config loaded from the local checkout (${configPath})`);
-    return await loadJevestConfigFromString(raw, configPath);
-  } catch (error) {
-    if (!isEnoent(error)) {
-      throw error;
+  if (options.fromCheckout === true) {
+    // Relative to the CONSUMER's workspace, not the cwd: the action step runs
+    // in github.action_path, where Jevest's own .jevest.yml would win.
+    const localPath = resolve(process.env.GITHUB_WORKSPACE ?? process.cwd(), configPath);
+    try {
+      const raw = await readFile(localPath, "utf8");
+      console.log(
+        `jevest: config loaded from the local checkout (${configPath}; config-from-checkout: true)`,
+      );
+      return await loadJevestConfigFromString(raw, configPath);
+    } catch (error) {
+      if (!isEnoent(error)) {
+        throw error;
+      }
     }
   }
 
@@ -630,7 +654,9 @@ export async function resolveConfig(
     ref: ref.baseSha,
   });
   if (remote === null) {
-    console.log(`jevest: config not found locally or at ${label}; using the built-in defaults`);
+    console.log(
+      `jevest: config not found ${options.fromCheckout === true ? "locally or " : ""}at ${label}; using the built-in defaults`,
+    );
     return await loadJevestConfigFromString("", configPath);
   }
   console.log(`jevest: config fetched from ${label} via the GitHub API`);
@@ -639,6 +665,9 @@ export async function resolveConfig(
 
 /**
  * The `GITHUB_OUTPUT` lines, one per output declared in action.yml.
+ * `verdict` is the review verdict (fix | questions | clear | unavailable)
+ * behind `check-conclusion`; the two differ only on a fail-closed run
+ * (verdict `unavailable`, check `failure`).
  * `spend-usd` is the cumulative total AFTER this run per the spend ledger;
  * empty when unknown (no ledger, run ended before the review stage, or
  * the ledger was unreachable — see `spendCapAnnotations`). `findings-low-
@@ -736,6 +765,7 @@ export function buildOutputLines(result: PipelineResult): string {
   const { metrics } = result;
   return (
     `check-conclusion=${result.check.conclusion}\n` +
+    `verdict=${result.verdict}\n` +
     `findings-published=${result.findingsPublished}\n` +
     `findings-low-confidence=${result.findingsLowConfidence}\n` +
     `cost-usd=${result.costUsd}\n` +
@@ -814,7 +844,9 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     ref = await loadPullRequestRefFromEvent(eventPath);
     const octokit = new Octokit({ auth: inputs.githubToken });
     vcs = createGitHubVcsAdapter({ client: octokit });
-    const config = await resolveConfig(vcs, ref, inputs.configPath);
+    const config = await resolveConfig(vcs, ref, inputs.configPath, {
+      fromCheckout: inputs.configFromCheckout,
+    });
 
     const decision = createTypeSafeDecisionAdapter({
       client: new TypeSafeClient({ apiKey: inputs.typesafeApiKey, retry: { maxRetries: 0 } }),

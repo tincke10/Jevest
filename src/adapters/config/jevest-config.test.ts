@@ -1,7 +1,8 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import {
   JevestConfigError,
   loadJevestConfig,
@@ -819,5 +820,131 @@ describe("triage config (product context + change summary)", () => {
     );
     expect(config.triage.changeSummary).toBe("auto");
     expect(config.reviewer.provider).toBe("none");
+  });
+});
+
+describe("strict config at every level (typo protection)", () => {
+  const load = (yaml: string) => loadJevestConfigFromString(yaml, "<config>");
+
+  it("rejects an unknown nested key, naming its full dotted path and the closest known key", async () => {
+    await expect(load("reviewer:\n  mdoe: agentic\n")).rejects.toThrow(JevestConfigError);
+    await expect(load("reviewer:\n  mdoe: agentic\n")).rejects.toThrow(
+      "<config>: unknown config key `reviewer.mdoe` (did you mean `reviewer.mode`?)",
+    );
+  });
+
+  it("names the path at every depth: reviewer.agentic, spendCap, triage, findingFilter, publish, sizeThresholds", async () => {
+    const cases: Array<[string, string, string]> = [
+      [
+        "reviewer:\n  agentic:\n    maxTurn: 5\n",
+        "reviewer.agentic.maxTurn",
+        "reviewer.agentic.maxTurns",
+      ],
+      ["spendCap:\n  usdd: 5\n", "spendCap.usdd", "spendCap.usd"],
+      ["triage:\n  changeSumary: never\n", "triage.changeSumary", "triage.changeSummary"],
+      ["findingFilter:\n  mod: discard\n", "findingFilter.mod", "findingFilter.mode"],
+      ["publish:\n  inlineComment: false\n", "publish.inlineComment", "publish.inlineComments"],
+      [
+        "sizeThresholds:\n  smallMaxChangedLine: 10\n",
+        "sizeThresholds.smallMaxChangedLine",
+        "sizeThresholds.smallMaxChangedLines",
+      ],
+    ];
+    for (const [yaml, path, hint] of cases) {
+      await expect(load(yaml)).rejects.toThrow(
+        `unknown config key \`${path}\` (did you mean \`${hint}\`?)`,
+      );
+    }
+  });
+
+  it("rejects an unknown key inside a threshold band, naming stage and risk in the path", async () => {
+    await expect(load("thresholds:\n  triage:\n    low:\n      auto_mn: 0.9\n")).rejects.toThrow(
+      "unknown config key `thresholds.triage.low.auto_mn` (did you mean `thresholds.triage.low.auto_min`?)",
+    );
+  });
+
+  it("gives no hint when no known key is within edit distance 2", async () => {
+    const error = await load("reviewer:\n  somethingElse: true\n").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(JevestConfigError);
+    expect((error as Error).message).toContain("unknown config key `reviewer.somethingElse`");
+    expect((error as Error).message).not.toContain("did you mean");
+  });
+
+  it("keeps the top-level typo protection, now with a hint", async () => {
+    await expect(load("budgetUsdd: 1\n")).rejects.toThrow(
+      "unknown config key `budgetUsdd` (did you mean `budgetUsd`?)",
+    );
+  });
+
+  it("reports every unknown key at once", async () => {
+    const error = await load("reviewer:\n  mdoe: agentic\nspendCap:\n  usdd: 5\n").catch(
+      (e: unknown) => e,
+    );
+    expect((error as Error).message).toContain("`reviewer.mdoe`");
+    expect((error as Error).message).toContain("`spendCap.usdd`");
+  });
+
+  it("validates skipChangeKinds items against the hunk profile's change kinds", async () => {
+    await expect(load("skipChangeKinds:\n  - rename-or-formatt\n")).rejects.toThrow(
+      JevestConfigError,
+    );
+    await expect(load("skipChangeKinds:\n  - rename-or-formatt\n")).rejects.toThrow(
+      /skipChangeKinds/,
+    );
+    const config = await load(
+      "skipChangeKinds:\n  - add-behavior\n  - modify-behavior\n  - delete\n  - rename-or-format\n",
+    );
+    expect(config.skipChangeKinds).toEqual([
+      "add-behavior",
+      "modify-behavior",
+      "delete",
+      "rename-or-format",
+    ]);
+  });
+
+  it("still loads the repo's own .jevest.yml and config/jevest.example.yml", async () => {
+    const root = join(import.meta.dirname, "../../..");
+    await expect(loadJevestConfig(join(root, ".jevest.yml"))).resolves.toBeDefined();
+    await expect(loadJevestConfig(EXAMPLE_CONFIG_PATH)).resolves.toBeDefined();
+  });
+});
+
+describe("every .jevest.yml snippet in README.md and docs/*.md loads", () => {
+  // A snippet is a .jevest.yml one when it is a mapping with at least one
+  // config key; workflow (`jobs`, `steps`), product-context (`product`,
+  // `areas`) and step-list snippets are other files.
+  const CONFIG_KEYS = new Set([
+    "reviewer",
+    "thresholds",
+    "sizeThresholds",
+    "publish",
+    "budgetUsd",
+    "spendCap",
+    "maxHunks",
+    "skipChangeKinds",
+    "failClosed",
+    "triage",
+    "findingFilter",
+  ]);
+
+  it("passes the strict loader (the docs never show a config that would be rejected)", async () => {
+    const root = join(import.meta.dirname, "../../..");
+    const docs = (await readdir(join(root, "docs"))).filter((f) => f.endsWith(".md"));
+    const files = ["README.md", ...docs.map((f) => join("docs", f))];
+    let checked = 0;
+    for (const file of files) {
+      const text = await readFile(join(root, file), "utf8");
+      for (const match of text.matchAll(/```ya?ml\n([\s\S]*?)```/g)) {
+        const yaml = match[1] ?? "";
+        const parsed: unknown = parse(yaml);
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+        if (!Object.keys(parsed).some((key) => CONFIG_KEYS.has(key))) continue;
+        const line = text.slice(0, match.index).split("\n").length;
+        await expect(loadJevestConfigFromString(yaml, `${file}:${line}`)).resolves.toBeDefined();
+        checked++;
+      }
+    }
+    // Guards the extraction itself: the docs carry well over this many.
+    expect(checked).toBeGreaterThanOrEqual(10);
   });
 });

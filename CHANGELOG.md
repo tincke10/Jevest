@@ -9,6 +9,10 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **Action output `verdict`** (`fix` | `questions` | `clear` | `unavailable`), written next to `check-conclusion`: the review verdict the check carries. It differs from the conclusion only on a fail-closed run (NFR-2), which is `unavailable` with a `failure` check. `PipelineResult.verdict` carries it on every path (full run, triage-only, fail closed).
+- **Action input `claude-code-version`** (default `2.1.286`): the Claude Code CLI is now installed pinned (`npm install -g @anthropic-ai/claude-code@<version>`) instead of floating on `latest`. The agent's safety flags (`--safe-mode`, `--restricted`, `--tools`, the deny rules) were verified on 2.1.286; docs/ACTION.md "Claude Code CLI version".
+- **Action input `config-from-checkout`** (default `false`): the explicit opt-in to read `config-path` from the workspace before the PR base sha (see the BREAKING entry under Changed for the risk).
+
 - **Spanish variants for `reviewer.language`**: `es` is now explicitly neutral Latin American Spanish (the narrator and the description-context extractor are told to prefer impersonal phrasing, never "vosotros" or Peninsular wording; the secret warning now reads "conviene verificarlo y rotarlo si es real" instead of the voseo it had), and the new `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish with voseo in the prompts and in every static string that has a second-person form (verdict titles "Corregí N problemas antes de mergear" / "Respondé N dudas", the secret warning "revisalo y rotalo"). Other `es-*` tags fall back to `es`. Label names and descriptions are identical for both variants, so switching never duplicates labels. Resolution is centralized in `src/domain/review-language.ts`. Default stays `es`.
 - **`pnpm eval:rescore`** (docs/EVAL.md "Re-scoring a run"): `--run <out>/<variant> --set <golden.jsonl> [--matcher llm|prefilter] [--matcher-model] [--matcher-effort] [--as <newVariantName>]` re-matches the candidates a run stored in its `results.json` against a (possibly updated) golden set and rewrites `results.json` + `report.md` (in place, or as a new variant with `--as`) without re-running the pipeline; per-case cost, tokens, wall time and errors are kept, the matcher cache is shared with `eval:review`.
 
@@ -161,6 +165,9 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Changed
 
+- **BREAKING: `.jevest.yml` is strict at every level.** An unknown key anywhere (not only at the top level) is a config error naming its full dotted path, with a hint when a known key is within edit distance 2: ``unknown config key `reviewer.mdoe` (did you mean `reviewer.mode`?)``. Every unknown key is reported at once. `skipChangeKinds` items are validated against the hunk profile's change kinds (`add-behavior`, `modify-behavior`, `delete`, `rename-or-format`), so a misspelled kind no longer silently never matches. The stage and risk names under `thresholds` stay open (the `auto_min`/`confirm_min` band is strict). Every `.jevest.yml` snippet in README.md and docs/ is loaded by a test.
+- **BREAKING: the Action always reads `.jevest.yml` from the PR BASE sha.** It used to read the local checkout first, and in agentic mode the checkout is the PR head, so a PR could pick its own provider, thresholds, budget and skip rules. The workspace is read only with `config-from-checkout: true` (default `false`; only for a workflow that checks out a trusted ref). The product context and the calibration map were already base-only. Local `pnpm review` runs (no PR event) still read the file from disk.
+- **Node 22**: the Action's `setup-node`, CI, `.nvmrc`, `engines` (`>=22`), `@types/node` (^22) and the README badge.
 - **BREAKING: agentic review is the default.** The built-in
   `reviewer.provider` is now `claude-cli` (was `anthropic`), and
   `reviewer.mode`, `reviewer.model` and `reviewer.verifier`, when unset,

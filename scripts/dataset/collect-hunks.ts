@@ -39,7 +39,7 @@
  *   --append                         Append to --out instead of overwriting it
  *
  * Requirements: `git` and `gh` (GitHub CLI, authenticated — `gh auth login`) on PATH.
- * No npm dependencies; run with `npx tsx` (Node 20+, plain TypeScript via tsx's
+ * No npm dependencies; run with `npx tsx` (Node 22+, plain TypeScript via tsx's
  * on-the-fly transpilation, no build step).
  *
  * ---------------------------------------------------------------------------

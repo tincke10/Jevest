@@ -1070,6 +1070,31 @@ function applyVerdictLabels(
  * triage label and a short summary, per the spec's literal wording ("se
  * publica solo label y resumen de triage").
  */
+/** The verdict of a triage-only run (FR-2.3): no LLM review by design, so clear, or a question on a mismatch. */
+export function resolveTriageOnlyVerdict(triage: TriageStageResult): ReviewVerdictResult {
+  return decideReviewVerdict({
+    published: 0,
+    needsHuman: 0,
+    llmReview: "skipped-by-triage",
+    descriptionMismatch: mismatchForcesNeutral(triage),
+    injectionSuspected: false,
+    // Hunks are never profiled on a triage-only run, so none is flagged.
+    secretsDetected: 0,
+  });
+}
+
+/** The verdict of a fail-closed run (NFR-2): `unavailable`, while its check stays `failure`. */
+export function resolveFailClosedVerdict(): ReviewVerdictResult {
+  return decideReviewVerdict({
+    published: 0,
+    needsHuman: 0,
+    llmReview: "failed-closed",
+    descriptionMismatch: false,
+    injectionSuspected: false,
+    secretsDetected: 0,
+  });
+}
+
 export function runTriageOnlyPublishStage(
   triage: TriageStageResult,
   metrics: RunMetrics,
@@ -1077,16 +1102,7 @@ export function runTriageOnlyPublishStage(
   language?: string,
 ): ReviewPublication {
   const forcedNeutral = mismatchForcesNeutral(triage);
-  // No LLM review by design (FR-2.3): clear, or a question on a mismatch.
-  const verdict = decideReviewVerdict({
-    published: 0,
-    needsHuman: 0,
-    llmReview: "skipped-by-triage",
-    descriptionMismatch: forcedNeutral,
-    injectionSuspected: false,
-    // Hunks are never profiled on a triage-only run, so none is flagged.
-    secretsDetected: 0,
-  });
+  const verdict = resolveTriageOnlyVerdict(triage);
   const summaryLines = [
     "## Jevest review",
     "",
@@ -1145,14 +1161,7 @@ export function buildFailClosedPublication(
 ): ReviewPublication {
   // Verdict `unavailable`, but the check stays `failure`: NFR-2's fail
   // closed is a safety override this module never weakens.
-  const verdict = decideReviewVerdict({
-    published: 0,
-    needsHuman: 0,
-    llmReview: "failed-closed",
-    descriptionMismatch: false,
-    injectionSuspected: false,
-    secretsDetected: 0,
-  });
+  const verdict = resolveFailClosedVerdict();
   const labelsToAdd: string[] = [];
   const labelsToRemove: string[] = [AUTO_MERGE_OK_LABEL];
   const labelDefinitions = applyVerdictLabels(

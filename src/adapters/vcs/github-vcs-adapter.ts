@@ -200,8 +200,8 @@ export interface GitHubVcsAdapterOptions {
 
 /**
  * `VcsPort` plus one GitHub-specific extra the Action entrypoint uses to
- * read `.jevest.yml` from the PR head sha via the API when there is no
- * local checkout (see docs/ACTION.md "Checkout"). Not part of
+ * read `.jevest.yml` (and the product context and calibration map) from
+ * the PR BASE sha via the API (see docs/ACTION.md "Config source"). Not part of
  * `VcsPort` itself — that's the shared, VCS-agnostic contract the review
  * pipeline runs against — so this stays a GitHub-only capability on the
  * concrete adapter.

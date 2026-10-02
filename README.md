@@ -7,7 +7,7 @@ Jev decides *what to review, how much, and what to publish* in milliseconds with
 
 [![CI](https://github.com/tincke10/Jevest/actions/workflows/ci.yml/badge.svg)](https://github.com/tincke10/Jevest/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Node 20](https://img.shields.io/badge/node-20-339933?logo=node.js&logoColor=white)
+![Node 22](https://img.shields.io/badge/node-22-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-980%2B-brightgreen)

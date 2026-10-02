@@ -26,6 +26,9 @@ page is the upgrade view of it.
    only when there is something to fix.
 5. Size `spendCap` (and the job's `timeout-minutes`) for agentic runs: about
    $1.60 nominal and 2.5–7 minutes per PR.
+6. Make sure `.jevest.yml` on the **base branch** is the one you mean (the
+   Action no longer reads the workspace copy) and has no misspelled nested
+   key (items 7 and 8).
 
 ### Breaking changes
 
@@ -85,9 +88,8 @@ checkout of the head the run **fails closed** to the `unavailable` verdict
 per-hunk review silently. The comment, the check summary and a `::warning::`
 annotation on the workflow run name the exact step to add.
 
-With a checkout present, Jevest reads `config-path` from it, i.e. from the PR
-head, instead of fetching it from the PR base sha. See
-[ACTION.md "Checkout"](ACTION.md#checkout).
+The checkout does not change where the config comes from: `config-path` is
+always fetched from the PR base sha (see item 7).
 
 #### 3. The Claude token is an input you now need, per repository
 
@@ -171,8 +173,42 @@ old-language labels by hand. Unchanged: `jevest:auto-merge-ok`,
   `metrics.llm.hunks.withSecret` counts those hunks.
 - **The secret redactor flags far fewer ordinary assignments** (cache keys,
   CSRF tokens, test passwords), so hunks 0.1 skipped are now reviewed.
-- **A relative `config-path` resolves against `GITHUB_WORKSPACE`** (in 0.1 it
-  could pick up Jevest's own `.jevest.yml` in a workflow without checkout).
+- **A relative `config-path` resolves against `GITHUB_WORKSPACE`** when it is
+  read from the workspace at all (`config-from-checkout: true`, item 7); in
+  0.1 it could pick up Jevest's own `.jevest.yml` in a workflow without
+  checkout.
+- **New `verdict` output** next to `check-conclusion` (`fix`, `questions`,
+  `clear`, `unavailable`); see [ACTION.md "Review verdict"](ACTION.md#review-verdict).
+- **The Claude Code CLI is pinned** (`claude-code-version`, default
+  `2.1.286`) instead of installing `latest`, and the Action runs on Node 22.
+
+#### 7. `.jevest.yml` always comes from the PR base sha
+
+0.1 read `config-path` from the workspace when the file was there and fell
+back to the base sha. With 1.0's checkout of the PR head (item 2) that would
+let a PR rewrite the provider, thresholds, budget and skip rules that judge
+it, so the Action now **always** fetches it from the base sha. What changes
+for you:
+
+- a PR that edits `.jevest.yml` is reviewed with the base branch's config; the
+  change applies from the next PR after it merges;
+- a workflow step that generated or rewrote `.jevest.yml` in the workspace
+  before Jevest no longer has any effect, unless you set the new input
+  `config-from-checkout: true` (default `false`). Only do that when the
+  workspace is a trusted ref, never a checkout of the PR head; see
+  [ACTION.md "Config source"](ACTION.md#config-source-config-path-config-from-checkout).
+
+#### 8. `.jevest.yml` is strict at every level
+
+0.1 rejected only an unknown top-level key; a typo one level down
+(`reviewer.mdoe`, `spendCap.usdd`) was silently ignored and the default ran
+instead. 1.0 rejects an unknown key at any level, naming the dotted path and
+the closest known key (``unknown config key `reviewer.mdoe` (did you mean
+`reviewer.mode`?)``), and `skipChangeKinds` only accepts `add-behavior`,
+`modify-behavior`, `delete` and `rename-or-format`. A config that loaded in
+0.1 with a misspelled nested key now fails the run (red "jevest: run failed"
+check naming the key): fix the key, or drop it if it never did anything.
+
 
 ### Before and after
 

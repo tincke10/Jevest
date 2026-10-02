@@ -294,6 +294,7 @@ describe("runPipeline", () => {
     expect(result.mergeGate).toBeNull();
     expect(reviewerCalled).toBe(false);
     expect(result.publication.check.conclusion).toBe("success");
+    expect(result.verdict).toBe("clear");
     expect(result.check).toEqual(result.publication.check);
     expect(result.findingsPublished).toBe(0);
     expect(result.costUsd).toBe(0);
@@ -318,6 +319,8 @@ describe("runPipeline", () => {
     expect(result.failedClosed).toBe(true);
     expect(result.triage).toBeNull();
     expect(result.publication.check.conclusion).toBe("failure");
+    // NFR-2: the check stays failure, but the verdict is unavailable.
+    expect(result.verdict).toBe("unavailable");
     expect(result.publication.inlineComments).toEqual([]);
     expect(vcs.published).toHaveLength(1);
     expect(result.check).toEqual(result.publication.check);
@@ -571,6 +574,7 @@ describe("runPipeline", () => {
     // Jev-only by config with nothing flagged: the verdict is clear (green),
     // but the neutral gate still withholds auto-merge-ok.
     expect(result.publication.check.conclusion).toBe("success");
+    expect(result.verdict).toBe("clear");
     expect(result.publication.check.title).toBe("Nada para corregir");
     expect(result.publication.labelsToAdd).toContain("jevest: listo para aprobar");
     expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
@@ -1482,6 +1486,7 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
     expect(result.costUsd).toBeCloseTo(2, 6);
     expect(result.spendCap).not.toBeNull();
     expect(result.check.conclusion).toBe("neutral");
+    expect(result.verdict).toBe("questions");
     expect(result.publication.labelsToAdd).toContain("jevest:description-mismatch");
   });
 
@@ -2497,6 +2502,7 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
     expect(result.metrics.jev.requests.findingFilter).toBe(3);
     expect(result.costUsd).toBeCloseTo(0.9);
     expect(result.publication.check.conclusion).toBe("failure");
+    expect(result.verdict).toBe("fix");
   });
 
   it("gives the agent the redacted raw description, framed as untrusted, when no extractor ran", async () => {
@@ -2529,6 +2535,7 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
     expect(result.failedClosed).toBe(false);
     expect(result.agentic?.review.status).toBe("unavailable");
     expect(result.publication.check.conclusion).toBe("neutral");
+    expect(result.verdict).toBe("unavailable");
     expect(result.publication.labelsToRemove).toContain("jevest:auto-merge-ok");
     expect(result.publication.summaryMarkdown).toContain(
       "agentic review unavailable: no checkout (agentic mode needs a checkout of the PR head)",

@@ -18,34 +18,25 @@
  * `thresholds.triage.medium` or any other stage); arrays and scalars are
  * replaced wholesale by the override, never combined. Any other read
  * error (bad permissions, path is a directory, etc.) still throws — only
- * a missing file is a legitimate "no overrides" signal. An unknown
- * top-level key in `.jevest.yml` throws immediately, naming the key, as
- * typo protection — a partial file's whole point is that most keys are
- * absent on purpose, so a real typo would otherwise silently do nothing.
+ * a missing file is a legitimate "no overrides" signal. An unknown key at
+ * ANY level of `.jevest.yml` throws, naming its full dotted path (e.g.
+ * `reviewer.mdoe`) and the closest known key when one is within edit
+ * distance 2, as typo protection — a partial file's whole point is that
+ * most keys are absent on purpose, so a real typo would otherwise silently
+ * do nothing. Every object schema below is strict for that reason; the
+ * stage and risk names under `thresholds` are open records (the leaf band
+ * is strict).
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
+import { PROFILE_CHANGE_KINDS } from "../../application/spike/question-sets/profile.js";
 import type { ConfidencePolicyConfig } from "../../domain/confidence-policy.js";
 import type { SizeThresholds } from "../../domain/size.js";
 import type { SpendCapConfig } from "../../domain/spend-cap.js";
 
 const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
-
-const KNOWN_TOP_LEVEL_KEYS = new Set([
-  "reviewer",
-  "thresholds",
-  "sizeThresholds",
-  "publish",
-  "budgetUsd",
-  "spendCap",
-  "maxHunks",
-  "skipChangeKinds",
-  "failClosed",
-  "triage",
-  "findingFilter",
-]);
 
 function isEnoent(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
@@ -79,7 +70,7 @@ export class JevestConfigError extends Error {
 }
 
 const thresholdSchema = z
-  .object({
+  .strictObject({
     auto_min: z.number().min(0).max(1),
     confirm_min: z.number().min(0).max(1),
   })
@@ -88,7 +79,7 @@ const thresholdSchema = z
   });
 
 const sizeThresholdsSchema = z
-  .object({
+  .strictObject({
     smallMaxChangedLines: z.number().int().positive(),
     mediumMaxChangedLines: z.number().int().positive(),
   })
@@ -210,7 +201,7 @@ export function resolveReviewerDefaults(r: UnresolvedReviewerDefaults): {
 }
 
 const agenticSchema = z
-  .object({
+  .strictObject({
     maxTurns: z.number().int().positive().default(DEFAULT_AGENTIC.maxTurns),
     timeoutMs: z.number().int().positive().default(DEFAULT_AGENTIC.timeoutMs),
     verifierMaxTurns: z.number().int().positive().default(DEFAULT_AGENTIC.verifierMaxTurns),
@@ -220,7 +211,7 @@ const agenticSchema = z
   .default(DEFAULT_AGENTIC);
 
 const reviewerSchema = z
-  .object({
+  .strictObject({
     provider: z.enum(REVIEWER_PROVIDERS),
     model: z.string().min(1).optional(),
     language: z.string().trim().min(1).default(DEFAULT_REVIEW_LANGUAGE),
@@ -279,7 +270,7 @@ const reviewerSchema = z
   });
 
 const publishSchema = z
-  .object({
+  .strictObject({
     inlineComments: z.boolean().default(true),
   })
   .default({ inlineComments: true });
@@ -290,7 +281,7 @@ const publishSchema = z
 // `enabled: false` switch, so the ledger issue still gets written and the
 // spend stays visible either way.
 const spendCapSchema = z
-  .object({
+  .strictObject({
     usd: z.number().positive(),
     period: z.enum(["month", "total"]),
     warnAtUsd: z.number().nonnegative(),
@@ -313,7 +304,7 @@ export type ChangeSummaryMode = (typeof CHANGE_SUMMARY_MODES)[number];
 const DEFAULT_PRODUCT_CONTEXT_PATH = ".jevest/context.yml";
 
 const triageSchema = z
-  .object({
+  .strictObject({
     productContextPath: z.string().min(1).default(DEFAULT_PRODUCT_CONTEXT_PATH),
     changeSummary: z.enum(CHANGE_SUMMARY_MODES).default("auto"),
   })
@@ -350,7 +341,7 @@ export type FindingFilterCalibrationSource = (typeof FINDING_FILTER_CALIBRATION_
 const DEFAULT_CALIBRATION_PATH = ".jevest/calibration.json";
 
 const findingFilterSchema = z
-  .object({
+  .strictObject({
     mode: z.enum(FINDING_FILTER_MODES).default("annotate"),
     calibration: z.enum(FINDING_FILTER_CALIBRATION_SOURCES).default("none"),
     calibrationPath: z.string().min(1).default(DEFAULT_CALIBRATION_PATH),
@@ -362,7 +353,7 @@ const findingFilterSchema = z
   });
 
 const jevestConfigSchema = z
-  .object({
+  .strictObject({
     reviewer: reviewerSchema,
     thresholds: z.record(z.string(), z.record(z.string(), thresholdSchema)),
     sizeThresholds: sizeThresholdsSchema,
@@ -370,7 +361,8 @@ const jevestConfigSchema = z
     budgetUsd: z.number().positive(),
     spendCap: spendCapSchema,
     maxHunks: z.number().int().positive(),
-    skipChangeKinds: z.array(z.string()).default(["rename-or-format"]),
+    // The hunk profile's change_kind choices (stage 2): anything else could never match.
+    skipChangeKinds: z.array(z.enum(PROFILE_CHANGE_KINDS)).default(["rename-or-format"]),
     failClosed: z.boolean().default(true),
     triage: triageSchema,
     findingFilter: findingFilterSchema,
@@ -442,6 +434,83 @@ export interface JevestConfig {
   };
 }
 
+/** Levenshtein distance, for the "did you mean" hint on an unknown key. */
+function editDistance(a: string, b: string): number {
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const substitution = (previous[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1);
+      current.push(Math.min((previous[j] ?? 0) + 1, (current[j - 1] ?? 0) + 1, substitution));
+    }
+    previous = current;
+  }
+  return previous[b.length] ?? 0;
+}
+
+const MAX_HINT_DISTANCE = 2;
+
+interface SchemaDef {
+  readonly type: string;
+  readonly innerType?: z.ZodType;
+  readonly shape?: Record<string, z.ZodType>;
+  readonly valueType?: z.ZodType;
+}
+
+/**
+ * The keys the object schema at `path` accepts, walking through `.default()`,
+ * `.optional()` and records (any key under a record leads to its value
+ * schema). Empty when the path does not lead to an object.
+ */
+function knownKeysAt(schema: z.ZodType, path: readonly PropertyKey[]): string[] {
+  let current: z.ZodType | undefined = schema;
+  let remaining = [...path];
+  while (current !== undefined) {
+    const def = current.def as unknown as SchemaDef;
+    if (def.type === "default" || def.type === "optional" || def.type === "nullable") {
+      current = def.innerType;
+    } else if (remaining.length === 0) {
+      return def.type === "object" ? Object.keys(def.shape ?? {}) : [];
+    } else if (def.type === "object") {
+      current = def.shape?.[String(remaining[0])];
+      remaining = remaining.slice(1);
+    } else if (def.type === "record") {
+      current = def.valueType;
+      remaining = remaining.slice(1);
+    } else {
+      return [];
+    }
+  }
+  return [];
+}
+
+/**
+ * One message per unknown key, e.g. "unknown config key `reviewer.mdoe`
+ * (did you mean `reviewer.mode`?)", with the hint only when a known key at
+ * the same level is within {@link MAX_HINT_DISTANCE}.
+ */
+function unknownKeyMessages(issues: readonly z.core.$ZodIssue[]): string[] {
+  const messages: string[] = [];
+  for (const issue of issues) {
+    if (issue.code !== "unrecognized_keys") continue;
+    const parent = issue.path.map(String);
+    const known = knownKeysAt(jevestConfigSchema, issue.path);
+    for (const key of issue.keys) {
+      const dotted = [...parent, key].join(".");
+      let best: { key: string; distance: number } | undefined;
+      for (const candidate of known) {
+        const distance = editDistance(key, candidate);
+        if (distance <= MAX_HINT_DISTANCE && (best === undefined || distance < best.distance)) {
+          best = { key: candidate, distance };
+        }
+      }
+      const hint = best ? ` (did you mean \`${[...parent, best.key].join(".")}\`?)` : "";
+      messages.push(`unknown config key \`${dotted}\`${hint}`);
+    }
+  }
+  return messages;
+}
+
 function toConfidencePolicyConfig(
   thresholds: Record<string, Record<string, { auto_min: number; confirm_min: number }>>,
 ): ConfidencePolicyConfig {
@@ -490,17 +559,14 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
     throw new JevestConfigError(`${label} must be a mapping of config keys to values`);
   }
 
-  for (const key of Object.keys(overrides)) {
-    if (!KNOWN_TOP_LEVEL_KEYS.has(key)) {
-      throw new JevestConfigError(`${label}: unknown config key "${key}"`);
-    }
-  }
-
   const merged = deepMerge(defaults, overrides);
 
   const result = jevestConfigSchema.safeParse(merged);
   if (!result.success) {
-    throw new JevestConfigError(`${label}: ${result.error.message}`);
+    const unknownKeys = unknownKeyMessages(result.error.issues);
+    throw new JevestConfigError(
+      `${label}: ${unknownKeys.length > 0 ? unknownKeys.join("; ") : result.error.message}`,
+    );
   }
 
   const resolved = resolveReviewerDefaults(result.data.reviewer);
@@ -550,8 +616,7 @@ export async function loadJevestConfig(filePath: string): Promise<JevestConfig> 
 /**
  * Same merge/validation as {@link loadJevestConfig}, but for YAML text the
  * caller already has in hand — the GitHub Action fetches `.jevest.yml`
- * from the PR head sha via the contents API when no local checkout is
- * present, instead of reading it off disk.
+ * from the PR BASE sha via the contents API instead of reading it off disk.
  */
 export async function loadJevestConfigFromString(
   yaml: string,

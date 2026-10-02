@@ -49,6 +49,33 @@ describe("AGENTIC_REVIEW_SYSTEM_PROMPT", () => {
   });
 });
 
+describe("buildAgenticReviewUserPrompt language", () => {
+  it("asks for claim and failingScenario in neutral Spanish for es, with its style rule", () => {
+    const prompt = buildAgenticReviewUserPrompt(input({ language: "es" }));
+    expect(prompt).toContain("claim");
+    expect(prompt).toContain("failingScenario");
+    expect(prompt).toContain("neutral Latin American Spanish");
+    expect(prompt).not.toContain("Rioplatense");
+  });
+
+  it("asks for Rioplatense voseo for es-AR", () => {
+    const prompt = buildAgenticReviewUserPrompt(input({ language: "es-AR" }));
+    expect(prompt).toContain("Rioplatense");
+    expect(prompt).toContain("verbatim");
+  });
+
+  it("adds nothing for en or no language: the message stays byte-identical", () => {
+    const base = buildAgenticReviewUserPrompt(input());
+    expect(buildAgenticReviewUserPrompt(input({ language: "en" }))).toBe(base);
+    expect(buildAgenticReviewUserPrompt(input({ language: "fr" }))).toBe(base);
+  });
+
+  it("leaves the static system prompt out of it", () => {
+    expect(AGENTIC_REVIEW_SYSTEM_PROMPT).not.toContain("Rioplatense");
+    expect(AGENTIC_REVIEW_SYSTEM_PROMPT).not.toContain("Spanish");
+  });
+});
+
 describe("buildAgenticReviewUserPrompt", () => {
   it("carries the title, the changed files and the diff", () => {
     const prompt = buildAgenticReviewUserPrompt(input());

@@ -689,6 +689,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
         unavailableReason: input.workingTreeUnavailableReason,
         authorContext,
         description: rawDescription,
+        language: config.reviewer.language,
         budgetUsd: reviewBudgetUsd,
       }),
     );

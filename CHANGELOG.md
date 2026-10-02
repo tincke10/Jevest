@@ -278,6 +278,9 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Fixed
 
+- **Inline comments of the agentic review ignored `reviewer.language`**: the agent wrote `claim` and `failingScenario` (the inline comment bodies) in English while the summary was in the configured language. The per-PR user message now asks for them in the resolved language (neutral Latin American Spanish for `es`, voseo for `es-AR`; code, identifiers and quotes stay verbatim). The static system prompt is unchanged (still cacheable), and with `en` the user message is byte-identical to before.
+- **Label cleanup made a DELETE call (a 404) per label the PR did not carry**: every run tried to remove each other verdict/risk/known label. The removals are now intersected with the labels the fetched PR carries, so no call is made for an absent label (a 404 from a race is still tolerated).
+
 - **A readable dummy password in a test file raised the "possible committed
   secret" warning**: a test payload like `'password' => 'Some-pass-123'`
   was enough. Redacting and warning are now two decisions. The redaction

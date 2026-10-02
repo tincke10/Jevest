@@ -199,19 +199,21 @@ export const LEGACY_LABEL_NAMES: readonly string[] = [
 ];
 
 /**
- * Adds to `labelsToRemove` every legacy label the PR carries right now
- * (`currentLabels`, from the fetched PR), so a run never spends one API
- * call per legacy name on a PR that has none. The publication comes back
- * untouched (same object) when there is nothing to clean up.
+ * Narrows `labelsToRemove` to the labels the PR carries right now
+ * (`currentLabels`, from the fetched PR) and adds every legacy label it
+ * carries, so a run never spends an API call (a 404) on a label the PR does
+ * not have. The publication comes back untouched (same object) when nothing
+ * changes.
  */
 export function withLegacyLabelCleanup(
   publication: ReviewPublication,
   currentLabels: readonly string[],
 ): ReviewPublication {
   const present = new Set(currentLabels);
-  const stale = LEGACY_LABEL_NAMES.filter(
-    (name) => present.has(name) && !publication.labelsToRemove.includes(name),
-  );
-  if (stale.length === 0) return publication;
-  return { ...publication, labelsToRemove: [...publication.labelsToRemove, ...stale] };
+  const wanted = publication.labelsToRemove.filter((name) => present.has(name));
+  const stale = LEGACY_LABEL_NAMES.filter((name) => present.has(name) && !wanted.includes(name));
+  if (stale.length === 0 && wanted.length === publication.labelsToRemove.length) {
+    return publication;
+  }
+  return { ...publication, labelsToRemove: [...wanted, ...stale] };
 }

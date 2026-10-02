@@ -95,6 +95,8 @@ export interface AgenticReviewStageInput {
   readonly authorContext?: AuthorContext | undefined;
   /** The raw description, used (redacted) only when there is no author context. */
   readonly description?: string | undefined;
+  /** `reviewer.language`: the agent writes its findings' prose in it. */
+  readonly language?: string | undefined;
   /** What is left of the per-run budget; the agent does not start at 0. */
   readonly budgetUsd: number;
   readonly maxDiffChars?: number;
@@ -201,6 +203,7 @@ export async function runAgenticReviewStage(
     title: redact(pr.title).text,
     ...(input.authorContext !== undefined ? { authorContext: input.authorContext } : {}),
     ...(description !== undefined && description.trim() !== "" ? { description } : {}),
+    ...(input.language !== undefined ? { language: input.language } : {}),
     changedFiles: pr.files.map((f) => f.path),
     diff,
     ...(note !== undefined ? { diffNote: note } : {}),

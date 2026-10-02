@@ -98,6 +98,7 @@ describe("withLegacyLabelCleanup", () => {
 
   it("removes the legacy labels the PR carries, and only those", () => {
     const cleaned = withLegacyLabelCleanup(publication, [
+      "jevest: fix before merge",
       "jevest:needs-human",
       "riesgo: alto",
       "bug",
@@ -111,8 +112,15 @@ describe("withLegacyLabelCleanup", () => {
     expect(cleaned.labelsToAdd).toEqual(publication.labelsToAdd);
   });
 
-  it("returns the publication unchanged when the PR has no legacy label", () => {
-    expect(withLegacyLabelCleanup(publication, ["bug"])).toBe(publication);
+  it("never asks to remove a label the PR does not carry (each would be a 404)", () => {
+    const cleaned = withLegacyLabelCleanup(publication, ["bug", "riesgo: alto"]);
+    expect(cleaned.labelsToRemove).toEqual(["riesgo: alto"]);
+    expect(withLegacyLabelCleanup(publication, []).labelsToRemove).toEqual([]);
+  });
+
+  it("returns the publication unchanged when every removal is already carried and nothing is legacy", () => {
+    const carried = withLegacyLabelCleanup(publication, ["jevest: fix before merge"]);
+    expect(carried).toBe(publication);
   });
 
   it("does not list a legacy name twice", () => {

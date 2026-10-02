@@ -34,6 +34,12 @@ export interface AgenticReviewInput {
    * instructions. Absent otherwise.
    */
   readonly description?: string;
+  /**
+   * `reviewer.language`. The user message asks for `claim` and
+   * `failingScenario` in it (they become the inline comment bodies); absent
+   * or English adds nothing. Never goes in the static system prompt.
+   */
+  readonly language?: string;
   /** Every changed path, in PR order. */
   readonly changedFiles: readonly string[];
   /** The unified diff, redacted, capped by the stage. */

@@ -499,7 +499,7 @@ describe("runPipeline", () => {
   });
 
   it("skips the review stage entirely, empties findings/inline comments, but still runs the merge gate when reviewer.provider is 'none' (Jev-only mode)", async () => {
-    const pr = makePr();
+    const pr = makePr({ labels: ["jevest: auto-merge ok"] });
     const vcs = makeVcs(pr);
     const decision = scriptedPort({
       ...HIGH_RISK_TRIAGE_SCRIPT,
@@ -866,7 +866,7 @@ describe("runPipeline spend cap (NFR-10 cumulative)", () => {
   }
 
   it("reads the ledger, runs the review and records llm + jev spend for the PR", async () => {
-    const pr = makePr();
+    const pr = makePr({ labels: ["jevest: spend warning"] });
     const vcs = makeVcs(pr);
     const reviewer = trackedReviewer();
     const spendLedger = createFakeSpendLedger();
@@ -1428,7 +1428,7 @@ describe("runPipeline triage v2: change summary and product context (H7)", () =>
   });
 
   it("removes the injected-instructions label and keeps the gate's own conclusion when the diff is clean", async () => {
-    const vcs = makeVcs(makePr());
+    const vcs = makeVcs(makePr({ labels: ["jevest: injected instructions"] }));
     const result = await runPipeline({
       ref,
       ports: { vcs, decision: mediumRiskPort(), reviewer: fakeReviewer() },
@@ -1745,7 +1745,7 @@ describe("runPipeline when every reviewer call failed (NFR-2 fail closed)", () =
     const result = await runPipeline({
       ref,
       ports: {
-        vcs: makeVcs(makePr()),
+        vcs: makeVcs(makePr({ labels: ["jevest: auto-merge ok"] })),
         decision: fullRunWithFindingPort(),
         reviewer: failingReviewer(),
       },
@@ -2498,7 +2498,12 @@ describe("runPipeline agentic mode (reviewer.mode: agentic)", () => {
     const reviewer = tracking();
     const result = await runPipeline({
       ref,
-      ports: { vcs: makeVcs(PR), decision: judgePort(), reviewer, agenticReviewer: agent },
+      ports: {
+        vcs: makeVcs({ ...PR, labels: ["jevest: auto-merge ok"] }),
+        decision: judgePort(),
+        reviewer,
+        agenticReviewer: agent,
+      },
       workingTreeUnavailableReason: "no checkout",
       config: agenticConfig(),
     });

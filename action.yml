@@ -40,31 +40,36 @@ inputs:
   claude-code-oauth-token:
     description: >-
       Long-lived OAuth token from `claude setup-token` (Claude Pro/Max
-      subscription). Required only when .jevest.yml selects the claude-cli
-      reviewer; every review then draws on that subscription's quota. Pass
-      as a secret, never a literal.
+      subscription). Required when reviewer.provider is claude-cli, which is
+      the default since 1.0 (and the only provider for the default agentic
+      mode); every review then draws on that subscription's quota. Pass a
+      REPOSITORY secret of the consuming repo, never an organization secret
+      or a literal.
     required: false
   github-token:
     description: >-
       Token used to read the PR and publish comments/labels/checks. Needs
       `pull-requests: write` and `checks: write` (falls back to commit
-      status if checks:write is absent). Usually the built-in
-      the workflow secret GITHUB_TOKEN.
+      status if checks:write is absent). Usually the workflow's built-in
+      GITHUB_TOKEN.
     required: true
   fail-on:
     description: >-
-      "never" (default) or "failure". The GitHub check always carries the
-      real triage/merge-gate signal regardless of this input; this only
-      controls whether the workflow JOB itself exits non-zero when that
-      signal is "failure". Kept "never" by default so a low/medium-risk
-      finding never blocks CI on its own — the check is the thing repo
-      rules should gate on.
+      "never" (default) or "failure". The `jevest` check always carries the
+      review verdict regardless of this input; this only controls whether
+      the workflow JOB itself exits non-zero when that conclusion is
+      "failure" (a `fix` verdict, or a fail-closed run). Kept "never" by
+      default so the check is the thing repo rules gate on.
     required: false
     default: "never"
 
 outputs:
   check-conclusion:
-    description: 'The merge-gate conclusion: "success", "neutral", or "failure".'
+    description: >-
+      The `jevest` check conclusion, from the review verdict: "failure"
+      (fix, or a fail-closed run), "neutral" (questions, unavailable) or
+      "success" (clear). Not the merge gate's, which only decides the
+      jevest:auto-merge-ok label.
   findings-published:
     description: "Number of findings published (inline + summary), as a string."
   findings-low-confidence:

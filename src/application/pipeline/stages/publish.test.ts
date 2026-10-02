@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ReviewPublication } from "../../../domain/ports/vcs-port.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import { type RunMetrics, ZERO_CODE_CONTEXT_METRICS, ZERO_WALL_TIMES } from "../run-metrics.js";
+import { AGENTIC_UNAVAILABLE_PREFIX } from "./agentic-review.js";
 import {
   type DescriptionContextStageResult,
   descriptionContextSkipped,
@@ -16,6 +17,7 @@ import type { HunkProfileEntry, HunkProfileStageResult } from "./hunk-profile.js
 import type { MergeGateStageResult } from "./merge-gate.js";
 import type { NarrateStageResult } from "./narrate.js";
 import {
+  AGENTIC_CHECKOUT_HINT,
   type PublishStageInput,
   buildFailClosedPublication,
   resolvePublishVerdict,
@@ -1230,6 +1232,38 @@ describe("runPublishStage reviewer failures", () => {
     expect(md).toContain(`- ${OAUTH_ERROR} — 2 files: \`a.ts\`, \`b.ts\``);
     expect(md).toContain(`- ${"x".repeat(199)}…`);
     expect(md).not.toContain("x".repeat(201));
+  });
+
+  it("tells exactly which workflow step to add when agentic mode had no checkout", () => {
+    const error = `${AGENTIC_UNAVAILABLE_PREFIX}: no checkout (agentic mode needs a checkout of the PR head)`;
+    const result = publishWithReviews(
+      [failedEntry("a.ts#0", "a.ts", error), failedEntry("b.ts#0", "b.ts", error)],
+      2,
+      { inlineCommentsEnabled: false },
+    );
+    const md = result.summaryMarkdown;
+    const section = md.slice(md.indexOf("### ⚠️ LLM review failed"), md.indexOf("### Triage"));
+
+    expect(section).toContain(AGENTIC_CHECKOUT_HINT);
+    expect(section.split(AGENTIC_CHECKOUT_HINT)).toHaveLength(2);
+    expect(AGENTIC_CHECKOUT_HINT).toContain("uses: actions/checkout@v4");
+    expect(AGENTIC_CHECKOUT_HINT).toContain("ref: ${{ github.event.pull_request.head.sha }}");
+    expect(AGENTIC_CHECKOUT_HINT).toContain("fetch-depth: 1");
+    expect(AGENTIC_CHECKOUT_HINT).toContain("reviewer.mode: hunks");
+    expect(md).not.toContain("could not authenticate");
+    expect(result.check.summary).toContain(
+      "add actions/checkout with ref: ${{ github.event.pull_request.head.sha }} and fetch-depth: 1 before the Jevest step",
+    );
+  });
+
+  it("gives the checkout hint for a checkout of the wrong commit too, and never for other errors", () => {
+    const wrongCommit = `${AGENTIC_UNAVAILABLE_PREFIX}: no checkout of the PR head (the workspace is at 0123456; check out ref: the PR head sha) (agentic mode needs a checkout of the PR head)`;
+    const hinted = publishWithReviews([failedEntry("a.ts#0", "a.ts", wrongCommit)], 1);
+    expect(hinted.summaryMarkdown).toContain(AGENTIC_CHECKOUT_HINT);
+
+    const other = publishWithReviews([failedEntry("a.ts#0", "a.ts", OAUTH_ERROR)], 1);
+    expect(other.summaryMarkdown).not.toContain(AGENTIC_CHECKOUT_HINT);
+    expect(other.check.summary).not.toContain("actions/checkout");
   });
 
   it("omits the failed part of the efficiency line and the section when nothing failed", () => {

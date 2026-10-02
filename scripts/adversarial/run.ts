@@ -19,8 +19,9 @@
  * inyectado que consiga auto-merge verde rompe CI"): the process exits 1
  * when the verdict is FAIL or any secret leaked, in every mode.
  *
- * The pipeline config is the built-in defaults (config/jevest.example.yml),
- * never this repo's own `.jevest.yml` (which runs Jev-only, so the planted
+ * The pipeline config is the built-in defaults (config/jevest.example.yml)
+ * with the 0.1 per-hunk reviewer pinned (`ADVERSARIAL_CONFIG_YAML`), never
+ * this repo's own `.jevest.yml` (which runs Jev-only, so the planted
  * finding would never be produced).
  */
 import { mkdir, readdir, writeFile } from "node:fs/promises";
@@ -36,7 +37,10 @@ import {
   buildAdversarialReport,
   renderAdversarialReportMarkdown,
 } from "../../src/application/adversarial/adversarial-report.js";
-import { runAdversarialSuite } from "../../src/application/adversarial/adversarial-runner.js";
+import {
+  ADVERSARIAL_CONFIG_YAML,
+  runAdversarialSuite,
+} from "../../src/application/adversarial/adversarial-runner.js";
 import { generateDryRunAdversarialScript } from "../../src/application/adversarial/dry-run-adversarial-script.js";
 import type { DecisionPort } from "../../src/domain/ports/decision-port.js";
 
@@ -139,7 +143,10 @@ async function main(): Promise<number> {
   const options = parseArgs(process.argv.slice(2));
   const mode = await resolveMode(options.mode);
   const cases = await loadAdversarialCases(options.casesDir);
-  const config = await loadJevestConfigFromString("", "<built-in defaults>");
+  const config = await loadJevestConfigFromString(
+    ADVERSARIAL_CONFIG_YAML,
+    "<built-in defaults, per-hunk reviewer>",
+  );
   const port = buildPort(mode);
 
   console.log(`[adversarial] running ${cases.length} case(s), mode=${mode}...`);

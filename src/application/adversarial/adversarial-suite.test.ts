@@ -16,7 +16,7 @@ import { loadJevestConfigFromString } from "../../adapters/config/jevest-config.
 import { createFakeDecisionAdapter } from "../../adapters/fake-decision-adapter.js";
 import { createRecordedDecisionAdapter } from "../../adapters/recorded-decision-adapter.js";
 import { ATTACK_FAMILIES, loadAdversarialCases } from "./adversarial-case.js";
-import { runAdversarialSuite } from "./adversarial-runner.js";
+import { ADVERSARIAL_CONFIG_YAML, runAdversarialSuite } from "./adversarial-runner.js";
 import { generateDryRunAdversarialScript } from "./dry-run-adversarial-script.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
@@ -27,7 +27,7 @@ const hasFixtures = await readdir(FIXTURES_DIR)
   .then((entries) => entries.some((name) => name.endsWith(".json")))
   .catch(() => false);
 
-const config = await loadJevestConfigFromString("", "<built-in defaults>");
+const config = await loadJevestConfigFromString(ADVERSARIAL_CONFIG_YAML);
 const cases = await loadAdversarialCases(CASES_DIR);
 
 describe("datasets/adversarial", () => {

@@ -17,14 +17,30 @@
 # LLM key needed at all), finding-filter and inline comments stay empty,
 # and the merge gate still runs on triage + CI status. Useful to validate
 # triage/merge-gate behavior on a new repo before spending on LLM reviews.
+#
+# 1.0 default rule: reviewer.mode, reviewer.model and reviewer.verifier are
+# deliberately NOT set here; left unset in your .jevest.yml they follow the
+# provider (src/adapters/config/jevest-config.ts, resolveReviewerDefaults):
+#   provider       mode     model (unset)      verifier
+#   claude-cli     agentic  claude-opus-5-5    claude-cli (claude-sonnet-5)
+#   claude-cli     hunks*   claude-sonnet-5    none
+#   anthropic      hunks    claude-sonnet-5    none
+#   openai         hunks    (required)         none
+#   deepseek       hunks    (required)         none
+#   none           hunks    (not used)         none
+#   * only when you set mode: hunks yourself (the legacy per-hunk reviewer).
+# Agentic mode needs claude-cli, so any other provider resolves to hunks
+# instead of failing. An explicit value always wins.
 reviewer:
-  provider: anthropic # or: openai, deepseek, claude-cli, none
-  model: claude-sonnet-5 # ignored (and optional) when provider is none
-  # deepseek: model deepseek-v4-pro (default quality) or deepseek-flash
-  # (cheapest). Needs the DEEPSEEK_API_KEY secret / deepseek-api-key input.
+  provider: claude-cli # or: anthropic, openai, deepseek, none
+  # model: claude-opus-5-5 # see the table above; ignored when provider is none
   # claude-cli: bills a Claude Pro/Max subscription via `claude -p`; needs
   # the CLAUDE_CODE_OAUTH_TOKEN secret / claude-code-oauth-token input
-  # (generate it with `claude setup-token`). See docs/ACTION.md.
+  # (generate it with `claude setup-token`). Set that secret on EACH
+  # consuming repository, never as an organization secret. See
+  # docs/ACTION.md "Claude subscription in CI".
+  # deepseek: model deepseek-v4-pro (default quality) or deepseek-flash
+  # (cheapest). Needs the DEEPSEEK_API_KEY secret / deepseek-api-key input.
   # Language the review narrative is written in: es | es-AR | en | ...
   #   es     neutral Latin American Spanish (default)
   #   es-AR  Rioplatense Spanish with voseo ("revisá", "fijate", "tenés")
@@ -66,12 +82,18 @@ reviewer:
   # finding whose quotes are not in the code is never published (it goes
   # to low-confidence, or discarded in findingFilter.mode: discard).
   # requireEvidence: false
-  # Review mode. hunks (default): the per-hunk reviewer. agentic: ONE
-  # read-only agent per PR (claude-cli only) in a checkout of the PR head,
-  # then hard exclusions, the evidence check, the optional verifier and
-  # Jev's staged judge; without a checkout the run is "unavailable" (never
-  # a silent fallback). See docs/ACTION.md "Agentic review".
-  # mode: hunks
+  # Review mode. agentic (the default with claude-cli): ONE read-only agent
+  # per PR in a checkout of the PR head, then hard exclusions, the evidence
+  # check, the verifier and Jev's staged judge. It needs an actions/checkout
+  # step of the PR head before Jevest:
+  #   - uses: actions/checkout@v4
+  #     with:
+  #       ref: ${{ github.event.pull_request.head.sha }}
+  #       fetch-depth: 1
+  # Without it the run is "unavailable" (never a silent fallback). hunks
+  # (legacy, the default with any other provider): the per-hunk reviewer,
+  # no checkout needed. See docs/ACTION.md "Agentic review".
+  # mode: agentic
   # agentic:
   #   maxTurns: 60          # the agent's turn cap
   #   timeoutMs: 900000     # 15 minutes
@@ -80,9 +102,10 @@ reviewer:
   #   # The agent's --effort: low | medium | high | xhigh | max. Explicit
   #   # because the agent runs in safe mode, which ignores your settings.
   #   effort: xhigh
-  # Agentic mode only: none (default) or claude-cli, a fresh agent per
-  # finding that tries to refute it before Jev judges it.
-  # verifier: none
+  # Agentic mode only: claude-cli (the default in agentic mode), a fresh
+  # agent per finding that tries to refute it before Jev judges it, or none.
+  # Must stay none (unset) in hunks mode.
+  # verifier: claude-cli
   # verifierModel: claude-sonnet-5
   # The verifier's --effort (same levels). Default medium.
   # verifierEffort: medium

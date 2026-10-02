@@ -96,15 +96,15 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
     const { usedDefault, config } = await resolveConfig(join(dir, "missing.yml"));
     expect(usedDefault).toBe(true);
     expect(config.reviewer).toEqual({
-      provider: "anthropic",
-      model: "claude-sonnet-5",
+      provider: "claude-cli",
+      model: "claude-opus-5-5",
       language: "es",
       narrative: true,
       descriptionContext: true,
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
-      mode: "hunks",
+      mode: "agentic",
       agentic: {
         maxTurns: 60,
         timeoutMs: 900_000,
@@ -112,7 +112,7 @@ describe("resolveConfig (scripts/review/run.ts)", () => {
         verifierTimeoutMs: 300_000,
         effort: "xhigh",
       },
-      verifier: "none",
+      verifier: "claude-cli",
       verifierModel: "claude-sonnet-5",
       verifierEffort: "medium",
     });
@@ -320,7 +320,9 @@ describe("buildAgenticPorts (scripts/review/run.ts)", () => {
   const AGENTIC = { provider: "claude-cli" as const, model: "m", mode: "agentic" as const };
 
   it("builds nothing in the per-hunk mode", async () => {
-    expect(buildAgenticPorts("live", await config({}))).toEqual({});
+    expect(buildAgenticPorts("live", await config({ mode: "hunks", verifier: "none" }))).toEqual(
+      {},
+    );
   });
 
   it("dry-run: an agent that reports nothing and never spawns a process; a verifier only when configured", async () => {
@@ -337,7 +339,9 @@ describe("buildAgenticPorts (scripts/review/run.ts)", () => {
     });
     expect(output?.findings).toEqual([]);
     expect(ports.findingVerifier).toBeDefined();
-    expect(buildAgenticPorts("dry-run", await config(AGENTIC)).findingVerifier).toBeUndefined();
+    expect(
+      buildAgenticPorts("dry-run", await config({ ...AGENTIC, verifier: "none" })).findingVerifier,
+    ).toBeUndefined();
   });
 
   it("replay: refuses, since there are no recorded agent runs", async () => {
@@ -351,7 +355,14 @@ describe("resolveLocalWorkingTree (scripts/review/run.ts)", () => {
     const { config: base } = await resolveConfig(join(tmpdir(), "jevest-missing-config.yml"));
     return {
       ...base,
-      reviewer: { ...base.reviewer, provider: "anthropic", model: "m", ...reviewer },
+      reviewer: {
+        ...base.reviewer,
+        provider: "anthropic",
+        model: "m",
+        mode: "hunks",
+        verifier: "none",
+        ...reviewer,
+      },
     };
   }
 
@@ -479,6 +490,8 @@ describe("runLocalReview --git with code context (real git, scripts/review/run.t
       ...defaults,
       reviewer: {
         ...defaults.reviewer,
+        mode: "hunks",
+        verifier: "none",
         fullFile: true,
         impactContext: true,
         requireEvidence: true,

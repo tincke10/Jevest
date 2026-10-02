@@ -5,7 +5,10 @@ layer over an LLM reviewer. Full design: [docs/SPEC.md](SPEC.md).
 
 ## Install in a consumer repo
 
-Add a workflow, e.g. `.github/workflows/jevest.yml`:
+Add a workflow, e.g. `.github/workflows/jevest.yml`. This is the default
+setup since 1.0: the agentic reviewer on a Claude subscription, which reads
+the repository from a checkout of the PR head (see "Agentic review" and
+"Checkout" below):
 
 ```yaml
 name: Jevest review
@@ -24,20 +27,28 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: tincke10/Jevest@v0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: tincke10/Jevest@v1
         with:
           config-path: .jevest.yml
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}      # if .jevest.yml selects openai instead
-          # deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}  # if .jevest.yml selects deepseek instead
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }} # if .jevest.yml selects anthropic instead
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}       # if .jevest.yml selects openai instead
+          # deepseek-api-key: ${{ secrets.DEEPSEEK_API_KEY }}   # if .jevest.yml selects deepseek instead
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on: never
 ```
 
-`@v0` moves to every `v0.x.y` release; pin `@v0.1.0` for a workflow that never changes under you. `@main` tracks the latest commit and is for developing Jevest itself.
+With any provider other than `claude-cli` the review runs in the legacy
+per-hunk mode (`hunks`), which needs no checkout: drop the first step if you
+like (see "Checkout"). Upgrading from 0.1: [MIGRATING.md](MIGRATING.md).
+
+`@v1` moves to every `v1.x.y` release; pin an exact `v1.x.y` tag for a workflow that never changes under you. `@main` tracks the latest commit and is for developing Jevest itself.
 Which tags will exist and which one to pin is in [RELEASING.md](RELEASING.md).
-Deliberately no `actions/checkout` step — see "Why no checkout" below.
 
 ### Secrets to set
 
@@ -46,8 +57,8 @@ Deliberately no `actions/checkout` step — see "Why no checkout" below.
 | `TYPESAFE_API_KEY` | Always | Jev, the decision layer (NFR-9: environment/secrets only, never a literal in the workflow) |
 | `ANTHROPIC_API_KEY` | If `.jevest.yml` selects `reviewer.provider: anthropic` | |
 | `OPENAI_API_KEY` | If `.jevest.yml` selects `reviewer.provider: openai` | |
-| `DEEPSEEK_API_KEY` | If `.jevest.yml` selects `reviewer.provider: deepseek` | Models `deepseek-v4-pro` (default) or `deepseek-flash`; see "Choosing a reviewer" |
-| `CLAUDE_CODE_OAUTH_TOKEN` | If `.jevest.yml` selects `reviewer.provider: claude-cli` | From `claude setup-token` (Claude Pro/Max); see "Claude subscription in CI" |
+| `DEEPSEEK_API_KEY` | If `.jevest.yml` selects `reviewer.provider: deepseek` | Set `reviewer.model`: `deepseek-v4-pro` (quality) or `deepseek-flash`; see "Choosing a reviewer" |
+| `CLAUDE_CODE_OAUTH_TOKEN` | If `reviewer.provider` is `claude-cli` — **the default since 1.0** | From `claude setup-token` (Claude Pro/Max). A **repository** secret on each consuming repo, never an organization secret; see "Claude subscription in CI" |
 | `GITHUB_TOKEN` | Always | The built-in token is enough; no PAT needed |
 
 ### `.jevest.yml`
@@ -247,7 +258,7 @@ commit before Jevest (fetch-depth 1 is enough):
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
-      - uses: tincke10/Jevest@v0
+      - uses: tincke10/Jevest@v1
         with:
           # ...as above
 ```
@@ -272,7 +283,7 @@ a large file is repeated in every one of its hunks' requests (a file
 near the 80k-char cap with six changed hunks is sent six times). On the
 largest PR of the set that was ~400k extra input tokens: raise `budgetUsd`
 accordingly, or turn on `impactContext` / `requireEvidence` without
-`fullFile`. The checkout itself is the other cost; see "Why no checkout"
+`fullFile`. The checkout itself is the other cost; see "Checkout"
 for what it measured on a large repo (`fetch-depth: 1` keeps it to a
 single commit's tree).
 
@@ -287,29 +298,43 @@ repository (Opus 5.5, effort xhigh, verifier) 41.7% / 87% at $1.60
 nominal per PR. On 10 held-out PRs it reached 58.2% / 82.4% against
 67.3% / 87% for an independent full-repo review. Every variant, caveat and
 lesson: [docs/BENCHMARK.md](BENCHMARK.md#review-quality-on-real-prs-eval-harness).
-This is the **recommended mode**; `hunks` stays the default only for
-compatibility, because agentic mode needs a checkout. Industry reviewers
+This is the **default mode since 1.0** (with the default provider,
+`claude-cli`); `hunks` is the legacy per-hunk reviewer, kept and fully
+supported for repos that cannot check out the code or use another provider.
+Industry reviewers
 (Cursor Bugbot, Copilot, Greptile v3, Anthropic's code-review plugin,
 ByteDance BitsAI-CR) converged on the same shape: one agent per PR, then
 per-finding verification, hard exclusions and a decision-first filter.
 Jev is good at JUDGING a concrete hypothesis against evidence, not at
 discovering bugs, so in this mode the agent proposes and Jev decides.
 
+Every value below is the default; an empty `.jevest.yml` gets exactly this:
+
 ```yaml
 reviewer:
-  provider: claude-cli          # required: agentic mode runs `claude -p`
-  model: claude-opus-5
-  mode: agentic                 # default: hunks (the per-hunk reviewer)
+  provider: claude-cli          # default; agentic mode runs `claude -p`
+  model: claude-opus-5-5        # default in agentic mode
+  mode: agentic                 # default with claude-cli; hunks with any other provider
   agentic:
-    maxTurns: 40                # default 40
+    maxTurns: 60                # default 60
     timeoutMs: 900000           # default 15 minutes
     verifierMaxTurns: 12        # default 12
     verifierTimeoutMs: 300000   # default 5 minutes
     effort: xhigh               # default xhigh: low | medium | high | xhigh | max
-  verifier: none                # or claude-cli: one refuting agent per finding
+  verifier: claude-cli          # default in agentic mode: one refuting agent per finding; or none
   verifierModel: claude-sonnet-5
   verifierEffort: medium        # default medium, same levels
 ```
+
+`mode`, `model` and `verifier` follow the provider when you leave them
+unset: claude-cli resolves to the stack above; `anthropic`, `openai`,
+`deepseek` and `none` resolve to `mode: hunks` with no verifier (agentic
+needs claude-cli, so naming another provider is never a config error);
+`model` defaults to `claude-sonnet-5` for `anthropic` and for claude-cli in
+`hunks` mode (0.1's default) and must be set for `openai` / `deepseek`. An
+explicit value always wins. Measured cost and time with this stack:
+about **$1.60 nominal and 2.5–7 minutes per PR** (4.5 minutes on average on
+the held-out set; [BENCHMARK.md](BENCHMARK.md#review-quality-on-real-prs-eval-harness)).
 
 The effort is passed explicitly (`--effort`) because the agent runs in
 `--safe-mode`, which ignores your Claude Code settings: without the flag it
@@ -377,12 +402,17 @@ tool usage, the outcomes and drops by reason, the verifier calls and
 Jev's judge requests.
 
 **It needs a checkout of the PR head**, exactly like the code context
-(`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}`).
-Without one the run **fails closed** to the `unavailable` verdict with the
+(`actions/checkout` with `ref: ${{ github.event.pull_request.head.sha }}`
+and `fetch-depth: 1`, before the Jevest step). Without one the run **fails
+closed** to the `unavailable` verdict; it never falls back to the per-hunk
+review silently. The comment's "LLM review failed" section carries the
 line `agentic review unavailable: no checkout (agentic mode needs a
-checkout of the PR head)` under "LLM review failed"; it never falls back
-to the per-hunk review silently. An agent error (a timeout, `maxTurns`
-reached) is reported the same way.
+checkout of the PR head)` followed by the exact step to add (or
+`reviewer.mode: hunks` as the alternative), the check summary repeats it in
+one sentence, and the workflow run gets a `::warning::` annotation with the
+same step. A checkout of another commit (the default merge ref) is refused
+the same way, naming the commit it found. An agent error (a timeout,
+`maxTurns` reached) is reported under "LLM review failed" too.
 
 **Only `claude-cli` for now**: any other provider with `mode: agentic` is
 a config error (`agentic mode currently requires reviewer.provider:
@@ -514,10 +544,10 @@ change.
 
 | Provider | Models | Structured output | Notes |
 |---|---|---|---|
-| `anthropic` | `claude-opus-5`, `claude-sonnet-5` | Server-enforced schema (`messages.parse`) | Default. Prompt caching on the system prompt |
-| `openai` | any chat model | Server-enforced schema (`json_schema`) | Pricing table not confirmed in this repo; cost is estimated at Sonnet 5 rates |
-| `deepseek` | `deepseek-v4-pro` (default), `deepseek-flash` | `json_object` only, validated client-side | OpenAI-compatible endpoint `https://api.deepseek.com`; peak-rate pricing used for the budget cut-off; a 402 means the DeepSeek account has no balance |
-| `claude-cli` | `claude-opus-5` (default), `claude-sonnet-5` | Schema-enforced by `claude -p --json-schema` | Bills a Claude Pro/Max **subscription**, not API credits; `budgetUsd` tracks the CLI's nominal list price. See "Claude subscription in CI" |
+| `anthropic` | `claude-sonnet-5` (default), `claude-opus-5` | Server-enforced schema (`messages.parse`) | The 0.1 default provider. Per-hunk mode only. Prompt caching on the system prompt |
+| `openai` | any chat model (`reviewer.model` is required) | Server-enforced schema (`json_schema`) | Pricing table not confirmed in this repo; cost is estimated at Sonnet 5 rates |
+| `deepseek` | `deepseek-v4-pro` (recommended; `reviewer.model` is required), `deepseek-flash` | `json_object` only, validated client-side | OpenAI-compatible endpoint `https://api.deepseek.com`; peak-rate pricing used for the budget cut-off; a 402 means the DeepSeek account has no balance |
+| `claude-cli` | `claude-opus-5-5` (default in agentic mode), `claude-sonnet-5` (default in `hunks` mode) | Schema-enforced by `claude -p --json-schema` | **Default provider since 1.0**, the only one for agentic mode. Bills a Claude Pro/Max **subscription**, not API credits; `budgetUsd` tracks the CLI's nominal list price. See "Claude subscription in CI" |
 
 ### Claude subscription in CI (`claude-cli`)
 
@@ -531,8 +561,9 @@ own `claude-code-action` documents for subscribers:
    repository that runs the Action. Do not share it as an organization
    secret: a per-repository secret keeps each project's usage, rotation
    and revocation independent.
-3. Pass it to the Action as `claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}`
-   and set `reviewer.provider: claude-cli` in `.jevest.yml`.
+3. Pass it to the Action as `claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}`.
+   `reviewer.provider: claude-cli` is the default since 1.0, so `.jevest.yml`
+   does not need to say it.
 
 The Action installs `@anthropic-ai/claude-code` on the runner only when
 that input is present (about 15–20 s extra per run).
@@ -555,29 +586,38 @@ parse error for that hunk (the hunk is reported as unreviewed in the
 summary), never as "no findings" — an empty reply is not evidence that the
 code is fine.
 
-### Why no checkout
+### Checkout
 
-The install snippet above has no `actions/checkout` step, and it doesn't
-need one: `fetchPullRequest`, `.jevest.yml`, and everything else the
-pipeline reads come from the GitHub API, not from a working tree. The one
-thing that used to want a local file — `config-path` — now falls back to
-fetching it from the PR base sha via the contents API when it isn't on
-disk (`resolveConfig` in `src/action/main.ts`), so the checkout was purely
-incidental infrastructure, not a real dependency.
+**Agentic mode (the default) needs `actions/checkout` of the PR head**:
 
-This matters because checkout is not free. Measured on a real consumer
-repo (a private PHP + Vue monorepo, 9.7 GB tree): `actions/checkout@v4` took
-**2m43s** of a 3m09s run, versus **22s** for Jevest's own work. Dropping
-the checkout step turns a ~3-minute job into a ~25-second one on a repo
-that size, for zero loss of functionality.
+```yaml
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+```
 
-Add `actions/checkout` back only if you specifically want `config-path`
-read from a **modified working tree** — e.g. a prior step in the same job
-rewrites `.jevest.yml` before Jevest runs. In that case the local file
-wins over the API fetch, exactly as before. The other reason is the
-opt-in code context (`reviewer.fullFile` / `reviewer.impactContext`, see
-"Code context" above), which reads the code at the PR head: check out
-`ref: ${{ github.event.pull_request.head.sha }}` with `fetch-depth: 1`.
+The agent reads the repository from it. The `ref` matters (the default
+`pull_request` checkout is the merge commit, which Jevest refuses), and
+`fetch-depth: 1` keeps it to one commit's tree. The same checkout serves the
+opt-in code context of the per-hunk mode (`reviewer.fullFile` /
+`reviewer.impactContext`, see "Code context" above).
+
+**The per-hunk mode (`reviewer.mode: hunks`) needs no checkout**:
+`fetchPullRequest`, `.jevest.yml`, and everything else the pipeline reads
+come from the GitHub API, not from a working tree; `config-path` falls back
+to fetching the file from the PR base sha via the contents API when it isn't
+on disk (`resolveConfig` in `src/action/main.ts`). That matters on large
+repos, because checkout is not free. Measured on a real consumer repo (a
+private PHP + Vue monorepo, 9.7 GB tree): `actions/checkout@v4` took
+**2m43s** of a 3m09s run, versus **22s** for Jevest's own work. If that
+cost is a problem and you can give up the agentic review, `mode: hunks`
+without a checkout turns it into a ~25-second job.
+
+With a checkout present, `config-path` is read from it (the local file wins
+over the API fetch), so a prior step in the same job can rewrite
+`.jevest.yml` before Jevest runs. Note that this also means a checkout of
+the PR head reads the PR's own `.jevest.yml`, not the base branch's.
 
 Two options worth knowing about before a first rollout:
 
@@ -780,8 +820,8 @@ The workflow's `permissions:` block needs:
 - `issues: write` — labels, the summary comment and the "Jevest spend
   ledger" issue (see "Spend cap") all go through the issues API
 - `contents: read` — fetches `.jevest.yml` from the PR base sha via the
-  contents API when it isn't in a local checkout (see "Why no checkout"
-  above); also what `actions/checkout` needs, if you add that step back
+  contents API when it isn't in a local checkout (see "Checkout" above);
+  also what `actions/checkout` needs (agentic mode)
 - `statuses: read` — reads the PR head commit's combined CI status for the
   merge gate's CI signal; without it, Jevest reports CI status as
   `"unknown"` instead of failing the run
@@ -977,7 +1017,8 @@ public-API impact from a TypeScript parse of code that isn't TypeScript.
   and secret-exfiltration attacks against PR-review bots work. `pull_request`
   from a fork gets a read-only, fork-scoped `GITHUB_TOKEN` and no repo
   secrets, so this Action simply can't read `TYPESAFE_API_KEY` /
-  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` on a fork PR under that trigger —
+  `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `DEEPSEEK_API_KEY` /
+  `CLAUDE_CODE_OAUTH_TOKEN` on a fork PR under that trigger —
   it fails the input-parsing step closed instead. If you need
   `pull_request_target` for another reason, do not add this Action to the
   same job/workflow without a manual approval gate in front of it.

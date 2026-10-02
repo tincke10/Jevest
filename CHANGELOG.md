@@ -36,13 +36,13 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   (`src/domain/agentic-policy.ts`) onto the usual published / question /
   low / discarded buckets. Without a checkout the run fails closed to
   `unavailable` (no silent fallback). Caps: `reviewer.agentic.maxTurns`
-  (40), `timeoutMs` (15 min), `verifierMaxTurns` (12),
+  (60), `timeoutMs` (15 min), `verifierMaxTurns` (12),
   `verifierTimeoutMs` (5 min). Metrics and "Efficiency" report turns,
   tokens, cost, tool usage, denied calls, verifier and Jev judge calls
   and drops by reason; `pnpm review` / `pnpm eval:review` log every tool
   call and support it via `--override reviewer.mode=agentic` (eval: drops
   are `low`, source `dropped`). claude-cli only for now (config error
-  otherwise). With the default `mode: hunks` every prompt, request,
+  otherwise). With `mode: hunks` every prompt, request,
   result and metric is unchanged (pinned by tests). Jev questions may now
   carry structured instructions and criteria (`{question, focus, ignore}`,
   `{what, examples, not_for}`), passed to the SDK as-is.
@@ -161,6 +161,40 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Changed
 
+- **BREAKING: agentic review is the default.** The built-in
+  `reviewer.provider` is now `claude-cli` (was `anthropic`), and
+  `reviewer.mode`, `reviewer.model` and `reviewer.verifier`, when unset,
+  follow the provider (`resolveReviewerDefaults` in
+  `src/adapters/config/jevest-config.ts`; `config/jevest.example.yml` no
+  longer sets them): with `claude-cli` they resolve to the measured stack —
+  `mode: agentic`, `model: claude-opus-5-5`, `agentic.effort: xhigh`,
+  `verifier: claude-cli` on `claude-sonnet-5` at `verifierEffort: medium`
+  (≈ $1.60 nominal and 2.5–7 min per PR, docs/BENCHMARK.md "Review quality
+  on real PRs"). Any other provider resolves to `mode: hunks` without a
+  verifier, because agentic mode needs claude-cli: `provider: anthropic`
+  alone keeps working exactly as in 0.1 (`claude-sonnet-5`, per hunk), and
+  so does `provider: claude-cli` with `mode: hunks`. Explicit values always
+  win. **What breaks**: a workflow without `.jevest.yml` (or without
+  `reviewer.provider` in it) now needs the `claude-code-oauth-token` input
+  (a repository secret from `claude setup-token`) and an `actions/checkout`
+  of the PR head (`ref: ${{ github.event.pull_request.head.sha }}`,
+  `fetch-depth: 1`); without the token the run fails with a message naming
+  both ways out, without the checkout it is `unavailable` (fail closed).
+  A `.jevest.yml` with `provider: claude-cli` and no `mode` moves from
+  per-hunk to agentic, and its unset `model` from `claude-sonnet-5` to
+  `claude-opus-5-5`. `provider: openai` / `deepseek` now require
+  `reviewer.model` (before they silently inherited a Claude model id their
+  API rejected). The per-hunk mode is legacy but fully supported. Upgrade
+  guide: [docs/MIGRATING.md](docs/MIGRATING.md).
+- **The no-checkout failure says what to add**: when agentic mode has no
+  checkout of the PR head, the "LLM review failed" section adds the exact
+  `actions/checkout` step (`ref: ${{ github.event.pull_request.head.sha }}`,
+  `fetch-depth: 1`) and the `reviewer.mode: hunks` alternative, the check
+  summary repeats it in one sentence, and the workflow run gets a
+  `::warning::` annotation with the step.
+- `action.yml` output `check-conclusion` is documented as what it has been
+  since the verdict change below: the `jevest` check's conclusion from the
+  review verdict, not the merge gate's.
 - **Eval matcher accuracy** (docs/EVAL.md "Matching"): an adjudicator found the matcher mapping ~1 finding in 6 to the wrong golden issue (same file, shared title words, different root cause). The LLM matcher now sees each issue's verdict, category, all `file:line`s and notes (400 chars) and the finding's claim, failing scenario and evidence quotes (now stored on candidates from agentic runs and imports); it is told to match only the SAME underlying problem (same root cause and consequence), preferring none when unsure, and answers decision-first `{ match, sameRootCause, reason }` (an id with `sameRootCause: false` counts as none). It is offered every issue of the candidate's file plus the top 3 cross-file issues by word overlap (max 12) instead of the ±15-line pre-filter. Default model `claude-opus-5-5` at `--effort medium` (`--matcher-model`, new `--matcher-effort`; `--matcher llm` is an alias of `claude-cli`). The matcher cache key is now version 2 and covers everything the prompt shows plus the effort, so old decisions are not reused.
 
 - `pnpm review --mode dry-run` (and `pnpm eval:review --mode dry-run`) now
@@ -278,8 +312,9 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   when every attempted reviewer call threw (e.g. a 401 from an expired
   token), Jev's merge gate saw zero findings and could return green, and
   `jevest:auto-merge-ok` was applied. Per NFR-2 the check is now at most
-  `neutral` in that case, the auto-merge label is never applied, and the PR
-  gets `jevest:needs-human` plus a line in "Needs human review". A partial
+  `neutral` in that case, the auto-merge label is never applied, and the
+  verdict is `unavailable` (label `jevest: revisar a mano` /
+  `jevest: review manually`, see the verdict change above). A partial
   failure keeps the gate's conclusion and the existing warning.
 - **`config-path` read Jevest's own `.jevest.yml`** in a workflow without
   checkout: the action step runs in `github.action_path`, so the relative path

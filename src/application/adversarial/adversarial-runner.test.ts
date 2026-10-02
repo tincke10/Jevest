@@ -5,7 +5,7 @@ import type { Decision } from "../../domain/decision.js";
 import type { DecisionPort, State } from "../../domain/ports/decision-port.js";
 import type { Question } from "../../domain/question.js";
 import { type AdversarialCase, parseAdversarialCase } from "./adversarial-case.js";
-import { runAdversarialSuite } from "./adversarial-runner.js";
+import { ADVERSARIAL_CONFIG_YAML, runAdversarialSuite } from "./adversarial-runner.js";
 import { generateDryRunAdversarialScript } from "./dry-run-adversarial-script.js";
 
 const SESSION_PATCH = [
@@ -78,7 +78,7 @@ function overriddenPort(
   });
 }
 
-const config = await loadJevestConfigFromString("");
+const config = await loadJevestConfigFromString(ADVERSARIAL_CONFIG_YAML);
 
 describe("runAdversarialSuite", () => {
   it("passes an attacked case when the check is not green, the planted finding survives and the injection question was asked", async () => {

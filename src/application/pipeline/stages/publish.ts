@@ -118,6 +118,7 @@ import {
 import { describeReviewerError, isAuthenticationFailure } from "../../../domain/reviewer-error.js";
 import type { SpendCapEvaluation } from "../../../domain/spend-cap.js";
 import type { LlmSkippedHunks, RunMetrics } from "../run-metrics.js";
+import { AGENTIC_UNAVAILABLE_PREFIX } from "./agentic-review.js";
 import type { DescriptionContextStageResult } from "./description-context.js";
 import { type FindingFilterStageResult, noulConfidence } from "./finding-filter.js";
 import {
@@ -547,6 +548,32 @@ const AUTH_FAILURE_HINT =
   "The reviewer could not authenticate: the provider credential (for claude-cli, the `CLAUDE_CODE_OAUTH_TOKEN` secret from `claude setup-token`; otherwise the provider's API key secret) is invalid or expired. Renew it and re-run the job.";
 
 /**
+ * Agentic mode without a checkout of the PR head (agentic-review.ts): the
+ * exact workflow step to add, since agentic is the default since 1.0 and a
+ * workflow written for 0.1 has no checkout. Rendered once under "LLM review
+ * failed"; the cleaned error above it is capped at 200 characters, this is not.
+ */
+export const AGENTIC_CHECKOUT_HINT = [
+  "**Agentic review needs a checkout of the PR head.** Add this step to the workflow, before the Jevest step:",
+  "",
+  "```yaml",
+  "      - uses: actions/checkout@v4",
+  "        with:",
+  "          ref: ${{ github.event.pull_request.head.sha }}",
+  "          fetch-depth: 1",
+  "```",
+  "",
+  "Or set `reviewer.mode: hunks` in `.jevest.yml` for the legacy per-hunk reviewer, which needs no checkout. See docs/MIGRATING.md in the Jevest repository.",
+].join("\n");
+
+const AGENTIC_CHECKOUT_CHECK_LINE =
+  " Agentic review needs a checkout of the PR head: add actions/checkout with ref: ${{ github.event.pull_request.head.sha }} and fetch-depth: 1 before the Jevest step, or set reviewer.mode: hunks.";
+
+function isAgenticCheckoutFailure(message: string): boolean {
+  return message.startsWith(AGENTIC_UNAVAILABLE_PREFIX);
+}
+
+/**
  * No hunk was reviewed: the reviewer was called at least once and threw on
  * every call. NFR-2 fail closed: such a run never reaches auto-merge-ok
  * (see {@link resolvePublishVerdict}). Zero attempts (Jev-only mode, a
@@ -585,6 +612,7 @@ function buildReviewFailedSection(review: ReviewStageResult): string[] {
     `The reviewer failed on ${failed.length} of ${review.reviews.length} hunks — these hunks were NOT reviewed, so 'no findings' below does not mean the code is clean.`,
     ...[...filesByError].map(([message, files]) => `- ${message} — ${describeFiles([...files])}`),
     ...([...filesByError.keys()].some(isAuthenticationFailure) ? [AUTH_FAILURE_HINT] : []),
+    ...([...filesByError.keys()].some(isAgenticCheckoutFailure) ? [AGENTIC_CHECKOUT_HINT] : []),
     "",
   ];
 }
@@ -1279,6 +1307,11 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     failedCount > 0
       ? ` LLM review failed on ${failedCount} of ${input.review.reviews.length} hunk(s); those were not reviewed.${reviewFailedEntirely ? " Nothing is marked safe to auto-merge." : ""}`
       : "";
+  const checkoutCheckLine = failedReviews(input.review).some((r) =>
+    isAgenticCheckoutFailure(r.error ?? ""),
+  )
+    ? AGENTIC_CHECKOUT_CHECK_LINE
+    : "";
   const secretCheckLine =
     secretsDetected > 0
       ? ` A possible committed secret was found in ${secretsDetected} hunk(s) (redacted before review): check it and rotate it if it is real.`
@@ -1296,7 +1329,7 @@ export function runPublishStage(input: PublishStageInput): ReviewPublication {
     check: {
       conclusion,
       title: verdictTitle(verdict, input.language),
-      summary: `${verdictSummary(verdict, input.language)} Triage: ${input.triage.category}/${input.triage.riskLevel}.${reviewFailedCheckLine}${mismatchQuestion ? MISMATCH_CHECK_LINE : ""}${injectionCheckLine}${secretCheckLine}${spendCapCheckLine(input.spendCap)}`,
+      summary: `${verdictSummary(verdict, input.language)} Triage: ${input.triage.category}/${input.triage.riskLevel}.${reviewFailedCheckLine}${checkoutCheckLine}${mismatchQuestion ? MISMATCH_CHECK_LINE : ""}${injectionCheckLine}${secretCheckLine}${spendCapCheckLine(input.spendCap)}`,
     },
   };
 }

@@ -27,6 +27,7 @@ import {
   resolveConfig,
   resolveProductContext,
   spendCapAnnotations,
+  workingTreeAnnotations,
 } from "./main.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -219,6 +220,19 @@ describe("createReviewer", () => {
   it("throws when provider is claude-cli but no claude-code-oauth-token input was given", () => {
     const config = makeConfig({ provider: "claude-cli", model: "claude-opus-5" });
     expect(() => createReviewer(config, makeInputs())).toThrow(/claude-code-oauth-token/);
+  });
+
+  it("says how to fix a missing claude-code-oauth-token: the input to add, or the provider to pick (a 0.1 workflow upgrading lands here)", () => {
+    const config = makeConfig({
+      provider: "claude-cli",
+      model: "claude-opus-5-5",
+      mode: "agentic",
+    });
+    const run = () => createReviewer(config, makeInputs({ anthropicApiKey: "sk-ant-test" }));
+    expect(run).toThrow(/claude-code-oauth-token: \$\{\{ secrets\.CLAUDE_CODE_OAUTH_TOKEN \}\}/);
+    expect(run).toThrow(/the default since 1\.0/);
+    expect(run).toThrow(/reviewer\.provider: anthropic/);
+    expect(run).toThrow(/docs\/MIGRATING\.md/);
   });
 
   it("throws a clear error if model is missing for a non-none provider (defensive; config validation should already catch this)", () => {
@@ -846,6 +860,28 @@ describe("createAgenticPorts (reviewer.mode: agentic)", () => {
 
   it("requires the claude-code-oauth-token input", () => {
     expect(() => createAgenticPorts(makeConfig(AGENTIC), makeInputs())).toThrow(ActionInputError);
+  });
+});
+
+describe("workingTreeAnnotations", () => {
+  const AGENTIC = makeConfig({ provider: "claude-cli", model: "m", mode: "agentic" });
+
+  it("warns in the workflow log with the exact checkout step when agentic mode has no checkout", () => {
+    const [line, ...rest] = workingTreeAnnotations(AGENTIC, "no checkout");
+    expect(rest).toEqual([]);
+    expect(line).toMatch(/^::warning title=Jevest agentic review needs a checkout::/);
+    expect(line).toContain("actions/checkout@v4");
+    expect(line).toContain("ref: ${{ github.event.pull_request.head.sha }}");
+    expect(line).toContain("fetch-depth: 1");
+    expect(line).toContain("reviewer.mode: hunks");
+    expect(line).not.toContain("\n");
+  });
+
+  it("is a plain log line for the optional code-context layers, and nothing with a checkout", () => {
+    expect(workingTreeAnnotations(makeConfig({ impactContext: true }), "no checkout")).toEqual([
+      "jevest: code context unavailable: no checkout",
+    ]);
+    expect(workingTreeAnnotations(AGENTIC, undefined)).toEqual([]);
   });
 });
 

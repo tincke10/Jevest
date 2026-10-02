@@ -128,7 +128,7 @@ describe("loadJevestConfig", () => {
     expect(config.reviewer.provider).toBe("none");
   });
 
-  it("inherits the default model when reviewer.model is omitted for anthropic/openai (partial override)", async () => {
+  it("inherits the default model when reviewer.model is omitted for anthropic (partial override)", async () => {
     const filePath = await writeConfig("reviewer:\n  provider: anthropic\nbudgetUsd: 1\n");
     const config = await loadJevestConfig(filePath);
     expect(config.reviewer).toEqual({
@@ -197,7 +197,7 @@ describe("loadJevestConfig", () => {
     });
   });
 
-  it("accepts the claude-cli provider (Claude subscription via OAuth token)", async () => {
+  it("accepts the claude-cli provider (Claude subscription via OAuth token), agentic with the verifier by default", async () => {
     const filePath = await writeConfig(
       "reviewer:\n  provider: claude-cli\n  model: claude-opus-5\nbudgetUsd: 1\n",
     );
@@ -211,7 +211,7 @@ describe("loadJevestConfig", () => {
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
-      mode: "hunks",
+      mode: "agentic",
       agentic: {
         maxTurns: 60,
         timeoutMs: 900_000,
@@ -219,9 +219,75 @@ describe("loadJevestConfig", () => {
         verifierTimeoutMs: 300_000,
         effort: "xhigh",
       },
-      verifier: "none",
+      verifier: "claude-cli",
       verifierModel: "claude-sonnet-5",
       verifierEffort: "medium",
+    });
+  });
+
+  describe("1.0 default rule: mode, model and verifier follow the provider when unset", () => {
+    it("claude-cli without mode/model/verifier resolves to the recommended agentic stack", async () => {
+      const config = await loadJevestConfigFromString("reviewer:\n  provider: claude-cli\n");
+      expect(config.reviewer).toMatchObject({
+        provider: "claude-cli",
+        model: "claude-opus-5-5",
+        mode: "agentic",
+        verifier: "claude-cli",
+        verifierModel: "claude-sonnet-5",
+        verifierEffort: "medium",
+        agentic: { effort: "xhigh" },
+      });
+    });
+
+    it("claude-cli with mode: hunks is the 0.1 per-hunk reviewer: claude-sonnet-5, no verifier", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: claude-cli\n  mode: hunks\n",
+      );
+      expect(config.reviewer).toMatchObject({
+        provider: "claude-cli",
+        model: "claude-sonnet-5",
+        mode: "hunks",
+        verifier: "none",
+      });
+    });
+
+    it("any other provider resolves to hunks and no verifier, so naming it never trips the agentic check", async () => {
+      for (const yaml of [
+        "reviewer:\n  provider: anthropic\n",
+        "reviewer:\n  provider: openai\n  model: gpt-5.1\n",
+        "reviewer:\n  provider: deepseek\n  model: deepseek-v4-pro\n",
+        "reviewer:\n  provider: none\n",
+      ]) {
+        const config = await loadJevestConfigFromString(yaml);
+        expect(config.reviewer.mode).toBe("hunks");
+        expect(config.reviewer.verifier).toBe("none");
+      }
+    });
+
+    it("anthropic without a model keeps the 0.1 default model, claude-sonnet-5", async () => {
+      const config = await loadJevestConfigFromString("reviewer:\n  provider: anthropic\n");
+      expect(config.reviewer.model).toBe("claude-sonnet-5");
+    });
+
+    it("openai and deepseek need an explicit model instead of inheriting a Claude model id", async () => {
+      for (const provider of ["openai", "deepseek"]) {
+        await expect(
+          loadJevestConfigFromString(`reviewer:\n  provider: ${provider}\n`),
+        ).rejects.toThrow(
+          new RegExp(`reviewer\\.model is required when reviewer\\.provider is .{0,2}${provider}`),
+        );
+      }
+    });
+
+    it("an explicit model, verifier: none or mode always wins over the resolved default", async () => {
+      const config = await loadJevestConfigFromString(
+        "reviewer:\n  provider: claude-cli\n  model: claude-sonnet-5\n  verifier: none\n",
+      );
+      expect(config.reviewer).toMatchObject({
+        model: "claude-sonnet-5",
+        mode: "agentic",
+        verifier: "none",
+      });
     });
   });
 
@@ -321,7 +387,7 @@ describe("loadJevestConfig", () => {
     it("rejects a verifier outside agentic mode instead of silently ignoring it", async () => {
       await expect(
         loadJevestConfigFromString(
-          "reviewer:\n  provider: claude-cli\n  model: m\n  verifier: claude-cli\n",
+          "reviewer:\n  provider: claude-cli\n  model: m\n  mode: hunks\n  verifier: claude-cli\n",
         ),
       ).rejects.toThrow(/reviewer\.verifier needs reviewer\.mode: agentic/);
     });
@@ -469,15 +535,15 @@ describe("loadJevestConfig", () => {
     // Sanity-check a few concrete values so this test still fails loudly if
     // the example file's shape ever drifts silently.
     expect(fromMissing.reviewer).toEqual({
-      provider: "anthropic",
-      model: "claude-sonnet-5",
+      provider: "claude-cli",
+      model: "claude-opus-5-5",
       language: "es",
       narrative: true,
       descriptionContext: true,
       fullFile: false,
       impactContext: false,
       requireEvidence: false,
-      mode: "hunks",
+      mode: "agentic",
       agentic: {
         maxTurns: 60,
         timeoutMs: 900_000,
@@ -485,7 +551,7 @@ describe("loadJevestConfig", () => {
         verifierTimeoutMs: 300_000,
         effort: "xhigh",
       },
-      verifier: "none",
+      verifier: "claude-cli",
       verifierModel: "claude-sonnet-5",
       verifierEffort: "medium",
     });

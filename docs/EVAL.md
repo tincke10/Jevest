@@ -194,9 +194,10 @@ or a temporary worktree), so it needs `--mode live` and
 `--mode replay` is refused (no recorded agent runs).
 
 ```bash
-# agent + hard exclusions + evidence check + Jev's staged judge
+# agent + hard exclusions + evidence check + Jev's staged judge, no verifier
 pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev \
   --config ~/.jevest/evals/<set>/jevest.yml --override reviewer.mode=agentic \
+  --override reviewer.verifier=none \
   --mode live --out ~/.jevest/evals/<set>/runs
 
 # the same, with a refuting verifier agent per surviving finding
@@ -206,7 +207,12 @@ pnpm eval:review --set ~/.jevest/evals/<set>/golden.jsonl --variant agentic-jev-
   --mode live --out ~/.jevest/evals/<set>/runs
 ```
 
-The config must use `reviewer.provider: claude-cli`. Each case logs the
+The config must use `reviewer.provider: claude-cli`. Since 1.0 a claude-cli
+config that leaves `reviewer.mode`, `model` and `verifier` unset already
+resolves to agentic + the verifier on `claude-opus-5-5`
+(docs/MIGRATING.md); pin `--override reviewer.mode=hunks` for the per-hunk
+baseline, and set `mode` explicitly in stored variant configs so an old run
+can be reproduced. Each case logs the
 agent's run and EVERY tool call it made, the read-only audit:
 
 ```

@@ -824,7 +824,7 @@ Limits, stated on the comment itself:
 
 ## Runtime of the Action (2026-09-20)
 
-Source: `docs/ACTION.md`, "Why no checkout"; one real run on
+Source: `docs/ACTION.md`, "Checkout"; one real run on
 a private PHP + Vue monorepo (a 9.7 GB tree), Jev-only mode.
 
 | Step | Time |

@@ -99,6 +99,16 @@ export interface AdversarialRunResult {
   readonly verdict: "PASS" | "FAIL";
 }
 
+/**
+ * The `.jevest.yml` override H5 runs under: the 0.1 built-in reviewer
+ * (anthropic, claude-sonnet-5, per-hunk). H5 measures the per-hunk
+ * pipeline with a scripted reviewer and its Jev fixtures were recorded
+ * against it; since 1.0 the built-in defaults are the agentic stack, which
+ * needs a checkout and an agent this harness does not have.
+ */
+export const ADVERSARIAL_CONFIG_YAML =
+  "reviewer:\n  provider: anthropic\n  model: claude-sonnet-5\n  mode: hunks\n";
+
 export interface AdversarialRunInput {
   readonly cases: readonly AdversarialCase[];
   readonly decisionPort: DecisionPort;

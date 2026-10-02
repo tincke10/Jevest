@@ -220,6 +220,16 @@ export async function loadPullRequestRefFromEvent(eventPath: string): Promise<Pu
 }
 
 /**
+ * The first error a 0.1 workflow (an API key, no `.jevest.yml` provider)
+ * hits on 1.0, where claude-cli is the built-in provider: it names both ways
+ * out. The other claude-cli ports repeat a shorter variant after this one.
+ */
+const MISSING_CLAUDE_TOKEN_MESSAGE =
+  'input "claude-code-oauth-token" is required because reviewer.provider is claude-cli (the default since 1.0 when .jevest.yml does not set it). ' +
+  "Add `claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}` to the Jevest step (a repository secret from `claude setup-token`), " +
+  "or set reviewer.provider in .jevest.yml (e.g. `reviewer.provider: anthropic` with the anthropic-api-key input, the 0.1 default). See docs/MIGRATING.md.";
+
+/**
  * `undefined` means `reviewer.provider: "none"` — Jev-only mode (SPEC
  * rollout decision): run-pipeline.ts never calls a reviewer in that case,
  * so no LLM key is required and none is validated here.
@@ -268,9 +278,7 @@ export function createReviewer(
     // The token belongs to ONE person's subscription: the consumer repo's
     // owner accepts that every PR review draws on that person's quota.
     if (inputs.claudeCodeOauthToken === undefined) {
-      throw new ActionInputError(
-        'input "claude-code-oauth-token" is required because .jevest.yml selects the claude-cli reviewer',
-      );
+      throw new ActionInputError(MISSING_CLAUDE_TOKEN_MESSAGE);
     }
     // The claude-cli seam spawns `claude` with the current process env (minus
     // ANTHROPIC_API_KEY, which would shadow the subscription); the CLI reads
@@ -583,7 +591,7 @@ function isEnoent(error: unknown): boolean {
 
 /**
  * Resolves `.jevest.yml` without requiring a checkout (see docs/ACTION.md
- * "Why no checkout"): reads `configPath` off disk first — covers a
+ * "Checkout"): reads `configPath` off disk first — covers a
  * workflow that DOES check out anyway, or a local `pnpm action` run — and
  * only if it's not there, fetches it from the PR head sha via the GitHub
  * contents API instead. A file absent from BOTH places is not an error:
@@ -704,6 +712,26 @@ export async function resolveActionWorkingTree(
   return { workingTree: createRipgrepWorkingTree({ root: workspace }), root: workspace };
 }
 
+/**
+ * What to log about a missing working tree. In agentic mode it is a
+ * `::warning::` annotation (shown on the workflow run, not only in the log)
+ * with the exact step to add, because the run cannot review anything
+ * without it; for the optional code-context layers a plain log line.
+ * Annotations are one line, so the step is written inline.
+ */
+export function workingTreeAnnotations(
+  config: JevestConfig,
+  unavailableReason: string | undefined,
+): string[] {
+  if (unavailableReason === undefined) return [];
+  if (config.reviewer.mode === "agentic" && config.reviewer.provider !== "none") {
+    return [
+      `::warning title=Jevest agentic review needs a checkout::${unavailableReason}. Agentic mode (the default) reads the repository from a checkout of the PR head; this run is "unavailable". Add before the Jevest step: \`- uses: actions/checkout@v4\` with \`ref: \${{ github.event.pull_request.head.sha }}\` and \`fetch-depth: 1\`. Or set reviewer.mode: hunks in .jevest.yml (legacy per-hunk reviewer, no checkout needed).`,
+    ];
+  }
+  return [`jevest: code context unavailable: ${unavailableReason}`];
+}
+
 export function buildOutputLines(result: PipelineResult): string {
   const { metrics } = result;
   return (
@@ -799,8 +827,8 @@ export async function run(env: NodeJS.ProcessEnv = process.env): Promise<void> {
     const productContext = await resolveProductContext(vcs, ref, config.triage.productContextPath);
     const calibration = await resolveCalibration(vcs, ref, config.findingFilter);
     const tree = await resolveActionWorkingTree(config, ref, env.GITHUB_WORKSPACE);
-    if (tree.unavailableReason) {
-      console.log(`jevest: code context unavailable: ${tree.unavailableReason}`);
+    for (const line of workingTreeAnnotations(config, tree.unavailableReason)) {
+      console.log(line);
     }
     // Same token, same `issues: write` permission the summary comment and
     // labels already need — the ledger is one issue in the consumer repo.

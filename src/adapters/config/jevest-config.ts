@@ -10,7 +10,10 @@
  * hardcoded default object to drift out of sync with it), deep-merges
  * whatever `.jevest.yml` contains on top of it (missing or an empty file
  * both mean "no overrides at all"), and validates the MERGED result with
- * the schema below. Plain objects are merged key by key recursively (so
+ * the schema below. (Three reviewer keys — `mode`, `model`, `verifier` —
+ * are left out of the example on purpose and resolved from the provider by
+ * {@link resolveReviewerDefaults}, so the defaults never combine into an
+ * invalid config.) Plain objects are merged key by key recursively (so
  * `thresholds.triage.low` can be overridden without touching
  * `thresholds.triage.medium` or any other stage); arrays and scalars are
  * replaced wholesale by the override, never combined. Any other read
@@ -135,13 +138,22 @@ export type ReviewerProvider = (typeof REVIEWER_PROVIDERS)[number];
 // the code. See src/application/pipeline/stages/code-context.ts.
 const DEFAULT_REVIEW_LANGUAGE = "es";
 
-// Review mode. "hunks" (default) is the per-hunk reviewer every benchmark
-// measured, byte-identical to before `mode` existed. "agentic" runs ONE
-// read-only agent per PR in a checkout of the head (claude-cli only for
-// now), then hard exclusions, the evidence check, an optional per-finding
-// LLM verifier (`verifier`) and Jev's staged judge — see
-// src/application/pipeline/stages/agentic-review.ts and agentic-judge.ts.
-// `agentic` holds the agent's caps; defaults below.
+// Review mode. "agentic" runs ONE read-only agent per PR in a checkout of
+// the head (claude-cli only for now), then hard exclusions, the evidence
+// check, an optional per-finding LLM verifier (`verifier`) and Jev's staged
+// judge — see src/application/pipeline/stages/agentic-review.ts and
+// agentic-judge.ts. "hunks" is the legacy per-hunk reviewer (0.1's only
+// mode), byte-identical to before `mode` existed. `agentic` holds the
+// agent's caps; defaults below.
+//
+// The 1.0 default rule (see resolveReviewerDefaults): `mode`, `model` and
+// `verifier` left unset follow the provider, so the defaults never form an
+// invalid combination. The built-in provider is claude-cli, which resolves
+// to the recommended stack (agentic, claude-opus-5-5 at effort xhigh, the
+// claude-cli verifier on claude-sonnet-5 at effort medium). Any other
+// provider resolves to hunks without a verifier, because agentic mode
+// requires claude-cli: naming `provider: anthropic` alone must not turn into
+// a config error. An explicit value always wins and is validated as before.
 export const REVIEWER_MODES = ["hunks", "agentic"] as const;
 export type ReviewerMode = (typeof REVIEWER_MODES)[number];
 export const VERIFIER_PROVIDERS = ["none", "claude-cli"] as const;
@@ -161,6 +173,41 @@ const DEFAULT_AGENTIC = {
 };
 const DEFAULT_VERIFIER_MODEL = "claude-sonnet-5";
 const DEFAULT_VERIFIER_EFFORT: AgentEffort = "medium";
+/** The agent's model when `reviewer.model` is unset in agentic mode (the measured stack). */
+export const DEFAULT_AGENTIC_MODEL = "claude-opus-5-5";
+/** `reviewer.model` when unset for anthropic, and for claude-cli in hunks mode: 0.1's default. */
+export const DEFAULT_HUNKS_CLAUDE_MODEL = "claude-sonnet-5";
+
+interface UnresolvedReviewerDefaults {
+  readonly provider: ReviewerProvider;
+  readonly mode?: ReviewerMode | undefined;
+  readonly model?: string | undefined;
+  readonly verifier?: VerifierProvider | undefined;
+}
+
+/**
+ * The 1.0 default rule for the three reviewer keys that depend on each other
+ * (see the comment above REVIEWER_MODES). Pure; explicit values pass through.
+ * `model` stays undefined for openai/deepseek (no sensible default: the
+ * schema reports it as required) and for provider "none" (no LLM).
+ */
+export function resolveReviewerDefaults(r: UnresolvedReviewerDefaults): {
+  mode: ReviewerMode;
+  model: string | undefined;
+  verifier: VerifierProvider;
+} {
+  const mode = r.mode ?? (r.provider === "claude-cli" ? "agentic" : "hunks");
+  const verifier = r.verifier ?? (mode === "agentic" ? "claude-cli" : "none");
+  let model = r.model;
+  if (model === undefined) {
+    if (r.provider === "claude-cli") {
+      model = mode === "agentic" ? DEFAULT_AGENTIC_MODEL : DEFAULT_HUNKS_CLAUDE_MODEL;
+    } else if (r.provider === "anthropic") {
+      model = DEFAULT_HUNKS_CLAUDE_MODEL;
+    }
+  }
+  return { mode, model, verifier };
+}
 
 const agenticSchema = z
   .object({
@@ -182,13 +229,15 @@ const reviewerSchema = z
     fullFile: z.boolean().default(false),
     impactContext: z.boolean().default(false),
     requireEvidence: z.boolean().default(false),
-    mode: z.enum(REVIEWER_MODES).default("hunks"),
+    // Unset = resolved from the provider (resolveReviewerDefaults).
+    mode: z.enum(REVIEWER_MODES).optional(),
     agentic: agenticSchema,
-    verifier: z.enum(VERIFIER_PROVIDERS).default("none"),
+    verifier: z.enum(VERIFIER_PROVIDERS).optional(),
     verifierModel: z.string().min(1).default(DEFAULT_VERIFIER_MODEL),
     verifierEffort: z.enum(AGENT_EFFORT_LEVELS).default(DEFAULT_VERIFIER_EFFORT),
   })
-  .superRefine((r, ctx) => {
+  .superRefine((raw, ctx) => {
+    const r = { ...raw, ...resolveReviewerDefaults(raw) };
     if (r.mode === "agentic" && r.provider !== "claude-cli") {
       ctx.addIssue({
         code: "custom",
@@ -353,7 +402,7 @@ export interface JevestConfig {
     readonly impactContext: boolean;
     /** Every finding must quote the code that proves it; unverified ones are not published. Default false. */
     readonly requireEvidence: boolean;
-    /** "hunks" (default, per-hunk reviewer) or "agentic" (one read-only agent per PR; claude-cli only). */
+    /** "agentic" (one read-only agent per PR; claude-cli only; the default with claude-cli) or "hunks" (legacy per-hunk reviewer; the default with any other provider). */
     readonly mode: ReviewerMode;
     /** The agentic reviewer's and verifier's caps (agentic mode only). */
     readonly agentic: {
@@ -364,7 +413,7 @@ export interface JevestConfig {
       /** The agent's `--effort`. Default "xhigh" (measured: high explored too little). */
       readonly effort: AgentEffort;
     };
-    /** Per-finding LLM verifier in agentic mode: "none" (default) or "claude-cli". */
+    /** Per-finding LLM verifier in agentic mode: "claude-cli" (the default in agentic mode) or "none" (always "none" in hunks mode). */
     readonly verifier: VerifierProvider;
     /** The verifier's model. Default "claude-sonnet-5". */
     readonly verifierModel: string;
@@ -454,10 +503,11 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
     throw new JevestConfigError(`${label}: ${result.error.message}`);
   }
 
+  const resolved = resolveReviewerDefaults(result.data.reviewer);
   return {
     reviewer: {
       provider: result.data.reviewer.provider,
-      model: result.data.reviewer.model,
+      model: resolved.model,
       language: result.data.reviewer.language,
       narrative: result.data.reviewer.narrative ?? result.data.reviewer.provider !== "none",
       descriptionContext:
@@ -465,9 +515,9 @@ async function resolveJevestConfig(userRaw: string | null, label: string): Promi
       fullFile: result.data.reviewer.fullFile,
       impactContext: result.data.reviewer.impactContext,
       requireEvidence: result.data.reviewer.requireEvidence,
-      mode: result.data.reviewer.mode,
+      mode: resolved.mode,
       agentic: result.data.reviewer.agentic,
-      verifier: result.data.reviewer.verifier,
+      verifier: resolved.verifier,
       verifierModel: result.data.reviewer.verifierModel,
       verifierEffort: result.data.reviewer.verifierEffort,
     },

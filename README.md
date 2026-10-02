@@ -36,10 +36,10 @@ Two review modes, one pipeline around them (triage, hunk profile, verdict, label
 
 | `reviewer.mode` | What finds the issues | Needs | Status |
 |---|---|---|---|
-| `agentic` | **One read-only agent per PR** (`claude -p`, only Read / Grep / Glob, confined to a checkout of the head, secrets deny-listed). It opens the changed files, greps for callers, tests and consumers, and reports every problem with a failing scenario and quoted evidence. Then: deterministic hard exclusions, the evidence quotes checked against the code, an optional refuting verifier agent per finding, and Jev routing each survivor to *publish* or *question* (Jev never discards here) | `reviewer.provider: claude-cli` and `actions/checkout` of the PR head | **Recommended** |
-| `hunks` | One LLM request per hunk, optionally with the full file and impact context; Jev's finding filter bands the results | nothing beyond the install below | Default, kept for compatibility (no checkout); legacy |
+| `agentic` | **One read-only agent per PR** (`claude -p`, only Read / Grep / Glob, confined to a checkout of the head, secrets deny-listed). It opens the changed files, greps for callers, tests and consumers, and reports every problem with a failing scenario and quoted evidence. Then: deterministic hard exclusions, the evidence quotes checked against the code, an optional refuting verifier agent per finding, and Jev routing each survivor to *publish* or *question* (Jev never discards here) | `reviewer.provider: claude-cli` and `actions/checkout` of the PR head | **Default since 1.0** (with the default provider, `claude-cli`) |
+| `hunks` | One LLM request per hunk, optionally with the full file and impact context; Jev's finding filter bands the results | any provider; no checkout | Legacy, fully supported; the mode for `anthropic`, `openai`, `deepseek` and `none`, or set `reviewer.mode: hunks` |
 
-The agentic mode is not the default only because it needs a checkout; on real PRs it shows over five times the weighted recall of the per-hunk reviewer, at a third of the cost of per-hunk review with full context ([Results](#results)). Setup, trust model and cost: [docs/ACTION.md](docs/ACTION.md#agentic-review-reviewermode-agentic).
+On real PRs the agentic mode shows over five times the weighted recall of the per-hunk reviewer, at a third of the cost of per-hunk review with full context ([Results](#results)): about $1.60 nominal and 2.5–7 minutes per PR. Setup, trust model and cost: [docs/ACTION.md](docs/ACTION.md#agentic-review-reviewermode-agentic). Upgrading from 0.1: [docs/MIGRATING.md](docs/MIGRATING.md).
 
 ## What a run looks like
 
@@ -76,7 +76,7 @@ Thresholds rise with risk: a `critical` merge gate needs 0.999 to go green, a `l
 
 ## Install in a repo
 
-Three steps, no checkout, about 25 seconds per run, in the default `hunks` mode. For the recommended agentic mode add an `actions/checkout` of the PR head (`ref: ${{ github.event.pull_request.head.sha }}`) before the Jevest step, use the `claude-cli` reviewer and set `reviewer.mode: agentic` ([docs/ACTION.md](docs/ACTION.md#agentic-review-reviewermode-agentic)); a run then takes a few minutes.
+Three steps for the default setup: the agentic reviewer on a Claude Pro/Max subscription, reading a checkout of the PR head; a run takes a few minutes. For the legacy per-hunk mode (any provider, no checkout, about 25 seconds per run) see [docs/MIGRATING.md](docs/MIGRATING.md#staying-on-the-legacy-per-hunk-mode).
 
 **1. Add the workflow** `.github/workflows/jevest.yml`:
 
@@ -95,14 +95,18 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: tincke10/Jevest@v0
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: tincke10/Jevest@v1
         with:
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**2. Add the secrets**: `TYPESAFE_API_KEY` always, plus the key of the reviewer you pick below.
+**2. Add the secrets** as **repository** secrets of the repo that runs the workflow: `TYPESAFE_API_KEY` always, and `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` for the default reviewer (or the key of the provider you pick below). Configure the Claude token per repository, never as a shared organization secret: each repo's usage, rotation and revocation stay independent.
 
 **3. Optionally add `.jevest.yml`** at the repo root. It is a partial override; write only what you change. A first rollout usually looks like this:
 
@@ -117,7 +121,9 @@ spendCap:
   warnAtUsd: 40
 ```
 
-Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml). `@v0` follows every `v0.x.y`; pinning an exact version such as `@v0.1.0`: [docs/RELEASING.md](docs/RELEASING.md).
+Size `spendCap` for the agentic mode: at about $1.60 nominal per PR, the default 50 a month covers roughly 30 PRs before the LLM stage is skipped.
+
+Full reference, permissions and security notes: [docs/ACTION.md](docs/ACTION.md). Every default with its explanation: [config/jevest.example.yml](config/jevest.example.yml). `@v1` follows every `v1.x.y`; pinning an exact version: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Choose a reviewer
 
@@ -125,10 +131,10 @@ The LLM is pluggable behind one port and one prompt; switching is a config chang
 
 | `reviewer.provider` | Models | Billing | Secret |
 |---|---|---|---|
-| `anthropic` (default) | `claude-sonnet-5`, `claude-opus-5` | API credits | `ANTHROPIC_API_KEY` |
-| `openai` | any chat model | API credits | `OPENAI_API_KEY` |
-| `deepseek` | `deepseek-v4-pro`, `deepseek-flash` | API credits, 4–15× cheaper per token | `DEEPSEEK_API_KEY` |
-| `claude-cli` | `claude-opus-5`, `claude-sonnet-5` | A Claude **Pro/Max subscription** via `claude setup-token` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| `claude-cli` (default) | `claude-opus-5-5` (default, agentic), `claude-sonnet-5` (default, per-hunk) | A Claude **Pro/Max subscription** via `claude setup-token` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| `anthropic` | `claude-sonnet-5` (default), `claude-opus-5` | API credits; per-hunk mode | `ANTHROPIC_API_KEY` |
+| `openai` | any chat model (set `reviewer.model`) | API credits; per-hunk mode | `OPENAI_API_KEY` |
+| `deepseek` | `deepseek-v4-pro`, `deepseek-flash` (set `reviewer.model`) | API credits, 4–15× cheaper per token; per-hunk mode | `DEEPSEEK_API_KEY` |
 | `none` | — | Free: Jev-only run | — |
 
 Three cost controls stack on top of each other:

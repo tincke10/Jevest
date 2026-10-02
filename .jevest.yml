@@ -1,9 +1,8 @@
-# Jevest self-review config (dogfooding). Jev-only until an Anthropic key
-# with Console credits is available as a secret; inline comments off for
-# the first weeks per docs/ACTION.md rollout advice.
+# Dogfood test branch only: agentic review end to end (never merged).
 reviewer:
-  provider: none
+  provider: claude-cli
+  language: es-AR
 publish:
-  inlineComments: false
-budgetUsd: 1
+  inlineComments: true
+budgetUsd: 5
 failClosed: true

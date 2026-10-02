@@ -3,14 +3,15 @@
 # Jevest
 
 **Automated pull-request review with [Jev](https://typesafe.ai) as the decision layer around an LLM reviewer.**
-Jev decides *what to review, how much, and what to publish* in milliseconds with calibrated confidence. The LLM only writes the findings.
+A read-only agent finds the issues, a verifier checks each one against the code, and Jev decides in milliseconds what to triage, route and label.
 
+[![Release](https://img.shields.io/github/v/release/tincke10/Jevest)](https://github.com/tincke10/Jevest/releases/latest)
 [![CI](https://github.com/tincke10/Jevest/actions/workflows/ci.yml/badge.svg)](https://github.com/tincke10/Jevest/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node 22](https://img.shields.io/badge/node-22-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-980%2B-brightgreen)
+![Tests](https://img.shields.io/badge/tests-2400%2B-brightgreen)
 
 <img src="docs/assets/pipeline.svg" alt="The six-stage Jevest pipeline: triage, hunk profile, LLM review, finding filter, merge gate, publish" width="980">
 
@@ -18,13 +19,22 @@ Jev decides *what to review, how much, and what to publish* in milliseconds with
 
 ---
 
+## What's new in 1.0
+
+[v1.0.0](https://github.com/tincke10/Jevest/releases/tag/v1.0.0) (2026-10-02) makes agentic review the default and is the first release measured end to end on real pull requests.
+
+- **Agentic review by default**: one read-only `claude -p` agent per PR (Opus 5.5, effort `xhigh`) over a checkout of the head, evidence checked against the code, and a refuting verifier (Sonnet 5). On 10 held-out PRs: **58.2% weighted recall, 82.4% precision, about $1.60 and 4.5 min per PR**, against 7.7% / 25% for the 0.1 per-hunk reviewer ([Results](#results)).
+- **One verdict per run**: `fix` (the only red check), `questions`, `clear` or `unavailable`, with one `jevest: …` label and a review written in the configured language (`en` by default, `es`, `es-AR`).
+- **Safer config**: `.jevest.yml` is strict and is read from the PR base, so a PR cannot choose the rules that judge it. Claude Code CLI pinned, Node 22.
+- **Breaking changes** from 0.1: labels, check semantics, config keys and the default mode. Upgrade guide: [docs/MIGRATING.md](docs/MIGRATING.md). Full list: [CHANGELOG.md](CHANGELOG.md).
+
 ## Why this exists
 
 LLM review bots get switched off for three reasons: they comment too much, they spend the same effort on a dependency bump as on an auth change, and every false finding costs *another* LLM call to verify. Jevest puts a cheap, calibrated decision model in front of and behind the LLM:
 
 | Pain | What Jevest does about it | Who decides |
 |---|---|---|
-| **Noise** | Every LLM finding is re-judged: real defect? style-only? actionable? High confidence publishes, medium goes to a human queue, low is annotated (default) or filtered, per `findingFilter.mode` | Jev, one request per finding |
+| **Noise** | Agentic mode (default): every finding must quote code that is checked against the checkout, a fresh verifier agent tries to refute it, and Jev routes each survivor to *publish* or *question*. Per-hunk mode: every finding is re-judged (real defect? style-only? actionable?) and annotated or filtered per `findingFilter.mode` | Code + verifier + Jev |
 | **Indiscriminate cost** | Triage on the PR's metadata, then a surface profile per hunk; format-only hunks never reach the LLM; per-run and cumulative spend caps | Jev + code |
 | **Blind auto-merge** | A merge gate that only ever emits a check conclusion. Jevest has no merge call wired at all | Jev, one request |
 
@@ -232,6 +242,9 @@ Live runs need `TYPESAFE_API_KEY`; reviewers need `ANTHROPIC_API_KEY`, `OPENAI_A
 - [x] H7 hard · near-duplicate crossed descriptions (2026-09-23): PASS with summary R 0.97 P 1.00, PARTIAL without (R 0.83). Near-duplicate donors (by directory Jaccard, same repo) cost 2 points of recall with the summary and 5 without it. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
 - [x] H3 post-hoc calibration study (2026-09-23): a Platt map fitted on H1b reaches a held-out ECE of 0.071 (from 0.284) with the ranking and the AUC untouched, but carries 0.216 to a set with a ten-times-lower base rate. Shipped as `findingFilter.calibration`, **default off**, with Jevest's own map published under `config/calibration/`. H3 stays FAIL. See [docs/BENCHMARK.md](docs/BENCHMARK.md)
 - [x] Review quality on real PRs (2026-09/10): eval harness with private golden sets, adjudication, re-scoring and a same-root-cause matcher; agentic mode (one read-only agent per PR + evidence check + refuting verifier, Jev routes but never discards) reaches 41.7% weighted recall / 87% precision on a 6-PR tuning set and 58.2% / 82.4% on 10 held-out PRs, against 7.7% / 25% for the per-hunk reviewer. See [docs/BENCHMARK.md](docs/BENCHMARK.md#review-quality-on-real-prs-eval-harness)
+- [x] **v1.0.0** released 2026-10-02: agentic review by default, one verdict per run, strict base-sha config, fixed English labels, English default language, end-to-end run validated against a real PR. [Release notes](https://github.com/tincke10/Jevest/releases/tag/v1.0.0) · [upgrade guide](docs/MIGRATING.md)
+- [ ] Next · confirm agentic mode on a GitHub-hosted runner with the first consumer repository (the end-to-end run so far used a local runner)
+- [ ] Next · grow the golden sets from real usage (developer reactions and resolved threads) and re-measure each release
 - [ ] Next · a verdict on H2 once ≥ 20 real PRs have run
 - [ ] Next · flip stage 4 to discard after ≥ 20 real PRs; refit `is_real_defect` calibration on real-PR findings, where the base rate is the one that matters
 

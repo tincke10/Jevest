@@ -7,13 +7,18 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-02
+
+### Highlights
+
+Jevest 1.0 reviews with an agent by default: one read-only `claude -p` agent per PR over a checkout of the head, followed by deterministic exclusions, an evidence check, a refuting verifier and Jev's staged judge. Measured on real, adjudicated PRs ([docs/BENCHMARK.md](docs/BENCHMARK.md) "Review quality on real PRs"): 41.7% weighted recall at 87% precision on a 6-PR tuning set, and 58.2% / 82.4% on a 10-PR held-out set (independent full-repo review: 67.3% / 87%), against 7.7% / 25% for the per-hunk reviewer of 0.1, at about $1.60 nominal and 2.5-7 minutes per PR. The `jevest` check now says what to do (fix, answer questions, clear) instead of whether the PR may auto-merge, and `.jevest.yml` is strict, camelCase and read from the PR base. **This release has breaking changes** (agentic default, check and label names, English default language, config keys, config read from the base sha): the upgrade guide is [docs/MIGRATING.md](docs/MIGRATING.md); pin `tincke10/Jevest@v1`.
+
 ### Added
 
 - **Action output `verdict`** (`fix` | `questions` | `clear` | `unavailable`), written next to `check-conclusion`: the review verdict the check carries. It differs from the conclusion only on a fail-closed run (NFR-2), which is `unavailable` with a `failure` check. `PipelineResult.verdict` carries it on every path (full run, triage-only, fail closed).
 - **Action input `claude-code-version`** (default `2.1.286`): the Claude Code CLI is now installed pinned (`npm install -g @anthropic-ai/claude-code@<version>`) instead of floating on `latest`. The agent's safety flags (`--safe-mode`, `--restricted`, `--tools`, the deny rules) were verified on 2.1.286; docs/ACTION.md "Claude Code CLI version".
 - **Action input `config-from-checkout`** (default `false`): the explicit opt-in to read `config-path` from the workspace before the PR base sha (see the BREAKING entry under Changed for the risk).
-
-- **Spanish variants for `reviewer.language`**: `es` is now explicitly neutral Latin American Spanish (the narrator and the description-context extractor are told to prefer impersonal phrasing, never "vosotros" or Peninsular wording; the secret warning now reads "conviene verificarlo y rotarlo si es real" instead of the voseo it had), and the new `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish with voseo in the prompts and in every static string that has a second-person form (verdict titles "Corregí N problemas antes de mergear" / "Respondé N dudas", the secret warning "revisalo y rotalo"). Other `es-*` tags fall back to `es`. Resolution is centralized in `src/domain/review-language.ts`. (The default became `en` and label names stopped depending on the language; see Changed.)
+- **Spanish variants for `reviewer.language`**: `es` is now explicitly neutral Latin American Spanish (the narrator and the description-context extractor are told to prefer impersonal phrasing, never "vosotros" or Peninsular wording; the secret warning now reads "conviene verificarlo y rotarlo si es real" instead of the voseo it had), and the new `es-AR` (also `es_AR`, case-insensitive) is Rioplatense Spanish with voseo in the prompts and in every static string that has a second-person form (verdict titles "Corregí N problemas antes de mergear" / "Respondé N dudas", the secret warning "revisalo y rotalo"). Other `es-*` tags fall back to `es`. Resolution is centralized in `src/domain/review-language.ts`. (The default is `en` and label names do not depend on the language; see Changed.)
 - **`pnpm eval:rescore`** (docs/EVAL.md "Re-scoring a run"): `--run <out>/<variant> --set <golden.jsonl> [--matcher llm|prefilter] [--matcher-model] [--matcher-effort] [--as <newVariantName>]` re-matches the candidates a run stored in its `results.json` against a (possibly updated) golden set and rewrites `results.json` + `report.md` (in place, or as a new variant with `--as`) without re-running the pipeline; per-case cost, tokens, wall time and errors are kept, the matcher cache is shared with `eval:review`.
 
 - **Explicit agent effort** (`reviewer.agentic.effort`, default `xhigh` — measured: weighted recall 29% at high vs 42% at xhigh on a private golden set, at about 2x the cost — and `reviewer.verifier.effort`, default `medium`; levels `low|medium|high|xhigh|max`): the agentic reviewer and verifier now pass `--effort <level>` right after `--model`. `--safe-mode` ignores the user's settings, so the agent used to run at the CLI default effort (16-62 s runs, 0-3 findings) instead of the effort an interactive session inherits. Overridable in `pnpm eval:review` (`--override reviewer.agentic.effort=xhigh`).
@@ -266,8 +271,8 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
   redacted text, so it is profiled and reviewed like any other hunk. The
   summary comment replaces the collapsed "skipped — hunk contains a
   redacted secret" line with a visible warning near the top, localized by
-  `reviewer.language` ("⚠️ Posible secreto commiteado en `file` (hunk):
-  revisá y rotalo si es real." / "⚠️ Possible committed secret in `file`
+  `reviewer.language` ("⚠️ Posible secreto commiteado en `file`: conviene
+  verificarlo y rotarlo si es real" (`es`; `es-AR`: "revisalo y rotalo") / "⚠️ Possible committed secret in `file`
   (hunk): check it and rotate it if it is real."), a line in "Questions and
   manual checks" and in the check summary; each flagged hunk counts as one
   question, so the verdict is at least `questions` (a published finding
@@ -328,9 +333,9 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 - **A run whose LLM review failed entirely could be marked safe to merge**:
   when every attempted reviewer call threw (e.g. a 401 from an expired
   token), Jev's merge gate saw zero findings and could return green, and
-  `jevest:auto-merge-ok` (now `jevest: auto-merge ok`) was applied. Per NFR-2 the check is now at most
+  the `jevest: auto-merge ok` label was applied. Per NFR-2 the check is now at most
   `neutral` in that case, the auto-merge label is never applied, and the
-  verdict is `unavailable` (label `jevest: review manually`, see the verdict change above). A partial
+  verdict is `unavailable` (label `jevest: review manually`). A partial
   failure keeps the gate's conclusion and the existing warning.
 - **`config-path` read Jevest's own `.jevest.yml`** in a workflow without
   checkout: the action step runs in `github.action_path`, so the relative path

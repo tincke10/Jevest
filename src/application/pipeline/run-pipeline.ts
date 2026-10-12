@@ -43,8 +43,9 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * stage, right before publishing that failure, so spent money is never
  * lost from the total.
  *
- * Author context (stages/description-context.ts): right before the review
- * stage, one extractor call keeps the review-relevant part of the PR
+ * Author context (stages/description-context.ts): after triage, at the
+ * same time as the hunk profile (neither needs the other; the review
+ * starts once both settled), one extractor call keeps the review-relevant part of the PR
  * description for the reviewer (and the narrator, in place of the raw
  * description) and drops every attempt to steer the review. It runs only
  * when `reviewer.descriptionContext` is on, a DescriptionContextPort is
@@ -81,6 +82,14 @@ import type { JevestConfig } from "../../adapters/config/jevest-config.js";
  * to the per-hunk review). The verifier's cost counts in `costUsd`, the
  * ledger and the budget like every other LLM call. With `mode: hunks` none
  * of this runs and the result carries no `agentic` key.
+ *
+ * Concurrency (wall time only, docs/ACTION.md "Performance"): the hunk
+ * profile and the author-context extraction run together after triage;
+ * the hunk profile and Jev's staged judge send up to 4 requests at once
+ * (stages/concurrency.ts keeps input order). Triage, its skip, the spend
+ * cap, the budget and the injection gate are decided before any of it,
+ * and every result is the sequential one. A hunk-profile fail-closed
+ * waits for the extractor and books its cost.
  *
  * Label migration: every publication (full run, triage-only, fail closed)
  * also removes the labels of earlier versions that the fetched PR still
@@ -543,13 +552,15 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     );
   }
 
-  // The summary is LLM money already spent: book it before any path that
-  // ends the run early, so a triage-only run or a later fail-closed never
-  // loses it from the ledger. Runs that spent nothing keep the old
-  // behavior (no ledger write, `spendCap` null on a triage-only run).
-  const bookSummaryOnly = async (): Promise<SpendFields> => {
-    if (!ports.spendLedger || triage.summaryCostUsd <= 0) {
-      return triage.summaryCostUsd > 0 ? spend : NO_SPEND_INFO;
+  // The summary (and, once it ran, the author context) is LLM money
+  // already spent: book it before any path that ends the run early, so a
+  // triage-only run or a hunk-profile fail-closed never loses it from the
+  // ledger. Runs that spent nothing keep the old behavior (no ledger
+  // write, `spendCap` null on a triage-only run).
+  const bookEarlySpend = async (): Promise<SpendFields> => {
+    const llmUsd = triage.summaryCostUsd + (descriptionContext?.costUsd ?? 0);
+    if (!ports.spendLedger || llmUsd <= 0) {
+      return llmUsd > 0 ? spend : NO_SPEND_INFO;
     }
     const recorded = await recordSpend(
       ports.spendLedger,
@@ -557,7 +568,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       now,
       preRun.evaluation,
       triage.usage.inputTokens,
-      triage.summaryCostUsd,
+      llmUsd,
     );
     return {
       spendCap: recorded.evaluation,
@@ -580,7 +591,7 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
       findingFilter: null,
       mergeGate: null,
     };
-    const spendFields = await bookSummaryOnly();
+    const spendFields = await bookEarlySpend();
     const publication = withLegacyLabelCleanup(
       runTriageOnlyPublishStage(triage, metricsFor(stages), config.reviewer.language),
       pr.labels,
@@ -602,27 +613,6 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     };
   }
 
-  let hunkProfile: HunkProfileStageResult;
-  try {
-    hunkProfile = await timed("hunkProfileMs", () =>
-      runHunkProfileStage({
-        pr,
-        decisionPort: ports.decision,
-        policyConfig: config.thresholds,
-        riskLevel: triage.riskLevel,
-        skipChangeKinds: config.skipChangeKinds,
-        maxHunks: config.maxHunks,
-        ...(input.fetchFileContent ? { fetchFileContent: input.fetchFileContent } : {}),
-      }),
-    );
-  } catch {
-    return failClosed(
-      "hunk-profile",
-      { triage, hunkProfile: null, review: null, findingFilter: null, mergeGate: null },
-      triage.summaryCostUsd > 0 ? await bookSummaryOnly() : spend,
-    );
-  }
-
   // Triage's injection flag in the description, resolved against its
   // confirm bar: the same flag the merge gate fails on, and the gate that
   // keeps the description away from the reviewer (see the module doc).
@@ -641,13 +631,50 @@ export async function runPipeline(input: RunPipelineInput): Promise<PipelineResu
     0,
     (preRun.evaluation?.effectiveBudgetUsd ?? config.budgetUsd) - triage.summaryCostUsd,
   );
-  descriptionContext = await extractDescriptionContext({
-    input,
-    pr,
-    reviewRuns: !reviewDisabled && !reviewSkippedForSpendCap,
-    budgetUsd: budgetAfterSummaryUsd,
-    containsInjectedInstructionsHigh,
-  });
+
+  // Wall time: the hunk profile (Jev) and the author-context extraction
+  // (LLM) need only triage's output, not each other, so they run at the
+  // same time; the review starts once both settled (it needs the profiled
+  // hunks AND the author context). `allSettled`: a failed profile still
+  // waits for the extractor, whose money is then booked with the
+  // fail-closed result instead of being lost.
+  const [profileOutcome, contextOutcome] = await Promise.allSettled([
+    timed("hunkProfileMs", () =>
+      runHunkProfileStage({
+        pr,
+        decisionPort: ports.decision,
+        policyConfig: config.thresholds,
+        riskLevel: triage.riskLevel,
+        skipChangeKinds: config.skipChangeKinds,
+        maxHunks: config.maxHunks,
+        ...(input.fetchFileContent ? { fetchFileContent: input.fetchFileContent } : {}),
+      }),
+    ),
+    extractDescriptionContext({
+      input,
+      pr,
+      reviewRuns: !reviewDisabled && !reviewSkippedForSpendCap,
+      budgetUsd: budgetAfterSummaryUsd,
+      containsInjectedInstructionsHigh,
+    }),
+  ]);
+  if (contextOutcome.status === "fulfilled") {
+    descriptionContext = contextOutcome.value;
+  }
+  if (profileOutcome.status === "rejected") {
+    const early = triage.summaryCostUsd + (descriptionContext?.costUsd ?? 0);
+    return failClosed(
+      "hunk-profile",
+      { triage, hunkProfile: null, review: null, findingFilter: null, mergeGate: null },
+      early > 0 ? await bookEarlySpend() : spend,
+    );
+  }
+  if (contextOutcome.status === "rejected") {
+    // runDescriptionContextStage absorbs extractor errors; anything else is a bug, as before.
+    throw contextOutcome.reason;
+  }
+  const hunkProfile = profileOutcome.value;
+
   // The author context, like the summary, already spent part of the budget.
   const reviewBudgetUsd = Math.max(0, budgetAfterSummaryUsd - (descriptionContext?.costUsd ?? 0));
   const authorContext = reviewerAuthorContext(descriptionContext);

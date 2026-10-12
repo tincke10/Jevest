@@ -3,7 +3,11 @@ import { createFakeDecisionAdapter } from "../../../adapters/fake-decision-adapt
 import type { ConfidencePolicyConfig } from "../../../domain/confidence-policy.js";
 import type { Decision } from "../../../domain/decision.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
-import { injectedInstructionsInDiffWord, runHunkProfileStage } from "./hunk-profile.js";
+import {
+  HUNK_PROFILE_CONCURRENCY,
+  injectedInstructionsInDiffWord,
+  runHunkProfileStage,
+} from "./hunk-profile.js";
 
 const policyConfig: ConfidencePolicyConfig = {
   hunkProfile: {
@@ -634,6 +638,107 @@ describe("runHunkProfileStage", () => {
       maxHunks: 50,
     });
     expect(result.totalUsage.inputTokens).toBe(0); // FakeDecisionAdapter always returns 0 usage
+  });
+
+  describe("concurrency (wall time)", () => {
+    const HUNK_COUNT = 9;
+    /** One file, HUNK_COUNT hunks: `-old{i}` / `+new{i}`, one per 10 lines. */
+    function manyHunks(): PullRequestData["files"] {
+      const patch = Array.from(
+        { length: HUNK_COUNT },
+        (_, i) => `@@ -${i * 10 + 1},1 +${i * 10 + 1},1 @@\n-old${i}\n+new${i}`,
+      ).join("\n");
+      return [{ path: "a.ts", status: "modified", additions: 9, deletions: 9, patch }];
+    }
+
+    /**
+     * Answers depend only on the hunk (its diff), never on call order; each
+     * call is delayed so the LATER hunks answer FIRST. Tracks the peak number
+     * of requests in flight. Hunk 4 fails (NFR-2 per-hunk failure).
+     */
+    function shuffledPort() {
+      const stats = { inFlight: 0, peak: 0, calls: 0 };
+      const port = {
+        stats,
+        async decide(state: unknown) {
+          stats.calls += 1;
+          stats.inFlight += 1;
+          stats.peak = Math.max(stats.peak, stats.inFlight);
+          const diff = String(state);
+          const i = Number(/new(\d+)/.exec(diff)?.[1] ?? 0);
+          await new Promise((resolve) => setTimeout(resolve, (HUNK_COUNT - i) * 2));
+          stats.inFlight -= 1;
+          if (i === 4) throw new Error("jev timeout");
+          const kind = i % 3 === 0 ? "rename-or-format" : "modify-behavior";
+          return {
+            requestId: `jev_hunk_${i}`,
+            model: "fake",
+            latencyMs: 10 + i,
+            usage: { inputTokens: 100 + i, outputTokens: 1 },
+            // biome-ignore lint/suspicious/noExplicitAny: test double
+            answers: scriptFor(kind, 0.95, i / 10, i / 20, i === 7 ? 0.8 : 0.01) as any,
+          };
+        },
+      };
+      return port;
+    }
+
+    function stageInput(port: ReturnType<typeof shuffledPort>, concurrency?: number) {
+      return {
+        pr: makePr(manyHunks()),
+        decisionPort: port,
+        policyConfig,
+        riskLevel: "low" as const,
+        skipChangeKinds: ["rename-or-format"],
+        maxHunks: 50,
+        ...(concurrency !== undefined ? { concurrency } : {}),
+      };
+    }
+
+    it("profiles up to HUNK_PROFILE_CONCURRENCY (4) hunks at once", async () => {
+      expect(HUNK_PROFILE_CONCURRENCY).toBe(4);
+      const port = shuffledPort();
+      await runHunkProfileStage(stageInput(port));
+      expect(port.stats.calls).toBe(HUNK_COUNT);
+      expect(port.stats.peak).toBe(4);
+    });
+
+    it("gives exactly the one-at-a-time result when Jev answers out of order", async () => {
+      const sequentialPort = shuffledPort();
+      const sequential = await runHunkProfileStage(stageInput(sequentialPort, 1));
+      expect(sequentialPort.stats.peak).toBe(1);
+      const concurrent = await runHunkProfileStage(stageInput(shuffledPort()));
+      expect(concurrent).toEqual(sequential);
+      expect(concurrent.hunks.map((h) => h.id)).toEqual(
+        Array.from({ length: HUNK_COUNT }, (_, i) => `a.ts#${i}`),
+      );
+      expect(concurrent.hunks[4]?.profileFailed).toBe(true);
+      expect(concurrent.injectedInstructionsInDiff.hunkIds).toEqual(["a.ts#7"]);
+    });
+
+    it("still rejects (fail closed) on an unexpected Jev answer shape, after the in-flight hunks settle", async () => {
+      let inFlight = 0;
+      const port = {
+        async decide(state: unknown) {
+          inFlight += 1;
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          inFlight -= 1;
+          const i = Number(/new(\d+)/.exec(String(state))?.[1] ?? 0);
+          return {
+            requestId: `r${i}`,
+            model: "fake",
+            latencyMs: 1,
+            usage: { inputTokens: 1, outputTokens: 1 },
+            // biome-ignore lint/suspicious/noExplicitAny: test double
+            answers: (i === 2 ? {} : scriptFor("modify-behavior", 0.9, 0.1, 0.1)) as any,
+          };
+        },
+      };
+      await expect(
+        runHunkProfileStage({ ...stageInput(shuffledPort()), decisionPort: port }),
+      ).rejects.toThrow("hunk-profile: unexpected decision shape");
+      expect(inFlight).toBe(0);
+    });
   });
 });
 

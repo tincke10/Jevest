@@ -6,7 +6,7 @@ import type { Decision } from "../../../domain/decision.js";
 import type { DecisionPort, State } from "../../../domain/ports/decision-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
 import type { Question } from "../../../domain/question.js";
-import { runAgenticJudgeStage } from "./agentic-judge.js";
+import { JUDGE_CONCURRENCY, runAgenticJudgeStage } from "./agentic-judge.js";
 import { createHeadFileReader } from "./code-context.js";
 import { EVIDENCE_NOT_FOUND_REASON } from "./finding-filter.js";
 
@@ -381,6 +381,95 @@ describe("runAgenticJudgeStage", () => {
       });
       expect(verifier.calls).toHaveLength(0);
       expect(filter.needsHuman[0]?.agentic?.verifier?.reason).toMatch(/budget/);
+    });
+  });
+  describe("Jev's staged judge concurrency (wall time)", () => {
+    const COUNT = 9;
+    /** Distinct findings on the same verified evidence; the claim carries the index. */
+    function manyFindings(): AgenticFinding[] {
+      return Array.from({ length: COUNT }, (_, i) => finding({ claim: `claim #${i}` }));
+    }
+
+    /**
+     * Answers depend only on (finding, question), never on call order;
+     * later findings answer FIRST. Finding 1 is noMatch (one step), 2
+     * fails on mechanism (unverified), 5 is partially, the rest go the full
+     * chain with a per-finding severity. Tracks the peak findings in flight.
+     */
+    function shuffledJudge() {
+      const stats = { inFlight: 0, peak: 0, calls: 0 };
+      const port: DecisionPort = {
+        async decide(state, questions) {
+          stats.calls += 1;
+          stats.inFlight += 1;
+          stats.peak = Math.max(stats.peak, stats.inFlight);
+          const key = Object.keys(questions)[0] as string;
+          const claim = String((state as { finding: { claim: string } }).finding.claim);
+          const i = Number(/#(\d+)/.exec(claim)?.[1] ?? 0);
+          await new Promise((resolve) => setTimeout(resolve, (COUNT - i) * 2));
+          stats.inFlight -= 1;
+          if (i === 2 && key === "mechanism") throw new Error("Jev 503");
+          const decision: Decision =
+            key === "supports"
+              ? {
+                  type: "choice",
+                  choice: i === 1 ? "noMatch" : i === 5 ? "partially" : "proves",
+                  confidence: 0.9,
+                  probabilities: { proves: 0.5 + i / 100 },
+                }
+              : key === "mechanism"
+                ? {
+                    type: "choice",
+                    choice: "condition",
+                    confidence: 0.8,
+                    probabilities: { condition: 0.8 },
+                  }
+                : {
+                    type: "score",
+                    score: i % 4,
+                    confidence: 0.7,
+                    legend: {},
+                    probabilities: {},
+                  };
+          return {
+            requestId: `jev_${i}_${key}`,
+            model: "jev",
+            latencyMs: 10 * i + key.length,
+            usage: { inputTokens: 100 + i, outputTokens: 1 },
+            // biome-ignore lint/suspicious/noExplicitAny: test double
+            answers: { [key]: decision } as any,
+          };
+        },
+      };
+      return { port, stats };
+    }
+
+    it("judges up to JUDGE_CONCURRENCY (4) findings at once", async () => {
+      expect(JUDGE_CONCURRENCY).toBe(4);
+      const { port, stats } = shuffledJudge();
+      await runAgenticJudgeStage(base(manyFindings(), port));
+      expect(stats.peak).toBe(4);
+    });
+
+    it("gives exactly the one-at-a-time result (buckets, routes, latencies order, usage) when Jev answers out of order", async () => {
+      const sequentialJudge = shuffledJudge();
+      const sequential = await runAgenticJudgeStage({
+        ...base(manyFindings(), sequentialJudge.port),
+        judgeConcurrency: 1,
+      });
+      expect(sequentialJudge.stats.peak).toBe(1);
+      const concurrent = await runAgenticJudgeStage(base(manyFindings(), shuffledJudge().port));
+      expect(concurrent).toEqual(sequential);
+      // Request latencies stay in finding order, each finding's steps in chain order:
+      // finding 0 supports / mechanism / severity, then finding 1 supports.
+      expect(concurrent.filter.requestLatenciesMs.slice(0, 4)).toEqual([8, 9, 8, 18]);
+      expect(concurrent.details.jevJudgeCalls).toBe(sequentialJudge.stats.calls);
+      const questions = concurrent.filter.needsHuman.map((f) => f.findingId);
+      expect(questions).toEqual([...questions].sort());
+      expect(questions).toEqual(expect.arrayContaining(["agentic-f1", "agentic-f2", "agentic-f5"]));
+      expect(
+        concurrent.filter.needsHuman.filter((f) => f.unverified).map((f) => f.findingId),
+      ).toEqual(["agentic-f2"]);
     });
   });
 });

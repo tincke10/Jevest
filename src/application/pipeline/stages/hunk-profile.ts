@@ -4,7 +4,8 @@
  * `contains_reviewer_instructions` per hunk (§4.3: `touches_public_api` is
  * derived in code by AST, since the `export` line is often outside the
  * hunk; `touches_io` is dropped until there's more labeled support). One
- * Jev request per hunk (NFR-14) — the question set lives in
+ * Jev request per hunk (NFR-14), up to {@link HUNK_PROFILE_CONCURRENCY} in
+ * flight, entries in PR order — the question set lives in
  * `hunk-profile-questions.ts` (the three surface questions reused verbatim
  * from the spike, plus the injection one). These Jev questions run on the
  * raw diff for ANY language — the language gate below applies only to the
@@ -45,6 +46,7 @@ import { extractVueScript, languageFromPath } from "../../../domain/language.js"
 import type { DecisionPort } from "../../../domain/ports/decision-port.js";
 import type { PullRequestData } from "../../../domain/pull-request.js";
 import { redact } from "../../../domain/redact.js";
+import { mapWithConcurrency } from "./concurrency.js";
 import { pipelineHunkProfileQuestionSet } from "./hunk-profile-questions.js";
 import type { RiskLevel } from "./triage.js";
 
@@ -54,6 +56,13 @@ const pipelineProfileQuestions = pipelineHunkProfileQuestionSet.questions;
 export const INJECTED_INSTRUCTIONS_IN_DIFF_YES_MIN_PROB = 0.5;
 /** Below the "yes" bar but at or above this, the verdict is "unclear"; below it, "no". */
 export const INJECTED_INSTRUCTIONS_IN_DIFF_UNCLEAR_MIN_PROB = 0.3;
+
+/**
+ * Jev requests in flight at once (one per hunk, NFR-14 unchanged). The
+ * entries keep PR order, so the result is the sequential loop's; Jev's 429
+ * is retried with backoff by the adapter.
+ */
+export const HUNK_PROFILE_CONCURRENCY = 4;
 
 export type InjectedInstructionsInDiffWord = "yes" | "no" | "unclear";
 
@@ -119,6 +128,8 @@ export interface HunkProfileStageInput {
   readonly maxHunks: number;
   /** Optional: fetch a file's full content at a given sha, for full-file AST context (§4.3). */
   readonly fetchFileContent?: (path: string, sha: string) => Promise<string | null>;
+  /** Hunks profiled at once. Default {@link HUNK_PROFILE_CONCURRENCY}; 1 is the one-at-a-time loop. */
+  readonly concurrency?: number;
 }
 
 export interface HunkProfileStageResult {
@@ -203,62 +214,57 @@ function foldInjectedInstructions(
   return { maxProb, hunkIds };
 }
 
-export async function runHunkProfileStage(
+interface ProfiledHunk {
+  /** Jev answered (counts in the stage's request/latency/usage totals). */
+  readonly answered: boolean;
+  readonly entry: HunkProfileEntry;
+}
+
+async function profileHunk(
   input: HunkProfileStageInput,
-): Promise<HunkProfileStageResult> {
-  const allHunks: SplitHunk[] = [];
-  for (const file of input.pr.files) {
-    allHunks.push(...splitFileIntoHunks(file.path, file.patch));
+  policy: ReturnType<typeof createConfidencePolicy>,
+  hunk: SplitHunk,
+  index: number,
+): Promise<ProfiledHunk> {
+  const id = `${hunk.file}#${index}`;
+  // NFR-3: everything this stage stores or sends out is the REDACTED
+  // text (identical to the raw text when nothing matched), so Jev, the
+  // reviewer and the narrator only ever see `[REDACTED]`. A hunk with a
+  // secret is profiled and reviewed like any other; `containsSecret`
+  // only drives the visible warning in the summary comment, and is
+  // stricter than the redaction (redact.ts: `secrets`, relaxed for a
+  // readable placeholder in a test file).
+  const diffRedaction = redact(hunk.diff, { path: hunk.file });
+  const diff = diffRedaction.text;
+  const before = redact(hunk.before).text;
+  const secretDetected = diffRedaction.secrets > 0;
+
+  const {
+    touchesPublicApi: hasPublicApi,
+    partial,
+    astSkipped,
+  } = await resolvePublicApi(hunk, input.pr, input.fetchFileContent);
+
+  const questions: Record<
+    string,
+    ReturnType<(typeof pipelineProfileQuestions)[number]["build"]>
+  > = {};
+  for (const question of pipelineProfileQuestions) {
+    questions[question.name] = question.build();
   }
 
-  const hunksToProcess = allHunks.slice(0, input.maxHunks);
-  const truncatedHunkCount = allHunks.length - hunksToProcess.length;
-
-  const policy = createConfidencePolicy(input.policyConfig);
-  const entries: HunkProfileEntry[] = [];
-  let totalRequests = 0;
-  let totalLatencyMs = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-
-  for (const [index, hunk] of hunksToProcess.entries()) {
-    const id = `${hunk.file}#${index}`;
-    // NFR-3: everything this stage stores or sends out is the REDACTED
-    // text (identical to the raw text when nothing matched), so Jev, the
-    // reviewer and the narrator only ever see `[REDACTED]`. A hunk with a
-    // secret is profiled and reviewed like any other; `containsSecret`
-    // only drives the visible warning in the summary comment, and is
-    // stricter than the redaction (redact.ts: `secrets`, relaxed for a
-    // readable placeholder in a test file).
-    const diffRedaction = redact(hunk.diff, { path: hunk.file });
-    const diff = diffRedaction.text;
-    const before = redact(hunk.before).text;
-    const secretDetected = diffRedaction.secrets > 0;
-
-    const {
-      touchesPublicApi: hasPublicApi,
-      partial,
-      astSkipped,
-    } = await resolvePublicApi(hunk, input.pr, input.fetchFileContent);
-
-    const questions: Record<
-      string,
-      ReturnType<(typeof pipelineProfileQuestions)[number]["build"]>
-    > = {};
-    for (const question of pipelineProfileQuestions) {
-      questions[question.name] = question.build();
-    }
-
-    let response: Awaited<ReturnType<typeof input.decisionPort.decide>>;
-    try {
-      response = await input.decisionPort.decide(diff, questions);
-    } catch {
-      // NFR-2 fail-closed: a Jev failure on one hunk doesn't abort the whole
-      // stage or lose the hunks already profiled. The hunk still goes to
-      // review (skippedFromReview stays false — we can't safely apply the
-      // skip-change-kind optimization without a change_kind), just without
-      // profile context (nullable fields).
-      entries.push({
+  let response: Awaited<ReturnType<typeof input.decisionPort.decide>>;
+  try {
+    response = await input.decisionPort.decide(diff, questions);
+  } catch {
+    // NFR-2 fail-closed: a Jev failure on one hunk doesn't abort the whole
+    // stage or lose the hunks already profiled. The hunk still goes to
+    // review (skippedFromReview stays false — we can't safely apply the
+    // skip-change-kind optimization without a change_kind), just without
+    // profile context (nullable fields).
+    return {
+      answered: false,
+      entry: {
         id,
         file: hunk.file,
         hunkHeader: hunk.hunkHeader,
@@ -280,36 +286,30 @@ export async function runHunkProfileStage(
         skippedFromReview: false,
         containsSecret: secretDetected,
         profileFailed: true,
-      });
-      continue;
-    }
-    totalRequests += 1;
-    totalLatencyMs += response.latencyMs;
-    totalInputTokens += response.usage.inputTokens;
-    totalOutputTokens += response.usage.outputTokens;
+      },
+    };
+  }
 
-    const changeKindDecision = response.answers.change_kind;
-    const errHandlingDecision = response.answers.touches_error_handling;
-    const asyncDecision = response.answers.touches_async;
-    const reviewerInstructionsDecision = response.answers.contains_reviewer_instructions;
-    if (
-      changeKindDecision?.type !== "choice" ||
-      errHandlingDecision?.type !== "noul" ||
-      asyncDecision?.type !== "noul" ||
-      reviewerInstructionsDecision?.type !== "noul"
-    ) {
-      throw new Error("hunk-profile: unexpected decision shape from DecisionPort");
-    }
+  const changeKindDecision = response.answers.change_kind;
+  const errHandlingDecision = response.answers.touches_error_handling;
+  const asyncDecision = response.answers.touches_async;
+  const reviewerInstructionsDecision = response.answers.contains_reviewer_instructions;
+  if (
+    changeKindDecision?.type !== "choice" ||
+    errHandlingDecision?.type !== "noul" ||
+    asyncDecision?.type !== "noul" ||
+    reviewerInstructionsDecision?.type !== "noul"
+  ) {
+    throw new Error("hunk-profile: unexpected decision shape from DecisionPort");
+  }
 
-    const skipEligible = input.skipChangeKinds.includes(changeKindDecision.choice);
-    const confidenceBand = policy.band(
-      "hunkProfile",
-      input.riskLevel,
-      changeKindDecision.confidence,
-    );
-    const skippedFromReview = skipEligible && confidenceBand === "auto";
+  const skipEligible = input.skipChangeKinds.includes(changeKindDecision.choice);
+  const confidenceBand = policy.band("hunkProfile", input.riskLevel, changeKindDecision.confidence);
+  const skippedFromReview = skipEligible && confidenceBand === "auto";
 
-    entries.push({
+  return {
+    answered: true,
+    entry: {
       id,
       file: hunk.file,
       hunkHeader: hunk.hunkHeader,
@@ -331,7 +331,43 @@ export async function runHunkProfileStage(
       skippedFromReview,
       containsSecret: secretDetected,
       profileFailed: false,
-    });
+    },
+  };
+}
+
+export async function runHunkProfileStage(
+  input: HunkProfileStageInput,
+): Promise<HunkProfileStageResult> {
+  const allHunks: SplitHunk[] = [];
+  for (const file of input.pr.files) {
+    allHunks.push(...splitFileIntoHunks(file.path, file.patch));
+  }
+
+  const hunksToProcess = allHunks.slice(0, input.maxHunks);
+  const truncatedHunkCount = allHunks.length - hunksToProcess.length;
+
+  const policy = createConfidencePolicy(input.policyConfig);
+
+  // One Jev request per hunk (NFR-14), up to `concurrency` in flight; the
+  // entries come back in PR order whatever order Jev answers in, so the
+  // result is the one-at-a-time loop's (mapWithConcurrency).
+  const profiled = await mapWithConcurrency(
+    hunksToProcess,
+    input.concurrency ?? HUNK_PROFILE_CONCURRENCY,
+    (hunk, index) => profileHunk(input, policy, hunk, index),
+  );
+  const entries = profiled.map((p) => p.entry);
+
+  let totalRequests = 0;
+  let totalLatencyMs = 0;
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  for (const { answered, entry } of profiled) {
+    if (!answered) continue;
+    totalRequests += 1;
+    totalLatencyMs += entry.latencyMs;
+    totalInputTokens += entry.usage.inputTokens;
+    totalOutputTokens += entry.usage.outputTokens;
   }
 
   return {

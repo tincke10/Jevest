@@ -17,7 +17,8 @@
  *    its reason; `uncertain` (also on a verifier error, or when the run's
  *    budget is spent) caps the finding at a question; `confirmed` goes on.
  * 4. Jev's staged judge (agentic-judge-questions.ts), one request per
- *    step, stopping at the first discard: `supports`, then `mechanism`,
+ *    step, stopping at the first discard (up to {@link JUDGE_CONCURRENCY}
+ *    findings at once, folded back in finding order): `supports`, then `mechanism`,
  *    then `severity`, routed by ../../../domain/agentic-policy.ts. A Jev
  *    discard follows `findingFilter.mode` (low confidence in annotate),
  *    a question goes to `needsHuman`, publish to `published`. NFR-2: a Jev
@@ -61,6 +62,7 @@ import {
   supportsQuestion,
 } from "./agentic-judge-questions.js";
 import type { HeadFileReader } from "./code-context.js";
+import { mapWithConcurrency } from "./concurrency.js";
 import {
   type AgenticFindingDetail,
   EVIDENCE_NOT_FOUND_REASON,
@@ -71,6 +73,13 @@ import {
 
 /** Verifier agents running at once. */
 export const VERIFIER_CONCURRENCY = 3;
+
+/**
+ * Findings Jev judges at once (step 4). Each finding's chain stays
+ * sequential; results and totals are folded back in finding order, so the
+ * output is the one-at-a-time loop's. Jev's 429 is retried by the adapter.
+ */
+export const JUDGE_CONCURRENCY = 4;
 
 export interface AgenticJudgeStageInput {
   readonly findings: readonly AgenticFinding[];
@@ -86,6 +95,8 @@ export interface AgenticJudgeStageInput {
   /** What is left of the per-run budget for verifier calls. */
   readonly verifierBudgetUsd: number;
   readonly verifierConcurrency?: number;
+  /** Findings Jev judges at once. Default {@link JUDGE_CONCURRENCY}; 1 is the one-at-a-time loop. */
+  readonly judgeConcurrency?: number;
 }
 
 export interface AgenticJudgeOutcomes {
@@ -152,23 +163,6 @@ const REPORTED_SEVERITY_SCORE: Record<AgenticSeverity, number> = {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-async function mapWithConcurrency<T, R>(
-  items: readonly T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const index = next++;
-      results[index] = await fn(items[index] as T);
-    }
-  });
-  await Promise.all(workers);
-  return results;
 }
 
 /** Repo paths and their redacted patches / commentable head ranges. */
@@ -326,18 +320,22 @@ export async function runAgenticJudgeStage(
   let verifierUsage: ReviewUsage = ZERO_USAGE;
   const verifierToolCalls: AgentToolCall[] = [];
 
+  /** One finding's Jev steps, folded into the stage totals in finding order (see step 4). */
+  interface JevTrack {
+    calls: number;
+    /** Latency and usage of every request Jev answered, in chain order. */
+    readonly answered: { readonly latencyMs: number; readonly usage: Usage }[];
+  }
+
   async function ask<D extends ChoiceDecision | ScoreDecision>(
+    track: JevTrack,
     key: string,
     state: JsonObject,
     question: Parameters<DecisionPort["decide"]>[1][string],
   ): Promise<JevStep<D>> {
-    jevCalls += 1;
+    track.calls += 1;
     const response = await input.decisionPort.decide(state, { [key]: question });
-    latencies.push(response.latencyMs);
-    usage = {
-      inputTokens: usage.inputTokens + response.usage.inputTokens,
-      outputTokens: usage.outputTokens + response.usage.outputTokens,
-    };
+    track.answered.push({ latencyMs: response.latencyMs, usage: response.usage });
     const decision = response.answers[key] as D | undefined;
     if (decision === undefined) throw new Error(`Jev returned no answer for "${key}"`);
     return {
@@ -449,107 +447,132 @@ export async function runAgenticJudgeStage(
     );
   }
 
-  // Step 4: Jev's staged judge, one finding at a time.
-  for (const p of pending) {
-    const verifier = verifierAnswers.get(p.index) ?? null;
-    const base = {
-      index: p.index,
-      finding: p.finding,
-      evidenceVerified: p.evidenceVerified,
-      inlineAnchor: p.inlineAnchor,
-      verifier,
-    };
-    if (verifier?.decision === "refuted") {
-      judged.push({
-        ...empty,
-        ...base,
-        outcome: {
-          bucket: "discarded",
-          route: `refuted by the verifier: ${verifier.reason}`,
-          dropKey: "verifier-refuted",
-        },
-      });
-      continue;
-    }
-    const state: JsonObject = {
-      finding: {
-        file: p.finding.file,
-        line: p.finding.line,
-        category: p.finding.category,
-        claim: p.finding.claim,
-        failingScenario: p.finding.failingScenario,
-      },
-      selectedEvidence: await selectedEvidence(p.checked, changed, input.readHeadLines),
-    };
-    let supports: JevStep<ChoiceDecision> | null = null;
-    let mechanism: JevStep<ChoiceDecision> | null = null;
-    let severity: JevStep<ScoreDecision> | null = null;
-    let route: AgenticRoute | "next" = "next";
-    try {
-      const routeInput = () => ({
-        supports: {
-          choice: supports?.decision.choice ?? "",
-          confidence: supports?.decision.confidence ?? 0,
-        },
-        mechanism: mechanism
-          ? { choice: mechanism.decision.choice, confidence: mechanism.decision.confidence }
-          : undefined,
-        severity: severity
-          ? { score: severity.decision.score, confidence: severity.decision.confidence }
-          : undefined,
-        verifier: verifier?.decision ?? ("none" as const),
-        agentSeverity: p.finding.severity,
-      });
-      supports = await ask<ChoiceDecision>("supports", state, supportsQuestion());
-      route = routeAgenticFinding(routeInput());
-      if (route === "next") {
-        mechanism = await ask<ChoiceDecision>(
-          "mechanism",
-          state,
-          mechanismQuestion(p.finding.category),
-        );
-        route = routeAgenticFinding(routeInput());
+  // Step 4: Jev's staged judge, up to `judgeConcurrency` findings at once.
+  // Each finding's chain stays sequential (it stops at the first discard);
+  // its Jev steps are folded into the totals in FINDING order below, so
+  // calls, usage and `requestLatenciesMs` are the one-at-a-time loop's.
+  const judgedPending = await mapWithConcurrency(
+    pending,
+    input.judgeConcurrency ?? JUDGE_CONCURRENCY,
+    async (p): Promise<{ judged: Judged; track: JevTrack }> => {
+      const track: JevTrack = { calls: 0, answered: [] };
+      const verifier = verifierAnswers.get(p.index) ?? null;
+      const base = {
+        index: p.index,
+        finding: p.finding,
+        evidenceVerified: p.evidenceVerified,
+        inlineAnchor: p.inlineAnchor,
+        verifier,
+      };
+      if (verifier?.decision === "refuted") {
+        return {
+          judged: {
+            ...empty,
+            ...base,
+            outcome: {
+              bucket: "discarded",
+              route: `refuted by the verifier: ${verifier.reason}`,
+              dropKey: "verifier-refuted",
+            },
+          },
+          track,
+        };
       }
-      if (route === "next") {
-        severity = await ask<ScoreDecision>(
-          "severity",
-          { ...state, mechanism: mechanism?.decision.choice ?? null },
-          severityQuestion(),
-        );
+      const state: JsonObject = {
+        finding: {
+          file: p.finding.file,
+          line: p.finding.line,
+          category: p.finding.category,
+          claim: p.finding.claim,
+          failingScenario: p.finding.failingScenario,
+        },
+        selectedEvidence: await selectedEvidence(p.checked, changed, input.readHeadLines),
+      };
+      let supports: JevStep<ChoiceDecision> | null = null;
+      let mechanism: JevStep<ChoiceDecision> | null = null;
+      let severity: JevStep<ScoreDecision> | null = null;
+      let route: AgenticRoute | "next" = "next";
+      try {
+        const routeInput = () => ({
+          supports: {
+            choice: supports?.decision.choice ?? "",
+            confidence: supports?.decision.confidence ?? 0,
+          },
+          mechanism: mechanism
+            ? { choice: mechanism.decision.choice, confidence: mechanism.decision.confidence }
+            : undefined,
+          severity: severity
+            ? { score: severity.decision.score, confidence: severity.decision.confidence }
+            : undefined,
+          verifier: verifier?.decision ?? ("none" as const),
+          agentSeverity: p.finding.severity,
+        });
+        supports = await ask<ChoiceDecision>(track, "supports", state, supportsQuestion());
         route = routeAgenticFinding(routeInput());
+        if (route === "next") {
+          mechanism = await ask<ChoiceDecision>(
+            track,
+            "mechanism",
+            state,
+            mechanismQuestion(p.finding.category),
+          );
+          route = routeAgenticFinding(routeInput());
+        }
+        if (route === "next") {
+          severity = await ask<ScoreDecision>(
+            track,
+            "severity",
+            { ...state, mechanism: mechanism?.decision.choice ?? null },
+            severityQuestion(),
+          );
+          route = routeAgenticFinding(routeInput());
+        }
+      } catch (error) {
+        console.warn(
+          `jevest: Jev failed judging agentic finding ${p.index} (${errorMessage(error)})`,
+        );
+        route = "next";
       }
-    } catch (error) {
-      console.warn(
-        `jevest: Jev failed judging agentic finding ${p.index} (${errorMessage(error)})`,
-      );
-      route = "next";
+      const jevFields = {
+        supports: supports ? { ...supports.decision, requestId: supports.requestId } : null,
+        mechanism: mechanism?.decision ?? null,
+        severity: severity?.decision ?? null,
+        requestId: severity?.requestId ?? mechanism?.requestId ?? supports?.requestId ?? "",
+      };
+      if (route === "next") {
+        return {
+          judged: {
+            ...base,
+            ...jevFields,
+            unverified: true,
+            outcome: { bucket: "needsHuman", route: "unverified: Jev did not answer (NFR-2)" },
+          },
+          track,
+        };
+      }
+      const outcome: Outcome =
+        route.route === "publish"
+          ? { bucket: "published", route: route.reason }
+          : route.route === "question"
+            ? { bucket: "needsHuman", route: route.reason }
+            : {
+                bucket: input.mode === "discard" ? "discarded" : "lowConfidence",
+                route: route.reason,
+                dropKey: `judge:${route.code}`,
+              };
+      return { judged: { ...base, ...jevFields, unverified: false, outcome }, track };
+    },
+  );
+  for (const { judged: j, track } of judgedPending) {
+    judged.push(j);
+    jevCalls += track.calls;
+    for (const step of track.answered) {
+      latencies.push(step.latencyMs);
+      usage = {
+        inputTokens: usage.inputTokens + step.usage.inputTokens,
+        outputTokens: usage.outputTokens + step.usage.outputTokens,
+      };
     }
-    const jevFields = {
-      supports: supports ? { ...supports.decision, requestId: supports.requestId } : null,
-      mechanism: mechanism?.decision ?? null,
-      severity: severity?.decision ?? null,
-      requestId: severity?.requestId ?? mechanism?.requestId ?? supports?.requestId ?? "",
-    };
-    if (route === "next") {
-      judged.push({
-        ...base,
-        ...jevFields,
-        unverified: true,
-        outcome: { bucket: "needsHuman", route: "unverified: Jev did not answer (NFR-2)" },
-      });
-      continue;
-    }
-    const outcome: Outcome =
-      route.route === "publish"
-        ? { bucket: "published", route: route.reason }
-        : route.route === "question"
-          ? { bucket: "needsHuman", route: route.reason }
-          : {
-              bucket: input.mode === "discard" ? "discarded" : "lowConfidence",
-              route: route.reason,
-              dropKey: `judge:${route.code}`,
-            };
-    judged.push({ ...base, ...jevFields, unverified: false, outcome });
   }
 
   judged.sort((a, b) => a.index - b.index);

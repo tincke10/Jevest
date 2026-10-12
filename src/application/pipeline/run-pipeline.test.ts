@@ -2664,3 +2664,151 @@ describe("runPipeline legacy label cleanup (labels from 0.1 and pre-1.0 builds)"
     }
   });
 });
+
+describe("runPipeline concurrency (wall time): author context alongside the hunk profile", () => {
+  const SUMMARY_COST = 0.01;
+  const EXTRACTOR_COST = 0.003;
+  const AGENT_COST = 0.9;
+
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function agenticConfig(): JevestConfig {
+    return makeConfig({
+      reviewer: {
+        ...makeConfig().reviewer,
+        provider: "claude-cli",
+        model: "claude-opus-5",
+        narrative: false,
+        descriptionContext: true,
+        mode: "agentic",
+      },
+    });
+  }
+
+  const summarizer: ChangeSummarizerPort = {
+    async summarize() {
+      return {
+        summary: {
+          whatChanges: "Changes the loop bound.",
+          behaviorChanges: [],
+          userFacing: false,
+          breaking: false,
+          areas: [],
+          risks: [],
+        },
+        model: "fake-summary",
+        usage: {
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadInputTokens: 0,
+          cacheCreationInputTokens: 0,
+        },
+        latencyMs: 1,
+        nominalCostUsd: SUMMARY_COST,
+      } satisfies ChangeSummaryOutput;
+    },
+  };
+
+  /** Records start/end of the hunk profile's Jev requests and of the extractor, each delayed. */
+  function harness(options: { profileMs: number; extractorMs: number; badProfile?: boolean }) {
+    const events: string[] = [];
+    const base = fullRunWithFindingPort();
+    const decision = {
+      async decide(state: never, questions: Record<string, unknown>) {
+        if (!("change_kind" in questions)) return base.decide(state, questions as never);
+        events.push("profile:start");
+        await sleep(options.profileMs);
+        events.push("profile:end");
+        if (options.badProfile) {
+          // Wrong decision shape: hunk-profile.ts throws, the run fails closed (NFR-2).
+          const answers: Record<string, Decision> = {};
+          for (const key of Object.keys(questions)) answers[key] = { type: "noul", noul: 0.5 };
+          return {
+            requestId: "bad",
+            model: "fake",
+            latencyMs: 1,
+            usage: { inputTokens: 1, outputTokens: 1 },
+            answers,
+          };
+        }
+        return base.decide(state, questions as never);
+      },
+    } as DecisionPort;
+    const extractor = createFakeDescriptionContextExtractor(async () => {
+      events.push("extractor:start");
+      await sleep(options.extractorMs);
+      events.push("extractor:end");
+      return fakeDescriptionContextOutput({ decisions: ["Loop bound fixed on purpose"] }, [], {
+        nominalCostUsd: EXTRACTOR_COST,
+      });
+    });
+    const agent = createFakeAgenticReviewer([], { info: { nominalCostUsd: AGENT_COST } });
+    const agentCalls = {
+      async reviewPullRequest(input: Parameters<typeof agent.reviewPullRequest>[0]) {
+        events.push("agent:start");
+        return agent.reviewPullRequest(input);
+      },
+    };
+    const ledger = createFakeSpendLedger();
+    const vcs = makeVcs(makePr());
+    const run = () =>
+      runPipeline({
+        ref,
+        ports: {
+          vcs,
+          decision,
+          summarizer,
+          descriptionContext: extractor,
+          agenticReviewer: agentCalls,
+          workingTree: createInMemoryWorkingTree({ "a.ts": "new\n" }),
+          spendLedger: ledger,
+        },
+        headCheckoutRoot: "/checkout",
+        config: agenticConfig(),
+        now: () => new Date("2026-09-21T16:00:00.000Z"),
+      });
+    return { events, extractor, agent, ledger, vcs, run };
+  }
+
+  it("starts the extractor and the hunk profile together, and the agent only after both finished", async () => {
+    const h = harness({ profileMs: 20, extractorMs: 20 });
+    await h.run();
+    const firstEnd = Math.min(h.events.indexOf("profile:end"), h.events.indexOf("extractor:end"));
+    expect(h.events.indexOf("profile:start")).toBeLessThan(firstEnd);
+    expect(h.events.indexOf("extractor:start")).toBeLessThan(firstEnd);
+    const agentStart = h.events.indexOf("agent:start");
+    expect(agentStart).toBeGreaterThan(h.events.indexOf("profile:end"));
+    expect(agentStart).toBeGreaterThan(h.events.indexOf("extractor:end"));
+    // The agent got the extracted author context, not the raw description.
+    expect(h.agent.calls[0]?.authorContext?.decisions).toEqual(["Loop bound fixed on purpose"]);
+    expect(h.agent.calls[0]?.description).toBeUndefined();
+  });
+
+  it("gives the same result whichever of the two finishes first", async () => {
+    const extractorFirst = await harness({ profileMs: 30, extractorMs: 1 }).run();
+    const profileFirst = await harness({ profileMs: 1, extractorMs: 30 }).run();
+    expect(profileFirst).toEqual(extractorFirst);
+    expect(profileFirst.costUsd).toBeCloseTo(SUMMARY_COST + EXTRACTOR_COST + AGENT_COST);
+  });
+
+  it("fails closed on a broken hunk profile exactly as before, still booking the extractor's spend in the ledger and costUsd", async () => {
+    const h = harness({ profileMs: 1, extractorMs: 30, badProfile: true });
+    const result = await h.run();
+    expect(result.failedClosed).toBe(true);
+    expect(result.failureReason).toBe("hunk-profile");
+    expect(result.verdict).toBe("unavailable");
+    expect(result.hunkProfile).toBeNull();
+    expect(result.publication.check.conclusion).toBe("failure");
+    expect(h.vcs.published).toHaveLength(1);
+    // The agent never starts on a failed profile.
+    expect(h.events).not.toContain("agent:start");
+    // The extractor (already in flight) was awaited and its money is not lost.
+    expect(h.events).toContain("extractor:end");
+    expect(result.descriptionContext?.costUsd).toBe(EXTRACTOR_COST);
+    expect(result.costUsd).toBeCloseTo(SUMMARY_COST + EXTRACTOR_COST);
+    expect(h.ledger.entries).toHaveLength(1);
+    expect(h.ledger.entries[0]?.llmUsd).toBeCloseTo(SUMMARY_COST + EXTRACTOR_COST);
+  });
+});

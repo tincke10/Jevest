@@ -42,3 +42,11 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Bundle (CI only, never committed)
+        run: pnpm bundle
+        env:
+          CI: "true"
+
+      - name: Smoke-test the bundle
+        run: bash scripts/bundle/smoke.sh

@@ -109,7 +109,7 @@ describe(".github/workflows/release.yml", () => {
       "pnpm typecheck",
       "pnpm lint",
       "pnpm bundle",
-      "node --enable-source-maps dist/main.mjs",
+      "bash scripts/bundle/smoke.sh",
       "git tag -a",
       "gh release create",
     ];
@@ -128,6 +128,35 @@ describe(".github/workflows/release.yml", () => {
 
   it("refuses to run for a tag that already exists", () => {
     expect(script).toMatch(/already exists/);
+  });
+});
+
+describe("scripts/bundle/smoke.sh", () => {
+  const smoke = readFileSync(join(ROOT, "scripts/bundle/smoke.sh"), "utf8");
+
+  it("runs the bundle without inputs and fails on any module or ESM runtime error", () => {
+    expect(smoke).toContain("node --enable-source-maps dist/main.mjs");
+    expect(smoke).toContain('missing required input "github-token"');
+    for (const error of [
+      "Dynamic require",
+      "ERR_MODULE_NOT_FOUND",
+      "ERR_AMBIGUOUS_MODULE_SYNTAX",
+      "ReferenceError",
+    ]) {
+      expect(smoke).toContain(error);
+    }
+  });
+
+  it("is also run by CI on every push, after building the bundle", () => {
+    const ci = load(".github/workflows/ci.yml") as { jobs: Record<string, { steps: Step[] }> };
+    const ciScript = Object.values(ci.jobs)
+      .flatMap((job) => job.steps)
+      .map((s) => s.run ?? "")
+      .join("\n");
+    expect(ciScript.indexOf("pnpm bundle")).toBeGreaterThanOrEqual(0);
+    expect(ciScript.indexOf("bash scripts/bundle/smoke.sh")).toBeGreaterThan(
+      ciScript.indexOf("pnpm bundle"),
+    );
   });
 });
 

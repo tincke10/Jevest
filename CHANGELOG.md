@@ -11,6 +11,8 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ### Added
 
+- **CI builds and smoke-tests the bundle on every push** (`scripts/bundle/smoke.sh`, never committed), the same check the Release workflow runs before tagging, so a bundling problem shows up before a release. The bundle defines `__filename`/`__dirname` for inlined CommonJS that reads them (the TypeScript compiler used by the AST gate).
+
 - **Prebuilt Action bundle on release tags**: `vX.Y.Z` / `vN` now point at a commit that adds `dist/main.mjs` (`src/action/main.ts` bundled with esbuild 0.28.2, every dependency inlined, ESM for Node 22, with a source map). `action.yml` detects it in its first step and then skips "Set up pnpm" and "Install Jevest's own dependencies" (about 5-8 s per run) and runs `node --enable-source-maps dist/main.mjs`; any ref without `dist/` (`main`, a branch, a sha) runs the source with `tsx` as before. The bundle is built only by the new **Release workflow** (`.github/workflows/release.yml`, `workflow_dispatch` with `version` and `move_major`): it checks the version, CHANGELOG and that the tag is new, runs tests, typecheck and lint, bundles, smoke-tests the bundle, commits `dist/` on top of `main` (reachable from the tag only, never pushed to `main`), tags, moves `vN` to the peeled commit and creates the GitHub release. `pnpm bundle` refuses to run outside CI, `dist/` is git-ignored and marked `linguist-generated`, and CI fails a change that commits it. `config/jevest.example.yml` is now located by walking up from the module directory (`resolvePackageFile`), so the built-in defaults load from both `src/` and `dist/`. docs/RELEASING.md describes the workflow and a manual fallback that never builds locally.
 
 ### Changed

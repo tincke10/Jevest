@@ -24,4 +24,12 @@ describe("bundleOptions", () => {
     expect(bundleOptions.banner?.js).toContain('from "node:module"');
     expect(bundleOptions.banner?.js).toMatch(/const require = \w+\(import\.meta\.url\);/);
   });
+
+  it("defines `__filename` and `__dirname` for inlined CommonJS that reads them (the TypeScript compiler does)", () => {
+    const banner = bundleOptions.banner?.js ?? "";
+    expect(banner).toContain('from "node:url"');
+    expect(banner).toMatch(/const __filename = \w+\(import\.meta\.url\);/);
+    expect(banner).toContain('from "node:path"');
+    expect(banner).toMatch(/const __dirname = \w+\(__filename\);/);
+  });
 });

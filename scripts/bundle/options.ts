@@ -28,10 +28,17 @@ export const bundleOptions: BuildOptions = {
   sourcemap: true,
   legalComments: "linked",
   logLevel: "info",
+  // `__filename` / `__dirname`: inlined CommonJS that reads them (the
+  // TypeScript compiler, used by the AST gate, checks file-system case
+  // sensitivity with `__filename`) throws in an ESM file without them.
   banner: {
     js: [
       'import { createRequire as __jevestCreateRequire } from "node:module";',
+      'import { fileURLToPath as __jevestFileURLToPath } from "node:url";',
+      'import { dirname as __jevestDirname } from "node:path";',
       "const require = __jevestCreateRequire(import.meta.url);",
+      "const __filename = __jevestFileURLToPath(import.meta.url);",
+      "const __dirname = __jevestDirname(__filename);",
     ].join("\n"),
   },
 };

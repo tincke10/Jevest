@@ -7,6 +7,13 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-12
+
+### Changed
+
+- The recommended `actions/checkout` for agentic mode is now a partial clone with a non-cone sparse checkout that skips binary assets (`filter: blob:none`, `sparse-checkout-cone-mode: false`, `sparse-checkout` with `/*` and `!*.png`, `!*.mp4`, `!*.woff2`, …). Measured on a production web app repository (5.4 GB, about 11.9k files, mostly images, videos and fonts): the plain checkout took 1 min 41 s per run on a GitHub runner; the partial one downloads about 15 MB / 3.7k files (all the code) in about 13 s locally, with `HEAD` still at the PR head sha. Updated in the README, `docs/ACTION.md` ("Checkout", with the tradeoff and how to keep SVGs) and `docs/MIGRATING.md`. The plain `ref` + `fetch-depth: 1` checkout still works.
+- The "no checkout" guidance (the comment's hint, the check summary and the `::warning::` annotation) now points to `docs/ACTION.md#checkout` for the recommended partial checkout.
+
 ## [1.0.0] - 2026-10-02
 
 ### Highlights

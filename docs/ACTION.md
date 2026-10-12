@@ -74,6 +74,7 @@ like (see "Checkout"). Upgrading from 0.1: [MIGRATING.md](MIGRATING.md).
 
 `@v1` moves to every `v1.x.y` release; pin an exact `v1.x.y` tag for a workflow that never changes under you. `@main` tracks the latest commit and is for developing Jevest itself.
 Which tags will exist and which one to pin is in [RELEASING.md](RELEASING.md).
+Release tags (`@v1`, `@v1.x.y`) ship a prebuilt bundle (`dist/main.mjs`, built by the Release workflow), so the Action skips setting up pnpm and installing its dependencies (about 5-8 s less per run); `@main` and other refs run the TypeScript source with `tsx` after `pnpm install`.
 
 ### Secrets to set
 
@@ -1148,6 +1149,42 @@ The same numbers are available as action outputs:
 one `[review] wall time:` line with the wall clock per stage, which is
 also in `metrics.wallTime` of the pipeline result.
 
+#### Performance: what runs at the same time
+
+Independent requests run concurrently to cut a run's wall time. Nothing
+about the result depends on it: decisions, findings, labels, the check,
+the verdict, the comment, costs and the ledger entry are the same as
+running them one at a time (results are put back in input order), and the
+recorded Jev fixtures are keyed by request content, so they replay
+unchanged.
+
+| What | Concurrency | Why it is safe |
+|---|---|---|
+| Hunk profile: one Jev request per hunk | up to 4 hunks at once | hunks are independent; entries keep PR order |
+| Hunk profile and the author-context extraction (`reviewer.descriptionContext`) | the two at the same time | both need only triage's output; the review starts after both |
+| Verifier (`reviewer.verifier`) | up to 3 findings at once | unchanged |
+| Jev's staged judge (agentic mode) | up to 4 findings at once | each finding's supports → mechanism → severity chain stays sequential; totals and latencies are folded in finding order |
+
+What stays sequential, on purpose: the spend-cap read, then triage (the
+change summary feeds triage's Jev request), then triage's decisions — the
+FR-2.3 skip, the budget, and the injection gate that decides whether the
+author context may reach the agent — all BEFORE anything else spends
+money; the review after the hunk profile (the agent is not started when
+every hunk is skipped, and the per-hunk reviewer needs the profiled
+hunks); the narrator last (it needs the final findings).
+
+If the hunk profile fails closed (NFR-2) while the extractor is in
+flight, the run waits for the extractor and books its cost in `costUsd`
+and the ledger with the fail-closed result (before, the extractor had not
+started yet, so there was nothing to book).
+
+Reading the numbers: `metrics.wallTime.totalMs` is the real elapsed
+time. The per-stage times are still each stage's own wall clock; the
+extractor (not a stage) now overlaps `hunkProfileMs` instead of adding to
+the total after it. The Efficiency section's "total Jev time" is the sum
+of request latencies, so with concurrent requests it can exceed the wall
+time those requests took.
+
 ## What it never does
 
 **It never merges anything** (FR-6.4). The merge gate stage only emits a
@@ -1306,7 +1343,8 @@ should not be able to hide it.
 pnpm action
 ```
 
-Runs `src/action/main.ts` directly with `tsx`. It expects the same
+Runs `src/action/main.ts` directly with `tsx` (the bundle in `dist/` is
+built only by the Release workflow, never locally). It expects the same
 `INPUT_*` and `GITHUB_*` environment variables the composite action sets
 (see `action.yml`); for a quick smoke test of ref resolution against a
 canned event, see `tests/fixtures/github/pull_request.event.json` and

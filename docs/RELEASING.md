@@ -1,8 +1,19 @@
 # Releasing Jevest
 
 Jevest is consumed as a GitHub Action (`uses: tincke10/Jevest@<ref>`). There is
-no build, no npm package and no bundle: the Action runs the TypeScript source
-with `tsx` straight from the tagged commit, so the tag itself is the artifact.
+no npm package. A release tag points at a commit that adds `dist/main.mjs` (the
+Action bundled with esbuild, every dependency inlined) on top of the release
+commit on `main`; with it, `action.yml` skips pnpm setup and `pnpm install`
+and runs `node dist/main.mjs`. Any ref without `dist/` (`main`, a branch, a
+sha) runs the TypeScript source with `tsx` after `pnpm install`, exactly as
+before.
+
+**The bundle is built only by the Release workflow**
+(`.github/workflows/release.yml`), never on a developer machine: `pnpm bundle`
+refuses to run outside CI, `dist/` is git-ignored, and CI fails any change
+that commits it. The bundle commit is reachable from the tag only, never
+pushed to `main`, so `main` can never carry a bundle that drifted from its
+source.
 
 ## What consumers pin
 
@@ -50,52 +61,75 @@ Run it from a clean, up-to-date `main` with `pnpm install` done.
    fresh empty `## [Unreleased]` above it, and for a major or a notable minor
    open the section with a short "Highlights" paragraph.
 4. **Commit** the bump and the CHANGELOG on `main`
-   (`chore(release): vX.Y.Z`) and push it.
-5. **Annotated tag** on that commit. Never move or re-create a `vX.Y.Z` tag.
+   (`chore(release): vX.Y.Z`) and push it. Do not tag it.
+5. **Run the Release workflow**: Actions → Release → Run workflow on `main`,
+   `version` = `X.Y.Z`, `move_major` on (off only for a patch to an older
+   major whose `vN` must stay where it is). From a terminal:
 
    ```sh
-   git tag -a vX.Y.Z -m "Jevest vX.Y.Z"
+   gh workflow run release.yml -f version=X.Y.Z -f move_major=true
+   gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
    ```
 
-6. **Floating major tag** `vN`, created with the first `vN.0.0` and re-pointed
-   on every later release. Point it at the **peeled commit**, never at the
-   annotated tag object: a tag that points at another tag object is a nested
-   tag, and `uses: ...@vN` resolution and `git describe` behave unreliably.
+   The workflow, in order:
+   - refuses an existing `vX.Y.Z` tag or release, a `package.json` version
+     other than `X.Y.Z`, or a CHANGELOG without `## [X.Y.Z]`;
+   - `pnpm install --frozen-lockfile`, `pnpm test`, `pnpm typecheck`,
+     `pnpm lint`;
+   - `pnpm bundle` → `dist/main.mjs` (+ source map, `dist/README.md`);
+   - smoke-tests the bundle: with no inputs it must stop on
+     `missing required input "github-token"` (not a module error), and with a
+     local `.jevest.yml` holding an unknown key it must report that key, which
+     proves `config/jevest.example.yml` resolves from `dist/`;
+   - commits `dist/` as `chore(release): vX.Y.Z bundle` (github-actions[bot])
+     on top of `main` WITHOUT pushing `main`, creates the annotated tag
+     `vX.Y.Z` on it and pushes the tag;
+   - with `move_major`, re-points `vN` at the **peeled commit**
+     (`git tag -f vN vX.Y.Z^{}`, checked to be a commit) and force-pushes
+     only `vN`. A tag pointing at another tag object is a nested tag, and
+     `uses: ...@vN` resolution and `git describe` behave unreliably;
+   - creates the GitHub release `Jevest vX.Y.Z` with the CHANGELOG section as
+     notes.
 
-   ```sh
-   git tag -f vN vX.Y.Z^{}
-   git cat-file -t vN          # must print "commit"
-   git rev-parse vN^{commit} vX.Y.Z^{commit}   # must match
-   ```
-
-   (`git tag -f` makes a lightweight tag; that is intended.)
-7. **Push the tags**. The floating tag is the only force-push this project
-   does.
-
-   ```sh
-   git push origin vX.Y.Z
-   git push origin vN --force
-   ```
-
-8. **GitHub release** from the tag, with notes: highlights, the results table
-   from `docs/BENCHMARK.md` when quality changed, breaking changes linking
-   `docs/MIGRATING.md`, and upgrade steps. For changes that only touch a
-   section, the CHANGELOG section verbatim is enough. Attach the datasets
-   only when they changed.
-
-   ```sh
-   gh release create vX.Y.Z --title "Jevest vX.Y.Z" --notes-file <notes.md> [assets...]
-   ```
-
-9. **Docs snippets pinned to `@vN`**: after a major, switch `README.md` and
+   Never move or re-create a `vX.Y.Z` tag; a failed run before the tag push
+   can simply be re-run. If it failed after pushing the tag (major move or
+   release creation), finish those steps by hand as in the fallback below
+   rather than re-running.
+6. **Release notes**: for a major or a quality change, edit the release the
+   workflow created (`gh release edit vX.Y.Z --notes-file <notes.md>`) to add
+   the highlights, the results table from `docs/BENCHMARK.md`, breaking
+   changes linking `docs/MIGRATING.md` and upgrade steps. Attach the datasets
+   only when they changed (`gh release upload vX.Y.Z <assets...>`).
+7. **Docs snippets pinned to `@vN`**: after a major, switch `README.md` and
    `docs/` from the previous major (keep it only where a before/after
    migration snippet needs it), commit as `docs: pin the Action snippets to vN`.
-10. **Post-release smoke**: in a consumer repo (or a Jevest test PR) pin
+8. **Post-release smoke**: in a consumer repo (or a Jevest test PR) pin
     `@vN` and open a small PR. Confirm the run completes, the `jevest` check
-    and the labels appear, and the log shows the tagged commit. This catches a
-    bad `action.yml` reference or a nested tag.
+    and the labels appear, the log shows the tagged commit and
+    `jevest: prebuilt bundle found (dist/main.mjs)`. This catches a bad
+    `action.yml` reference, a nested tag or a broken bundle.
 
-Datasets: bump `dataset_version` inside the file and document the change in
+## Manual fallback (no Release workflow available)
+
+Still never build locally. Tag the release commit on `main` as before; that
+tag has no `dist/`, so consumers run it from source (slower setup, same
+behavior):
+
+```sh
+git tag -a vX.Y.Z -m "Jevest vX.Y.Z"
+git tag -f vN vX.Y.Z^{}
+git cat-file -t vN                          # must print "commit"
+git rev-parse vN^{commit} vX.Y.Z^{commit}   # must match
+git push origin vX.Y.Z
+git push origin vN --force                  # the only force-push this project does
+gh release create vX.Y.Z --verify-tag --title "Jevest vX.Y.Z" --notes-file <notes.md>
+```
+
+(`git tag -f` makes a lightweight tag; that is intended.)
+
+## Datasets
+
+Bump `dataset_version` inside the file and document the change in
 `datasets/README.md` rather than editing records in place. Recorded fixtures
 are keyed by the exact state sent to Jev, so a dataset change invalidates the
 fixtures that read from it; re-record and commit them in the same change.

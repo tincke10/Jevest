@@ -229,7 +229,7 @@ datasets/          hunks.jsonl (100, labeled) · findings.jsonl · prs.jsonl (10
 tests/fixtures/    recorded Jev and LLM answers: every report replays offline
 ```
 
-Every real API is behind a port with a fake and a recorded adapter, so the whole suite and every spike run without a key. The Action runs the TypeScript source with `tsx`; there is no build step and no bundle to drift.
+Every real API is behind a port with a fake and a recorded adapter, so the whole suite and every spike run without a key. Release tags (`@v1`, `@vX.Y.Z`) run a prebuilt bundle (`dist/main.mjs`) that the Release workflow builds from the tagged source, so a run skips pnpm setup and `pnpm install`; `main` never carries the bundle and runs the TypeScript source with `tsx` (docs/RELEASING.md).
 
 ## Local development
 

@@ -28,6 +28,7 @@
     "scripts/dataset",
     "scripts/coherence",
     "scripts/adversarial",
-    "scripts/eval"
+    "scripts/eval",
+    "scripts/bundle"
   ]
 }

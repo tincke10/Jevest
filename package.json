@@ -20,6 +20,7 @@
     "findings": "tsx scripts/findings/generate.ts",
     "findings:label": "tsx scripts/findings/label.ts",
     "action": "tsx src/action/main.ts",
+    "bundle": "tsx scripts/bundle/run.ts",
     "review": "tsx scripts/review/run.ts",
     "dataset:prs": "tsx scripts/dataset/collect-prs.ts",
     "dataset:pairs": "tsx scripts/dataset/generate-pairs.ts",
@@ -47,6 +48,7 @@
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.20.5",
     "@types/picomatch": "^4.0.3",
+    "esbuild": "0.28.2",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"

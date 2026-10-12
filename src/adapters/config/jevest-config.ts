@@ -31,7 +31,6 @@
  * its new path instead of the generic one ({@link legacyKeyMessages}).
  */
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 import { PROFILE_CHANGE_KINDS } from "../../domain/change-kind.js";
@@ -42,8 +41,18 @@ import {
 } from "../../domain/confidence-policy.js";
 import type { SizeThresholds } from "../../domain/size.js";
 import type { SpendCapConfig } from "../../domain/spend-cap.js";
+import { resolvePackageFile } from "./package-file.js";
 
-const EXAMPLE_CONFIG_PATH = join(import.meta.dirname, "../../../config/jevest.example.yml");
+/**
+ * The built-in defaults. Resolved by walking up from this module's directory
+ * (src/adapters/config under tsx, dist/ in the bundle), on first use so that
+ * importing the module never touches the filesystem.
+ */
+let exampleConfigPath: string | undefined;
+function getExampleConfigPath(): string {
+  exampleConfigPath ??= resolvePackageFile("config/jevest.example.yml", import.meta.dirname);
+  return exampleConfigPath;
+}
 
 function isEnoent(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
@@ -651,7 +660,7 @@ function legacyKeyMessages(overrides: Record<string, unknown>): string[] {
  * for the latter).
  */
 async function resolveJevestConfig(userRaw: string | null, label: string): Promise<JevestConfig> {
-  const defaultsRaw = await readFile(EXAMPLE_CONFIG_PATH, "utf8");
+  const defaultsRaw = await readFile(getExampleConfigPath(), "utf8");
   const defaults = parse(defaultsRaw);
 
   let overrides: unknown = {};

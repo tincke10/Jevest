@@ -7,6 +7,14 @@ tags consumers should pin, is in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Prebuilt Action bundle on release tags**: `vX.Y.Z` / `vN` now point at a commit that adds `dist/main.mjs` (`src/action/main.ts` bundled with esbuild 0.28.2, every dependency inlined, ESM for Node 22, with a source map). `action.yml` detects it in its first step and then skips "Set up pnpm" and "Install Jevest's own dependencies" (about 5-8 s per run) and runs `node --enable-source-maps dist/main.mjs`; any ref without `dist/` (`main`, a branch, a sha) runs the source with `tsx` as before. The bundle is built only by the new **Release workflow** (`.github/workflows/release.yml`, `workflow_dispatch` with `version` and `move_major`): it checks the version, CHANGELOG and that the tag is new, runs tests, typecheck and lint, bundles, smoke-tests the bundle, commits `dist/` on top of `main` (reachable from the tag only, never pushed to `main`), tags, moves `vN` to the peeled commit and creates the GitHub release. `pnpm bundle` refuses to run outside CI, `dist/` is git-ignored and marked `linguist-generated`, and CI fails a change that commits it. `config/jevest.example.yml` is now located by walking up from the module directory (`resolvePackageFile`), so the built-in defaults load from both `src/` and `dist/`. docs/RELEASING.md describes the workflow and a manual fallback that never builds locally.
+
+### Changed
+
+- **Shorter runs: independent requests now run concurrently**, with identical results (decisions, findings, labels, check, verdict, comment, costs and ledger entry; results are put back in input order, and recorded Jev fixtures replay unchanged). The hunk profile sends up to 4 Jev requests at once instead of one per hunk in turn; the author-context extractor runs at the same time as the hunk profile instead of after it; Jev's staged judge in agentic mode judges up to 4 findings at once (each finding's chain stays sequential). Triage, the FR-2.3 skip, the spend cap, the budget and the description injection gate are still decided before anything else spends money, and the review still starts only after the hunk profile and the extractor. **Estimated** saving (not measured): about 5-15 s per run on a 20-hunk PR (hunk profile 3-12 s → about 1-3 s, mostly hidden behind the extractor's few seconds) plus roughly three quarters of the judge's Jev time with 4+ findings, out of a run dominated by the 4-9 min agent. One accounting difference on a rare path: when the hunk profile fails closed (NFR-2) while the extractor is in flight, the extractor's cost is now booked in `costUsd` and the ledger (before, it had not started). `metrics.wallTime.totalMs` stays the real elapsed time; per-stage times may now overlap the extractor. docs/ACTION.md "Performance: what runs at the same time".
+
 ## [1.0.1] - 2026-10-12
 
 ### Changed

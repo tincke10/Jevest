@@ -1,0 +1,194 @@
+# Cuts a Jevest release (docs/RELEASING.md). The ONLY place the Action
+# bundle (dist/main.mjs) is ever built: never on a developer machine.
+#
+# Before dispatching: on main, package.json "version" is the new version and
+# CHANGELOG.md has its "## [X.Y.Z] - YYYY-MM-DD" section (the
+# `chore(release): vX.Y.Z` commit). This workflow then:
+#   verify -> bundle -> smoke-test -> commit dist/ on top of main (that commit
+#   is reachable only from the tag, main never carries dist/) -> annotated tag
+#   vX.Y.Z -> optionally move vN to the peeled commit -> GitHub release.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without the leading v (e.g. 1.1.0). Must equal package.json's version and have a CHANGELOG section."
+        required: true
+        type: string
+      move_major:
+        description: "Move the floating major tag (vN) to this release. Off only for a patch to an older major."
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      MOVE_MAJOR: ${{ inputs.move_major }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          # Full history and tags: the guard below looks for an existing tag.
+          fetch-depth: 0
+
+      - name: Check version, CHANGELOG and that the tag is new
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must be X.Y.Z without a leading v, got \"$VERSION\""
+            exit 1
+          fi
+          TAG="v$VERSION"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null \
+            || git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::tag $TAG already exists; a released version is never re-tagged (docs/RELEASING.md)"
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::a GitHub release $TAG already exists"
+            exit 1
+          fi
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "::error::package.json version is $PKG_VERSION, not $VERSION; commit the version bump on main first"
+            exit 1
+          fi
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no \"## [$VERSION]\" section; move the [Unreleased] entries under it first"
+            exit 1
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "MAJOR=v${VERSION%%.*}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Bundle
+        run: |
+          set -euo pipefail
+          pnpm bundle
+          cat > dist/README.md <<EOF
+          # dist/ — generated, do not edit
+
+          \`main.mjs\` is the Jevest Action bundled from \`src/action/main.ts\` (all
+          dependencies inlined) by the Release workflow for v$VERSION. It exists
+          only on release-tag commits; \`main\` never carries it. See
+          docs/RELEASING.md.
+          EOF
+          ls -la dist
+
+      - name: Smoke-test the bundle
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::bundle smoke test: $1"; exit 1; }
+          no_module_errors() {
+            if grep -Eq "Dynamic require|Cannot find module|ERR_MODULE_NOT_FOUND|ERR_REQUIRE_ESM|ReferenceError" "$1"; then
+              fail "module/runtime error in $1"
+            fi
+          }
+          logs="$RUNNER_TEMP/smoke"
+          mkdir -p "$logs"
+
+          # 1. No inputs at all: must stop on the clean input error, not crash.
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" node --enable-source-maps dist/main.mjs >"$logs/no-env.log" 2>&1
+          code=$?
+          set -e
+          cat "$logs/no-env.log"
+          [ "$code" -ne 0 ] || fail "expected a non-zero exit without inputs"
+          grep -qF 'missing required input "github-token"' "$logs/no-env.log" \
+            || fail "expected the missing github-token input error"
+          no_module_errors "$logs/no-env.log"
+
+          # 2. Loads config/jevest.example.yml (the built-in defaults) from the
+          #    bundle layout: an unknown key in a local .jevest.yml is only
+          #    reported after the defaults were read and merged.
+          ws="$RUNNER_TEMP/smoke-workspace"
+          mkdir -p "$ws"
+          printf 'jevestSmokeUnknownKey: 1\n' >"$ws/.jevest.yml"
+          printf '%s\n' '{"pull_request":{"number":1,"head":{"sha":"0000000000000000000000000000000000000001"},"base":{"sha":"0000000000000000000000000000000000000002"}},"repository":{"name":"jevest-smoke","owner":{"login":"jevest-smoke"}}}' >"$ws/event.json"
+          set +e
+          env -i PATH="$PATH" HOME="$HOME" \
+            INPUT_GITHUB_TOKEN=not-a-token INPUT_TYPESAFE_API_KEY=not-a-key \
+            INPUT_CONFIG_FROM_CHECKOUT=true GITHUB_WORKSPACE="$ws" GITHUB_EVENT_PATH="$ws/event.json" \
+            node --enable-source-maps dist/main.mjs >"$logs/config.log" 2>&1
+          set -e
+          cat "$logs/config.log"
+          grep -qF "jevestSmokeUnknownKey" "$logs/config.log" \
+            || fail "expected the config validation error naming the unknown key"
+          if grep -qF "jevest.example.yml not found" "$logs/config.log"; then
+            fail "the built-in defaults were not found from dist/"
+          fi
+          no_module_errors "$logs/config.log"
+
+      - name: Commit the bundle and tag the release
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # dist/ is git-ignored on main: -f adds it to this release commit only.
+          git add -f dist
+          unexpected="$(git status --porcelain | grep -v '^A  dist/' || true)"
+          if [ -n "$unexpected" ]; then
+            echo "$unexpected"
+            echo "::error::the release commit must only add dist/"
+            exit 1
+          fi
+          git commit -m "chore(release): v$VERSION bundle"
+          git tag -a "$TAG" -m "Jevest $TAG"
+          # Not pushed to main: the commit is reachable from the tag only, so
+          # main never carries a bundle that could drift from its source.
+          git push origin "refs/tags/$TAG"
+
+      - name: Move the floating major tag
+        if: ${{ inputs.move_major }}
+        run: |
+          set -euo pipefail
+          # Peeled commit, never the annotated tag object (no nested tags).
+          git tag -f "$MAJOR" "$TAG^{}"
+          [ "$(git cat-file -t "$MAJOR")" = "commit" ] || { echo "::error::$MAJOR is not a commit"; exit 1; }
+          [ "$(git rev-parse "$MAJOR^{commit}")" = "$(git rev-parse "$TAG^{commit}")" ] \
+            || { echo "::error::$MAJOR does not point at $TAG"; exit 1; }
+          # The only force-push this project does.
+          git push --force origin "refs/tags/$MAJOR"
+
+      - name: Create the GitHub release
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/notes.md"
+          awk -v heading="## [$VERSION]" '
+            /^## \[/ { if (found) exit; if (index($0, heading) == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md >"$notes"
+          if ! grep -q '[^[:space:]]' "$notes"; then
+            echo "::error::the CHANGELOG section for $VERSION is empty"
+            exit 1
+          fi
+          gh release create "$TAG" --verify-tag --title "Jevest $TAG" --notes-file "$notes"

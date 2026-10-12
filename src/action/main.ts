@@ -755,7 +755,7 @@ export function workingTreeAnnotations(
   if (unavailableReason === undefined) return [];
   if (config.reviewer.mode === "agentic" && config.reviewer.provider !== "none") {
     return [
-      `::warning title=Jevest agentic review needs a checkout::${unavailableReason}. Agentic mode (the default) reads the repository from a checkout of the PR head; this run is "unavailable". Add before the Jevest step: \`- uses: actions/checkout@v4\` with \`ref: \${{ github.event.pull_request.head.sha }}\` and \`fetch-depth: 1\`. Or set reviewer.mode: hunks in .jevest.yml (legacy per-hunk reviewer, no checkout needed).`,
+      `::warning title=Jevest agentic review needs a checkout::${unavailableReason}. Agentic mode (the default) reads the repository from a checkout of the PR head; this run is "unavailable". Add before the Jevest step: \`- uses: actions/checkout@v4\` with \`ref: \${{ github.event.pull_request.head.sha }}\` and \`fetch-depth: 1\` (recommended partial checkout that skips binaries: docs/ACTION.md#checkout). Or set reviewer.mode: hunks in .jevest.yml (legacy per-hunk reviewer, no checkout needed).`,
     ];
   }
   return [`jevest: code context unavailable: ${unavailableReason}`];

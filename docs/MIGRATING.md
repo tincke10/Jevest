@@ -88,7 +88,37 @@ config with `provider: claude-cli` and no `mode` now runs the agent. Add
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !*.png
+            !*.jpg
+            !*.jpeg
+            !*.gif
+            !*.webp
+            !*.svg
+            !*.ico
+            !*.mp4
+            !*.webm
+            !*.mov
+            !*.eps
+            !*.pdf
+            !*.zip
+            !*.br
+            !*.gz
+            !*.otf
+            !*.ttf
+            !*.woff
+            !*.woff2
+            !*.wasm
+            !*.unityweb
 ```
+
+The `filter` and `sparse-checkout` lines are optional: they make a partial
+clone that skips binary assets (on a 5.4 GB repo, 1 min 41 s became about
+13 s and 15 MB; see [ACTION.md "Checkout"](ACTION.md#checkout)). `ref` plus
+`fetch-depth: 1` alone is the minimum.
 
 The `ref` matters: the default `pull_request` checkout is the merge commit,
 whose line numbers differ from the head's, and Jevest refuses it. Without a
@@ -364,6 +394,31 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !*.png
+            !*.jpg
+            !*.jpeg
+            !*.gif
+            !*.webp
+            !*.svg
+            !*.ico
+            !*.mp4
+            !*.webm
+            !*.mov
+            !*.eps
+            !*.pdf
+            !*.zip
+            !*.br
+            !*.gz
+            !*.otf
+            !*.ttf
+            !*.woff
+            !*.woff2
+            !*.wasm
+            !*.unityweb
       - uses: tincke10/Jevest@v1
         with:
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}

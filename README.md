@@ -109,6 +109,31 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !*.png
+            !*.jpg
+            !*.jpeg
+            !*.gif
+            !*.webp
+            !*.svg
+            !*.ico
+            !*.mp4
+            !*.webm
+            !*.mov
+            !*.eps
+            !*.pdf
+            !*.zip
+            !*.br
+            !*.gz
+            !*.otf
+            !*.ttf
+            !*.woff
+            !*.woff2
+            !*.wasm
+            !*.unityweb
       - uses: tincke10/Jevest@v1
         with:
           typesafe-api-key: ${{ secrets.TYPESAFE_API_KEY }}

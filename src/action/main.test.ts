@@ -946,6 +946,8 @@ describe("workingTreeAnnotations", () => {
     expect(line).toContain("ref: ${{ github.event.pull_request.head.sha }}");
     expect(line).toContain("fetch-depth: 1");
     expect(line).toContain("reviewer.mode: hunks");
+    expect(line).toContain("docs/ACTION.md#checkout");
+    expect(line).not.toContain("sparse-checkout");
     expect(line).not.toContain("\n");
   });
 

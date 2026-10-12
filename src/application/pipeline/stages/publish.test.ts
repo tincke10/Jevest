@@ -1257,10 +1257,13 @@ describe("runPublishStage reviewer failures", () => {
     expect(AGENTIC_CHECKOUT_HINT).toContain("ref: ${{ github.event.pull_request.head.sha }}");
     expect(AGENTIC_CHECKOUT_HINT).toContain("fetch-depth: 1");
     expect(AGENTIC_CHECKOUT_HINT).toContain("reviewer.mode: hunks");
+    expect(AGENTIC_CHECKOUT_HINT).toContain("docs/ACTION.md#checkout");
+    expect(AGENTIC_CHECKOUT_HINT).not.toContain("sparse-checkout");
     expect(md).not.toContain("could not authenticate");
     expect(result.check.summary).toContain(
       "add actions/checkout with ref: ${{ github.event.pull_request.head.sha }} and fetch-depth: 1 before the Jevest step",
     );
+    expect(result.check.summary).toContain("docs/ACTION.md#checkout");
   });
 
   it("gives the checkout hint for a checkout of the wrong commit too, and never for other errors", () => {

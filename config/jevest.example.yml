@@ -72,7 +72,9 @@ reviewer:
   # Review mode. agentic (the default with claude-cli): ONE read-only agent
   # per PR in a checkout of the PR head, then hard exclusions, the evidence
   # check, the verifier and Jev's staged judge. It needs an actions/checkout
-  # step of the PR head before Jevest:
+  # step of the PR head before Jevest (ref + fetch-depth: 1 at minimum; the
+  # recommended partial checkout that skips binaries is in docs/ACTION.md
+  # "Checkout"):
   #   - uses: actions/checkout@v4
   #     with:
   #       ref: ${{ github.event.pull_request.head.sha }}

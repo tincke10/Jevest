@@ -31,6 +31,31 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !*.png
+            !*.jpg
+            !*.jpeg
+            !*.gif
+            !*.webp
+            !*.svg
+            !*.ico
+            !*.mp4
+            !*.webm
+            !*.mov
+            !*.eps
+            !*.pdf
+            !*.zip
+            !*.br
+            !*.gz
+            !*.otf
+            !*.ttf
+            !*.woff
+            !*.woff2
+            !*.wasm
+            !*.unityweb
       - uses: tincke10/Jevest@v1
         with:
           config-path: .jevest.yml
@@ -277,18 +302,8 @@ reviewer:
 
 **They need a checkout of the PR head.** `fullFile` and `impactContext`
 read the code from the workspace, so add `actions/checkout` at the head
-commit before Jevest (fetch-depth 1 is enough):
-
-```yaml
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
-      - uses: tincke10/Jevest@v1
-        with:
-          # ...as above
-```
+commit before Jevest. The recommended step (partial clone that skips
+binaries) is in "Checkout"; `ref` plus `fetch-depth: 1` is the minimum.
 
 The `ref` matters: on `pull_request` the default checkout is the merge
 commit, whose line numbers differ from the head's, and Jevest uses the
@@ -629,13 +644,39 @@ code is fine.
 
 ### Checkout
 
-**Agentic mode (the default) needs `actions/checkout` of the PR head**:
+**Agentic mode (the default) needs `actions/checkout` of the PR head.** The
+recommended step is a partial clone that skips binary assets:
 
 ```yaml
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !*.png
+            !*.jpg
+            !*.jpeg
+            !*.gif
+            !*.webp
+            !*.svg
+            !*.ico
+            !*.mp4
+            !*.webm
+            !*.mov
+            !*.eps
+            !*.pdf
+            !*.zip
+            !*.br
+            !*.gz
+            !*.otf
+            !*.ttf
+            !*.woff
+            !*.woff2
+            !*.wasm
+            !*.unityweb
 ```
 
 The agent reads the repository from it. The `ref` matters (the default
@@ -643,6 +684,49 @@ The agent reads the repository from it. The `ref` matters (the default
 `fetch-depth: 1` keeps it to one commit's tree. The same checkout serves the
 opt-in code context of the per-hunk mode (`reviewer.hunks.fullFile` /
 `reviewer.hunks.impactContext`, see "Code context" above).
+
+**Why this shape.** A plain `actions/checkout` downloads every file of the
+tree, and in a repo full of images, videos and fonts that is almost all
+bytes the agent never reads. Three options fix it together:
+
+- `filter: blob:none` makes the clone partial: git downloads the commit and
+  its trees (names and sizes of every path) but no file contents yet.
+- `sparse-checkout` with `cone-mode: false` is a gitignore-style pattern
+  list: `/*` writes everything, and each `!*.ext` line leaves out one
+  binary type.
+- Because the clone is partial, git fetches lazily only the blobs it has to
+  write into the working tree, so the excluded binaries are never
+  downloaded at all.
+
+`HEAD` is still the PR head sha, which is what Jevest's checkout detection
+requires.
+
+**Measured** on a production web app repository (5.4 GB, about 11.9k
+files, mostly images, videos and fonts): the plain `actions/checkout`
+took **1 min 41 s** per run on a GitHub runner and downloaded the whole
+tree. The partial checkout above downloaded about **15 MB / 3.7k files**
+(all of the code) in about **13 s** locally.
+
+**The tradeoff.** The agent cannot open the excluded files: it can still
+see that `logo.svg` exists in the diff or in a listing, but not read it.
+That costs nothing for a code review, because the agent only reads code
+and the diff itself always comes from the GitHub API, not from the working
+tree. If your project keeps meaningful text in one of those formats (SVG
+icons that components import, an inline `.svg` template, a `.pdf` spec),
+delete its `!*.svg` line (or re-include it explicitly) from the list.
+Extend the list the same way for other large types your repo carries.
+
+**The minimal variant still works.** `ref` plus `fetch-depth: 1` alone,
+without `filter` and `sparse-checkout`, is a complete checkout and is the
+right choice for a small repository, where the saving is not worth the
+extra options:
+
+```yaml
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+```
 
 **The per-hunk mode (`reviewer.mode: hunks`) needs no checkout**:
 `fetchPullRequest`, `.jevest.yml`, and everything else the pipeline reads

@@ -591,11 +591,13 @@ export const AGENTIC_CHECKOUT_HINT = [
   "          fetch-depth: 1",
   "```",
   "",
-  "Or set `reviewer.mode: hunks` in `.jevest.yml` for the legacy per-hunk reviewer, which needs no checkout. See docs/MIGRATING.md in the Jevest repository.",
+  "On a large repository, prefer the partial checkout (it skips binaries and downloads a fraction of the tree): see docs/ACTION.md#checkout in the Jevest repository.",
+  "",
+  "Or set `reviewer.mode: hunks` in `.jevest.yml` for the legacy per-hunk reviewer, which needs no checkout.",
 ].join("\n");
 
 const AGENTIC_CHECKOUT_CHECK_LINE =
-  " Agentic review needs a checkout of the PR head: add actions/checkout with ref: ${{ github.event.pull_request.head.sha }} and fetch-depth: 1 before the Jevest step, or set reviewer.mode: hunks.";
+  " Agentic review needs a checkout of the PR head: add actions/checkout with ref: ${{ github.event.pull_request.head.sha }} and fetch-depth: 1 before the Jevest step (recommended partial checkout: docs/ACTION.md#checkout), or set reviewer.mode: hunks.";
 
 function isAgenticCheckoutFailure(message: string): boolean {
   return message.startsWith(AGENTIC_UNAVAILABLE_PREFIX);
